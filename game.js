@@ -178,11 +178,11 @@ function finishJob(){
 /* ══════════ VISITEURS (chemins réels : promenade, file, sortie par la boutique) ══════════ */
 const SP=.42,QFULL=OSM.steps.slice().reverse().concat(OSM.queue.slice().reverse().slice(1)),ENTRY=QFULL[QFULL.length-1];
 const qi=(x,z)=>{let b=0,bd=1e9;QFULL.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
-// Accès amovibles : une chaîne déplacée met une boucle de la file en service ou la court-circuite
+// Accès amovibles : ouvrir un raccourci (flux alternatif) court-circuite une boucle de la file ; on = boucle en service, raccourci fermé
 const LOOPS=[
-  {name:'boucle est',on:true,a:qi(-4.1,16.4),b:qi(-13.6,28.1),via:[[-9.9,16.2],[-11.6,17.4],[-12,19.3],[-12.1,27]],
+  {name:'raccourci est',on:true,a:qi(-4.1,16.4),b:qi(-13.6,28.1),via:[[-9.9,16.2],[-11.6,17.4],[-12,19.3],[-12.1,27]],
    cOn:[[-12.75,27.55,.15,-1],[-7.4,16.3,1,0]],cOff:[[-12.6,28.25,1,.1],[-1.2,16.5,1,0]]},
-  {name:'boucle ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
+  {name:'raccourci ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
    cOn:[[-26.57,26.27,1.24,2.09]],cOff:[[-27.75,25.7,-1.05,.92],[-26.5,28.2,-1.18,1.75]]}];
 let QP=[],QC=[],QLEN=0,queueP=null;
 function buildQueue(){
@@ -409,8 +409,8 @@ function act(a,arg){
     for(const v of G.queue)if(Math.random()<.5)walker(leavePath(v.x,v.z),v.ci,null,3);
     G.queue.length=0;G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée ('+n+' visiteurs déçus).','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
-    if(!l.on&&G.queue.length*SP+2>QLEN){l.on=true;buildQueue();log('⛓️ Trop de monde dans la file pour retirer la '+l.name+'.','warn');}
-    else{for(const v of G.queue){v.d=Math.min(v.d,QLEN);v.gate=QLEN;}log('⛓️ File : '+l.name+(l.on?' mise en service':' court-circuitée')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs.');}}
+    if(!l.on&&G.queue.length*SP+2>QLEN){l.on=true;buildQueue();log('⛓️ Trop de monde dans la file pour ouvrir le '+l.name+'.','warn');}
+    else{for(const v of G.queue){v.d=Math.min(v.d,QLEN);v.gate=QLEN;}log('⛓️ '+l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : file longue':' ouvert : file courte')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs.');}}
   else if(a==='auto'){G.auto=!G.auto;log('Départs en mode '+(G.auto?'automatique.':'manuel.'));}
   else if(a==='gates'){if(!G.auto){if(G.gatesOpen)G.gatesOpen=false;else if(trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq)){G.gatesOpen=true;log('🚪 Portillons ouverts : embarquement.');}}}
   else if(a==='depart'){const s=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);if(s)s.depReq=true;}
@@ -461,7 +461,7 @@ function ui(){
   $('hSat').textContent=Math.round(G.sat)+' %';
   const active=trains.filter(t=>t.st!=='garage').length;
   $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);
-  LOOPS.forEach((l,i)=>{$('bLoop'+i).textContent='⛓️ '+l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' : en service':' : fermée');$('bLoop'+i).classList.toggle('on',l.on);});
+  LOOPS.forEach((l,i)=>{$('bLoop'+i).textContent='⛓️ '+l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' : fermé':' : ouvert');$('bLoop'+i).classList.toggle('on',!l.on);});
   $('hWait').textContent=active?Math.round(G.queue.length/(.19*active)*.5)+' min':'—';
   $('hRiders').textContent=G.stats.riders;
   for(const s of [0,1,2,4,8])$('sp'+s).classList.toggle('on',G.speed===s);
@@ -704,6 +704,10 @@ function drawWorld(dt){
   ctx.strokeStyle='#e5484d';lw(.24,1.6);ctx.beginPath();
   for(const l of LOOPS)for(const [x,z,dx,dz] of (l.on?l.cOn:l.cOff)){const n=Math.hypot(dx,dz),px=-dz/n*1.25,pz=dx/n*1.25;ctx.moveTo(x-px,z-pz);ctx.lineTo(x+px,z+pz);}
   ctx.stroke();
+  // flux alternatif : raccourcis ouverts, sens de marche vers la gare
+  ctx.strokeStyle='#3fd08a';lw(.38,2);ctx.setLineDash([.9,.7]);ctx.lineDashOffset=-clock*2.2;ctx.beginPath();
+  for(const l of LOOPS)if(!l.on)[QFULL[l.b]].concat(l.via.slice().reverse(),[QFULL[l.a]]).forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
+  ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;
   ctx.lineCap='butt';
   // ombres portées
   if(dry>.25){
