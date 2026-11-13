@@ -185,7 +185,7 @@ const LOOPS=[
    t:1,g:{h:[-10.9,27.35],a:[-13.1,26.9],b:[-11.19,29.53]}},
   {name:'raccourci ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
    t:1,g:{h:[-27.46,26.93],a:[-25.57,25.81],b:[-28.91,25.28]}}];
-const ENTRY_GATE={h:[-32.31,.38],a:[-31.09,2.21],b:[-34.14,1.6],t:1}; // a : fermé en travers du chemin, b : ouvert le long de la bordure
+const ENTRY0=[-28.6,-5.4],ENTRY_GATE={h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28],t:1}; // a : fermé en travers du chemin, b : ouvert le long de la bordure
 let QP=[],QC=[],QLEN=0,queueP=null;
 function buildQueue(){
   QP=[];let i=0;
@@ -199,7 +199,31 @@ function pathPos(P,C,d,o,side){
   const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1),dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
   o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;return o;
 }
-const serpPos=(d,o)=>pathPos(QP,QC,d,o,(o.side||0)*.36);
+// Réseau de la file, parcouru de l'entrée vers la gare. Aux deux fourches, la barrière décide du tronçon suivant.
+const mkSeg=pts=>{const C=[0];for(let j=1;j<pts.length;j++)C.push(C[j-1]+Math.hypot(pts[j][0]-pts[j-1][0],pts[j][1]-pts[j-1][1]));return {P:pts,C,len:C[C.length-1],list:[]};};
+const qRange=(i0,i1)=>{const o=[];for(let i=i0;i>=i1;i--)o.push(QFULL[i]);return o;};
+const LE=LOOPS[0],LW=LOOPS[1];
+const EDGES={in:mkSeg([ENTRY0].concat(qRange(QFULL.length-1,LW.b))),
+  wLoop:mkSeg(qRange(LW.b,LW.a)),wShort:mkSeg([QFULL[LW.b]].concat(LW.via.slice().reverse(),[QFULL[LW.a]])),
+  mid:mkSeg(qRange(LW.a,LE.b)),
+  eLoop:mkSeg(qRange(LE.b,LE.a)),eShort:mkSeg([QFULL[LE.b]].concat(LE.via.slice().reverse(),[QFULL[LE.a]])),
+  out:mkSeg(qRange(LE.a,0))};
+const EORDER=['out','eLoop','eShort','mid','wLoop','wShort','in'],PREV={out:'eShort',eLoop:'mid',eShort:'mid',mid:'wShort',wLoop:'in',wShort:'in'};
+const settled=l=>l.t===(l.on?1:0);
+function nextEdge(k){
+  if(k==='in')return settled(LW)?(LW.on?'wLoop':'wShort'):null;
+  if(k==='mid')return settled(LE)?(LE.on?'eLoop':'eShort'):null;
+  return k==='out'?null:k==='wLoop'||k==='wShort'?'mid':'out';
+}
+const room=e=>!e.list.length||e.len-e.list[e.list.length-1].r>=SP;
+function removeVisitor(v){const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1);if(v.e){const l=EDGES[v.e].list,j=l.indexOf(v);if(j>=0)l.splice(j,1);}}
+function clearQueue(){G.queue.length=0;for(const k of EORDER)EDGES[k].list.length=0;}
+function backPath(v){ // sortie à contre-sens par la file (abandon, évacuation) : les barrières ne retiennent pas
+  if(v.mode!=='q')return leavePath(v.x,v.z);
+  const pts=[[v.x,0,v.z]];let k=v.e,ds=EDGES[k].len-v.r;
+  while(k){const e=EDGES[k];for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);k=PREV[k];ds=1e9;}
+  pts.push([-29.2,0,-9]);return pts.concat(P3((Math.random()<.6?PROM_W:PROM_N).slice().reverse(),.7));
+}
 const PROM_W=[[-107.1,-8.2],[-95.1,-8.7],[-83.4,-9.8],[-74.9,-14],[-67,-17.3],[-61.1,-20.1],[-57.7,-19.1],[-50.9,-15.2],[-44.4,-11.1],[-39.7,-9.8],[-33.4,-9],[-30.1,-9.2]];
 const PROM_N=[[4.8,-56.4],[3.6,-42.4],[-.2,-32.2],[-8.6,-25],[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]];
 const EXITP=[[-.7,-3],[-.7,-4.1],[-11.1,-4.1],[-11,-7.3],[-8.8,-8.8],[-6.2,-8.8],[-4.6,-9.7],[-4.4,-11.3],[.3,-15.5],[1.9,-19.4],[-3.2,-20.1],[-8.6,-25]];
@@ -220,29 +244,35 @@ function moveAlong(k,dt){
 }
 function joinQueue(){
   if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.04,0,100);G.stats.turned++;return;}
-  const pts=P3(Math.random()<.6?PROM_W:PROM_N,.7);pts.push([-28.6,0,-5.2],[ENTRY[0],0,ENTRY[1]]);
+  const pts=P3(Math.random()<.6?PROM_W:PROM_N,.7);pts.push([-29.2+rnd(-.5,.5),0,-9],[ENTRY0[0],0,ENTRY0[1]]);
   G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',gate:QLEN,d:QLEN,side:Math.random()<.5?-1:1,sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
 const _qp={x:0,y:0,z:0,side:0};
 function updateVisitors(dt){
   const w=G.wx.type,Q=G.queue;
+  for(const l of LOOPS)l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);
+  ENTRY_GATE.t=clamp(ENTRY_GATE.t+(G.open?-dt:dt)/.9,0,1);
   if(G.open){
     const hourF=.6+.8*Math.sin(Math.PI*clamp((G.time-600)/480,0,1)),wxF=w==='storm'?.25:w==='rain'?.6:1;
     if(Math.random()<.42*hourF*wxF*(.5+G.sat/100)*Math.max(.1,1-Q.length*SP/QLEN)*dt) joinQueue();
   }
-  const imp=w==='storm'?3:w==='rain'?1.5:1; let nq=0;
-  for(let i=0;i<Q.length;i++) if(Q[i].mode==='q') nq++;
+  const imp=w==='storm'?3:w==='rain'?1.5:1;
   for(let i=Q.length-1;i>=0;i--){
     const v=Q[i];v.w+=dt*imp;
-    if(v.w>v.pat){Q.splice(i,1);if(v.mode==='q')nq--;G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);
-      walker(leavePath(v.x,v.z),C_GREY,null,3,'😠');continue;}
-    if(v.mode==='app'&&moveAlong(v,dt)){Q.splice(i,1);
-      if(!G.open){G.stats.turned++;walker(leavePath(v.x,v.z),v.ci,null,3);continue;} // entrée fermée : demi-tour
-      v.mode='q';v.d=Math.max(v.gate,nq?Q[nq-1].d+SP:0);Q.splice(nq,0,v);nq++;}
+    if(v.w>v.pat){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3);continue;}
+    if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière sous Zeus : seul passage vers la file
+      if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v.x,v.z),v.ci,null,3);continue;}
+      if(ENTRY_GATE.t>.02)continue;
+      if(!room(EDGES.in)){Q.splice(i,1);G.stats.turned++;G.sat=clamp(G.sat-.04,0,100);walker(leavePath(v.x,v.z),v.ci,null,3);continue;}
+      v.mode='q';v.e='in';v.r=EDGES.in.len;EDGES.in.list.push(v);
+    }
   }
-  for(let i=0;i<nq;i++){
-    const v=Q[i],lb=i?Q[i-1].d+SP:0,nd=Math.max(lb,v.d-4.5*dt);v.mv=Math.abs(nd-v.d)>1e-4;v.d=nd;_qp.side=v.side;serpPos(v.d,_qp);
-    const dx=_qp.x-v.x,dz=_qp.z-v.z,dd=Math.hypot(dx,dz);if(dd>1.2){const k=Math.min(1,7*dt/dd);v.x+=dx*k;v.z+=dz*k;v.mv=true;}else{v.x=_qp.x;v.z=_qp.z;}
+  // avance dans la file : chacun reste derrière celui qui le précède et ne franchit une fourche que par la barrière ouverte
+  for(const k of EORDER){
+    const e=EDGES[k],l=e.list;
+    for(let j=0;j<l.length;j++){const v=l[j],nr=Math.max(j?l[j-1].r+SP:0,v.r-4.5*dt);v.mv=v.r-nr>1e-4;v.r=nr;pathPos(e.P,e.C,e.len-nr,_qp,v.side*.36);v.x=_qp.x;v.z=_qp.z;}
+    const h=l[0],nk=h&&h.r<=1e-3?nextEdge(k):null;
+    if(nk&&room(EDGES[nk])){l.shift();h.e=nk;h.r=EDGES[nk].len;EDGES[nk].list.push(h);}
   }
   for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i];if(moveAlong(k,dt)){if(k.done)k.done();G.walkers.splice(i,1);}}
 }
@@ -319,10 +349,10 @@ function updateRun(t,dt){
 }
 // Quai et portillons : les visiteurs se rangent par travée, puis embarquent quand les portillons s'ouvrent
 function updatePlatform(dt){
-  G.platT-=dt;const fr=G.queue[0];
-  if(G.platT<=0&&fr&&fr.mode==='q'&&fr.d<.4&&G.time<1140){
+  G.platT-=dt;const fr=EDGES.out.list[0];
+  if(G.platT<=0&&fr&&fr.r<.4&&G.time<1140){
     let i=SEATS-1;while(i>=0&&G.plat[i])i--;
-    if(i>=0){G.queue.shift();const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
+    if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
       walker([[fr.x,0,fr.z],[-3.9,0,7.9],[-4,0,5.7],[p[0]+rnd(-.2,.2),0,5.5],p],fr.ci,()=>{r.on=true;},4.2);}
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);
@@ -370,7 +400,7 @@ function step(dt){
   }
 }
 function endDay(){
-  if(G.dayDone)return;G.dayDone=true;G.queue.length=0;G.plat.fill(null);pay(350);
+  if(G.dayDone)return;G.dayDone=true;clearQueue();G.plat.fill(null);pay(350);
   const s=G.stats,net=s.income-s.costs;
   $('dTitle').textContent='Fin du jour '+G.day;
   $('dTable').innerHTML=[['Passagers transportés',s.riders],['Trains envoyés',s.disp],['Visiteurs repartis mécontents',s.quits],['Visiteurs refoulés (file pleine)',s.turned],
@@ -405,11 +435,11 @@ function act(a,arg){
   else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
   else if(a==='evac'){const n=G.queue.length;if(!n)return;
-    for(const v of G.queue)if(Math.random()<.5)walker(leavePath(v.x,v.z),v.ci,null,3);
-    G.queue.length=0;G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée ('+n+' visiteurs déçus).','warn');}
+    for(const v of G.queue)walker(backPath(v),v.ci,null,rnd(3,3.8));
+    clearQueue();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
-    if(!l.on&&G.queue.length*SP+2>QLEN){l.on=true;buildQueue();log('⛓️ Trop de monde dans la file pour ouvrir le '+l.name+'.','warn');}
-    else{for(const v of G.queue){v.d=Math.min(v.d,QLEN);v.gate=QLEN;}log('⛓️ '+l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : file longue':' ouvert : file courte')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs.');}}
+    log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
+  else if(a==='roof'){G.roofOff=!G.roofOff;}
   else if(a==='auto'){G.auto=!G.auto;log('Départs en mode '+(G.auto?'automatique.':'manuel.'));}
   else if(a==='gates'){if(!G.auto){if(G.gatesOpen)G.gatesOpen=false;else if(trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq)){G.gatesOpen=true;log('🚪 Portillons ouverts : embarquement.');}}}
   else if(a==='depart'){const s=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);if(s)s.depReq=true;}
@@ -503,7 +533,8 @@ function ui(){
   $('tech').textContent=G.job?G.job.label:'Équipe technique disponible';
   $('techBar').style.width=G.job?(100*(1-G.job.rem/G.job.dur))+'%':'0%';
   $('techTxt').textContent=G.job?Math.ceil(G.job.rem*.5)+' min restantes':'';
-  for(const b of document.querySelectorAll('#cams button'))b.classList.toggle('on',b.dataset.arg===cam.key);
+  for(const b of document.querySelectorAll('#cams button[data-act=cam]'))b.classList.toggle('on',b.dataset.arg===cam.key);
+  $('bRoof').classList.toggle('on',!!G.roofOff);$('bRoof').textContent=G.roofOff?'Toits retirés':'Toits en place';
 }
 
 /* ══════════ RENDU 2D — VUE AÉRIENNE SUR FOND RÉEL (OpenStreetMap) ══════════ */
@@ -635,7 +666,7 @@ let tunnelP=null,tunnelC=[5,98];
   for(const q of OSM.trees)if(!nearTrack(q[0],q[1],6))trees.push(Object.assign({x:q[0],z:q[1],r:rnd(3,4.5)},col()));
   trees.sort((a,b)=>a.r-b.r);
 })();
-const stationP=mkPath(OSM.station,true),queueAllP=mkPath(QFULL);for(const l of LOOPS)[QFULL[l.a]].concat(l.via,[QFULL[l.b]]).forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));
+const stationP=mkPath(OSM.station,true),queueAllP=mkPath(QFULL);[[-29.4,-9.2],ENTRY0,ENTRY].forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));for(const l of LOOPS)[QFULL[l.a]].concat(l.via,[QFULL[l.b]]).forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));
 const JOBSITE={liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]};
 const HAIR=['#2a1d14','#4a3322','#6b4a2a','#c9a35a','#8a8a8a','#111','#a0522d'];
 const emos=[];function emote(){}
@@ -732,8 +763,8 @@ function drawWorld(dt){
   // file d'attente (allée réelle, barrières des deux côtés)
   ctx.strokeStyle='#4a3a28';ctx.lineWidth=2.5;ctx.stroke(queueAllP);ctx.strokeStyle=TEX.stone;ctx.lineWidth=2.2;ctx.stroke(queueAllP);
   // barrières de la file : vantail métallique pivotant sur un poteau en bordure de chemin
-  for(const l of LOOPS){l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);leaf(l.g,l.t);}
-  ENTRY_GATE.t=clamp(ENTRY_GATE.t+(G.open?-dt:dt)/.9,0,1);leaf(ENTRY_GATE,ENTRY_GATE.t);
+  for(const l of LOOPS)leaf(l.g,l.t);
+  leaf(ENTRY_GATE,ENTRY_GATE.t);
   ctx.lineCap='butt';
   // ombres portées
   if(dry>.25){
@@ -777,7 +808,7 @@ function drawWorld(dt){
     ctx.fillStyle=TEX.canopy;lobes(1,0);ctx.fillStyle='rgba(8,22,10,.3)';lobes(.62,.3);ctx.fillStyle='rgba(120,140,84,.3)';lobes(.6,-.32);
     if(s>5){ctx.fillStyle='rgba(160,176,110,.2)';lobes(.26,-.45);}}
   // toitures (la gare et le garage s'effacent en zoomant)
-  roofA=lerp(roofA,s>9.5?.08:1,Math.min(1,dt*5));
+  roofA=lerp(roofA,G.roofOff?0:s>9.5?.08:1,Math.min(1,dt*5));if(roofA<.004)roofA=0;
   for(const b of LY.bld){
     ctx.globalAlpha=b.fade?roofA:b.canopy?.8:1;ctx.fillStyle=b.st?'#a24e38':b.col;ctx.fill(b.p);
     ctx.save();ctx.clip(b.p);
@@ -806,7 +837,7 @@ function drawWorld(dt){
   if(bolt&&G.flash>.3){const g=ctx.createRadialGradient(bolt.x,bolt.z,0,bolt.x,bolt.z,30);g.addColorStop(0,`rgba(255,255,220,${G.flash})`);g.addColorStop(1,'rgba(255,255,220,0)');ctx.fillStyle=g;ctx.fillRect(bolt.x-30,bolt.z-30,60,60);
     ctx.strokeStyle=`rgba(255,250,200,${G.flash})`;lw(.5,1.5);ctx.beginPath();for(const b of bolt.br)b.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
 }
-const LABELS=[['Gare',2,-6.5],['Lift — 30 m',43,36],['Tunnel',tunnelC[0]-2,tunnelC[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-35.5,4.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]];
+const LABELS=[['Gare',-4,-6.5],['Lift — 30 m',43,36],['Tunnel',tunnelC[0]-2,tunnelC[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-23.6,-3.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]];
 function drawOverlay(dt){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   const s=cam.s,X=x=>(x-cam.x)*s+VW/2,Z=z=>(z-cam.z)*s+VH/2,w=G.wx.type;
@@ -817,7 +848,7 @@ function drawOverlay(dt){
   ctx.font='italic 11px system-ui,sans-serif';ctx.fillStyle='#dfe8d2';
   if(s<9)for(const [t,x,z] of PLACES){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font='600 12px system-ui,sans-serif';ctx.fillStyle='#fff';
-  if(s>9&&s<26){ctx.strokeText('Poste de conduite',X(7.3),Z(-5.6));ctx.fillText('Poste de conduite',X(7.3),Z(-5.6));}
+  if(s>9&&s<26){ctx.strokeText('Poste de conduite',X(10.5),Z(-6.6));ctx.fillText('Poste de conduite',X(10.5),Z(-6.6));}
   if(s<16)for(const [t,x,z] of LABELS){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font=Math.round(clamp(s*1.3,14,24))+'px serif';
   for(let i=emos.length-1;i>=0;i--){const e=emos[i];e.life-=dt*Math.max(1,G.speed);if(e.life<=0){emos.splice(i,1);continue;}ctx.globalAlpha=Math.min(1,e.life);ctx.fillText(e.ch,X(e.x),Z(e.z)-10-(2.2-e.life)*10);}
