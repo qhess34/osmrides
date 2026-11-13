@@ -50,7 +50,7 @@ function frameAt(s,o){
   o.p.lerpVectors(a.p,b.p,k);o.T.lerpVectors(a.T,b.T,k).normalize();o.U.lerpVectors(a.U,b.U,k).normalize();o.R.crossVectors(o.T,o.U);return o;
 }
 function hAt(s){s=((s%L)+L)%L;const f=s/DS,i=Math.floor(f)%N,k=f-Math.floor(f);return lerp(TR[i].p.y,TR[(i+1)%N].p.y,k);}
-const CAR=1.5,NCARS=14,TLEN=CAR*NCARS,SEATS=NCARS*2;
+const ST_Y=OSM.cps[0][1],CAR=1.5,NCARS=14,TLEN=CAR*NCARS,SEATS=NCARS*2;
 const S_ST=TAG.st1-3,S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=L-4,S_DROP=S_LIFT1+14;
 // Voie de garage dans le prolongement de la gare, reliée par un tronçon en S coulissant (pont transbordeur)
 const SW_A=S_ST+.8,SW_B=S_ST+6.4,SW_D=3.4,GPATH=[];let SW_LEN=0,GMAX=0;
@@ -67,7 +67,7 @@ const SW_A=S_ST+.8,SW_B=S_ST+6.4,SW_D=3.4,GPATH=[];let SW_LEN=0,GMAX=0;
 function gFrame(u,o){
   u=clamp(u,0,GPATH[GPATH.length-1].d);let i=1;while(i<GPATH.length-1&&GPATH[i].d<u)i++;
   const a=GPATH[i-1],b=GPATH[i],k=(u-a.d)/((b.d-a.d)||1),l=Math.hypot(b.x-a.x,b.z-a.z)||1;
-  o.p.set(lerp(a.x,b.x,k),6,lerp(a.z,b.z,k));o.T.set((b.x-a.x)/l,0,(b.z-a.z)/l);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
+  o.p.set(lerp(a.x,b.x,k),ST_Y,lerp(a.z,b.z,k));o.T.set((b.x-a.x)/l,0,(b.z-a.z)/l);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
 }
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x,rz:f.R.z,tx:f.T.x,tz:f.T.z});}
@@ -78,7 +78,7 @@ const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'cou
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
+  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,swT:0,brakeLock:false,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
@@ -142,7 +142,7 @@ function stationBusy(self){
 }
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
-  if(G.sw>.01||trains.some(o=>o.st==='toGarage'||o.st==='fromGarage'))return 'aiguillage vers le garage';
+  if(G.sw>.01||G.swT||trains.some(o=>o.st==='toGarage'||o.st==='fromGarage'))return 'aiguillage sur garage';
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';
   if(G.wear.track>=100)return 'voie hors service';
@@ -256,7 +256,8 @@ function arrive(t){
   t.st='station';t.s=S_ST;t.v=0;t.entering=false;t.phase='unload';t.pt=0;t.idle=0;t.depReq=false;
   if(t.wear>=100&&!t.hs){t.hs=true;t.garReq=true;log('⚠️ '+t.name+' est hors service : envoi au garage pour révision.','bad');}
 }
-function toGarage(t){t.st='toGarage';t.garReq=false;log(t.name+' part au garage : le tronçon en S se met en place.');}
+const swFree=()=>!trains.some(o=>(o.st==='toGarage'&&o.g-.8-TLEN<SW_LEN+.5)||o.st==='fromGarage'||(o.st==='run'&&o.s>=S_ST-.1&&o.s<SW_B+TLEN+1));
+const swSet=()=>G.swT===1&&G.sw>=1;
 function updateStation(t,dt){
   t.pt-=dt;
   if(t.phase==='unload'){
@@ -266,14 +267,14 @@ function updateStation(t,dt){
         const v=t.seats[i];t.seats[i]=null;t.pt=.12;G.stats.riders++;G.stats.income+=5;G.money+=5;
         let g=v.w<80?.07:v.w<180?.04:.015;if(G.wear.track>75)g*=.4;G.sat=clamp(G.sat+g,0,100);
         seatBase(t,i,_v);walker(exitPath(_v.x,_v.z-1.1),v.ci,null,2.8,Math.random()<.3?(G.wear.track>75?'😵':'🤩'):null);
-      }else if(count(t)===0){if(t.garReq)toGarage(t);else{t.phase='board';t.idle=0;}}
+      }else if(count(t)===0){t.phase='board';t.idle=0;if(t.garReq)log(t.name+' est vide et retenu en gare : positionnez l\'aiguillage sur GARAGE puis envoyez-le.','warn');}
     }
   }else if(t.phase==='board'){
-    if(t.garReq&&count(t)===0){toGarage(t);return;}
+    if(t.garReq&&count(t)===0)return;
     const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]);
     if(t.depReq){if(seated(t)===n&&G.gate<.05){t.phase='check';t.pt=2.5;}return;}
     t.idle+=dt;
-    if(G.auto&&((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;
+    if(G.auto&&!t.garReq&&((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;
   }else if(t.phase==='check'){
     if(t.pt<=0){
       if(Math.random()<Math.max(0,(t.wear-55)/45)*.3){t.fault='harnais';t.phase='fault';sfx.alarm();log('⚠️ Défaut capteur de harnais sur '+t.name+' : réarmement nécessaire.','warn');}
@@ -309,7 +310,7 @@ function updateRun(t,dt){
     const slow=t.v>6?Math.max(6,t.v-7*dt):t.v;
     if(t.entering)t.v=Math.min(6,t.v+2*dt);
     else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);
-      if(vm<.25){t.v=0;t.hold+=dt;if(t.hold>=1&&!stationBusy(t)&&!G.estop&&!G.brakeFault){t.entering=true;t.hold=0;}}}
+      if(vm<.25){t.v=0;t.hold+=dt;if(t.hold>=1&&!G.brakeLock&&!stationBusy(t)&&!G.estop&&!G.brakeFault){t.entering=true;t.hold=0;}}}
   }
   t.s+=t.v*dt;if(t.s>=L)t.s-=L;
 }
@@ -328,21 +329,14 @@ function updatePlatform(dt){
     if(r&&r.on&&!t.seats[i]){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2);}}
 }
 function updateTrains(dt){
-  let need=false;
   for(const t of trains){
-    if(t.st==='garage'&&t.outReq&&!stationBusy(t)&&!(G.job&&G.job.t===t)){t.outReq=false;t.st='fromGarage';log(t.name+' sort du garage : le tronçon en S se met en place.');}
     if(t.st==='station')updateStation(t,dt);
     else if(t.st==='run')updateRun(t,dt);
-    else if(t.st==='toGarage'){
-      const onS=t.g-.8-TLEN<SW_LEN+.5;if(onS)need=true;
-      if(!onS||G.sw>=1){t.g=Math.min(GMAX,t.g+2.6*dt);if(t.g>=GMAX){t.st='garage';t.seats.fill(null);log(t.name+' est au garage.');}}
-    }else if(t.st==='fromGarage'){
-      need=true;
-      if(G.sw>=1){t.g=Math.max(0,t.g-2.6*dt);if(t.g<=0){t.st='station';t.s=S_ST;t.phase='board';t.pt=0;t.idle=0;t.depReq=false;log(t.name+' est en gare.','good');}}
-    }
+    else if(t.st==='toGarage'){t.g=Math.min(GMAX,t.g+2.6*dt);if(t.g>=GMAX){t.st='garage';t.seats.fill(null);log(t.name+' est au garage.');}}
+    else if(t.st==='fromGarage'){t.g=Math.max(0,t.g-2.2*dt);if(t.g<=0){t.st='station';t.s=S_ST;t.phase='board';t.pt=0;t.idle=0;t.depReq=false;log(t.name+' est en gare. Remettez l\'aiguillage sur LIFT pour autoriser les départs.','good');}}
     if(t.st==='run'&&t.v===0&&((G.liftBroken&&zoneOf(t.s)==='lift')||(G.brakeFault&&zoneOf(t.s)==='brake')))G.sat=clamp(G.sat-.002*count(t)*dt,0,100);
   }
-  G.sw=clamp(G.sw+(need?dt:-dt)/3,0,1);
+  G.sw=clamp(G.sw+(G.swT?dt:-dt)/3,0,1); // l'aiguillage ne bouge que sur commande de l'opérateur
 }
 
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
@@ -417,8 +411,19 @@ function act(a,arg){
   else if(a==='depart'){const s=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);if(s)s.depReq=true;}
   else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
-  else if(a==='garage'){t.garReq=!t.garReq;if(t.garReq)log(t.name+' rentrera au garage une fois vide en gare.');}
-  else if(a==='sortir'){if(t.st==='garage'){t.outReq=!t.outReq;if(t.outReq&&stationBusy(t))log(t.name+' sortira dès que la gare sera libre.');}}
+  else if(a==='switch'){
+    if(!swFree())log('Aiguillage verrouillé : un train occupe la zone.','warn');
+    else{G.swT=G.swT?0:1;log(G.swT?'Aiguillage commandé vers GARAGE : le tronçon en S se met en place, départs bloqués.':'Aiguillage commandé vers LIFT.');}}
+  else if(a==='hold'){G.brakeLock=!G.brakeLock;log(G.brakeLock?'Frein final bloqué : les trains sont retenus avant la gare.':'Frein final libéré.',G.brakeLock?'warn':'good');}
+  else if(a==='garage'){
+    if(t.st==='station'&&t.phase==='board'&&count(t)===0&&!t.depReq&&swSet()){t.garReq=false;t.st='toGarage';log(t.name+' part au garage.');}
+    else if(t.st==='station'||t.st==='run'){t.garReq=!t.garReq;
+      log(!t.garReq?t.name+' reste en service.':t.st==='station'&&count(t)===0?t.name+' retenu hors service : positionnez l\'aiguillage sur GARAGE, puis appuyez de nouveau sur Garage.':t.name+' sera retenu vide en gare à son prochain passage.');}}
+  else if(a==='sortir'){
+    if(t.st==='garage'&&!(G.job&&G.job.t===t)){
+      if(!swSet())log('Positionnez d\'abord l\'aiguillage sur GARAGE.','warn');
+      else if(stationBusy(t))log('La gare n\'est pas libre : attendez le départ du train ou bloquez l\'autre au frein final.','warn');
+      else{t.st='fromGarage';log(t.name+' recule vers la gare.');}}}
   else if(a==='revise')startJob('trainRev',t);
   else if(a==='rearm')startJob('rearm',t);
   ui();
@@ -434,16 +439,17 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer harnais</button>
   </div></div>`).join('');
 $('deskTrains').innerHTML=trains.map(t=>`<div class="ctl"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
-  <div class="pair"><button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Envoyer au garage">G</button><button class="pb sq sm green" id="tS${t.i}" data-act="sortir" data-arg="${t.i}" title="Mettre en gare">▶</button></div>
-  <div class="plate">Garage · Gare</div></div>`).join('');
+  <div class="pair"><button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Envoyer au garage">G</button><button class="pb sq sm green" id="tS${t.i}" data-act="sortir" data-arg="${t.i}" title="Marche arrière du garage vers la gare">◀</button></div>
+  <div class="plate">Au garage · Retour</div></div>`).join('');
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
   if(t.st==='garage')return G.job&&G.job.t===t?'Au garage — en révision':'Au garage'+(t.hs?' — hors service':'');
-  if(t.st==='toGarage'||t.st==='fromGarage')return G.sw<1&&(t.st==='fromGarage'||t.g<1)?'Aiguillage en mouvement…':t.st==='toGarage'?'Roule vers le garage':'Sort du garage';
+  if(t.st==='toGarage')return 'Roule vers le garage';
+  if(t.st==='fromGarage')return 'Recule vers la gare';
   if(t.st==='station'){
     if(t.phase==='unload')return 'Débarquement';
-    if(t.phase==='board')return t.hs?'Hors service':'Embarquement ('+n+'/'+SEATS+')';
+    if(t.phase==='board')return t.hs?'Hors service':t.garReq&&!n?'Retenu en gare — à envoyer au garage':'Embarquement ('+n+'/'+SEATS+')';
     if(t.phase==='check')return 'Vérification des harnais';
     if(t.phase==='fault')return '⚠️ Défaut harnais';
     const r=blockReason(t);return r?'Prêt — en attente ('+r+')':'Départ…';
@@ -478,12 +484,12 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.sw>.01?'Aiguillage vers le garage en cours.':!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : départs bloqués.':'Aiguillage en retour vers LIFT.'):!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
-    $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq?' · garage demandé':'')+(t.outReq?' · sortie demandée':'');
+    $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq&&t.st==='run'?' · garage demandé':'');
     bar('tW'+t.i,t.wear);
     $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('lit',t.garReq||t.st==='toGarage');
-    $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('lit',t.outReq||t.st==='fromGarage');
+    $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('lit',t.st==='fromGarage');$('bSw').classList.toggle('manu',!!G.swT);$('bHold').classList.toggle('lit',G.brakeLock);
     $('tR'+t.i).disabled=!!G.job||t.st!=='garage';
     $('tA'+t.i).disabled=!!G.job||t.fault!=='harnais';
   }
@@ -543,7 +549,7 @@ TEX.rows=(()=>{const c=document.createElement('canvas');c.width=c.height=2;const
 const SHX=.55,SHZ=.42;
 
 // Voie découpée en tronçons triés par hauteur (croisements dessus/dessous)
-const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>h>6.5?1.6+h*.2:1.85;
+const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>h>ST_Y+.6?1.6+h*.2:1.85;
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(q.y)*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
@@ -571,7 +577,7 @@ function strip(sm){
     if(!o.sw&&cl[c+1]!==iA){const a=TR[cl[c+1]%N].p,f=TR[(cl[c+1]+1)%N].p;o.deck.lineTo((a.x+f.x)/2,(a.z+f.z)/2);}
     for(let i=cl[c];i<cl[c+1];i++)chunkH[i]=o.h;}
   // tronçon en S (mobile) et voie de garage
-  const gs=GPATH.map((q,i)=>{const a=GPATH[Math.max(0,i-1)],b=GPATH[Math.min(GPATH.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:6,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
+  const gs=GPATH.map((q,i)=>{const a=GPATH[Math.max(0,i-1)],b=GPATH[Math.min(GPATH.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
   const sP=strip(gs.slice(0,37));sP.sw=2;chunks.push(sP,strip(gs.slice(36)));
   for(let i=Math.round(S_LIFT0/DS);i<=Math.round((S_LIFT1+3)/DS);i++){const p=TR[i].p;chainP.lineTo(p.x,p.z);}
   for(let i=Math.round((S_BRK+3)/DS);i<Math.round((L-5)/DS);i+=3){const f=TR[i],l=Math.hypot(f.R.x,f.R.z)||1,nx=f.R.x/l,nz=f.R.z/l;finsP.moveTo(f.p.x-nx*.28,f.p.z-nz*.28);finsP.lineTo(f.p.x+nx*.28,f.p.z+nz*.28);}
@@ -744,7 +750,7 @@ function drawWorld(dt){
   const items=[];
   for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1))items.push(o);
   for(const t of trains){const ex=t.st==='run'&&zoneOf(t.s)==='course'&&t.v>9;t.arms=lerp(t.arms,ex?1:0,Math.min(1,dt*4));
-    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:6)+.02,t,k});}}
+    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:ST_Y)+.02,t,k});}}
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
     if(o.t){drawCar(o.t,o.k);continue;}
