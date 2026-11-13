@@ -75,8 +75,8 @@ const slotPos=i=>{const b=BAYS[i>>1],d=(i&1)?3.3:2.5;return [b.x+b.rx*d,0,b.z+b.
 const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'course':'brake';
 
 /* ══════════ ÉTAT DU JEU ══════════ */
-const PAL=['#e5484d','#f2c14e','#4cc38a','#4f8cff','#c77dff','#ff8fab','#f5f5f5','#ff9f43','#2ec4b6','#b8c0ff','#7a5cff','#3d405b'];
-const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#777','#ff7a00');
+const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
+const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
   queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
@@ -91,6 +91,7 @@ const trains=[mkTrain(0,'Train 1 « Éclair »','#1c8a94','#f2c14e',30,'station'
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){
+  msg=msg.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,'').trim();
   const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML='<span>'+fmtTime(G.time)+'</span>'+msg;
   const el=$('log');el.prepend(d);while(el.children.length>60)el.lastChild.remove();
 }
@@ -178,12 +179,12 @@ function finishJob(){
 /* ══════════ VISITEURS (chemins réels : promenade, file, sortie par la boutique) ══════════ */
 const SP=.42,QFULL=OSM.steps.slice().reverse().concat(OSM.queue.slice().reverse().slice(1)),ENTRY=QFULL[QFULL.length-1];
 const qi=(x,z)=>{let b=0,bd=1e9;QFULL.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
-// Accès amovibles : ouvrir un raccourci (flux alternatif) court-circuite une boucle de la file ; on = boucle en service, raccourci fermé
+// Accès amovibles : à chaque fourche, un vantail pivote autour d'un poteau en bordure (h) pour fermer soit le raccourci (a), soit la boucle (b) ; on = boucle en service
 const LOOPS=[
   {name:'raccourci est',on:true,a:qi(-4.1,16.4),b:qi(-13.6,28.1),via:[[-9.9,16.2],[-11.6,17.4],[-12,19.3],[-12.1,27]],
-   t:1,cOn:[[-12.05,25.4,0,-1],[-7.4,16.3,1,.03]],cOff:[[-11.9,28.35,1,.1],[-1.4,16.5,1,.04]]},
+   t:1,g:{h:[-10.9,27.35],a:[-13.1,26.9],b:[-11.19,29.53]}},
   {name:'raccourci ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
-   t:1,cOn:[[-26.57,26.27,1.24,2.09]],cOff:[[-28.1,26.02,-1.05,.92],[-26.75,28.5,-1.18,1.75]]}];
+   t:1,g:{h:[-27.46,26.93],a:[-25.57,25.81],b:[-28.91,25.28]}}];
 let QP=[],QC=[],QLEN=0,queueP=null;
 function buildQueue(){
   QP=[];let i=0;
@@ -401,7 +402,7 @@ function act(a,arg){
   if(a==='speed')G.speed=+arg;
   else if(a==='help')$('mHelp').classList.remove('hidden');
   else if(a==='closeHelp'){$('mHelp').classList.add('hidden');sfx.init();}
-  else if(a==='mute')$('bMute').textContent=sfx.toggle()?'🔇':'🔊';
+  else if(a==='mute')$('bMute').textContent=sfx.toggle()?'Son coupé':'Son';
   else if(a==='cam')setCam(arg);
   else if(a==='nextDay')nextDay();
   else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;log(G.open?'✅ Attraction ouverte : les visiteurs entrent dans la file.':'🚫 File fermée : plus aucun visiteur n\'entre.',G.open?'good':'warn');}
@@ -457,7 +458,7 @@ function trainStatus(t){
 const lamp=(id,st)=>{$(id).className='lamp'+(st===2?' err':st===1?' occ':'');};
 function ui(){
   $('hDay').textContent=G.day;$('hTime').textContent=fmtTime(G.time);
-  $('hWx').textContent={clear:'☀️ Beau temps',rain:'🌧️ Pluie',warn:'🌩️ Orage en approche',storm:'⚡ ORAGE'}[G.wx.type];
+  $('hWx').textContent={clear:'Beau temps',rain:'Pluie',warn:'Orage en approche',storm:'ORAGE'}[G.wx.type];
   $('hMoney').textContent=Math.round(G.money).toLocaleString('fr-FR')+' €';
   $('hSat').textContent=Math.round(G.sat)+' %';
   const active=trains.filter(t=>t.st!=='garage').length;
@@ -476,8 +477,8 @@ function ui(){
   lamp('lLift',G.liftBroken||G.estop?2:(inZ('lift')||inZ('prelift'))?1:0);
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
-  $('opNote').textContent=G.wx.type==='storm'?'⚡ Orage : aucun départ autorisé !':G.wx.type==='warn'?'🌩️ Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'⛔ Arrêt d\'urgence enclenché.':G.sw>.01?'Aiguillage vers le garage en cours.':!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+  $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.sw>.01?'Aiguillage vers le garage en cours.':!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq?' · garage demandé':'')+(t.outReq?' · sortie demandée':'');
     bar('tW'+t.i,t.wear);
@@ -489,7 +490,7 @@ function ui(){
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
     $(id).disabled=!!G.job||!JOBS[k].ok();
-  $('tech').textContent=G.job?'👷 '+G.job.label:'👷 Équipe technique disponible';
+  $('tech').textContent=G.job?G.job.label:'Équipe technique disponible';
   $('techBar').style.width=G.job?(100*(1-G.job.rem/G.job.dur))+'%':'0%';
   $('techTxt').textContent=G.job?Math.ceil(G.job.rem*.5)+' min restantes':'';
   for(const b of document.querySelectorAll('#cams button'))b.classList.toggle('on',b.dataset.arg===cam.key);
@@ -507,7 +508,7 @@ function setCam(k){cam.key=k;if(k.startsWith('suivi')){cam.follow=+k.slice(-1);c
 (function controls(){
   const ptrs=new Map();let pinch=0,moved=0;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
   const gateAt=e=>{const r=cv.getBoundingClientRect(),wx=cam.x+(e.clientX-r.left-VW/2)/cam.s,wz=cam.z+(e.clientY-r.top-VH/2)/cam.s;let best=-1,bd=Math.max(2.2,14/cam.s);
-    LOOPS.forEach((l,i)=>{for(const g of l.cOn.concat(l.cOff)){const d=Math.hypot(g[0]-wx,g[1]-wz);if(d<bd){bd=d;best=i;}}});return best;};
+    LOOPS.forEach((l,i)=>{const g=l.g;for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});return best;};
   cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;});
   const up=e=>{if(ptrs.has(e.pointerId)&&e.type==='pointerup'&&moved<6&&ptrs.size===1){const i=gateAt(e);if(i>=0)act('loop',i);}ptrs.delete(e.pointerId);pinch=0;};
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
@@ -529,9 +530,10 @@ function texture(n,base,spread,blobs){
   x.putImageData(d,0,0);const p=ctx.createPattern(c,'repeat');p.setTransform(new DOMMatrix().scale(.25));return p;
 }
 const TEX={
-  grass:texture(512,'96,134,72',13,[['rgba(70,110,52,.22)',90,10,46],['rgba(132,160,88,.2)',70,8,34],['rgba(150,140,90,.12)',30,6,22]]),
-  lawn:texture(256,'118,158,84',9,[['rgba(140,176,100,.25)',40,6,22]]),
-  wood:texture(256,'52,84,46',14,[['rgba(30,58,30,.35)',70,5,20],['rgba(74,104,56,.3)',50,4,16]]),
+  grass:texture(512,'88,112,68',12,[['rgba(62,90,50,.24)',90,10,46],['rgba(118,134,84,.2)',70,8,34],['rgba(140,128,88,.14)',30,6,22]]),
+  lawn:texture(256,'104,128,78',9,[['rgba(124,146,90,.25)',40,6,22]]),
+  canopy:texture(256,'44,70,42',16,[['rgba(22,44,26,.45)',90,3,12],['rgba(78,104,58,.4)',70,3,10]]),
+  wood:texture(256,'48,68,44',14,[['rgba(28,48,30,.35)',70,5,20],['rgba(66,88,54,.3)',50,4,16]]),
   sand:texture(256,'204,190,160',8,[['rgba(170,154,124,.2)',50,4,18],['rgba(228,218,194,.25)',50,4,16]]),
   dirt:texture(256,'150,126,92',12,[['rgba(110,92,66,.25)',60,4,20],['rgba(176,154,118,.25)',40,4,16]]),
   asph:texture(256,'128,130,134',7,[['rgba(100,102,108,.25)',50,4,16]]),
@@ -541,7 +543,7 @@ TEX.rows=(()=>{const c=document.createElement('canvas');c.width=c.height=2;const
 const SHX=.55,SHZ=.42;
 
 // Voie découpée en tronçons triés par hauteur (croisements dessus/dessous)
-const chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>h>6.5?1.6+h*.2:1.85;
+const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>h>6.5?1.6+h*.2:1.85;
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(q.y)*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
@@ -550,22 +552,24 @@ function strip(sm){
     const sx=q.x+q.y*SHX,sz=q.z+q.y*SHZ;hs+=q.y;
     o.x0=Math.min(o.x0,q.x-9);o.x1=Math.max(o.x1,sx+9);o.z0=Math.min(o.z0,q.z-9);o.z1=Math.max(o.z1,sz+9);
     if(i){o.deck.lineTo(q.x,q.z);o.sh.lineTo(sx,sz);}else{o.deck.moveTo(q.x,q.z);o.sh.moveTo(sx,sz);}
-    if(i<n-1&&q.i%2===0){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
+    if(q.i%2===1){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
     if(i<n-1&&q.i%6===0){const w=wid(q.y);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
       if(q.y>7.5&&i+6<n){const b=sm[i+6],w2=wid(b.y),e=(q.i/6)%2?1:-1;o.str.moveTo(q.x-q.nx*w*e,q.z-q.nz*w*e);o.str.lineTo(b.x+b.nx*w2*e,b.z+b.nz*w2*e);}
       for(const sg of [-1.25,1.25]){const bx=q.x+q.nx*sg,bz=q.z+q.nz*sg;o.shb.moveTo(bx,bz);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
   });
   side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);
-  o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=`rgb(${lerp(176,218,k)|0},${lerp(148,188,k)|0},${lerp(100,136,k)|0})`;
+  o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
 }
 (function buildChunks(){
   for(let i=0;i<=N;i++){const p=TR[i%N].p;i?dirtP.lineTo(p.x,p.z):dirtP.moveTo(p.x,p.z);}
-  const iA=Math.round(SW_A/DS),iB=Math.round(SW_B/DS),cuts=new Set([iA,iB,N]);for(let i=0;i<N;i+=16)cuts.add(i);
+  const iA=Math.round(SW_A/DS),iB=Math.round(SW_B/DS),cuts=new Set([iA,iB,N]);for(let i=0;i<N;i+=8)cuts.add(i);
   const cl=[...cuts].sort((a,b)=>a-b);
   for(let c=0;c<cl.length-1;c++){const sm=[];
     for(let i=cl[c];i<=cl[c+1];i++){const f=TR[i%N],l=Math.hypot(f.R.x,f.R.z)||1;sm.push({x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,i});}
-    const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);}
+    const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
+    if(!o.sw&&cl[c+1]!==iA){const a=TR[cl[c+1]%N].p,f=TR[(cl[c+1]+1)%N].p;o.deck.lineTo((a.x+f.x)/2,(a.z+f.z)/2);}
+    for(let i=cl[c];i<cl[c+1];i++)chunkH[i]=o.h;}
   // tronçon en S (mobile) et voie de garage
   const gs=GPATH.map((q,i)=>{const a=GPATH[Math.max(0,i-1)],b=GPATH[Math.min(GPATH.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:6,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
   const sP=strip(gs.slice(0,37));sP.sw=2;chunks.push(sP,strip(gs.slice(36)));
@@ -622,7 +626,7 @@ let tunnelP=null,tunnelC=[5,98];
 const stationP=mkPath(OSM.station,true),queueAllP=mkPath(QFULL);for(const l of LOOPS)[QFULL[l.a]].concat(l.via,[QFULL[l.b]]).forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));
 const JOBSITE={liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]};
 const HAIR=['#2a1d14','#4a3322','#6b4a2a','#c9a35a','#8a8a8a','#111','#a0522d'];
-const emos=[];function emote(ch,p){if(emos.length<60)emos.push({ch,x:p[0],z:p[2],life:2.2});}
+const emos=[];function emote(){}
 let bolt=null;
 function strike(){const zeus=Math.random()<.35,x=zeus?-31:rnd(-60,140),z=zeus?-1:rnd(-20,125),br=[];
   for(let b=0;b<5;b++){let px=x,pz=z,a=rnd(0,6.28);const pts=[[px,pz]];for(let i=0;i<6;i++){a+=rnd(-.7,.7);px+=Math.cos(a)*rnd(3,8);pz+=Math.sin(a)*rnd(3,8);pts.push([px,pz]);}br.push(pts);}
@@ -632,10 +636,11 @@ const strollers=[];
 let clock=0,wet=0,roofA=1;
 const lw=(w,minPx)=>{ctx.lineWidth=Math.max(w,(minPx||0)/cam.s);};
 function person(x,z,ci,ph,mv,helmet){
-  if(cam.s<4.2){ctx.fillStyle=PAL[ci];const k=Math.max(.5,1.3/cam.s);ctx.fillRect(x-k/2,z-k/2,k,k);return;}
-  ctx.fillStyle='rgba(0,0,0,.2)';ctx.beginPath();ctx.ellipse(x+.28,z+.22,.27,.2,0,0,7);ctx.fill();
-  ctx.fillStyle=PAL[ci];ctx.beginPath();ctx.ellipse(x,z,.29,.19,ph+(mv?Math.sin(clock*7+ph)*.35:0),0,7);ctx.fill();
-  ctx.fillStyle=helmet||HAIR[(ph*7|0)%HAIR.length];ctx.beginPath();ctx.arc(x,z,.14,0,7);ctx.fill();
+  if(cam.s<4.2){ctx.fillStyle=PAL[ci];const k=Math.max(.45,1.2/cam.s);ctx.fillRect(x-k/2,z-k/2,k,k);return;}
+  const a=ph+(mv?Math.sin(clock*7+ph)*.3:0);
+  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x+.3,z+.24,.27,.19,a,0,7);ctx.fill();
+  ctx.fillStyle=PAL[ci];ctx.beginPath();ctx.ellipse(x,z,.27,.17,a,0,7);ctx.fill();
+  ctx.fillStyle=helmet||HAIR[(ph*7|0)%HAIR.length];ctx.beginPath();ctx.arc(x,z,.115,0,7);ctx.fill();
 }
 const _cf=mkF();
 function drawCar(t,k,shadow){
@@ -681,7 +686,7 @@ function drawGates(){
   for(let k=0;k<=NCARS;k++){const b=BAYS[Math.min(k,NCARS-1)],e=k<NCARS?.5:-.5,cx=b.x+b.tx*CAR*e,cz=b.z+b.tz*CAR*e;ctx.moveTo(cx+b.rx*1.72,cz+b.rz*1.72);ctx.lineTo(cx+b.rx*3.9,cz+b.rz*3.9);}
   ctx.stroke();
   const a=G.gate*1.5,ca=Math.cos(a),sa=Math.sin(a),len=CAR-.3;
-  ctx.strokeStyle=G.gate>.5?'#3fbf7f':'#d9534f';lw(.16,1);ctx.lineCap='round';ctx.beginPath();
+  ctx.strokeStyle=G.gate>.5?'#4f9a72':'#a8443a';lw(.13,.9);ctx.lineCap='round';ctx.beginPath();
   for(const b of BAYS){const px=b.x+b.tx*(CAR/2-.12)+b.rx*1.8,pz=b.z+b.tz*(CAR/2-.12)+b.rz*1.8,dx=-b.tx*ca+b.rx*sa,dz=-b.tz*ca+b.rz*sa;ctx.moveTo(px,pz);ctx.lineTo(px+dx*len,pz+dz*len);}
   ctx.stroke();ctx.lineCap='butt';
   ctx.fillStyle='#e8b93c';for(const b of BAYS){ctx.beginPath();ctx.arc(b.x+b.tx*(CAR/2-.12)+b.rx*1.8,b.z+b.tz*(CAR/2-.12)+b.rz*1.8,.12,0,7);ctx.fill();}
@@ -706,20 +711,15 @@ function drawWorld(dt){
   ctx.strokeStyle='#2f5a2c';ctx.lineWidth=1.3;for(const p of LY.hedge)ctx.stroke(p);
   // file d'attente (allée réelle, barrières des deux côtés)
   ctx.strokeStyle='#4a3a28';ctx.lineWidth=2.5;ctx.stroke(queueAllP);ctx.strokeStyle=TEX.stone;ctx.lineWidth=2.2;ctx.stroke(queueAllP);
-  // flux alternatif : raccourcis ouverts, sens de marche vers la gare
-  ctx.strokeStyle='rgba(84,214,150,.85)';lw(.2,1.4);ctx.setLineDash([.8,.8]);ctx.lineDashOffset=-clock*2.2;ctx.beginPath();
-  for(const l of LOOPS)if(!l.on)[QFULL[l.b]].concat(l.via.slice().reverse(),[QFULL[l.a]]).forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
-  ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;
-  // barrières pivotantes : celles du raccourci et celles de la boucle s'ouvrent en opposition
+  // barrières de la file : vantail métallique pivotant sur un poteau en bordure de chemin
   for(const l of LOOPS){l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);
-    for(const [g,closed] of [[l.cOn,l.t],[l.cOff,1-l.t]])for(const [x,z,dx,dz] of g){
-      const n=Math.hypot(dx,dz),ux=dx/n,uz=dz/n,px=-uz,pz=ux,hx=x-px*1.12,hz=z-pz*1.12,a=(1-closed)*1.5,lx=px*Math.cos(a)+ux*Math.sin(a),lz=pz*Math.cos(a)+uz*Math.sin(a),ex=hx+lx*2.2,ez=hz+lz*2.2;
-      ctx.strokeStyle='rgba(0,0,0,.25)';lw(.3,1.2);ctx.beginPath();ctx.moveTo(hx+.2,hz+.16);ctx.lineTo(ex+.2,ez+.16);ctx.stroke();
-      ctx.strokeStyle='#6b4423';lw(.3,1.6);ctx.beginPath();ctx.moveTo(hx,hz);ctx.lineTo(ex,ez);ctx.stroke();
-      ctx.strokeStyle='#c99a5e';lw(.1,.6);ctx.beginPath();ctx.moveTo(hx,hz);ctx.lineTo(ex,ez);ctx.stroke();
-      ctx.fillStyle='#2f2a24';for(const [qx,qz] of [[hx,hz],[x+px*1.12,z+pz*1.12]]){ctx.beginPath();ctx.arc(qx,qz,.2,0,7);ctx.fill();}
-      ctx.fillStyle=closed>.5?'#e5484d':'#3fd08a';ctx.beginPath();ctx.arc(x+px*1.12,z+pz*1.12,.11,0,7);ctx.fill();
-    }}
+    const g=l.g,ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));
+    const th=tb+d*l.t,len=lerp(Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1]),Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1]),l.t),ex=g.h[0]+Math.cos(th)*len,ez=g.h[1]+Math.sin(th)*len;
+    ctx.strokeStyle='rgba(0,0,0,.28)';lw(.2,1);ctx.beginPath();ctx.moveTo(g.h[0]+.22,g.h[1]+.17);ctx.lineTo(ex+.22,ez+.17);ctx.stroke();
+    ctx.strokeStyle='#4f555c';lw(.2,1.4);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
+    ctx.strokeStyle='#aeb5bd';lw(.07,.5);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
+    ctx.fillStyle='#23262b';for(const [q,r] of [[g.h,.2],[g.a,.13],[g.b,.13]])ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);
+  }
   ctx.lineCap='butt';
   // ombres portées
   if(dry>.25){
@@ -744,7 +744,7 @@ function drawWorld(dt){
   const items=[];
   for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1))items.push(o);
   for(const t of trains){const ex=t.st==='run'&&zoneOf(t.s)==='course'&&t.v>9;t.arms=lerp(t.arms,ex?1:0,Math.min(1,dt*4));
-    for(let k=0;k<NCARS;k++){carFrame(t,k,_cf);items.push({h:_cf.p.y+.4,t,k});}}
+    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:6)+.02,t,k});}}
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
     if(o.t){drawCar(o.t,o.k);continue;}
@@ -759,12 +759,9 @@ function drawWorld(dt){
   ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(chainP);ctx.setLineDash([]);
   ctx.strokeStyle=G.brakeFault&&Math.sin(clock*9)>0?'#ff5a4d':'#c2372f';lw(.3,.9);ctx.stroke(finsP);
   // arbres
-  for(const t of trees)if(vis(t.x-t.r*1.3,t.x+t.r*1.3,t.z-t.r*1.3,t.z+t.r*1.3)){
-    if(s<3){ctx.fillStyle=t.c;ctx.beginPath();ctx.arc(t.x,t.z,t.r,0,7);ctx.fill();ctx.fillStyle=t.c2;ctx.beginPath();ctx.arc(t.x-t.r*.28,t.z-t.r*.25,t.r*.55,0,7);ctx.fill();continue;}
-    ctx.fillStyle=t.c;ctx.beginPath();for(const l of t.l){const x=t.x+l[0]*t.r,z=t.z+l[1]*t.r,r=l[2]*t.r;ctx.moveTo(x+r,z);ctx.arc(x,z,r,0,7);}ctx.fill();
-    ctx.fillStyle=t.c2;ctx.beginPath();for(const l of t.l){const r=l[2]*t.r*.6,x=t.x+l[0]*t.r-r*.4,z=t.z+l[1]*t.r-r*.4;ctx.moveTo(x+r,z);ctx.arc(x,z,r,0,7);}ctx.fill();
-    if(s>5){ctx.fillStyle='rgba(196,224,146,.3)';ctx.beginPath();for(const l of t.l){const r=l[2]*t.r*.26,x=t.x+l[0]*t.r-l[2]*t.r*.42,z=t.z+l[1]*t.r-l[2]*t.r*.42;ctx.moveTo(x+r,z);ctx.arc(x,z,r,0,7);}ctx.fill();}
-  }
+  {const vt=trees.filter(t=>vis(t.x-t.r*1.3,t.x+t.r*1.3,t.z-t.r*1.3,t.z+t.r*1.3)),lobes=(k,off)=>{ctx.beginPath();for(const t of vt)for(const l of t.l){const r=l[2]*t.r*k,x=t.x+l[0]*t.r+off*l[2]*t.r,z=t.z+l[1]*t.r+off*l[2]*t.r;ctx.moveTo(x+r,z);ctx.arc(x,z,r,0,7);}ctx.fill();};
+    ctx.fillStyle=TEX.canopy;lobes(1,0);ctx.fillStyle='rgba(8,22,10,.3)';lobes(.62,.3);ctx.fillStyle='rgba(120,140,84,.3)';lobes(.6,-.32);
+    if(s>5){ctx.fillStyle='rgba(160,176,110,.2)';lobes(.26,-.45);}}
   // toitures (la gare et le garage s'effacent en zoomant)
   roofA=lerp(roofA,s>9.5?.08:1,Math.min(1,dt*5));
   for(const b of LY.bld){
@@ -782,15 +779,15 @@ function drawWorld(dt){
     ctx.globalAlpha=1;
   }
   if(tunnelP){ctx.fillStyle='#5a4630';ctx.fill(tunnelP);ctx.strokeStyle='#3a2c1c';lw(.3,.8);ctx.stroke(tunnelP);}
-  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#2fbf6b';ctx.beginPath();ctx.arc(9.9,-5.1,.45,0,7);ctx.fill();
+  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#3f9a66';ctx.beginPath();ctx.arc(9.6,-4.9,.2,0,7);ctx.fill();
   // statue de Zeus, à cheval sur l'entrée de la file
   ctx.save();ctx.translate(-29,-.7);ctx.rotate(1);ctx.scale(.78,.78);
-  ctx.fillStyle='#a8a295';ctx.fillRect(-4.1,-1.2,2.4,3.2);ctx.fillRect(1.7,-1.2,2.4,3.2);
-  ctx.fillStyle='#2c5aa8';ctx.beginPath();ctx.ellipse(0,0,3.2,2.3,0,0,7);ctx.fill();ctx.strokeStyle='#f2c14e';ctx.lineWidth=.3;ctx.stroke();
-  ctx.fillStyle='#e6dcc6';ctx.beginPath();ctx.ellipse(0,0,2.9,1.7,0,0,7);ctx.fill();
-  ctx.strokeStyle='#e6dcc6';ctx.lineCap='round';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(-2.4,0);ctx.lineTo(-4.6,-.6);ctx.moveTo(2.4,0);ctx.lineTo(3.6,1.2);ctx.stroke();ctx.lineCap='butt';
-  ctx.fillStyle='#f4f1ea';ctx.beginPath();ctx.arc(0,-.1,1.4,0,7);ctx.fill();ctx.strokeStyle='#f2c14e';ctx.lineWidth=.22;ctx.beginPath();ctx.arc(0,-.1,1.05,0,7);ctx.stroke();
-  ctx.fillStyle='#f2c14e';ctx.beginPath();[[-6.6,-1.6],[-4.9,-1.2],[-5.3,-.6],[-3.6,.2],[-5.6,.2],[-5.1,-.4]].forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.fill();
+  ctx.fillStyle='#8f897d';ctx.fillRect(-4.3,-1.5,2.8,3.6);ctx.fillRect(1.5,-1.5,2.8,3.6);
+  ctx.fillStyle='#b9b2a2';ctx.beginPath();ctx.ellipse(0,0,3.1,2,0,0,7);ctx.fill();ctx.fillStyle='rgba(0,0,0,.14)';ctx.beginPath();ctx.ellipse(.35,.3,2.7,1.6,0,0,7);ctx.fill();
+  ctx.fillStyle='#c9c2b2';ctx.beginPath();ctx.ellipse(-.1,-.1,2.6,1.5,0,0,7);ctx.fill();
+  ctx.strokeStyle='#c9c2b2';ctx.lineCap='round';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-2.3,0);ctx.lineTo(-4.5,-.6);ctx.moveTo(2.3,0);ctx.lineTo(3.5,1.2);ctx.stroke();ctx.lineCap='butt';
+  ctx.fillStyle='#d6cfbf';ctx.beginPath();ctx.arc(0,-.1,1.3,0,7);ctx.fill();ctx.fillStyle='rgba(0,0,0,.12)';ctx.beginPath();ctx.arc(.25,.15,1.05,0,7);ctx.fill();
+  ctx.fillStyle='#a8925a';ctx.beginPath();[[-6.6,-1.6],[-4.9,-1.2],[-5.3,-.6],[-3.6,.2],[-5.6,.2],[-5.1,-.4]].forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.fill();
   ctx.restore();
   if(bolt&&G.flash>.3){const g=ctx.createRadialGradient(bolt.x,bolt.z,0,bolt.x,bolt.z,30);g.addColorStop(0,`rgba(255,255,220,${G.flash})`);g.addColorStop(1,'rgba(255,255,220,0)');ctx.fillStyle=g;ctx.fillRect(bolt.x-30,bolt.z-30,60,60);
     ctx.strokeStyle=`rgba(255,250,200,${G.flash})`;lw(.5,1.5);ctx.beginPath();for(const b of bolt.br)b.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
