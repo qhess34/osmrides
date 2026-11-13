@@ -185,6 +185,7 @@ const LOOPS=[
    t:1,g:{h:[-10.9,27.35],a:[-13.1,26.9],b:[-11.19,29.53]}},
   {name:'raccourci ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
    t:1,g:{h:[-27.46,26.93],a:[-25.57,25.81],b:[-28.91,25.28]}}];
+const ENTRY_GATE={h:[-32.31,.38],a:[-31.09,2.21],b:[-34.14,1.6],t:1}; // a : fermé en travers du chemin, b : ouvert le long de la bordure
 let QP=[],QC=[],QLEN=0,queueP=null;
 function buildQueue(){
   QP=[];let i=0;
@@ -235,7 +236,9 @@ function updateVisitors(dt){
     const v=Q[i];v.w+=dt*imp;
     if(v.w>v.pat){Q.splice(i,1);if(v.mode==='q')nq--;G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);
       walker(leavePath(v.x,v.z),C_GREY,null,3,'😠');continue;}
-    if(v.mode==='app'&&moveAlong(v,dt)){Q.splice(i,1);v.mode='q';v.d=Math.max(v.gate,nq?Q[nq-1].d+SP:0);Q.splice(nq,0,v);nq++;}
+    if(v.mode==='app'&&moveAlong(v,dt)){Q.splice(i,1);
+      if(!G.open){G.stats.turned++;walker(leavePath(v.x,v.z),v.ci,null,3);continue;} // entrée fermée : demi-tour
+      v.mode='q';v.d=Math.max(v.gate,nq?Q[nq-1].d+SP:0);Q.splice(nq,0,v);nq++;}
   }
   for(let i=0;i<nq;i++){
     const v=Q[i],lb=i?Q[i-1].d+SP:0,nd=Math.max(lb,v.d-4.5*dt);v.mv=Math.abs(nd-v.d)>1e-4;v.d=nd;_qp.side=v.side;serpPos(v.d,_qp);
@@ -399,7 +402,8 @@ function act(a,arg){
   else if(a==='mute')$('bMute').textContent=sfx.toggle()?'Son coupé':'Son';
   else if(a==='cam')setCam(arg);
   else if(a==='nextDay')nextDay();
-  else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;log(G.open?'✅ Attraction ouverte : les visiteurs entrent dans la file.':'🚫 File fermée : plus aucun visiteur n\'entre.',G.open?'good':'warn');}
+  else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
+    log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
   else if(a==='evac'){const n=G.queue.length;if(!n)return;
     for(const v of G.queue)if(Math.random()<.5)walker(leavePath(v.x,v.z),v.ci,null,3);
     G.queue.length=0;G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée ('+n+' visiteurs déçus).','warn');}
@@ -484,7 +488,7 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : départs bloqués.':'Aiguillage en retour vers LIFT.'):!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : départs bloqués.':'Aiguillage en retour vers LIFT.'):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq&&t.st==='run'?' · garage demandé':'');
     bar('tW'+t.i,t.wear);
@@ -514,11 +518,13 @@ function setCam(k){cam.key=k;if(k.startsWith('suivi')){cam.follow=+k.slice(-1);c
 (function controls(){
   const ptrs=new Map();let pinch=0,moved=0;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
   const gateAt=e=>{const r=cv.getBoundingClientRect(),wx=cam.x+(e.clientX-r.left-VW/2)/cam.s,wz=cam.z+(e.clientY-r.top-VH/2)/cam.s;let best=-1,bd=Math.max(2.2,14/cam.s);
-    LOOPS.forEach((l,i)=>{const g=l.g;for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});return best;};
+    LOOPS.forEach((l,i)=>{const g=l.g;for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});
+    {const g=ENTRY_GATE,d=Math.min(Math.hypot(g.h[0]-wx,g.h[1]-wz),Math.hypot((g.h[0]+g.a[0])/2-wx,(g.h[1]+g.a[1])/2-wz),Math.hypot((g.h[0]+g.b[0])/2-wx,(g.h[1]+g.b[1])/2-wz));if(d<bd)best=-2;}
+    return best;};
   cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;});
-  const up=e=>{if(ptrs.has(e.pointerId)&&e.type==='pointerup'&&moved<6&&ptrs.size===1){const i=gateAt(e);if(i>=0)act('loop',i);}ptrs.delete(e.pointerId);pinch=0;};
+  const up=e=>{if(ptrs.has(e.pointerId)&&e.type==='pointerup'&&moved<6&&ptrs.size===1){const i=gateAt(e);if(i>=0)act('loop',i);else if(i===-2)act('open');}ptrs.delete(e.pointerId);pinch=0;};
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-  cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){cv.style.cursor=gateAt(e)>=0?'pointer':'grab';return;}
+  cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){cv.style.cursor=gateAt(e)!==-1?'pointer':'grab';return;}
     const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);if(moved<6)return;free();
     if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)cam.s=clamp(cam.s*d/pinch,1.6,45);pinch=d;return;}
     cam.x=clamp(cam.x-dx/cam.s,-170,210);cam.z=clamp(cam.z-dy/cam.s,-130,230);});
@@ -687,6 +693,14 @@ function drawBooth(s){ // poste de conduite, au nord-est de la gare
   ctx.fillStyle='#20262e';ctx.fillRect(5.9,-3.55,2.7,.42);
   if(s>6){[['#4cc38a',6.3],['#f2c14e',6.9],['#4f8cff',7.5],['#e5484d',8.15]].forEach(([c,x])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,-3.34,.1,0,7);ctx.fill();});person(7.3,-4.02,3,1.2,false,'#1d2b4f');}
 }
+function leaf(g,t){ // vantail métallique : pivot h en bordure, extrémité en a (t=1) ou en b (t=0)
+  const ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));
+  const th=tb+d*t,len=lerp(Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1]),Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1]),t),ex=g.h[0]+Math.cos(th)*len,ez=g.h[1]+Math.sin(th)*len;
+  ctx.strokeStyle='rgba(0,0,0,.28)';lw(.2,1);ctx.beginPath();ctx.moveTo(g.h[0]+.22,g.h[1]+.17);ctx.lineTo(ex+.22,ez+.17);ctx.stroke();
+  ctx.strokeStyle='#4f555c';lw(.2,1.4);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
+  ctx.strokeStyle='#aeb5bd';lw(.07,.5);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
+  ctx.fillStyle='#23262b';for(const [q,r] of [[g.h,.2],[g.a,.13],[g.b,.13]])ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);
+}
 function drawGates(){
   ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
   for(let k=0;k<=NCARS;k++){const b=BAYS[Math.min(k,NCARS-1)],e=k<NCARS?.5:-.5,cx=b.x+b.tx*CAR*e,cz=b.z+b.tz*CAR*e;ctx.moveTo(cx+b.rx*1.72,cz+b.rz*1.72);ctx.lineTo(cx+b.rx*3.9,cz+b.rz*3.9);}
@@ -718,14 +732,8 @@ function drawWorld(dt){
   // file d'attente (allée réelle, barrières des deux côtés)
   ctx.strokeStyle='#4a3a28';ctx.lineWidth=2.5;ctx.stroke(queueAllP);ctx.strokeStyle=TEX.stone;ctx.lineWidth=2.2;ctx.stroke(queueAllP);
   // barrières de la file : vantail métallique pivotant sur un poteau en bordure de chemin
-  for(const l of LOOPS){l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);
-    const g=l.g,ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));
-    const th=tb+d*l.t,len=lerp(Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1]),Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1]),l.t),ex=g.h[0]+Math.cos(th)*len,ez=g.h[1]+Math.sin(th)*len;
-    ctx.strokeStyle='rgba(0,0,0,.28)';lw(.2,1);ctx.beginPath();ctx.moveTo(g.h[0]+.22,g.h[1]+.17);ctx.lineTo(ex+.22,ez+.17);ctx.stroke();
-    ctx.strokeStyle='#4f555c';lw(.2,1.4);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
-    ctx.strokeStyle='#aeb5bd';lw(.07,.5);ctx.beginPath();ctx.moveTo(g.h[0],g.h[1]);ctx.lineTo(ex,ez);ctx.stroke();
-    ctx.fillStyle='#23262b';for(const [q,r] of [[g.h,.2],[g.a,.13],[g.b,.13]])ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);
-  }
+  for(const l of LOOPS){l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);leaf(l.g,l.t);}
+  ENTRY_GATE.t=clamp(ENTRY_GATE.t+(G.open?-dt:dt)/.9,0,1);leaf(ENTRY_GATE,ENTRY_GATE.t);
   ctx.lineCap='butt';
   // ombres portées
   if(dry>.25){
@@ -798,7 +806,7 @@ function drawWorld(dt){
   if(bolt&&G.flash>.3){const g=ctx.createRadialGradient(bolt.x,bolt.z,0,bolt.x,bolt.z,30);g.addColorStop(0,`rgba(255,255,220,${G.flash})`);g.addColorStop(1,'rgba(255,255,220,0)');ctx.fillStyle=g;ctx.fillRect(bolt.x-30,bolt.z-30,60,60);
     ctx.strokeStyle=`rgba(255,250,200,${G.flash})`;lw(.5,1.5);ctx.beginPath();for(const b of bolt.br)b.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
 }
-const LABELS=[['Gare',2,-6.5],['Lift — 30 m',43,36],['Tunnel',tunnelC[0]-2,tunnelC[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Garage',49,-12.5],['Aiguillage',17,-9.5]];
+const LABELS=[['Gare',2,-6.5],['Lift — 30 m',43,36],['Tunnel',tunnelC[0]-2,tunnelC[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-35.5,4.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]];
 function drawOverlay(dt){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   const s=cam.s,X=x=>(x-cam.x)*s+VW/2,Z=z=>(z-cam.z)*s+VH/2,w=G.wx.type;
