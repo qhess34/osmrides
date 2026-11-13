@@ -50,7 +50,7 @@ function frameAt(s,o){
   o.p.lerpVectors(a.p,b.p,k);o.T.lerpVectors(a.T,b.T,k).normalize();o.U.lerpVectors(a.U,b.U,k).normalize();o.R.crossVectors(o.T,o.U);return o;
 }
 function hAt(s){s=((s%L)+L)%L;const f=s/DS,i=Math.floor(f)%N,k=f-Math.floor(f);return lerp(TR[i].p.y,TR[(i+1)%N].p.y,k);}
-const CAR=1.6,NCARS=14,TLEN=CAR*NCARS,SEATS=NCARS*2;
+const CAR=1.5,NCARS=14,TLEN=CAR*NCARS,SEATS=NCARS*2;
 const S_ST=TAG.st1-3,S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=L-4,S_DROP=S_LIFT1+14;
 // Voie de garage dans le prolongement de la gare, reliée par un tronçon en S coulissant (pont transbordeur)
 const SW_A=S_ST+.8,SW_B=S_ST+6.4,SW_D=3.4,GPATH=[];let SW_LEN=0,GMAX=0;
@@ -85,7 +85,7 @@ const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0})
 G.stats=newStats();
 function mkTrain(i,name,col,col2,wear,st){
   return {i,name,col,col2,wear,st,s:S_ST,v:0,g:st==='garage'?GMAX:0,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
-    depReq:false,garReq:false,outReq:false,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
+    depReq:false,garReq:false,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
 }
 const trains=[mkTrain(0,'Train 1 « Éclair »','#1c8a94','#f2c14e',30,'station'),mkTrain(1,'Train 2 « Foudre »','#17727c','#d9dde2',48,'garage')];
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
@@ -181,9 +181,9 @@ const qi=(x,z)=>{let b=0,bd=1e9;QFULL.forEach((p,i)=>{const d=Math.hypot(p[0]-x,
 // Accès amovibles : ouvrir un raccourci (flux alternatif) court-circuite une boucle de la file ; on = boucle en service, raccourci fermé
 const LOOPS=[
   {name:'raccourci est',on:true,a:qi(-4.1,16.4),b:qi(-13.6,28.1),via:[[-9.9,16.2],[-11.6,17.4],[-12,19.3],[-12.1,27]],
-   cOn:[[-12.75,27.55,.15,-1],[-7.4,16.3,1,0]],cOff:[[-12.6,28.25,1,.1],[-1.2,16.5,1,0]]},
+   t:1,cOn:[[-12.05,25.4,0,-1],[-7.4,16.3,1,.03]],cOff:[[-11.9,28.35,1,.1],[-1.4,16.5,1,.04]]},
   {name:'raccourci ouest',on:true,a:qi(-25.9,27.3),b:qi(-27.2,25.2),via:[],
-   cOn:[[-26.57,26.27,1.24,2.09]],cOff:[[-27.75,25.7,-1.05,.92],[-26.5,28.2,-1.18,1.75]]}];
+   t:1,cOn:[[-26.57,26.27,1.24,2.09]],cOff:[[-28.1,26.02,-1.05,.92],[-26.75,28.5,-1.18,1.75]]}];
 let QP=[],QC=[],QLEN=0,queueP=null;
 function buildQueue(){
   QP=[];let i=0;
@@ -300,15 +300,15 @@ function updateRun(t,dt){
     if(!t.screamed&&t.s>S_DROP){t.screamed=true;const n=count(t);if(n)sfx.scream(n);}
   }else{
     if(!t.inBrake){
-      t.inBrake=true;sfx.brake();t.wear=Math.min(100,t.wear+3.5);G.wear.track=Math.min(100,G.wear.track+1.1);G.wear.brake=Math.min(100,G.wear.brake+1.6);
+      t.inBrake=true;t.hold=0;sfx.brake();t.wear=Math.min(100,t.wear+3.5);G.wear.track=Math.min(100,G.wear.track+1.1);G.wear.brake=Math.min(100,G.wear.brake+1.6);
       const b=G.wear.brake;
       if(!G.brakeFault&&b>50&&Math.random()<Math.pow((b-50)/50,2)*.3){G.brakeFault=true;sfx.alarm();log('🚨 Défaut des freins de fin de parcours : train retenu.','bad');}
       if(G.wear.track>=100)log('⛔ Voie hors service : la commission de sécurité interdit les départs.','bad');
     }
-    if(!t.entering&&!stationBusy(t)&&!G.estop&&!G.brakeFault)t.entering=true;
     const slow=t.v>6?Math.max(6,t.v-7*dt):t.v;
-    if(t.entering)t.v=t.v>6?slow:Math.min(6,t.v+2*dt);
-    else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);if(vm<.25)t.v=0;}
+    if(t.entering)t.v=Math.min(6,t.v+2*dt);
+    else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);
+      if(vm<.25){t.v=0;t.hold+=dt;if(t.hold>=1&&!stationBusy(t)&&!G.estop&&!G.brakeFault){t.entering=true;t.hold=0;}}}
   }
   t.s+=t.v*dt;if(t.s>=L)t.s-=L;
 }
@@ -506,10 +506,14 @@ const CAMS={vue:{x:38,z:52,s:0},gare:{x:5,z:2,s:19},file:{x:-20,z:19,s:14},lift:
 const cam={key:'vue',x:38,z:52,s:fitS(),g:null,follow:-1};
 function setCam(k){cam.key=k;if(k.startsWith('suivi')){cam.follow=+k.slice(-1);cam.g={s:12};}else{cam.follow=-1;const c=CAMS[k];cam.g={x:c.x,z:c.z,s:c.s||fitS()};}}
 (function controls(){
-  const ptrs=new Map();let pinch=0;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
-  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);free();});
-  const up=e=>{ptrs.delete(e.pointerId);pinch=0;};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
-  cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p)return;const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;
+  const ptrs=new Map();let pinch=0,moved=0;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
+  const gateAt=e=>{const r=cv.getBoundingClientRect(),wx=cam.x+(e.clientX-r.left-VW/2)/cam.s,wz=cam.z+(e.clientY-r.top-VH/2)/cam.s;let best=-1,bd=Math.max(2.2,14/cam.s);
+    LOOPS.forEach((l,i)=>{for(const g of l.cOn.concat(l.cOff)){const d=Math.hypot(g[0]-wx,g[1]-wz);if(d<bd){bd=d;best=i;}}});return best;};
+  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;});
+  const up=e=>{if(ptrs.has(e.pointerId)&&e.type==='pointerup'&&moved<6&&ptrs.size===1){const i=gateAt(e);if(i>=0)act('loop',i);}ptrs.delete(e.pointerId);pinch=0;};
+  cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){cv.style.cursor=gateAt(e)>=0?'pointer':'grab';return;}
+    const dx=e.clientX-p[0],dy=e.clientY-p[1];p[0]=e.clientX;p[1]=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);if(moved<6)return;free();
     if(ptrs.size===2){const [a,b]=[...ptrs.values()],d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)cam.s=clamp(cam.s*d/pinch,1.6,45);pinch=d;return;}
     cam.x=clamp(cam.x-dx/cam.s,-170,210);cam.z=clamp(cam.z-dy/cam.s,-130,230);});
   cv.addEventListener('wheel',e=>{e.preventDefault();free();const r=cv.getBoundingClientRect(),mx=e.clientX-r.left-VW/2,mz=e.clientY-r.top-VH/2;
@@ -616,7 +620,7 @@ let tunnelP=null,tunnelC=[5,98];
   for(const q of OSM.trees)if(!nearTrack(q[0],q[1],6))trees.push(Object.assign({x:q[0],z:q[1],r:rnd(3,4.5)},col()));
   trees.sort((a,b)=>a.r-b.r);
 })();
-const stationP=mkPath(OSM.station,true),queueAllP=mkPath(QFULL);[[-4.1,16.4]].concat(LOOPS[0].via,[[-13.6,28.1]]).forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));
+const stationP=mkPath(OSM.station,true),queueAllP=mkPath(QFULL);for(const l of LOOPS)[QFULL[l.a]].concat(l.via,[QFULL[l.b]]).forEach((p,i)=>i?queueAllP.lineTo(p[0],p[1]):queueAllP.moveTo(p[0],p[1]));
 const JOBSITE={liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]};
 const HAIR=['#2a1d14','#4a3322','#6b4a2a','#c9a35a','#8a8a8a','#111','#a0522d'];
 const emos=[];function emote(ch,p){if(emos.length<60)emos.push({ch,x:p[0],z:p[2],life:2.2});}
@@ -701,13 +705,20 @@ function drawWorld(dt){
   ctx.strokeStyle='#2f5a2c';ctx.lineWidth=1.3;for(const p of LY.hedge)ctx.stroke(p);
   // file d'attente (allée réelle, barrières des deux côtés)
   ctx.strokeStyle='#4a3a28';ctx.lineWidth=2.5;ctx.stroke(queueAllP);ctx.strokeStyle=TEX.stone;ctx.lineWidth=2.2;ctx.stroke(queueAllP);
-  ctx.strokeStyle='#e5484d';lw(.24,1.6);ctx.beginPath();
-  for(const l of LOOPS)for(const [x,z,dx,dz] of (l.on?l.cOn:l.cOff)){const n=Math.hypot(dx,dz),px=-dz/n*1.25,pz=dx/n*1.25;ctx.moveTo(x-px,z-pz);ctx.lineTo(x+px,z+pz);}
-  ctx.stroke();
   // flux alternatif : raccourcis ouverts, sens de marche vers la gare
-  ctx.strokeStyle='#3fd08a';lw(.38,2);ctx.setLineDash([.9,.7]);ctx.lineDashOffset=-clock*2.2;ctx.beginPath();
+  ctx.strokeStyle='rgba(84,214,150,.85)';lw(.2,1.4);ctx.setLineDash([.8,.8]);ctx.lineDashOffset=-clock*2.2;ctx.beginPath();
   for(const l of LOOPS)if(!l.on)[QFULL[l.b]].concat(l.via.slice().reverse(),[QFULL[l.a]]).forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
   ctx.stroke();ctx.setLineDash([]);ctx.lineDashOffset=0;
+  // barrières pivotantes : celles du raccourci et celles de la boucle s'ouvrent en opposition
+  for(const l of LOOPS){l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);
+    for(const [g,closed] of [[l.cOn,l.t],[l.cOff,1-l.t]])for(const [x,z,dx,dz] of g){
+      const n=Math.hypot(dx,dz),ux=dx/n,uz=dz/n,px=-uz,pz=ux,hx=x-px*1.12,hz=z-pz*1.12,a=(1-closed)*1.5,lx=px*Math.cos(a)+ux*Math.sin(a),lz=pz*Math.cos(a)+uz*Math.sin(a),ex=hx+lx*2.2,ez=hz+lz*2.2;
+      ctx.strokeStyle='rgba(0,0,0,.25)';lw(.3,1.2);ctx.beginPath();ctx.moveTo(hx+.2,hz+.16);ctx.lineTo(ex+.2,ez+.16);ctx.stroke();
+      ctx.strokeStyle='#6b4423';lw(.3,1.6);ctx.beginPath();ctx.moveTo(hx,hz);ctx.lineTo(ex,ez);ctx.stroke();
+      ctx.strokeStyle='#c99a5e';lw(.1,.6);ctx.beginPath();ctx.moveTo(hx,hz);ctx.lineTo(ex,ez);ctx.stroke();
+      ctx.fillStyle='#2f2a24';for(const [qx,qz] of [[hx,hz],[x+px*1.12,z+pz*1.12]]){ctx.beginPath();ctx.arc(qx,qz,.2,0,7);ctx.fill();}
+      ctx.fillStyle=closed>.5?'#e5484d':'#3fd08a';ctx.beginPath();ctx.arc(x+px*1.12,z+pz*1.12,.11,0,7);ctx.fill();
+    }}
   ctx.lineCap='butt';
   // ombres portées
   if(dry>.25){
