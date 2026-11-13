@@ -218,10 +218,11 @@ function nextEdge(k){
 const room=e=>!e.list.length||e.len-e.list[e.list.length-1].r>=SP;
 function removeVisitor(v){const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1);if(v.e){const l=EDGES[v.e].list,j=l.indexOf(v);if(j>=0)l.splice(j,1);}}
 function clearQueue(){G.queue.length=0;for(const k of EORDER)EDGES[k].list.length=0;}
-function backPath(v){ // sortie à contre-sens par la file (abandon, évacuation) : les barrières ne retiennent pas
+function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniquement par les chemins ouverts. Évacuation : au plus court, barrières franchies.
   if(v.mode!=='q')return leavePath(v.x,v.z);
+  const prev=k=>k==='out'?(evac||!LE.on?'eShort':'eLoop'):k==='mid'?(evac||!LW.on?'wShort':'wLoop'):PREV[k];
   const pts=[[v.x,0,v.z]];let k=v.e,ds=EDGES[k].len-v.r;
-  while(k){const e=EDGES[k];for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);k=PREV[k];ds=1e9;}
+  while(k){const e=EDGES[k];for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);k=prev(k);ds=1e9;}
   pts.push([-29.2,0,-9]);return pts.concat(P3((Math.random()<.6?PROM_W:PROM_N).slice().reverse(),.7));
 }
 const PROM_W=[[-107.1,-8.2],[-95.1,-8.7],[-83.4,-9.8],[-74.9,-14],[-67,-17.3],[-61.1,-20.1],[-57.7,-19.1],[-50.9,-15.2],[-44.4,-11.1],[-39.7,-9.8],[-33.4,-9],[-30.1,-9.2]];
@@ -437,7 +438,7 @@ function act(a,arg){
   else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
   else if(a==='evac'){const n=G.queue.length;if(!n)return;
-    for(const v of G.queue)walker(backPath(v),v.ci,null,rnd(3,3.8));
+    for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8));
     clearQueue();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
