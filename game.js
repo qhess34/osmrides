@@ -429,11 +429,12 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
   <div class="st" id="tSt${t.i}"></div>
   <div class="bar"><i id="tW${t.i}"></i><span id="tW${t.i}T"></span></div>
   <div class="row">
-    <button id="tG${t.i}" data-act="garage" data-arg="${t.i}">→ Garage</button>
-    <button id="tS${t.i}" data-act="sortir" data-arg="${t.i}">→ Mettre en gare</button>
     <button id="tR${t.i}" data-act="revise" data-arg="${t.i}">Réviser (600 €)</button>
     <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer harnais</button>
   </div></div>`).join('');
+$('deskTrains').innerHTML=trains.map(t=>`<div class="ctl"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
+  <div class="pair"><button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Envoyer au garage">G</button><button class="pb sq sm green" id="tS${t.i}" data-act="sortir" data-arg="${t.i}" title="Mettre en gare">▶</button></div>
+  <div class="plate">Garage · Gare</div></div>`).join('');
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
@@ -461,29 +462,27 @@ function ui(){
   $('hSat').textContent=Math.round(G.sat)+' %';
   const active=trains.filter(t=>t.st!=='garage').length;
   $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);
-  LOOPS.forEach((l,i)=>{$('bLoop'+i).textContent='⛓️ '+l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' : fermé':' : ouvert');$('bLoop'+i).classList.toggle('on',!l.on);});
   $('hWait').textContent=active?Math.round(G.queue.length/(.19*active)*.5)+' min':'—';
   $('hRiders').textContent=G.stats.riders;
   for(const s of [0,1,2,4,8])$('sp'+s).classList.toggle('on',G.speed===s);
-  $('bOpen').textContent=G.open?'🚫 Fermer l\'attraction':'✅ Ouvrir l\'attraction';
-  $('bOpen').className=G.open?'':'go';$('bOpen').disabled=!G.open&&G.time>=1080;
+  $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.time>=1080;
   $('bEvac').disabled=!G.queue.length;
-  $('bAuto').textContent=G.auto?'Mode : AUTO':'Mode : MANUEL';$('bAuto').classList.toggle('on',G.auto);
-  {const can=trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);$('bGate').textContent=G.gatesOpen?'🚪 Fermer les portillons':'🚪 Ouvrir les portillons';$('bGate').classList.toggle('on',G.gatesOpen);$('bGate').disabled=G.auto||(!G.gatesOpen&&!can);$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
-  $('bGo').disabled=!trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);
-  $('bStop').classList.toggle('on',G.estop);$('bStop').textContent=G.estop?'⛔ Réarmer':'⛔ Arrêt d\'urgence';
+  $('bAuto').classList.toggle('manu',!G.auto);
+  {const can=trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=G.auto||(!G.gatesOpen&&!can);$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
+  $('bGo').disabled=!trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);$('bGo').classList.toggle('lit',!$('bGo').disabled);
+  $('bStop').classList.toggle('lit',G.estop);
   const inZ=z=>trains.some(t=>t.st==='run'&&zoneOf(t.s)===z);
   lamp('lGare',trains.some(t=>t.fault)?2:stationBusy()?1:0);
   lamp('lLift',G.liftBroken||G.estop?2:(inZ('lift')||inZ('prelift'))?1:0);
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'⚡ Orage : aucun départ autorisé !':G.wx.type==='warn'?'🌩️ Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':!G.open&&G.time<1080?'Attraction fermée au public.':'';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'⛔ Arrêt d\'urgence enclenché.':G.sw>.01?'Aiguillage vers le garage en cours.':!G.open&&G.time<1080?'Attraction fermée au public.':(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq?' · garage demandé':'')+(t.outReq?' · sortie demandée':'');
     bar('tW'+t.i,t.wear);
-    $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('on',t.garReq);
-    $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('on',t.outReq);
+    $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('lit',t.garReq||t.st==='toGarage');
+    $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('lit',t.outReq||t.st==='fromGarage');
     $('tR'+t.i).disabled=!!G.job||t.st!=='garage';
     $('tA'+t.i).disabled=!!G.job||t.fault!=='harnais';
   }
@@ -603,7 +602,7 @@ let tunnelP=null,tunnelC=[5,98];
       for(let j=0;j<f.p.length-1;j++)ar+=f.p[j][0]*f.p[j+1][1]-f.p[j+1][0]*f.p[j][1];
       for(let j=0;j<f.p.length-1;j++){const a=f.p[j],b=f.p[j+1],sg=ar>0?1:-1,nx=(b[1]-a[1])*sg,nz=-(b[0]-a[0])*sg,pp=nx*-.8+nz*-.6>0?lit:dark;pp.moveTo(a[0],a[1]);pp.lineTo(b[0],b[1]);}
       LY.bld.push({p,m,lit,dark,st:Math.hypot(m[0],m[1]-2.5)<9,col:ROOFS[i%ROOFS.length],h:k==='building=roof'?4:k==='building=hotel'?12:7,canopy:k==='building=roof',
-        fade:Math.hypot(m[0],m[1]-2.5)<9||Math.hypot(m[0]-49,m[1]+3)<8||Math.hypot(m[0]+4,m[1]-11.4)<4});}
+        fade:Math.hypot(m[0],m[1]-2.5)<9||Math.hypot(m[0]-7.3,m[1]+3.7)<1.5||Math.hypot(m[0]-49,m[1]+3)<8||Math.hypot(m[0]+4,m[1]-11.4)<4});}
   });
   // arbres : dans les bois cartographiés + arbres isolés relevés
   ctx.setTransform(1,0,0,1,0,0);
@@ -671,9 +670,11 @@ function drawStationFloor(s){
   ctx.strokeStyle='#e8b93c';lw(.2,.8);ctx.beginPath();ln(1.34,1);ln(-1.34,1);ctx.stroke();
   ctx.strokeStyle='#4d525a';lw(.1,.6);ctx.beginPath();ctx.moveTo(-8.8,-3);ctx.lineTo(-1.7,-3);ctx.moveTo(.3,-3);ctx.lineTo(9,-2.7);ctx.moveTo(-8.9,7.6);ctx.lineTo(-6,7.7);ctx.moveTo(-1.9,7.8);ctx.lineTo(12.4,8.1);ctx.stroke();
   if(s>5){ctx.fillStyle='#a8a296';ctx.fillRect(-5.7,8,3.4,6.8);ctx.strokeStyle='rgba(60,56,50,.6)';lw(.06,.5);ctx.beginPath();for(let z=8.3;z<14.8;z+=.43){ctx.moveTo(-5.6,z);ctx.lineTo(-2.4,z);}ctx.stroke();}
-  // poste de conduite
-  ctx.fillStyle='#39424f';ctx.fillRect(9.6,4.9,2.6,1.9);ctx.fillStyle='#8fd0e8';ctx.fillRect(9.8,5.02,2.2,.3);ctx.fillStyle='#20262e';ctx.fillRect(9.95,5.5,1.9,.5);
-  if(s>6){[['#4cc38a',10.2],['#f2c14e',10.6],['#e5484d',11],['#4f8cff',11.4]].forEach(([c,x])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,5.75,.09,0,7);ctx.fill();});person(10.9,6.35,3,1.2,false,'#1d2b4f');}
+}
+function drawBooth(s){ // poste de conduite, au nord-est de la gare
+  ctx.fillStyle='#3a434f';ctx.fillRect(5.4,-4.55,3.75,1.7);ctx.fillStyle='#8fd0e8';ctx.fillRect(5.55,-3.08,3.45,.2);
+  ctx.fillStyle='#20262e';ctx.fillRect(5.9,-3.55,2.7,.42);
+  if(s>6){[['#4cc38a',6.3],['#f2c14e',6.9],['#4f8cff',7.5],['#e5484d',8.15]].forEach(([c,x])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,-3.34,.1,0,7);ctx.fill();});person(7.3,-4.02,3,1.2,false,'#1d2b4f');}
 }
 function drawGates(){
   ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
@@ -733,7 +734,7 @@ function drawWorld(dt){
     ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(-29+4.4,-.7+3.4);ctx.lineTo(-29+3.4,-.7+7.2);ctx.stroke();ctx.lineCap='butt';
   }
   // sol de la gare, voie de garage
-  drawTable();drawStationFloor(s);drawGates();
+  drawTable();drawStationFloor(s);drawBooth(s);drawGates();
   // personnages
   for(const v of G.queue)person(v.x,v.z,v.ci,v.ph,v.mv);
   for(const k of G.walkers)person(k.x,k.z,k.ci,k.ph,true);
@@ -781,7 +782,7 @@ function drawWorld(dt){
     ctx.globalAlpha=1;
   }
   if(tunnelP){ctx.fillStyle='#5a4630';ctx.fill(tunnelP);ctx.strokeStyle='#3a2c1c';lw(.3,.8);ctx.stroke(tunnelP);}
-  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#2fbf6b';ctx.beginPath();ctx.arc(12.9,7.3,.5,0,7);ctx.fill();
+  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#2fbf6b';ctx.beginPath();ctx.arc(9.9,-5.1,.45,0,7);ctx.fill();
   // statue de Zeus, à cheval sur l'entrée de la file
   ctx.save();ctx.translate(-29,-.7);ctx.rotate(1);ctx.scale(.78,.78);
   ctx.fillStyle='#a8a295';ctx.fillRect(-4.1,-1.2,2.4,3.2);ctx.fillRect(1.7,-1.2,2.4,3.2);
@@ -805,6 +806,7 @@ function drawOverlay(dt){
   ctx.font='italic 11px system-ui,sans-serif';ctx.fillStyle='#dfe8d2';
   if(s<9)for(const [t,x,z] of PLACES){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font='600 12px system-ui,sans-serif';ctx.fillStyle='#fff';
+  if(s>9&&s<26){ctx.strokeText('Poste de conduite',X(7.3),Z(-5.6));ctx.fillText('Poste de conduite',X(7.3),Z(-5.6));}
   if(s<16)for(const [t,x,z] of LABELS){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font=Math.round(clamp(s*1.3,14,24))+'px serif';
   for(let i=emos.length-1;i>=0;i--){const e=emos[i];e.life-=dt*Math.max(1,G.speed);if(e.life<=0){emos.splice(i,1);continue;}ctx.globalAlpha=Math.min(1,e.life);ctx.fillText(e.ch,X(e.x),Z(e.z)-10-(2.2-e.life)*10);}

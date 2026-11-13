@@ -41,6 +41,31 @@ button.stop.on{background:var(--bad);animation:blink 1s infinite}
 @keyframes blink{50%{filter:brightness(1.5)}}
 .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .row+.row{margin-top:6px}
+#desk{position:relative;background:linear-gradient(160deg,#474d57,#2b2f36 60%,#23262c);border:2px solid #14161a;border-radius:10px;padding:12px 12px 14px;box-shadow:inset 0 1px 0 #6a717d,inset 0 -3px 8px #0009}
+#desk h2{color:#d5d9e0;letter-spacing:2px;text-align:center}
+.screw{position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#c9ced6,#5c626c);box-shadow:inset 0 0 0 1px #0006}
+.lcd{background:#0b1a11;color:#7dffa8;font:12.5px/1.3 ui-monospace,Menlo,Consolas,monospace;padding:7px 9px;border-radius:5px;border:2px solid #05080a;box-shadow:inset 0 0 8px #000;min-height:44px;margin-bottom:6px}
+.deskrow{display:flex;justify-content:space-around;gap:6px;margin-top:10px}
+.ctl{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
+.plate{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#b9bfca;text-align:center;margin-top:5px;line-height:1.25}
+.pair{display:flex;gap:6px;margin-top:5px}
+button.pb{width:54px;height:54px;border-radius:50%;border:4px solid #b4b9c2;padding:0;color:#fff;font-size:17px;background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36);box-shadow:0 3px 0 #0e0f12,0 5px 9px #000a;transition:transform .05s}
+button.pb:hover:not(:disabled){filter:brightness(1.12);background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36)}
+button.pb:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #0e0f12}
+button.pb.sq{border-radius:9px}button.pb.sm{width:38px;height:38px;font-size:13px;border-width:3px}button.pb.big{width:66px;height:66px;font-size:24px}
+button.pb.green,button.pb.green:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#3f8a60,#17402a)}
+button.pb.green.lit,button.pb.green.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#b6ffd2,#1fc267);box-shadow:0 3px 0 #0e0f12,0 0 16px #35ff8a;color:#063}
+button.pb.blue,button.pb.blue:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#44689e,#1b2d4d)}
+button.pb.blue.lit,button.pb.blue.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#cfe2ff,#3f86ff);box-shadow:0 3px 0 #0e0f12,0 0 16px #5c9cff;color:#024}
+button.pb.amber,button.pb.amber:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#a8782c,#4f3610)}
+button.pb.amber.lit,button.pb.amber.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#ffe9b0,#f5a623);box-shadow:0 3px 0 #0e0f12,0 0 16px #ffb93d;color:#420}
+button.pb.estop,button.pb.estop:hover:not(:disabled){width:66px;height:66px;border:7px solid #f2c14e;background:radial-gradient(circle at 35% 30%,#ff7a6e,#a5130d)}
+button.pb.estop.lit{transform:translateY(3px);box-shadow:0 0 18px #ff3b30;animation:blink 1s infinite}
+button.sel{width:58px;height:58px;border-radius:50%;border:4px solid #b4b9c2;background:radial-gradient(circle at 35% 30%,#3a3f47,#15171b);box-shadow:0 3px 0 #0e0f12,0 5px 9px #000a;padding:0;position:relative}
+button.sel:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#3a3f47,#15171b);filter:brightness(1.15)}
+button.sel i{position:absolute;left:50%;top:50%;width:10px;height:40px;margin:-20px 0 0 -5px;border-radius:4px;background:linear-gradient(#f4f5f7 0 34%,#8b919c 34%);transform:rotate(-42deg);transition:transform .2s}
+button.sel.manu i{transform:rotate(42deg)}
+#desk .lamps{margin-top:12px}#desk .lamp{background:#17191e;border-color:#0c0d10;color:#c6cbd4}
 .lamps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .lamp{text-align:center;font-size:12px;padding:4px 2px;border-radius:6px;background:#141c30;border:1px solid var(--line)}
 .lamp i{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 3px;background:var(--ok);box-shadow:0 0 6px currentColor}
@@ -107,21 +132,19 @@ small.legal{color:#62708f}
     <div id="log"></div>
   </div>
   <aside id="side">
-    <section>
-      <h2>Poste de conduite</h2>
-      <div class="row">
-        <button id="bOpen" data-act="open"></button>
-        <button id="bEvac" data-act="evac">Évacuer la file</button>
+    <section id="desk">
+      <i class="screw" style="left:6px;top:6px"></i><i class="screw" style="right:6px;top:6px"></i><i class="screw" style="left:6px;bottom:6px"></i><i class="screw" style="right:6px;bottom:6px"></i>
+      <h2>Pupitre de commande</h2>
+      <div class="lcd" id="opNote"></div>
+      <div class="deskrow">
+        <div class="ctl"><button class="pb sq green" id="bOpen" data-act="open" title="Ouvrir ou fermer l'attraction au public">⏻</button><div class="plate">Attraction<br>ouverte</div></div>
+        <div class="ctl"><button class="pb sq amber" id="bEvac" data-act="evac" title="Évacuer la file d'attente">⇤</button><div class="plate">Évacuer<br>la file</div></div>
+        <div class="ctl"><button class="sel" id="bAuto" data-act="auto" title="Départs automatiques ou manuels"><i></i></button><div class="plate">Auto · Manuel</div></div>
       </div>
-      <div class="row">
-        <button id="bAuto" data-act="auto"></button>
-        <button id="bGate" data-act="gates"></button>
-        <button id="bGo" class="go" data-act="depart">🚦 Départ !</button>
-        <button id="bStop" class="stop" data-act="estop">⛔ Arrêt d'urgence</button>
-      </div>
-      <div class="row">
-        <button id="bLoop0" data-act="loop" data-arg="0"></button>
-        <button id="bLoop1" data-act="loop" data-arg="1"></button>
+      <div class="deskrow">
+        <div class="ctl"><button class="pb sq blue" id="bGate" data-act="gates" title="Ouvrir ou fermer les portillons du quai (mode manuel)">▮▮</button><div class="plate">Portillons</div></div>
+        <div class="ctl"><button class="pb green big" id="bGo" data-act="depart" title="Donner le départ">▶</button><div class="plate">Départ</div></div>
+        <div class="ctl"><button class="pb estop" id="bStop" data-act="estop" title="Arrêt d'urgence (appuyer de nouveau pour réarmer)"></button><div class="plate">Arrêt<br>d'urgence</div></div>
       </div>
       <div class="lamps">
         <div class="lamp" id="lGare"><i></i>Gare</div>
@@ -129,8 +152,9 @@ small.legal{color:#62708f}
         <div class="lamp" id="lCourse"><i></i>Parcours</div>
         <div class="lamp" id="lBrake"><i></i>Freins</div>
       </div>
-      <div class="note" id="opNote"></div>
+      <div class="deskrow" id="deskTrains"></div>
     </section>
+
     <section>
       <h2>Trains</h2>
       <div id="trains"></div>
@@ -172,12 +196,12 @@ small.legal{color:#62708f}
   <p>Vous êtes chef d'attraction des montagnes russes en bois de Zeus. Faites tourner les trains, gardez les visiteurs heureux et l'attraction en bon état.</p>
   <ul>
     <li><b>Ouvrez l'attraction</b> pour laisser entrer les visiteurs dans la file. Ils se rangent sur le quai, deux par travée, derrière les <b>portillons</b>.</li>
-    <li><b>Mode auto</b> : les portillons s'ouvrent dès que le train est vide et il part une fois plein. <b>Mode manuel</b> : ouvrez les portillons vous-même, puis cliquez sur « Départ ! » (ils se referment avant le départ).</li>
+    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, ouverture de l'attraction, envoi des trains au garage ou en gare. En auto, les portillons s'ouvrent dès que le train est vide et il part une fois plein. En manuel, ouvrez les portillons puis donnez le départ (ils se referment avant le départ).</li>
     <li><b>Trains</b> : sortez le second train du garage pour doubler le débit, renvoyez un train au garage pour le réviser.</li>
     <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, harnais). À 100 %, l'élément est hors service.</li>
     <li><b>Orage</b> : quand Zeus se fâche, suspendez les départs (mode manuel ou arrêt d'urgence). Chaque train envoyé sous l'orage coûte une amende.</li>
     <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le parc ferme à 18:00.</li>
-    <li><b>File modulable</b> : deux raccourcis (est et ouest) court-circuitent une boucle de la file. Cliquez sur une barrière de la file, ou utilisez les boutons : les barrières pivotent et les visiteurs suivent le chemin ouvert. Raccourci ouvert : file courte. Raccourci fermé : file longue, plus de capacité.</li>
+    <li><b>File modulable</b> : deux raccourcis (est et ouest) court-circuitent une boucle de la file. Cliquez sur une barrière de la file, sur la carte : les barrières pivotent et les visiteurs suivent le chemin ouvert. Raccourci ouvert : file courte. Raccourci fermé : file longue, plus de capacité.</li>
     <li><b>Vue aérienne</b> : glissez pour vous déplacer, molette pour zoomer jusqu'aux visiteurs, ou suivez un train avec les boutons en bas de la vue.</li>
   </ul>
   <p>Chaque passager rapporte 5 €. Les salaires coûtent 350 € par jour.</p>
