@@ -78,7 +78,7 @@ const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'cou
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,swT:0,brakeLock:false,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
+  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,swT:0,brakeLock:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
@@ -243,7 +243,7 @@ function moveAlong(k,dt){
   return k.i>=k.pts.length;
 }
 function joinQueue(){
-  if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.04,0,100);G.stats.turned++;return;}
+  if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.01,0,100);G.stats.turned++;return;}
   const pts=P3(Math.random()<.6?PROM_W:PROM_N,.7);pts.push([-29.2+rnd(-.5,.5),0,-9],[ENTRY0[0],0,ENTRY0[1]]);
   G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',gate:QLEN,d:QLEN,side:Math.random()<.5?-1:1,sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
@@ -254,7 +254,9 @@ function updateVisitors(dt){
   ENTRY_GATE.t=clamp(ENTRY_GATE.t+(G.open?-dt:dt)/.9,0,1);
   if(G.open){
     const hourF=.6+.8*Math.sin(Math.PI*clamp((G.time-600)/480,0,1)),wxF=w==='storm'?.25:w==='rain'?.6:1;
-    if(Math.random()<.42*hourF*wxF*(.5+G.sat/100)*Math.max(.1,1-Q.length*SP/QLEN)*dt) joinQueue();
+    // fréquentation réglable : au-delà de 100 %, les visiteurs viennent même si la file est déjà longue, jusqu'à la remplir
+    const rate=.42*G.crowd*hourF*wxF*(.5+G.sat/100)*Math.max(.1,1-Q.length*SP/QLEN/Math.max(1,G.crowd*G.crowd))*dt;
+    for(let n=Math.floor(rate)+(Math.random()<rate%1?1:0);n>0;n--)joinQueue();
   }
   const imp=w==='storm'?3:w==='rain'?1.5:1;
   for(let i=Q.length-1;i>=0;i--){
@@ -263,7 +265,7 @@ function updateVisitors(dt){
     if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière sous Zeus : seul passage vers la file
       if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v.x,v.z),v.ci,null,3);continue;}
       if(ENTRY_GATE.t>.02)continue;
-      if(!room(EDGES.in)){Q.splice(i,1);G.stats.turned++;G.sat=clamp(G.sat-.04,0,100);walker(leavePath(v.x,v.z),v.ci,null,3);continue;}
+      if(!room(EDGES.in))continue; // patiente devant la barrière le temps que la file avance
       v.mode='q';v.e='in';v.r=EDGES.in.len;EDGES.in.list.push(v);
     }
   }
@@ -463,6 +465,8 @@ function act(a,arg){
   ui();
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&!b.disabled)act(b.dataset.act,b.dataset.arg);});
+$('crowd').addEventListener('input',e=>{G.crowd=e.target.value/100;const c=+e.target.value;
+  $('crowdV').textContent=c+' % — '+(c===0?'parc vide':c<=50?'faible':c<=120?'normale':c<=200?'forte':'saturée');});
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='BUTTON'){e.preventDefault();act('speed',G.speed?0:1);}});
 $('trains').innerHTML=trains.map(t=>`<div class="card">
   <div class="name"><span class="dot" style="background:${t.col}"></span>${t.name}</div>

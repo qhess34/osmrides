@@ -66,6 +66,7 @@ button.sel:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#3a
 button.sel i{position:absolute;left:50%;top:50%;width:10px;height:40px;margin:-20px 0 0 -5px;border-radius:4px;background:linear-gradient(#f4f5f7 0 34%,#8b919c 34%);transform:rotate(-42deg);transition:transform .2s}
 button.sel.manu i{transform:rotate(42deg)}
 #desk .lamps{margin-top:12px}#desk .lamp{background:#17191e;border-color:#0c0d10;color:#c6cbd4}
+#crowd{flex:1;min-width:120px;accent-color:var(--gold)}#crowdV{color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
 .lamps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .lamp{text-align:center;font-size:12px;padding:4px 2px;border-radius:6px;background:#141c30;border:1px solid var(--line)}
 .lamp i{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 3px;background:var(--ok);box-shadow:0 0 6px currentColor}
@@ -161,6 +162,11 @@ small.legal{color:#62708f}
     </section>
 
     <section>
+      <h2>Fréquentation du parc</h2>
+      <div class="row"><input type="range" id="crowd" min="0" max="300" step="10" value="100" aria-label="Fréquentation du parc"><b id="crowdV">100 % — normale</b></div>
+      <div class="note">Règle l'afflux de visiteurs vers l'attraction. Au-delà de 200 %, la file se remplit jusqu'à saturation et les visiteurs en trop sont refoulés.</div>
+    </section>
+    <section>
       <h2>Trains</h2>
       <div id="trains"></div>
     </section>
@@ -206,6 +212,7 @@ small.legal{color:#62708f}
     <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, harnais). À 100 %, l'élément est hors service.</li>
     <li><b>Orage</b> : quand Zeus se fâche, suspendez les départs (mode manuel ou arrêt d'urgence). Chaque train envoyé sous l'orage coûte une amende.</li>
     <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le parc ferme à 18:00.</li>
+    <li><b>Fréquentation</b> : le curseur du panneau de droite règle l'afflux de visiteurs, de parc vide à saturé.</li>
     <li><b>File modulable</b> : deux raccourcis (est et ouest) court-circuitent une boucle de la file. À chaque fourche de la file, une barrière pivote pour diriger les visiteurs vers la boucle ou vers le raccourci : cliquez dessus sur la carte. Les visiteurs ne franchissent que les barrières ouvertes ; ceux déjà engagés terminent leur chemin. Le bouton « Toits » retire les toitures pour voir l'intérieur de la gare et du garage. Raccourci ouvert : file courte. Raccourci fermé : file longue, plus de capacité.</li>
     <li><b>Vue aérienne</b> : glissez pour vous déplacer, molette pour zoomer jusqu'aux visiteurs, ou suivez un train avec les boutons en bas de la vue.</li>
   </ul>
