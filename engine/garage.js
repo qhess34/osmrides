@@ -6,11 +6,26 @@
    abscisse t.g (avant du train, 0 = point de raccordement), t.mv = +1 avance, -1 recule, 0 arrêté.
    L'appareil est un chariot coulissant le long de (SW0.vx, SW0.vz) qui porte le tronçon du circuit et le tronçon de
    transfert : position P = décalage 0, voie k = décalage OFF[k] (le tronçon de transfert de la voie k est alors en place). */
-const YD=SITE.yard,ANCH=YD.at==='brake'?S_HOLD:S_ST,SW_A=ANCH+YD.a,SW_B=ANCH+YD.b,SW_D=YD.slide,GSTEP=TLEN+1.2,
-  MV=Object.assign({v:2.4,t:3},YD.move),DEVN=YD.devName||(YD.device==='table'?'Pont transbordeur':'Aiguillage'),
-  DEVL=YD.devLabel||(YD.device==='table'?'le pont transbordeur':'l\'aiguillage'); // nom au pupitre, nom dans une phrase
-const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;return {x:f.p.x,z:f.p.z,tx:f.T.x,tz:f.T.z,vx:-YD.side*f.R.x/l,vz:-YD.side*f.R.z/l};})(); // (vx,vz) : sens de coulissement du chariot (à l'opposé du garage)
-const LANES=YD.lanes.map((ln,j)=>{
+const YD=SITE.yard,TRAV=YD.device==='traverser',GSTEP=TLEN+1.2,MV=Object.assign({v:2.4,t:3,vc:.6},YD.move),
+  DEVN=YD.devName||(YD.device==='switch'?'Aiguillage':'Pont transbordeur'),
+  DEVL=YD.devLabel||(YD.device==='switch'?'l\'aiguillage':'le pont transbordeur'); // nom au pupitre, nom dans une phrase
+/* Pont transbordeur droit (device:'traverser') : chariot à deux rails droits parallèles, longs d'un train, posés sur la ligne
+   droite du point de raccordement. Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus),
+   écartés de YD.gap. Repère du chariot : origine au début du rail A au repos (abscisse R0), u le long du rail (corde R0→R1),
+   v = (SW0.vx, SW0.vz) sens où le rail A sort du circuit (à l'opposé du garage). Décalage c du chariot : rail A en v=c,
+   rail B en v=c-gap. Positions : P (c=0, rail A sur le circuit), G (c=gap, rail B sur le circuit), voie k (rail B face à la
+   voie k, d'axe v=-d_k). Le train posé sur le rail B est emporté par le chariot : st 'garage', lane -1, g = avant du train
+   en u. Voies droites, parallèles aux rails, de u=U_LANE à u=end ; le train y entre en marche avant et en sort en arrière. */
+const R0=TRAV?S_HOLD-TLEN-(YD.pre!=null?YD.pre:.6):0,R1=TRAV?S_HOLD+(YD.post!=null?YD.post:.6):0,G_B=S_HOLD-R0,
+  GAP=YD.gap||3.2,U_LANE=R1-R0+(YD.laneGap!=null?YD.laneGap:.8),S_PRE=R0-.4; // S_PRE : arrêt avant le chariot quand aucun rail n'est en ligne
+const ANCH=YD.at==='brake'?S_HOLD:S_ST,SW_A=TRAV?R0:ANCH+YD.a,SW_B=TRAV?R1:ANCH+YD.b,SW_D=YD.slide||0;
+const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=f.T.x,tz=f.T.z;
+  if(TRAV){const b=frameAt(SW_B,mkF()).p,d=Math.hypot(b.x-f.p.x,b.z-f.p.z);tx=(b.x-f.p.x)/d;tz=(b.z-f.p.z)/d;} // rail droit : corde du circuit
+  return {x:f.p.x,z:f.p.z,tx,tz,vx:-YD.side*f.R.x/l,vz:-YD.side*f.R.z/l};})(); // (vx,vz) : sens de coulissement du chariot (à l'opposé du garage)
+const LANES=TRAV?YD.lanes.map((ln,j)=>{
+  const end=U_LANE+(ln.len||TLEN+1.4),path=[];for(let u=0;u<=end+.01;u+=.5)path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:u});
+  return {name:ln.name||'Voie '+(j+1),path,d:ln.d,dev:U_LANE,end,off:GAP-ln.d,cap:ln.cap||Math.max(1,Math.floor((end-U_LANE-TLEN)/GSTEP)+1)};
+}):YD.lanes.map((ln,j)=>{
   const P0=[SW0.x,SW0.z],T0=[SW0.tx,SW0.tz],P=ln.pts,P1=P[0],k=ln.k||YD.k||3.6,path=[],raw=[];
   let md=[P[1][0]-P1[0],P[1][1]-P1[1]];const ml=Math.hypot(md[0],md[1]);md=[md[0]/ml,md[1]/ml];
   const c1=[P0[0]+T0[0]*k,P0[1]+T0[1]*k],c2=[P1[0]-md[0]*k,P1[1]-md[1]*k];
@@ -20,19 +35,29 @@ const LANES=YD.lanes.map((ln,j)=>{
   const dev=YD.a+link,end=acc+YD.a; // abscisses g : sortie de l'appareil (début de la voie), butée
   return {name:ln.name||'Voie '+(j+1),path,link,dev,end,off:ln.off!=null?ln.off:SW_D*(j+1),cap:ln.cap||Math.max(1,Math.floor((end-dev-TLEN)/GSTEP)+1)};
 });
-const OFF=[0].concat(LANES.map(l=>l.off)),CMAX=Math.max(...OFF.map(Math.abs));
+const PG=TRAV?LANES.length+1:-1; // position G du pont droit : rail B en ligne avec le circuit
+const OFF=[0].concat(LANES.map(l=>l.off),TRAV?[GAP]:[]),CMAX=Math.max(...OFF.map(Math.abs));
+const POS_ORDER=TRAV?[0,PG].concat(LANES.map((_,j)=>j+1)):OFF.map((_,p)=>p),posId=p=>p===PG?'G':p||'P';
 function gFrame(j,u,o){
   const GP=LANES[j].path;u=clamp(u,0,GP[GP.length-1].d);let i=1;while(i<GP.length-1&&GP[i].d<u)i++;
   const a=GP[i-1],b=GP[i],k=(u-a.d)/((b.d-a.d)||1),l=Math.hypot(b.x-a.x,b.z-a.z)||1;
   o.p.set(lerp(a.x,b.x,k),ST_Y,lerp(a.z,b.z,k));o.T.set((b.x-a.x)/l,0,(b.z-a.z)/l);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
 }
-// État de l'appareil : G.dev={pos, to, k} (position quittée, position visée, avancement 0…1)
+// État de l'appareil : G.dev={pos, to, k, d} (position quittée, position visée, avancement 0…1, durée du déplacement)
 const devMoving=()=>G.dev.pos!==G.dev.to, devOff=()=>devMoving()||G.dev.pos!==0, devOn=j=>!devMoving()&&G.dev.pos===j+1;
 const devC=()=>lerp(OFF[G.dev.pos],OFF[G.dev.to],G.dev.k), devShown=()=>G.dev.to||G.dev.pos||1;
-const posName=p=>p?'voie '+p+' ('+LANES[p-1].name+')':'P (circuit)';
-const nearDev=o=>o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
+const inLine=()=>!devMoving()&&(G.dev.pos===0||G.dev.pos===PG); // pont droit : un rail (A ou B) raccorde le circuit
+const posName=p=>p===PG?'G (rail de garage sur le circuit)':p?'voie '+p+' ('+LANES[p-1].name+')':'P (circuit)';
+const onCar=o=>TRAV&&o.st==='garage'&&o.g-TLEN<U_LANE-.01; // train (en partie) sur le chariot du pont droit
+function trFrame(t,k,o){ // pont droit : voiture k d'un train sur le chariot ou sur une voie
+  const u=t.g-(k+.5)*CAR,v=t.lane>=0&&u>=U_LANE-.3?-LANES[t.lane].d:devC()-GAP;
+  o.p.set(SW0.x+SW0.tx*u+SW0.vx*v,ST_Y,SW0.z+SW0.tz*u+SW0.vz*v);o.T.set(SW0.tx,0,SW0.tz);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
+}
+const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
-const devLock=()=>trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>ANCH+.2&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering))));
+const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-TLEN<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
+const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(atAnchor(o)&&G.dev.pos===PG&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
+  :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>ANCH+.2&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering))));
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 const slotPos=i=>{const b=BAYS[Math.floor(i/CSEATS)],d=3.45+(i%CSEATS)*.8;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // une place d'attente par siège, en file derrière le portillon

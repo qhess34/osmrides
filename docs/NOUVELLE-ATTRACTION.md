@@ -23,7 +23,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 | Départ | Portillons fermés → deux opérateurs vérifient les lapbars → validation → départ. By-pass possible, avec risque d'amende. |
 | File | Chemins réels OSM, tronçons et fourches avec barrières pivotantes cliquables sur la carte. Les visiteurs ne quittent jamais les chemins et ne franchissent que les barrières ouvertes (sauf évacuation). |
 | Commande | **Par zones, jamais par train** : gare, lift, zones de freinage, chariot/aiguillage, voies de garage, chacune avec ses freins et moteurs (`docs/manoeuvres.md`). |
-| Garage | Toujours via `SITE.yard` (`at` gare ou frein final, `device` `'switch'` ou `'table'`, géométrie `a`/`b`/`slide`/`side`/`len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}`) et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). Trains au garage au départ : tous sauf le premier, sur `SITE.trains[i].lane` ou la première voie libre. `SITE.maxRun` : nombre maximal de trains sur le circuit (défaut : tous) ; la sortie d'un train de plus est refusée. |
+| Garage | Toujours via `SITE.yard` (`at` gare ou frein final, `device` `'switch'`, `'table'` (transfert en S) ou `'traverser'` (pont droit qui emporte le train : `side`, `gap`, `pre`, `post`, `laneGap`, `lanes:[{name, d, len, cap}]`), géométrie `a`/`b`/`slide`/`side`/`len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t, vc}`) et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). Trains au garage au départ : tous sauf le premier, sur `SITE.trains[i].lane` ou la première voie libre. `SITE.maxRun` : nombre maximal de trains sur le circuit (défaut : tous) ; la sortie d'un train de plus est refusée. |
 | Journée | Ouverture, fréquentation réglable, météo (pluie, orage = départs interdits), usure, pannes, maintenance, bilan de fin de journée. |
 | Textes | Français, vocabulaire du métier : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur. Messages du journal courts, factuels, avec la raison d'un refus. |
 
@@ -76,6 +76,7 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-14 | T8 : appareil générique `device: 'traverser'` (pont transbordeur droit, deux rails parallèles, le chariot emporte le train ; position G `#yG` ; arrêt avant le pont quand aucun rail n'est en ligne ; durée de déplacement selon la course, `move.vc`) ; Trace du Hourra migrée, ancien transfert en S retiré pour elle ; scénario `tools/check.js` mis à jour. |
 | 2026-11-14 | Commande par zones (freins, moteurs, lift, chariot) au lieu de commandes par train. |
 | 2026-11-14 | T4 : Trace du Hourra. Freins de bloc commandables un par un au pupitre (`#bBk<n>`, `G.blkLock`), patins dessinés pour chaque frein de bloc, message au journal quand un train est arrêté par un frein fermé (bloc ou final) ; `SITE.maxRun` ; garage `at: 'brake'` + `device: 'table'` à 6 voies vérifié (scénario dans `tools/check.js`). |
 | 2026-11-14 | T3 : garage générique `SITE.yard` (aiguillage ou pont transbordeur, N voies), boutons `#yP/#yk`, `#tG/#tF/#tB/#tX` ; `car.seats` dans le moteur. |

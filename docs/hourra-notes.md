@@ -7,13 +7,12 @@
 - Cantonnement : gare, lift, puis 4 cantons de parcours séparés par 3 freins de bloc `blk1` (s ≈ 288), `blk2` (≈ 474), `blk3` (≈ 633), frein final `brk` (≈ 713). Positions des freins de bloc **estimées** (choisies sur des passages peu pentus, non relevées). Six cantons pour cinq trains : vérifié sans blocage avec 5 trains en piste.
 - Chaque frein de bloc se ferme au pupitre (`#bBk1…3`), le frein final avec `#bHold`.
 - 6 trains, 5 au plus en piste (`maxRun: 5`, la sortie d'un 6e est refusée) ; 7 bobs de 2 places l'une derrière l'autre ; un bob peut partir avec un seul passager.
-- Garage `at: 'brake'`, `device: 'table'` : arrêt au frein final à s ≈ 736 (`holdBack: 35`, début de la ligne droite), chariot juste après, 6 voies d'un train, parallèles au frein final, dans le bâtiment OSM 148160581 (écartement 3 m).
+- Garage (T8) : voir « Pont transbordeur droit — fait (T8) » ci-dessous ; l'ancien chariot à tronçons en S (T4) est retiré.
 - File : way 1032354546 depuis l'allée (barrière d'entrée cliquable), fourche en (11.5,-9) : raccourci vers l'entrée principale (4.8,-1.7) ou boucle nord par les ways 1032685208/1032685209 jusqu'à la seconde entrée (2.9,-3.3). Sortie : way 1032354545 puis allées vers le sud et l'est.
 
 ## Toujours estimé (à faire valider par le propriétaire)
 
-- Fonctionnement réel du pont : le moteur ne porte pas le train sur le chariot ; il met en place un tronçon de transfert en S vers la voie choisie (voir `docs/manoeuvres.md`). Si le vrai chariot emporte le train latéralement, il faudra une capacité moteur.
-- Emplacement du chariot sur le frein final, sens et écartement des voies dans le bâtiment, course du chariot (2 m par voie), vitesses de manœuvre (1,8 m/s, 7 s par déplacement du pont).
+- Pont droit (T8) : côté des voies (ouest), écartement 3,2 m, première voie à 8 m de l'axe du circuit, longueur des voies (un train + 1,4 m), emplacement du chariot (s ≈ 736…748), vitesse du chariot (0,6 m/s, 4 s au moins), vitesse de manœuvre (1,8 m/s), entrée en marche avant / sortie en arrière.
 - Longueur (1,55 m) et largeur des bobs, couleurs des trains (teintes sourdes supposées), poste de conduite, freins de bloc, profil en hauteur.
 - Raccords de la boucle de file vers la seconde entrée (quelques points ajoutés entre (0.7,-7.6) et (2.9,-3.3)) et tronçon (11.5,-9) → (5.6,-9.4), absents d'OSM.
 
@@ -24,7 +23,15 @@
 - Rail B = rail de garage : il **prend la place du rail A sur le parcours** pour aller chercher chaque train qui s'y est arrêté, puis le chariot le translate devant la voie de garage voulue (le train est porté par le chariot).
 - **Confirmé** : le rail mobile du garage est droit et se déplace **avec le train dessus**.
 - Voies de garage droites et parallèles. À confirmer sur plan : sens de sortie des trains, côté des voies, position exacte du chariot.
-- La version T4 (tronçons de transfert en S, train jamais porté) est à remplacer (tâche T8).
+- La version T4 (tronçons de transfert en S, train jamais porté) est remplacée (T8, ci-dessous).
+
+## Pont transbordeur droit — fait (T8, 2026-11-14)
+
+- `yard: {device: 'traverser', side: 1, gap: 3.2, …}` (moteur générique, `docs/manoeuvres.md`). Chariot sur la dernière ligne droite du frein final : rails A et B droits, parallèles, de 12 m (un train de 10,85 m + 0,6 m de chaque côté), s ≈ 736…748 ; `holdBack: 24` pour que le train arrêté y tienne entier. Ligne droite vérifiée : écart au rail droit < 1 cm.
+- Positions : `P` (rail A en ligne), `G` (chariot décalé de 3,2 m vers l'est-nord-est, perpendiculaire au circuit qui file au sud-sud-est : rail B en ligne), `1…6` (rail B face à la voie k, chariot vers l'ouest).
+- Voies 1…6 droites, parallèles aux rails, côte à côte à l'ouest du circuit (axes à 8 ; 11,2 ; … ; 24 m), dans le bâtiment OSM 148160581 dont le grand côté est parallèle au frein final ; elles commencent 0,8 m après le bout du rail B. Aucun autre tronçon du circuit dans la course du chariot (le circuit passe à l'est).
+- Séquence : bouton G du train → il s'arrête à vide avant le pont ; pont sur G → il roule sur le rail B et s'y arrête ; pont sur la voie k → le chariot l'emporte ; AV → il entre en marche avant dans la voie. Sortie : pont sur la voie, AR → il recule sur le rail B ; pont sur G (dernier canton libre, au plus 5 trains en piste) → il redevient un train du circuit et entre en gare ; pont sur P.
+- Captures : `docs/plans/hourra-garage-pont-droit.jpg`.
 
 ## Garage — réponse du propriétaire (2026-11-14)
 

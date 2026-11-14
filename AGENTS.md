@@ -47,7 +47,7 @@ Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier 
 - Unités : mètres, secondes. `x` vers l'est, `z` vers le sud. `s` = abscisse le long de la voie (0 = début de gare).
 - Voie : `OSM.cps` = points `[x, hauteur, z, dévers, repère]`. Repères obligatoires : `st0`, `st1`, `lift0`, `lift1`, `brk` ; facultatifs : `blk1`, `blk2`… (freins de bloc).
 - Zones : gare, avant-lift, lift, parcours, frein final. Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre.
-- `SITE` (voir `sites/zeus.js`, la référence) : `kind` (`wood` | `bob`), `car` (`len`, `n`, `seats` = places par wagon, défaut 2, `inline`, `w`), `trains` (`lane` facultatif : voie de garage au départ), `loadSide`, `phys`, `yard` (garage : `at: 'station' | 'brake'`, `device: 'switch' | 'table'`, `a`, `b`, `slide`, `side`, `len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}` — voir `docs/manoeuvres.md`), `helpGarage`, `queue.parts` (tronçons et fourches, de l'entrée vers la gare), `approach`, `exit`, `board`, `plat`, `booth`, `fade`, `view`, `cams`, `labels`, `jobsites`, et `draw.*` pour les dessins propres au site.
+- `SITE` (voir `sites/zeus.js`, la référence) : `kind` (`wood` | `bob`), `car` (`len`, `n`, `seats` = places par wagon, défaut 2, `inline`, `w`), `trains` (`lane` facultatif : voie de garage au départ), `loadSide`, `phys`, `yard` (garage : `at: 'station' | 'brake'`, `device: 'switch' | 'table' | 'traverser'` ; `switch`/`table` : `a`, `b`, `slide`, `side`, `len`, `lanes:[{name, pts, cap, off}]` ; `traverser` (pont droit qui emporte le train) : `side` (côté du garage, 1 = droite du sens de marche), `gap` (écart des rails A/B), `pre`/`post` (rail au-delà du train arrêté), `laneGap`, `lanes:[{name, d, len, cap}]` (d = distance de l'axe du circuit) ; `move:{v, t, vc}` — voir `docs/manoeuvres.md`), `helpGarage`, `queue.parts` (tronçons et fourches, de l'entrée vers la gare), `approach`, `exit`, `board`, `plat`, `booth`, `fade`, `view`, `cams`, `labels`, `jobsites`, et `draw.*` pour les dessins propres au site.
 - État global `G`, trains `trains[]`, actions joueur `act(nom, arg)`, pas de simulation `step(dt)`, rendu `render(dt)`.
 
 ## Ajouter une attraction
@@ -65,7 +65,7 @@ Ouvrir `file:///…/jeu.html?site=<site>`, fermer l'aide (`[data-act=closeHelp]`
 
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - journée complète : boucler jusqu'à `G.dayDone`, en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
-- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold` (frein final), `#bBk1`…`#bBkN` (freins de bloc), `#bByp` ; appareil de voie `#yP`, `#y1`…`#yN` ; par train `#tG0` retenir pour le garage, `#tF0` Avancer, `#tB0` Reculer, `#tX0` Arrêter…) ;
+- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold` (frein final), `#bBk1`…`#bBkN` (freins de bloc), `#bByp` ; appareil de voie `#yP`, `#y1`…`#yN`, `#yG` (pont droit : rail de garage en ligne) ; par train `#tG0` retenir pour le garage, `#tF0` Avancer, `#tB0` Reculer, `#tX0` Arrêter…) ;
 - test rapide : `node tools/check.js <site>` (manœuvre de garage scriptée aux boutons + journée complète, `--build` pour le fichier unique ; sortie courte PASS/FAIL, capture `/tmp/t1/<site>.png`) ;
 - relever `pageerror` ; faire des captures (`cam.g={x,z,s}` puis `render(.05)` plusieurs fois) et **les regarder**.
 

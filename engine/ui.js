@@ -2,7 +2,7 @@
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
-  if(t.st==='garage'){const ln=LANES[t.lane],w=t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>YD.a?'Sur '+DEVL:'Tronçon de liaison';
+  if(t.st==='garage'){const ln=LANES[t.lane],w=t.lane<0||onCar(t)?'Sur le chariot de '+DEVL:t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>YD.a?'Sur '+DEVL:'Tronçon de liaison';
     return w+(t.mv>0?' — avance':t.mv<0?' — recule':G.job&&G.job.t===t?' — en révision':'')+(t.hs?' — hors service':'');}
   if(t.st==='station'){
     if(t.phase==='unload')return 'Débarquement';
@@ -42,7 +42,7 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':devOff()?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(YD.at==='brake'?'entrée en gare bloquée.':'départs bloqués.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':devOff()&&!(TRAV&&inLine())?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(TRAV?'rail du circuit hors ligne, trains retenus avant le pont.':YD.at==='brake'?'entrée en gare bloquée.':'départs bloqués.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq&&t.st==='run'?' · garage demandé':'');
     bar('tW'+t.i,t.wear);
@@ -55,8 +55,8 @@ function ui(){
   }
   $('bHold').classList.toggle('lit',G.brakeLock);
   BLK.forEach((_,i)=>{$('bBk'+(i+1)).classList.toggle('lit',G.blkLock[i]);const h=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-BLK[i])<.5);$('lBk'+(i+1)).className='lamp'+(h?' occ':' off');}); // voyant orange : un train est arrêté sur ce frein
-  OFF.forEach((_,p)=>{const b=$('y'+(p||'P'));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
-  {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+(G.dev.to||'P'):'En place sur '+(G.dev.pos||'P')+(o?' — verrouillé':'');}
+  OFF.forEach((_,p)=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
+  {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+posId(G.dev.to):'En place sur '+posId(G.dev.pos)+(o?' — verrouillé':'');}
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
     $(id).disabled=!!G.job||!JOBS[k].ok();

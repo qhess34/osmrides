@@ -33,7 +33,28 @@ yard: {
 Le tronçon de transfert de chaque voie est calculé par le moteur : courbe en S du circuit (raccordement + `a`) jusqu'à `pts[0]`.
 L'appareil est un chariot qui coulisse à l'opposé du garage et porte le tronçon du circuit et le tronçon de transfert : en position `k`, le transfert de la voie `k` est en place.
 Le train ne reste jamais sur le chariot pendant qu'il bouge : il franchit l'appareil une fois celui-ci en place (`table` : un seul tronçon de transfert dessiné, celui de la voie visée).
-Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Trace du Hourra = `device: 'table'` (pont **droit** à deux rails parallèles, voir `docs/hourra-notes.md`), 6 voies (un train par voie).
+Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Trace du Hourra = `device: 'traverser'` (ci-dessous), 6 voies (un train par voie).
+
+### Pont transbordeur droit qui emporte le train (`device: 'traverser'`)
+
+```
+yard: {
+  at: 'brake', device: 'traverser',
+  side: 1,                 // côté du garage (1 = droite du sens de marche) ; le rail A sort du circuit du côté opposé
+  gap: 3.2,                // écart entre les axes des rails A (circuit) et B (garage) sur le chariot
+  pre: .6, post: .6,       // rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
+  laneGap: .8,             // jeu entre le bout du rail B et le début des voies
+  lanes: [ {name, d, len, cap}, … ],  // voies droites parallèles aux rails ; d = distance de l'axe du circuit à l'axe de la voie
+  move: { v: 1.8, vc: .6, t: 4 }      // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
+}
+```
+
+- Le chariot porte deux rails **droits et parallèles**, chacun long d'un train, posés sur une ligne droite du circuit (le train arrêté au point de raccordement y tient entier). Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus).
+- Positions : `P` (rail A en ligne), `G` (rail B en ligne, bouton `#yG`), `1…n` (rail B face à la voie k). La durée d'un déplacement dépend de la course.
+- Le train arrêté sur le rail B est **emporté** par le chariot (il suit le décalage du chariot à l'écran et dans la simulation). Il entre dans la voie en marche avant (`AV`) et en ressort en arrière (`AR`) jusque sur le rail B.
+- Aucun rail en ligne (chariot en mouvement ou face à une voie) : les trains du circuit s'arrêtent avant le chariot. Un train retenu pour le garage (`G`) s'arrête aussi avant le chariot tant qu'il n'est pas sur `G`.
+- Verrouillages propres : le chariot ne bouge pas si un train y roule, n'y est qu'en partie ou est en manœuvre ; il n'emporte qu'un train arrêté, vide, entièrement sur le rail B ; il ne porte pas un train vers une voie occupée ; il ne remet un train sur le circuit (`G`) que si le dernier canton est libre et que `maxRun` le permet. Tant qu'un train est sur le chariot, le dernier canton est tenu pour occupé.
+- Chaque voie est un canton ; le rail B en est un aussi.
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
 
 ## Principe de commande (décision du propriétaire, 2026-11-14)
