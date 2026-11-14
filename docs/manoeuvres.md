@@ -45,9 +45,16 @@ yard: {
   pre: .6, post: .6,       // rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
   laneGap: .8,             // jeu entre le bout du rail B et le début des voies
   lanes: [ {name, d, len, cap}, … ],  // voies droites parallèles aux rails ; d = distance de l'axe du circuit à l'axe de la voie
-  move: { v: 1.8, vc: .6, t: 4 }      // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
+  move: { v: 1.8, vc: .6, t: 4 },     // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
+  retract: { d: 3.2, name: 'Rail A', rest: 1 }  // facultatif : rail A escamotable, indépendant du chariot (ci-dessous)
 }
 ```
+
+**Rail A escamotable (`retract`, Trace du Hourra, prioritaire sur la description à deux rails ci-dessous).** Deux éléments mobiles indépendants :
+- rail A (rail du circuit, zone de freinage) : deux positions seulement, sur le circuit (`#yA0`) ou retiré de `d` m à l'opposé du garage (`#yA1`) ; il ne porte jamais de train vers les voies ;
+- chariot du rail B (rail de garage, porte le train) : `G` (`#yG`, rail B en ligne) ou face à la voie k (`#yk`) ; pas de position `P` (pas de `#yP`) ; au départ face à la voie `rest`.
+- Verrouillages : le rail B ne vient en ligne que si le rail A est retiré (et immobile) ; le rail A ne revient sur le circuit que si le chariot n'est ni en ligne ni en mouvement ; le rail A ne bouge pas si un train y est, y roule ou s'en approche ; le chariot garde les verrouillages ci-dessous (train en partie dessus, qui roule, passagers) ; les trains du circuit ne passent que si le rail A est sur le circuit ou le rail B en ligne (règle « à vide » inchangée) ; l'arrêt d'urgence fige les deux.
+- Séquence pour garer : G du train (il s'arrête à vide avant le pont), rail A retiré, chariot sur G (le train s'arrête sur le rail B), chariot sur la voie k (il emporte le train), AV, chariot ramené au repos, rail A sur le circuit. Sortir : chariot sur la voie, AR, rail A retiré, chariot sur G (dernier canton libre), le train entre en gare, chariot sur une voie, rail A sur le circuit.
 
 - Le chariot porte deux rails **droits et parallèles**, chacun long d'un train, posés sur une ligne droite du circuit (le train arrêté au point de raccordement y tient entier). Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus).
 - Positions : `P` (rail A en ligne), `G` (rail B en ligne, bouton `#yG`), `1…n` (rail B face à la voie k). La durée d'un déplacement dépend de la course.

@@ -93,7 +93,7 @@ function strip(sm){
   const finsR=[[S_BRK+3,TRAV?R0:S_HOLD]].concat(BLK.map(b=>[b-9,b])); // frein final et freins de bloc (≈ 9 m de patins avant chaque point d'arrêt, estimé)
   for(const [r0,r1] of finsR)for(let i=Math.round(r0/DS);i<Math.round(r1/DS);i+=3){const f=TR[i],l=Math.hypot(f.R.x,f.R.z)||1,nx=f.R.x/l,nz=f.R.z/l;finsP.moveTo(f.p.x-nx*.28,f.p.z-nz*.28);finsP.lineTo(f.p.x+nx*.28,f.p.z+nz*.28);}
 })();
-const swz=o=>o.sw===1?devC():o.rb?devC()-GAP:o.lk?devC()-OFF[o.lk]:0; // déplacement des tronçons portés par le chariot (circuit, transfert vers la voie lk), le long de (SW0.vx, SW0.vz)
+const swz=o=>o.sw===1?raC():o.rb?devC()-GAP:o.lk?devC()-OFF[o.lk]:0; // déplacement des tronçons portés par le chariot (circuit, transfert vers la voie lk), le long de (SW0.vx, SW0.vz)
 const devHide=o=>o.lk&&YD.device==='table'&&o.lk!==devShown(); // pont transbordeur : un seul tronçon de transfert, celui de la voie visée
 
 // Décor réel : bâtiments, allées, plans d'eau, bois
@@ -193,16 +193,17 @@ function drawCar(t,k,shadow){
 }
 const API={lw,person,TEX}; // outils passés aux fonctions de dessin propres à chaque attraction (SITE.draw)
 function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
-  const Lr=R1-R0,dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=GAP+1.5,vB=-dM-1.6,c=devC();
+  const Lr=R1-R0,dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,c=devC();
   ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
   ctx.fillStyle='#a9aaa6';ctx.fillRect(U_LANE-.4,vB,LANES[0].end-U_LANE+1.4,-dm+1.6-vB);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.35;ctx.fillRect(U_LANE-.4,vB,LANES[0].end-U_LANE+1.4,-dm+1.6-vB);ctx.globalAlpha=1; // dalle du garage
   ctx.fillStyle='#5d6062';ctx.fillRect(-.7,vB,Lr+1.4,vA-vB);ctx.fillStyle='rgba(30,32,36,.35)';ctx.fillRect(-.7,vB,Lr+1.4,.35);ctx.fillRect(-.7,vA-.35,Lr+1.4,.35); // fosse
   ctx.strokeStyle='#3a3c40';lw(.16,.7);ctx.beginPath();for(const u of [.6,Lr/2,Lr-.6]){ctx.moveTo(u,vB+.2);ctx.lineTo(u,vA-.2);}ctx.stroke(); // chemins de roulement
   ctx.strokeStyle='#2c2e33';lw(.3,.8);ctx.beginPath();for(const l of LANES){ctx.moveTo(l.end+.15,-l.d-.7);ctx.lineTo(l.end+.15,-l.d+.7);}ctx.stroke(); // heurtoirs
-  ctx.fillStyle='rgba(20,22,26,.35)';ctx.fillRect(-.3+.35,c-GAP-1.25+.35,Lr+.6,GAP+2.5); // ombre portée du tablier
-  ctx.fillStyle='#5c6168';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#d08a3a':'#b89a4a';lw(.12,.6);
-  ctx.beginPath();ctx.rect(-.3,c-GAP-1.25,Lr+.6,GAP+2.5);ctx.fill();ctx.stroke(); // tablier
-  ctx.strokeStyle='rgba(30,32,36,.55)';lw(.08,.4);ctx.beginPath();for(let u=1;u<Lr;u+=1.5){ctx.moveTo(u,c-GAP-1.2);ctx.lineTo(u,c+1.2);}ctx.stroke(); // traverses du tablier
+  const deck=(v0,w,mv)=>{ctx.fillStyle='rgba(20,22,26,.35)';ctx.fillRect(-.3+.35,v0+.35,Lr+.6,w); // ombre portée, tablier, traverses
+    ctx.fillStyle='#5c6168';ctx.strokeStyle=mv&&Math.sin(clock*10)>0?'#d08a3a':'#b89a4a';lw(.12,.6);ctx.beginPath();ctx.rect(-.3,v0,Lr+.6,w);ctx.fill();ctx.stroke();
+    ctx.strokeStyle='rgba(30,32,36,.55)';lw(.08,.4);ctx.beginPath();for(let u=1;u<Lr;u+=1.5){ctx.moveTo(u,v0+.05);ctx.lineTo(u,v0+w-.05);}ctx.stroke();};
+  if(RA){deck(c-GAP-1.25,2.5,devMoving());deck(raC()-1.25,2.5,raMoving());} // rail A escamotable sur son propre tablier, chariot du rail B
+  else deck(c-GAP-1.25,GAP+2.5,devMoving());
   ctx.restore();
 }
 function drawTable(){ // pont transbordeur, dessiné dans son repère : u le long de la voie, v dans le sens du coulissement
@@ -325,7 +326,7 @@ function drawWorld(dt){
   ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(chainP);ctx.setLineDash([]);
   ctx.strokeStyle=G.brakeFault&&Math.sin(clock*9)>0?'#ff5a4d':'#c2372f';lw(.3,.9);ctx.stroke(finsP);
   if(TRAV){ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.beginPath();const c=devC(); // patins des rails A et B du chariot (frein final, freins et pneus du rail de garage)
-    for(const v of [c,c-GAP])for(let u=.5;u<R1-R0;u+=1.5){ctx.moveTo(u,v-.28);ctx.lineTo(u,v+.28);}ctx.stroke();ctx.restore();}
+    for(const v of [raC(),c-GAP])for(let u=.5;u<R1-R0;u+=1.5){ctx.moveTo(u,v-.28);ctx.lineTo(u,v+.28);}ctx.stroke();ctx.restore();}
   // voies des attractions voisines
   if(otherP.length){ctx.strokeStyle='#3d4148';ctx.lineWidth=1.5;for(const p of otherP)ctx.stroke(p);ctx.strokeStyle='#9299a3';ctx.lineWidth=.8;for(const p of otherP)ctx.stroke(p);}
   // arbres

@@ -13,7 +13,7 @@
 ## Toujours estimé (à faire valider par le propriétaire)
 
 - Pont droit (T8) : côté des voies (ouest), écartement 3,2 m, première voie à 8 m de l'axe du circuit, longueur des voies (un train + 1,4 m), emplacement du chariot (s ≈ 736…748), vitesse du chariot (0,6 m/s, 4 s au moins), vitesse de manœuvre (1,8 m/s), entrée en marche avant / sortie en arrière.
-- Longueur (1,55 m) et largeur des bobs, couleurs des trains (teintes sourdes supposées), poste de conduite, freins de bloc, profil en hauteur.
+- Longueur (1,55 m) et largeur des bobs, couleurs des trains (teintes sourdes supposées), emplacement exact du poste de conduite (sud-est de la gare), freins de bloc, profil en hauteur.
 - Raccords de la boucle de file vers la seconde entrée (quelques points ajoutés entre (0.7,-7.6) et (2.9,-3.3)) et tronçon (11.5,-9) → (5.6,-9.4), absents d'OSM.
 
 ## Pont transbordeur — précision du propriétaire (2026-11-14, prioritaire sur ce qui suit)
@@ -25,7 +25,15 @@
 - Voies de garage droites et parallèles. À confirmer sur plan : sens de sortie des trains, côté des voies, position exacte du chariot.
 - La version T4 (tronçons de transfert en S, train jamais porté) est remplacée (T8, ci-dessous).
 
-## Pont transbordeur droit — fait (T8, 2026-11-14)
+## Rail A escamotable et poste de conduite — correction du propriétaire (2026-11-14, prioritaire)
+
+- Le rail A (rail du circuit, zone de freinage) n'a que **deux positions** : sur le circuit ou retiré vers l'est. Il **n'est pas** porté avec le rail B vers les voies.
+- Modèle : `yard.retract:{d:3.2, name:'Rail A', rest:1}` (moteur générique, `docs/manoeuvres.md`). Rail A : `#yA0` (C, circuit) / `#yA1` (E, retiré à 3,2 m à l'est — course estimée). Chariot du rail B : `#yG` (en ligne) et `#y1…#y6` ; au repos face à la voie 1 (estimé) ; `#yP` supprimé.
+- Séquence : G du train → rail A sur E → chariot sur G (le train s'arrête sur le rail B) → chariot sur la voie k (il emporte le train) → AV → chariot ramené sur la voie 1 → rail A sur C. Refus testés : chariot sur G avec le rail A sur le circuit, rail A sur C avec le rail B en ligne ou le chariot en mouvement.
+- Poste de conduite : à l'extrémité **sud-est** de la gare (propriétaire), côté sud-ouest de la voie, là où elle sort du bâtiment OSM 148160006, vitre vers la voie, à 2,8 m de l'axe : `booth:[2.8, 8.0, -2.427]` — emplacement exact **estimé**.
+- Captures : `docs/plans/hourra-garage-pont-droit.jpg` (repos, rail A retiré, chariot en ligne avec le train, chariot face à la voie, rail A revenu, poste de conduite).
+
+## Pont transbordeur droit — fait (T8, 2026-11-14 ; positions P/G remplacées par la correction ci-dessus)
 
 - `yard: {device: 'traverser', side: 1, gap: 3.2, …}` (moteur générique, `docs/manoeuvres.md`). Chariot sur la dernière ligne droite du frein final : rails A et B droits, parallèles, de 12 m (un train de 10,85 m + 0,6 m de chaque côté), s ≈ 736…748 ; `holdBack: 24` pour que le train arrêté y tienne entier. Ligne droite vérifiée : écart au rail droit < 1 cm.
 - Positions : `P` (rail A en ligne), `G` (chariot décalé de 3,2 m vers l'est-nord-est, perpendiculaire au circuit qui file au sud-sud-est : rail B en ligne), `1…6` (rail B face à la voie k, chariot vers l'ouest).

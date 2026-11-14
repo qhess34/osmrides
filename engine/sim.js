@@ -44,6 +44,7 @@ function yardPos(p){
   if(p===G.dev.pos)return refuse(DEVN+' déjà sur '+posName(p)+'.');
   const o=devLock();if(o)return refuse(DEVN+' verrouillé : '+o.name+(TRAV&&o.st==='run'&&atAnchor(o)?' a des passagers sur le rail de garage.':TRAV?' est sur le chariot sans y être arrêté, ou y roule.':' est sur l\'appareil ou à moins d\'une longueur de train.'));
   if(TRAV){ // pont droit : le chariot emporte le train arrêté sur le rail B
+    if(RA&&p===PG&&!raOut())return refuse(DEVN+' : le rail de garage ne vient en ligne que si '+RAN+' est retiré'+(raMoving()?' (en mouvement).':' : '+RAN+' est sur le circuit.'));
     const c=trains.find(o=>onCar(o));
     if(c&&p===PG){const MR=SITE.maxRun||trains.length,run=trains.filter(o=>o.st!=='garage').length;
       if(run>=MR)return refuse('Déjà '+run+' trains sur le circuit (au plus '+MR+') : '+c.name+' reste sur le chariot.');
@@ -54,8 +55,19 @@ function yardPos(p){
       log(r.name+' est emporté par le chariot.');}
   }
   G.dev.to=p;G.dev.k=0;G.dev.d=TRAV?Math.max(MV.t,Math.abs(OFF[p]-OFF[G.dev.pos])/MV.vc):MV.t;
-  log(DEVN+' commandé vers '+posName(p)+(TRAV?(p===PG||!p?'.':' : rail du circuit hors ligne, trains retenus avant le pont.'):p?(YD.at==='brake'?' : entrée en gare bloquée.':' : départs bloqués.'):'.'));
+  log(DEVN+' commandé vers '+posName(p)+(RA?(G.dev.pos===PG?' : plus aucun rail en ligne, trains retenus avant le pont.':'.'):TRAV?(p===PG||!p?'.':' : rail du circuit hors ligne, trains retenus avant le pont.'):p?(YD.at==='brake'?' : entrée en gare bloquée.':' : départs bloqués.'):'.'));
   return true;
+}
+function raPos(p){ // rail A escamotable : 0 = sur le circuit, 1 = retiré
+  if(!RA||(p!==0&&p!==1))return false;
+  const nm=p?'retiré':'sur le circuit';
+  if(G.estop)return refuse(RAN+' : commande refusée, arrêt d\'urgence enclenché.');
+  if(raMoving())return refuse(RAN+' en mouvement : attendez qu\'il soit en place.');
+  if(p===G.ra.pos)return refuse(RAN+' déjà '+nm+'.');
+  if(!p&&(devMoving()||G.dev.pos===PG))return refuse(RAN+' ne revient sur le circuit que si le rail de garage n\'est pas en ligne : écartez d\'abord '+DEVL+' vers une voie.');
+  const o=raLock();if(o)return refuse(RAN+' verrouillé : '+o.name+' y est, y roule ou s\'en approche.');
+  G.ra.to=p;G.ra.k=0;G.ra.d=Math.max(MV.t,RET/MV.vc);
+  log(RAN+' commandé '+(p?'vers l\'extérieur : circuit coupé, trains retenus avant le pont.':'vers le circuit.'));return true;
 }
 function yardFwd(t){
   if(G.estop)return refuse(t.name+' : manœuvre refusée, arrêt d\'urgence enclenché.');
@@ -212,9 +224,10 @@ function updateTrains(dt){
     if(t.st==='run'&&t.v===0&&((G.liftBroken&&zoneOf(t.s)==='lift')||(G.brakeFault&&zoneOf(t.s)==='brake')))G.sat=clamp(G.sat-.002*count(t)*dt,0,100);
   }
   // l'appareil ne bouge que sur commande de l'opérateur ; l'arrêt d'urgence le fige
+  if(raMoving()&&!G.estop){G.ra.k+=dt/(G.ra.d||MV.t);if(G.ra.k>=1){G.ra.k=1;G.ra.pos=G.ra.to;log(RAN+(G.ra.pos?' retiré.':' en place sur le circuit.'));}}
   if(devMoving()&&!G.estop){G.dev.k+=dt/(G.dev.d||MV.t);if(G.dev.k>=1){G.dev.k=1;G.dev.pos=G.dev.to;log(DEVN+' en place sur '+posName(G.dev.pos)+'.');
     const c=G.dev.pos===PG&&trains.find(o=>onCar(o)); // pont droit sur G : le train porté retrouve le circuit, sur le frein final
-    if(c){c.st='run';c.s=S_HOLD;c.v=0;c.inBrake=true;c.hold=1;c.entering=false;c.garReq=false;c.told=false;c.lane=0;c.g=0;log(c.name+' est sur le circuit : il entre en gare dès qu\'elle est libre. Remettez ensuite '+DEVL+' sur P.','good');}}}
+    if(c){c.st='run';c.s=S_HOLD;c.v=0;c.inBrake=true;c.hold=1;c.entering=false;c.garReq=false;c.told=false;c.lane=0;c.g=0;log(c.name+' est sur le circuit : il entre en gare dès qu\'elle est libre. '+(RA?'Écartez ensuite '+DEVL+' vers une voie, puis remettez '+RAN+' sur le circuit.':'Remettez ensuite '+DEVL+' sur P.'),'good');}}}
 }
 
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
@@ -297,6 +310,7 @@ function act(a,arg){
   else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();if(G.estop)trains.forEach(o=>{o.mv=0;});log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs et manœuvres bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
   else if(a==='pos')yardPos(+arg);
+  else if(a==='ra')raPos(+arg);
   else if(a==='fwd')yardFwd(t);
   else if(a==='back')yardBack(t);
   else if(a==='halt')yardHalt(t);
@@ -306,6 +320,7 @@ function act(a,arg){
   else if(a==='garage'){ // aide : retenir le train vide au point de raccordement ; la manœuvre elle-même reste manuelle
     if(t.st==='station'||t.st==='run'){t.garReq=!t.garReq;t.told=false;
       log(!t.garReq?t.name+' reste en service.'
+        :RA?t.name+' sera retenu à vide avant '+DEVL+' : retirez '+RAN+', chariot sur G (il s\'arrête sur le rail de garage), chariot sur une voie libre (il l\'emporte), puis AV.'
         :TRAV?t.name+' sera retenu à vide avant '+DEVL+' : pont sur G, il s\'arrête sur le rail de garage ; pont sur une voie libre (le chariot l\'emporte), puis AV.'
         :YD.at==='brake'?t.name+' sera retenu à vide sur le frein final : envoyez-le sans passagers, puis '+DEVL+' sur une voie de garage et AV.'
         :t.st==='station'&&count(t)===0?t.name+' retenu vide en gare : positionnez '+DEVL+' sur une voie de garage, puis AV.':t.name+' sera retenu vide en gare à son prochain passage.');}}
@@ -327,6 +342,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
   </div></div>`).join('');
 $('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p===PG?'position G, rail de garage sur le circuit':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${posId(p)}</button>`).join('');
 $('yName').textContent=DEVN;
+if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAN+'<br><span id="yAState"></span></div></div>');
 if(BLK.length)$('deskBlk').innerHTML=BLK.map((_,i)=>`<div class="ctl"><button class="pb sq sm amber" id="bBk${i+1}" data-act="blk" data-arg="${i+1}" title="Fermer ou libérer le frein de bloc ${i+1} : fermé, il arrête le prochain train même si le canton suivant est libre">B${i+1}</button><div class="lamp off" id="lBk${i+1}"><i></i>Bloc ${i+1}</div></div>`).join('')+'<div class="ctl"><div class="plate">Freins<br>de bloc</div></div>';
 else $('deskBlk').remove();
 $('deskTrains').innerHTML=`<div class="trow"><span class="plate"></span><span class="plate">Retenir</span><span class="plate">Avant</span><span class="plate">Arrière</span><span class="plate">Arrêt</span></div>`+trains.map(t=>`<div class="trow"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>

@@ -21,17 +21,21 @@ const SITE=(()=>{
     maxRun:5,   // au plus 5 trains sur le parcours (propriétaire) : la sortie d'un 6e est refusée
     stopBack:.5,holdBack:24,dropAfter:12,loadSide:-1,   // arrêt au frein final en bout de ligne droite, train entier sur le rail du pont (ESTIMÉ)
     phys:{roll:.13,drag:.0016,vmin:3},
-    // Garage sur le frein final : pont transbordeur DROIT (propriétaire) — chariot à deux rails droits parallèles d'un train de long
-    // (rail A = circuit, zone de freinage ; rail B = garage, freins et pneus) ; il se décale vers l'est pour mettre le rail B en ligne
-    // (position G), puis emporte le train vers l'ouest jusqu'à la voie k ; le train y entre en marche avant et en ressort en arrière.
-    // ESTIMÉS : emplacement du chariot (dernière ligne droite du frein final, s ≈ 736…748), écartement des rails (3,2 m),
-    // vitesse du chariot (0,6 m/s, 4 s au moins par déplacement), vitesse de manœuvre des trains (1,8 m/s), sens d'entrée dans les voies.
+    // Garage sur le frein final : pont transbordeur DROIT (propriétaire) — deux éléments mobiles indépendants, droits, d'un train de long :
+    // rail A = rail du circuit (zone de freinage), deux positions seulement : sur le circuit ou retiré vers l'est (retract) ;
+    // chariot du rail B (garage, freins et pneus, porte le train) : en ligne avec le circuit (G, seulement rail A retiré) ou face à la voie k (ouest).
+    // Le train y entre en marche avant et en ressort en arrière.
+    // ESTIMÉS : emplacement (dernière ligne droite du frein final, s ≈ 736…748), course du rail A (3,2 m), vitesse du chariot et du rail A
+    // (0,6 m/s, 4 s au moins par déplacement), vitesse de manœuvre des trains (1,8 m/s), sens d'entrée dans les voies, chariot au repos face à la voie 1.
     yard:{at:'brake',device:'traverser',side:1,gap:3.2,pre:.6,post:.6,laneGap:.8,move:{v:1.8,vc:.6,t:4},
+      devName:'Chariot',devLabel:'le chariot',retract:{d:3.2,name:'Rail A',rest:1},
       lanes:[lane(1,8),lane(2,11.2),lane(3,14.4),lane(4,17.6),lane(5,20.8),lane(6,24)]},
     stationPoly:OSM.polys.station,stationAt:[1.5,1,9],
     fade:[[1.5,1,9],[-34,-7,12]],   // toits qui s'effacent : gare, garage
     plat:{load:5.9,exit:2.3,back:.6,front:1.2},
-    booth:[8.3,4.1,.715],boothLabel:[11.5,7.5],beacon:[9.6,2.4],   // poste de conduite : emplacement estimé
+    // Poste de conduite : extrémité sud-est de la gare (propriétaire), côté sud-ouest de la voie, vitre tournée vers la voie, à 2,8 m de l'axe ;
+    // emplacement exact ESTIMÉ (dans le décrochement sud du bâtiment OSM 148160006, là où la voie sort de la gare)
+    booth:[2.8,8.0,-2.427],boothLabel:[0.4,11.6],beacon:[3.95,7.85],
     queue:{entry0:ENTRY0,link:[[61.1,16.8]],gate:{h:[58.35,14.71],a:[57.65,16.79],b:[56.27,14.0]},
       parts:[
         {pts:[ENTRY0].concat(Q.slice(0,F+1))},
@@ -51,10 +55,12 @@ const SITE=(()=>{
       frein:{label:'Frein final',x:-26,z:-30,s:12},garage:{label:'Garage',x:-31,z:-18,s:11}},
     labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Entrée',67,23]],
     text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur la Trace du Hourra !'},
-    helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final : un chariot à deux rails, '
-      +'le rail du circuit (A) et le rail de garage (B), qui emporte le train. Pour garer un train : bouton G du train (vide, il s\'arrête avant le pont), '
-      +'pont sur G (le rail B se met en ligne, le train s\'y arrête), pont sur une voie libre (le chariot emporte le train), puis AV : il entre dans la voie. Remettez le pont sur P. '
-      +'Pour sortir un train : pont sur la voie du train, AR (il recule sur le rail B), pont sur G avec le dernier canton libre : il entre en gare ; puis pont sur P. STOP arrête une manœuvre. '
-      +'Le chariot ne bouge pas si un train y roule ou n\'y est qu\'à moitié, ni avec des passagers. Rail du circuit hors ligne : les trains attendent avant le pont. Au plus cinq trains sur le parcours.'
+    helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final. Deux éléments mobiles : '
+      +'le rail A (rail du circuit, zone de freinage), sur le circuit (C) ou retiré vers l\'est (E), et le chariot du rail B (rail de garage), qui emporte le train : en ligne avec le circuit (G) ou face à une voie (1 à 6). '
+      +'Pour garer un train : bouton G du train (vide, il s\'arrête avant le pont), rail A sur E, chariot sur G (le train roule sur le rail B et s\'y arrête), '
+      +'chariot sur une voie libre (il emporte le train), AV : il entre dans la voie ; chariot ramené sur la voie 1, puis rail A sur C. '
+      +'Pour sortir un train : chariot sur la voie du train, AR (il recule sur le rail B), rail A sur E, chariot sur G avec le dernier canton libre : il entre en gare ; chariot sur une voie, puis rail A sur C. STOP arrête une manœuvre. '
+      +'Le chariot ne vient en ligne que si le rail A est retiré ; le rail A ne revient que si le chariot n\'est pas en ligne. Ni l\'un ni l\'autre ne bouge si un train y roule ou n\'y est qu\'à moitié, ni avec des passagers. '
+      +'Aucun rail en ligne : les trains attendent avant le pont. Au plus cinq trains sur le parcours.'
   };
 })();

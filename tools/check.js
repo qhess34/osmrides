@@ -37,6 +37,42 @@ const root = path.resolve(__dirname, '..');
       await click('#bAuto'); if (await page.evaluate(() => G.gatesOpen)) await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
       await click('#bGo'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
       await click('#bBk1'); ok('blk1Held', await until('trains[0].blk&&trains[0].v===0&&Math.abs(trains[0].s-BLK[0])<.5', 8000) && await logHas('arrêté au frein de bloc 1'));
+      // --shots=DIR : captures du garage (toits retirés) aux étapes clés
+      const sd = (process.argv.find(a => a.startsWith('--shots=')) || '').slice(8);
+      const shot = async name => { if (!sd) return; fs.mkdirSync(sd, { recursive: true });
+        await page.evaluate(() => { G.roofOff = true; cam.g = { x: SW0.x + SW0.tx * 10 - SW0.vx * 10, z: SW0.z + SW0.tz * 10 - SW0.vz * 10, s: 10 }; cam.follow = -1; for (let i = 0; i < 40; i++) render(.05); });
+        await page.screenshot({ path: path.join(sd, name + '.png') }); };
+      const d0 = await page.evaluate(() => DEV0);
+      if (await page.evaluate(() => RA)) { // rail A escamotable (2 positions) + chariot du rail B (G, voies)
+        await shot('1-repos');
+        // sortir le train de la voie k : chariot face à la voie, AR sur le rail B, rail A retiré, chariot sur G (il porte le train), entrée en gare
+        await click('#y' + o.k); ok('dev' + o.k, await until(`devOn(${o.k - 1})`, 4000));
+        await click('#tB' + o.i); ok('onCar' + o.i, await until(`trains[${o.i}].lane<0&&!trains[${o.i}].mv`, 8000));
+        await click('#yG'); ok('refuseRailA', await logHas('ne vient en ligne que si') && await page.evaluate(() => !devMoving()));
+        await click('#yA1'); ok('raOut', await until('raOut()', 4000));
+        await click('#yG'); ok('carried' + o.i, await until(`devMoving()&&onCar(trains[${o.i}])`, 40));
+        ok('devG', await until(`trains[${o.i}].st==='run'&&G.dev.pos===PG`, 4000));
+        ok('station' + o.i, await until(`trains[${o.i}].st==='station'`, 4000));
+        await click('#yA0'); ok('refuseRailB', await logHas('ne revient sur le circuit que si') && await page.evaluate(() => raOut()));
+        await click('#y' + d0); ok('devRest', await until(`devOn(${d0 - 1})`, 4000));
+        await click('#yA0'); ok('raIn', await until('raIn()', 4000));
+        ok('stillHeld', await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5));
+        await click('#bBk1'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
+        // garer le train 0 : G (retenu à vide avant le pont), rail A retiré, chariot sur G (arrêt sur le rail B), chariot sur la voie f (emporté), AV, chariot au repos, rail A sur le circuit
+        await click('#tG0'); ok('preHeld0', await until('trains[0].v===0&&Math.abs(trains[0].s-S_PRE)<.5', 20000) && await logHas('attend avant'));
+        await page.evaluate(() => act('fwd', 0)); ok('refuseFwd', await logHas('le chariot emporte le train'));
+        await click('#yA1'); ok('raOut2', await until('raOut()', 4000)); await shot('2-railA-retire');
+        await click('#yG'); ok('onB0', await until('atAnchor(trains[0])&&G.dev.pos===PG', 4000)); await shot('3-chariot-en-ligne');
+        const f = await page.evaluate(() => LANES.findIndex((l, j) => !trains.some(t => t.st === 'garage' && t.lane === j)) + 1);
+        await click('#y' + f); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
+        await click('#yA0'); ok('refuseMovingA', await logHas('ne revient sur le circuit que si'));
+        ok('dev' + f, await until(`devOn(${f - 1})`, 4000)); await shot('4-chariot-voie');
+        await click('#tF0'); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400));
+        await click('#y' + (f === 1 ? 2 : 1)); ok('refuseLocked', await logHas('verrouillé'));
+        ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
+        if (f !== d0) { await click('#y' + d0); ok('devRest2', await until(`devOn(${d0 - 1})`, 4000)); }
+        await click('#yA0'); ok('raIn2', await until('raIn()', 4000)); await shot('5-railA-revenu');
+      } else {
       // sortir le train de la voie k : chariot face à la voie, AR sur le rail B, chariot sur G (il porte le train), entrée en gare, chariot sur P
       await click('#y' + o.k); ok('dev' + o.k, await until(`devOn(${o.k - 1})`, 4000));
       await click('#tB' + o.i); ok('onCar' + o.i, await until(`trains[${o.i}].lane<0&&!trains[${o.i}].mv`, 8000));
@@ -58,6 +94,7 @@ const root = path.resolve(__dirname, '..');
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
       await click('#yP'); ok('devP2', await until('!devOff()', 4000));
+      }
       await click('#bAuto');
       if (process.argv.includes('--shot')) await page.evaluate(() => { cam.g = { x: SW0.x, z: SW0.z, s: 11 }; cam.follow = -1; for (let i = 0; i < 6; i++) render(.05); });
     } else if (brake) { // garage sur le frein final (pont transbordeur à N voies) : sortir le train de la voie k, garer le train 0 sur une voie libre

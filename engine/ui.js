@@ -55,7 +55,9 @@ function ui(){
   }
   $('bHold').classList.toggle('lit',G.brakeLock);
   BLK.forEach((_,i)=>{$('bBk'+(i+1)).classList.toggle('lit',G.blkLock[i]);const h=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-BLK[i])<.5);$('lBk'+(i+1)).className='lamp'+(h?' occ':' off');}); // voyant orange : un train est arrêté sur ce frein
-  OFF.forEach((_,p)=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
+  POS_ORDER.forEach(p=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
+  if(RA){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});
+    $('yAState').textContent=raMoving()?'En mouvement':(G.ra.pos?'Retiré':'Sur le circuit')+(raLock()?' — verrouillé':'');}
   {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+posId(G.dev.to):'En place sur '+posId(G.dev.pos)+(o?' — verrouillé':'');}
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
