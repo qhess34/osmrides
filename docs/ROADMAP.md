@@ -19,6 +19,9 @@ Tenue par le chef de projet. Une tâche = une session courte, qui lit ce fichier
 | T2 | Carte du parc entier (`parc.html`) depuis l'extrait OSM du parc : allées, bâtiments, eau, tracés des attractions ; Tonnerre 2 Zeus et Trace du Hourra cliquables vers leur simulateur | T1 (pour le code de rendu partagé) | Sonnet | fait |
 | T3 | Moteur : gare de triage générique `SITE.yard` (aiguillage ou pont à N positions, voies multiples, commandes Positionner / Avancer / Reculer / Arrêter, verrouillages) selon `docs/manoeuvres.md` ; migrer Zeus dessus sans régression | T1 | Fable ou Opus | fait |
 | T4 | `sites/hourra.js` : Trace du Hourra jouable, garage à 6 voies sur pont transbordeur | T3 | Fable ou Opus | fait |
+| T7 | Pupitre par zones : freins et moteurs avant/arrière par zone (gare, zones de freinage, voies de garage, rail du chariot), lift marche/arrêt, chariot ; supprime les commandes par train ; Zeus et Hourra revérifiés | T4 | Opus | à faire après les plans annotés (T9) |
+| T8 | Trace du Hourra : pont transbordeur droit à deux rails parallèles (rail parcours = zone de freinage décalée vers l'est, rail garage qui porte le train), voies droites | T7, T9 | Opus | à faire |
+| T9 | Plans des deux attractions avec repères numérotés à compléter par le propriétaire (`docs/plans/`) | — | Sonnet | en cours |
 | T5 | Intégration progressive : depuis la carte du parc, chaque attraction s'ouvre à son emplacement ; état visible (ouverte, file) | T2, T4 | Sonnet | plus tard |
 | T6 | Attractions suivantes (une session chacune, en suivant « Ajouter une attraction » d'`AGENTS.md`) | T3, T5 | Sonnet + Opus pour les besoins moteur | plus tard |
 

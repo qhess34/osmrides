@@ -17,6 +17,14 @@
 - Longueur (1,55 m) et largeur des bobs, couleurs des trains (teintes sourdes supposées), poste de conduite, freins de bloc, profil en hauteur.
 - Raccords de la boucle de file vers la seconde entrée (quelques points ajoutés entre (0.7,-7.6) et (2.9,-3.3)) et tronçon (11.5,-9) → (5.6,-9.4), absents d'OSM.
 
+## Pont transbordeur — précision du propriétaire (2026-11-14, prioritaire sur ce qui suit)
+
+- Le pont est **droit** : deux rails **droits et parallèles** sur le chariot, pas de courbe en S.
+- Rail A = rail du parcours, qui est **une zone de freinage** ; quand le chariot se déplace, il se **décale vers l'est**.
+- Rail B = rail de garage : il **prend la place du rail A sur le parcours** pour aller chercher chaque train qui s'y est arrêté, puis le chariot le translate devant la voie de garage voulue (le train est porté par le chariot).
+- Voies de garage droites et parallèles. À confirmer sur plan : sens de sortie des trains, côté des voies, position exacte du chariot.
+- La version T4 (tronçons de transfert en S, train jamais porté) est à remplacer (tâche T8).
+
 ## Garage — réponse du propriétaire (2026-11-14)
 
 - **6 trains**, au plus **5 sur le parcours** : il y a toujours au moins un train au garage.

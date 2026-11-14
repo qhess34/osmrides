@@ -33,10 +33,24 @@ yard: {
 Le tronçon de transfert de chaque voie est calculé par le moteur : courbe en S du circuit (raccordement + `a`) jusqu'à `pts[0]`.
 L'appareil est un chariot qui coulisse à l'opposé du garage et porte le tronçon du circuit et le tronçon de transfert : en position `k`, le transfert de la voie `k` est en place.
 Le train ne reste jamais sur le chariot pendant qu'il bouge : il franchit l'appareil une fois celui-ci en place (`table` : un seul tronçon de transfert dessiné, celui de la voie visée).
-Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Trace du Hourra = `device: 'table'`, 6 voies (un train par voie).
+Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Trace du Hourra = `device: 'table'` (pont **droit** à deux rails parallèles, voir `docs/hourra-notes.md`), 6 voies (un train par voie).
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
 
-## Commandes au pupitre (identiques pour toutes les attractions)
+## Principe de commande (décision du propriétaire, 2026-11-14)
+
+**Le joueur ne commande pas les trains, il commande les zones.** Chaque zone de voie a ses actionneurs ; les trains réagissent à ce qui se trouve sous eux.
+
+| Zone | Actionneurs au pupitre |
+|---|---|
+| Gare | freins (serrer / relâcher), moteurs (pneus) avancer / reculer |
+| Lift | marche / arrêt |
+| Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés ; moteurs avancer / reculer là où il y en a |
+| Chariot / aiguillage | position (P ou voie k) |
+| Voies de garage | freins, moteurs avancer / reculer |
+
+Les boutons « par train » (G, AV, AR, STOP) de T3 sont à remplacer par ces commandes par zone (tâche T7). Les verrouillages ci-dessous restent valables.
+
+## Commandes au pupitre (version T3, à remplacer par la commande par zones)
 
 1. **Positionner l'appareil** : choisir `P` ou une voie `k`. Le déplacement prend `move.t` secondes ; pendant ce temps aucun train ne franchit l'appareil.
 2. **Avancer** (`AV`) : du point de raccordement vers la voie où est l'appareil (entrée au garage), ou vers le fond de sa voie. Le train s'arrête seul en butée ou derrière le train garé devant.
