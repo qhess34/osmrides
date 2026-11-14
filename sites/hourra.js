@@ -12,7 +12,10 @@ const SITE=(()=>{
     id:'hourra',title:'La Trace du Hourra',kind:'bob',trackName:'Gouttière',goal:900,lap:110,
     car:{len:1.55,n:7,seats:2,inline:true,w:.95},   // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées
     // 6 trains (propriétaire), 5 au plus sur le parcours : les 5 autres démarrent chacun sur sa voie de garage. Teintes sourdes supposées (couleurs réelles non vérifiées).
-    trains:[{name:'Train 1',col:'#8a3b33',col2:'#d9d4c8',wear:28},{name:'Train 2',col:'#3e5a74',col2:'#d9d4c8',wear:44,lane:1},
+    // Gouttière rouge foncé à nervures extérieures, bord rouge vif (photo du propriétaire, 2026-11-14)
+    trough:{lo:[112,38,36],hi:[140,52,46],edge:'#5a1f1c',deck:'#6e2622',rim:'#b8322c',shine:'rgba(255,220,210,.12)'},
+    // Train 1 : bobs jaunes, intérieur noir (photo du propriétaire) ; couleurs des autres trains non vérifiées
+    trains:[{name:'Train 1',col:'#d8a92a',col2:'#2a2a2c',wear:28},{name:'Train 2',col:'#3e5a74',col2:'#d9d4c8',wear:44,lane:1},
       {name:'Train 3',col:'#5b6b3e',col2:'#d9d4c8',wear:36,lane:2},{name:'Train 4',col:'#8c6d36',col2:'#d9d4c8',wear:52,lane:3},
       {name:'Train 5',col:'#5d4a63',col2:'#d9d4c8',wear:20,lane:4},{name:'Train 6',col:'#3f5f5a',col2:'#d9d4c8',wear:60,lane:5}],
     maxRun:5,   // au plus 5 trains sur le parcours (propriétaire) : la sortie d'un 6e est refusée

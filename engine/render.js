@@ -51,6 +51,7 @@ TEX.rows=(()=>{const c=document.createElement('canvas');c.width=c.height=2;const
 const SHX=.55,SHZ=.42;
 
 // Voie découpée en tronçons triés par hauteur (croisements dessus/dessous)
+const TRO=Object.assign({lo:[150,156,164],hi:[198,204,210],edge:'#4a4f57',deck:'#565c65',rim:'#2f3339',shine:'rgba(255,255,255,.2)'},SITE.trough); // couleurs de la gouttière (bob), réglables par SITE.trough
 const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>BOB?1.5:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:3.1;
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
@@ -67,7 +68,7 @@ function strip(sm){
   });
   if(BOB){side(o.rail,-1.02);side(o.rail,1.02);} // bords de la gouttière
   else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);}
-  o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=BOB?`rgb(${lerp(150,198,k)|0},${lerp(156,204,k)|0},${lerp(164,210,k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
+  o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
 }
 (function buildChunks(){
@@ -308,10 +309,10 @@ function drawWorld(dt){
     if(o.t){drawCar(o.t,o.k);continue;}
     const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}
     if(BOB){ // gouttière en acier : bords sombres, fond clair, reflet au centre
-      ctx.strokeStyle='#4a4f57';lw(.22,.7);ctx.stroke(o.str);
-      ctx.strokeStyle='#565c65';ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);
-      ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=.9;ctx.stroke(o.deck);
-      ctx.strokeStyle='#2f3339';lw(.1,.5);ctx.stroke(o.rail);
+      ctx.strokeStyle=TRO.edge;lw(.22,.7);ctx.stroke(o.str);
+      ctx.strokeStyle=TRO.deck;ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);
+      ctx.strokeStyle=TRO.shine;ctx.lineWidth=.9;ctx.stroke(o.deck);
+      ctx.strokeStyle=TRO.rim;lw(.1,.5);ctx.stroke(o.rail);
     }else{
       ctx.strokeStyle='#6e6a63';lw(.16,.7);ctx.stroke(o.str);
       ctx.strokeStyle=o.col;ctx.lineWidth=DECKW;ctx.stroke(o.deck);

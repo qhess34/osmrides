@@ -76,6 +76,7 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-14 | Couleurs de la gouttière réglables par `SITE.trough` (Trace du Hourra : rouge, d'après photo). |
 | 2026-11-14 | T8 : appareil générique `device: 'traverser'` (pont transbordeur droit, deux rails parallèles, le chariot emporte le train ; position G `#yG` ; arrêt avant le pont quand aucun rail n'est en ligne ; durée de déplacement selon la course, `move.vc`) ; Trace du Hourra migrée, ancien transfert en S retiré pour elle ; scénario `tools/check.js` mis à jour. |
 | 2026-11-14 | Commande par zones (freins, moteurs, lift, chariot) au lieu de commandes par train. |
 | 2026-11-14 | T4 : Trace du Hourra. Freins de bloc commandables un par un au pupitre (`#bBk<n>`, `G.blkLock`), patins dessinés pour chaque frein de bloc, message au journal quand un train est arrêté par un frein fermé (bloc ou final) ; `SITE.maxRun` ; garage `at: 'brake'` + `device: 'table'` à 6 voies vérifié (scénario dans `tools/check.js`). |

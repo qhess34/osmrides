@@ -48,6 +48,8 @@
 
 ## Caractéristiques relevées
 
+- Photo du propriétaire (2026-11-14) : gouttière **rouge foncé** à nervures extérieures, bord rouge vif ; bobs **jaunes** à intérieur noir (train 1). Couleurs des autres trains non vérifiées.
+
 - Propriétaire (2026-11-14) : 1 ou 2 visiteurs par wagon, assis l'un derrière l'autre (`car {seats: 2, inline: true}`), un wagon peut partir avec un seul passager.
 
 - Bobsleigh Mack Rides, ouvert le 31 mars 2001, 900 m, 31 m de haut, 60 km/h.
