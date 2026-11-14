@@ -18,7 +18,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 |---|---|
 | Circuit | Boucle fermée, abscisse `s` en mètres, 0 = début de gare. Repères `st0`, `st1`, `lift0`, `lift1`, `brk`, freins de bloc `blk1…`. |
 | Cantonnement | Un train par canton ; le lift et les freins de bloc retiennent un train si le canton suivant est occupé. Au moins un canton de plus qu'il n'y a de trains sur le circuit. |
-| Quai | Un portillon par wagon, deux visiteurs au plus par portillon. Embarquement d'un côté (`loadSide`), débarquement de l'autre. |
+| Quai | Un portillon par wagon. Le nombre de places par wagon **dépend de l'attraction** (`SITE.car.seats`, disposition côte à côte ou l'un derrière l'autre avec `car.inline`) ; au plus autant de visiteurs en attente au portillon que de places. Un wagon peut partir partiellement rempli (ex. Trace du Hourra : 1 ou 2 passagers). Embarquement d'un côté (`loadSide`), débarquement de l'autre. |
 | Départ | Portillons fermés → deux opérateurs vérifient les lapbars → validation → départ. By-pass possible, avec risque d'amende. |
 | File | Chemins réels OSM, tronçons et fourches avec barrières pivotantes cliquables sur la carte. Les visiteurs ne quittent jamais les chemins et ne franchissent que les barrières ouvertes (sauf évacuation). |
 | Garage | Toujours via `SITE.yard` et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). |
@@ -73,4 +73,5 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-14 | Places par wagon propres à chaque attraction (`car.seats`). |
 | 2026-11-14 | Création : concepts, rendu, fidélité, étapes, définition de « fait ». |
