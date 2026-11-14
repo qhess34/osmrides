@@ -22,6 +22,7 @@
 - Le pont est **droit** : deux rails **droits et parallèles** sur le chariot, pas de courbe en S.
 - Rail A = rail du parcours, qui est **une zone de freinage** ; quand le chariot se déplace, il se **décale vers l'est**.
 - Rail B = rail de garage : il **prend la place du rail A sur le parcours** pour aller chercher chaque train qui s'y est arrêté, puis le chariot le translate devant la voie de garage voulue (le train est porté par le chariot).
+- **Confirmé** : le rail mobile du garage est droit et se déplace **avec le train dessus**.
 - Voies de garage droites et parallèles. À confirmer sur plan : sens de sortie des trains, côté des voies, position exacte du chariot.
 - La version T4 (tronçons de transfert en S, train jamais porté) est à remplacer (tâche T8).
 

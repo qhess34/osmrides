@@ -1,6 +1,6 @@
 # Questions pour le propriétaire — plans à annoter
 
-Quatre images, deux par attraction. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
+Six images, trois par attraction. `<id>-trace-complete.png` montre le **tracé complet** seul, sur fond clair, avec un rond numéroté **tous les 50 m** (tableau : distance, hauteur estimée, zone), un point tous les 10 m et le sens de marche ; c'est la meilleure base pour placer freins et moteurs. Les deux autres images montrent la vue aérienne et la gare / le garage. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
 
 **Comment répondre** (au choix, sur téléphone) :
 - ouvrir l'image, **dessiner ou entourer** directement dessus (zone de freinage, sens des voies, position du chariot), puis renvoyer l'image annotée ;
@@ -25,7 +25,7 @@ Images : `hourra-vue-ensemble.jpg` et `hourra-gare-garage.jpg`.
 
 ### Gare et garage
 
-7. **Pont transbordeur.** Il est supposé **droit**, avec **deux rails parallèles** : le rail du parcours (c'est une zone de freinage) qui se décale vers l'est, et le rail de garage qui prend sa place et porte le train. Où commence-t-il et où finit-il le long du circuit (repère 14 ? entre 13 et 14 ?) ? Quelle est sa longueur, c'est-à-dire la longueur d'un train ?
+7. **Pont transbordeur.** *(Confirmé : rail mobile droit, il se déplace avec le train dessus.)* Il est supposé **droit**, avec **deux rails parallèles** : le rail du parcours (c'est une zone de freinage) qui se décale vers l'est, et le rail de garage qui prend sa place et porte le train. Où commence-t-il et où finit-il le long du circuit (repère 14 ? entre 13 et 14 ?) ? Quelle est sa longueur, c'est-à-dire la longueur d'un train ?
 8. **Sens de translation.** Le chariot se décale-t-il bien vers l'est quand le rail de garage vient prendre la place du parcours ? Jusqu'où va-t-il (devant la voie 1 ? 6 ?) ?
 9. **Voies de garage.** Il y en a 6, droites et parallèles. Sont-elles bien **nord-sud** comme dessinées (bout nord = 16, 18, 20, 22, 24, 26 ; bout sud = 17, 19, 21, 23, 25, 27) ? Sont-elles de l'**ouest ou de l'est** du pont ? Quelle voie est la plus proche du pont (1 ou 6) ?
 10. **Entrée et sortie.** Par quel bout les trains entrent-ils dans une voie (nord ou sud) et par quel bout en ressortent-ils ? Reculent-ils pour sortir, ou ressortent-ils par l'autre bout ?
