@@ -54,12 +54,12 @@ yard: {
 - rail A (rail du circuit, zone de freinage) : deux positions seulement, sur le circuit (`#yA0`) ou retiré de `d` m à l'opposé du garage (`#yA1`) ; il ne porte jamais de train vers les voies ;
 - chariot du rail B (rail de garage, porte le train) : `G` (`#yG`, rail B en ligne) ou face à la voie k (`#yk`) ; pas de position `P` (pas de `#yP`) ; au départ face à la voie `rest`.
 - Verrouillages : le rail B ne vient en ligne que si le rail A est retiré (et immobile) ; le rail A ne revient sur le circuit que si le chariot n'est ni en ligne ni en mouvement ; le rail A ne bouge pas si un train y est, y roule ou s'en approche ; le chariot garde les verrouillages ci-dessous (train en partie dessus, qui roule, passagers) ; les trains du circuit ne passent que si le rail A est sur le circuit ou le rail B en ligne (règle « à vide » inchangée) ; l'arrêt d'urgence fige les deux.
-- Séquence pour garer : G du train (il s'arrête à vide avant le pont), rail A retiré, chariot sur G (le train s'arrête sur le rail B), chariot sur la voie k (il emporte le train), AV, chariot ramené au repos, rail A sur le circuit. Sortir : chariot sur la voie, AR, rail A retiré, chariot sur G (dernier canton libre), le train entre en gare, chariot sur une voie, rail A sur le circuit.
+- Séquences : voir « Commandes au pupitre par zones » ci-dessous.
 
 - Le chariot porte deux rails **droits et parallèles**, chacun long d'un train, posés sur une ligne droite du circuit (le train arrêté au point de raccordement y tient entier). Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus).
 - Positions : `P` (rail A en ligne), `G` (rail B en ligne, bouton `#yG`), `1…n` (rail B face à la voie k). La durée d'un déplacement dépend de la course.
 - Le train arrêté sur le rail B est **emporté** par le chariot (il suit le décalage du chariot à l'écran et dans la simulation). Il entre dans la voie en marche avant (`AV`) et en ressort en arrière (`AR`) jusque sur le rail B.
-- Aucun rail en ligne (chariot en mouvement ou face à une voie) : les trains du circuit s'arrêtent avant le chariot. Un train retenu pour le garage (`G`) s'arrête aussi avant le chariot tant qu'il n'est pas sur `G`.
+- Rail du circuit hors ligne : les trains du circuit s'arrêtent avant le chariot ; seul un train vide conduit par Frein final AV roule sur le rail B en ligne, et il n'en repart vers la gare que sur Rail B AV.
 - Verrouillages propres : le chariot ne bouge pas si un train y roule, n'y est qu'en partie ou est en manœuvre ; il n'emporte qu'un train arrêté, vide, entièrement sur le rail B ; il ne porte pas un train vers une voie occupée ; il ne remet un train sur le circuit (`G`) que si le dernier canton est libre et que `maxRun` le permet. Tant qu'un train est sur le chariot, le dernier canton est tenu pour occupé.
 - Chaque voie est un canton ; le rail B en est un aussi.
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
@@ -76,33 +76,55 @@ Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane
 | Chariot / aiguillage | position (P ou voie k) |
 | Voies de garage | freins, moteurs avancer / reculer |
 
-Les boutons « par train » (G, AV, AR, STOP) de T3 sont à remplacer par ces commandes par zone (tâche T7). Les verrouillages ci-dessous restent valables.
+Fait en T7 (ci-dessous). Les verrouillages restent valables.
 
-## Commandes au pupitre (version T3, à remplacer par la commande par zones)
+**Complément du propriétaire** : les zones de freinage sont **automatiques** par défaut (cantonnement, anti-collision) ; chacune peut passer en manuel au pupitre, et revenir en auto.
 
-1. **Positionner l'appareil** : choisir `P` ou une voie `k`. Le déplacement prend `move.t` secondes ; pendant ce temps aucun train ne franchit l'appareil.
-2. **Avancer** (`AV`) : du point de raccordement vers la voie où est l'appareil (entrée au garage), ou vers le fond de sa voie. Le train s'arrête seul en butée ou derrière le train garé devant.
-3. **Reculer** (`AR`) : de la voie vers le point de raccordement (sortie du garage) ; il s'arrête avant l'appareil si celui-ci n'est pas en place ou si le raccordement n'est pas libre.
-4. **Arrêter** (`STOP`) la manœuvre en cours (le train s'immobilise sur place).
+## Commandes au pupitre par zones (T7, implémenté)
 
-Aide conservée : le bouton `G` d'un train le retient vide au point de raccordement (en gare, ou sur le frein final), sans rien déclencher d'autre.
-Boutons : appareil `#yP`, `#y1`…`#yN` ; trains `#tG<i>`, `#tF<i>`, `#tB<i>`, `#tX<i>`.
+Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`) ; une commande agit sur le train qui se trouve dans la zone (`zoneCmd` dans `engine/sim.js`, `act('zone', '<zone>:<cmd>')`).
 
-Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux étapes. Le pupitre affiche pour chaque train sa position (circuit, liaison, voie k, appareil) et pour l'appareil sa position et son état (en place / en mouvement / verrouillé).
+| Zone | Id | Commandes | Mode |
+|---|---|---|---|
+| Gare | `St` | freins `k`, Avancer `f`, Reculer `b`, Arrêt `x` | manuel |
+| Lift | `Lift` | Marche `on`, Arrêt `off` (chaîne stoppée : le train sur le lift y reste ; départs bloqués) | — |
+| Freins de bloc | `B1…Bn` | freins `k` (moteurs si `SITE.zones`) | AUTO / MANU `m` |
+| Frein final | `Fin` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
+| Rail A du pont droit | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
+| Rail B (chariot) | `RB` | freins `k`, `f`, `b`, `x` | manuel |
+| Voies de garage | `L1…Ln` | freins `k`, `f`, `b`, `x` | manuel |
+| Appareil | — | positions `#yP`, `#y1…#yN`, `#yG`, rail A `#yA0`/`#yA1` (inchangé) | manuel |
 
-### Séquence type : rentrer un train au garage
+- **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`. Défaut : freins partout ; moteurs partout sauf sur les freins de bloc (estimé, à confirmer par attraction).
+- **AUTO / MANU** (zones de freinage) : en AUTO (défaut) le cantonnement serre et relâche seul ; en MANU, `k` serre / relâche et les moteurs obéissent au pupitre. Passer en MANU serre les freins si un train y est arrêté. `#zAuto` remet toutes les zones en AUTO. En MANU, freins relâchés, le cantonnement reste actif (sécurité).
+- **Anti-collision** : relâcher les freins d'une zone qui retient un train est refusé si la section suivante est occupée (canton suivant, chariot, gare).
+- **Gare `f`** : appareil sur une voie (raccordement en gare) : le train vide à quai part au garage (règles d'Avancer ci-dessous) ; sinon le train **vide** quitte la gare (départ à vide ; avec passagers, bouton Départ après les lapbars). Freins de gare serrés : départs bloqués.
+- **Frein final `f`** : pont droit, rail B en ligne : conduit le train **vide** arrêté avant le pont sur le rail B (il s'y arrête) ; appareil sur une voie (raccordement au frein final) : le train quitte le circuit vers la voie ; sinon vers la gare. Frein final serré (MANU) : le train est retenu avant le pont (pont droit) ou au point d'arrêt (sinon). C'est ce qui remplace « Retenir pour le garage ».
+- **Rail B `f`** : train porté par le chariot face à une voie : il entre dans la voie (marche avant) ; rail B en ligne : il part vers la gare (jamais automatiquement).
+- **Voie `f` / `b`** : Avancer vers le fond de la voie ; Reculer vers le point de raccordement (aiguillage) ou sur le rail B (pont droit). `x` arrête les moteurs de la zone. Freins serrés : la zone ne bouge plus et ses moteurs sont refusés ; on n'entre pas dans une voie aux freins serrés.
+- Marche arrière refusée sur le circuit (gare, freins, rails A/B).
+- L'arrêt d'urgence arrête tous les moteurs et refuse toute commande de moteur.
 
-1. Train vide, arrêté au point de raccordement (gare portillons fermés, ou frein final bloqué).
-2. Portillons fermés, appareil sur la voie `k` libre → attendre « en place ».
-3. Avancer le train : il quitte le circuit, traverse la liaison et l'appareil, s'arrête en bout de voie `k`.
-4. Remettre l'appareil sur `P` pour rendre le circuit à l'exploitation.
+Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux étapes de manœuvre ; l'exploitation normale du circuit reste automatique (zones en AUTO).
 
-### Séquence type : sortir un train
+### Portillons
 
-1. Point de raccordement libre (bloquer au besoin l'autre train au frein final).
-2. Appareil sur la voie `k` du train → attendre « en place ».
-3. Reculer le train jusqu'au point de raccordement.
-4. Appareil sur `P`. Le train reprend l'exploitation depuis la gare.
+Ils ne s'ouvrent et ne se ferment **qu'au bouton du pupitre** (`#bGate`), en auto comme en manuel. Un train prêt (départ décidé en auto) attend leur fermeture (indication au journal) ; la vérification des lapbars commence portillons fermés.
+
+### Séquence type : rentrer un train au garage (raccordement en gare, Zeus)
+
+1. Train vide à quai, portillons fermés ; aiguillage sur la voie `k` libre → attendre « en place ».
+2. Gare AV : le train quitte le circuit et s'arrête en bout de voie. Aiguillage sur `P`.
+
+### Séquence type : sortir un train (Zeus)
+
+1. Gare libre (au besoin frein final en MANU et serré pour retenir l'autre train).
+2. Aiguillage sur la voie, Garage AR : le train recule jusqu'en gare. Aiguillage sur `P`.
+
+### Pont droit à rail A escamotable (Trace du Hourra)
+
+- Garer : train vide (Gare AV), frein final MANU serré (arrêt avant le pont), rail A retiré, chariot sur G, relâcher, Frein final AV (sur le rail B), chariot sur une voie libre (il l'emporte), Rail B AV (dans la voie), chariot au repos, rail A sur le circuit, TOUT AUTO.
+- Sortir : chariot face à la voie, Voie k AR (sur le rail B), rail A retiré, chariot sur G (dernier canton libre), Rail B AV (vers la gare), chariot sur une voie, rail A sur le circuit.
 
 ## Verrouillages (sécurité, toujours actifs)
 
@@ -112,8 +134,8 @@ Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux 
 - Appareil hors de `P` : les départs (raccordement en gare) ou l'entrée en gare (raccordement au frein final) sont bloqués.
 - Un train avec passagers ne quitte jamais le circuit.
 - Au plus `SITE.maxRun` trains sur le circuit : au-delà, la sortie du garage est refusée (Trace du Hourra : 5 sur 6).
-- Raccordement au frein final : le train qui sort du garage occupe le dernier canton ; les trains du parcours sont retenus au dernier frein de bloc. Fermer un frein de bloc au pupitre (`#bBk<n>`) aide à libérer le dernier canton avant une sortie.
-- L'arrêt d'urgence immobilise aussi les manœuvres (les trains s'arrêtent, il faut redonner l'ordre) et fige l'appareil.
+- Raccordement au frein final : le train qui sort du garage occupe le dernier canton ; les trains du parcours sont retenus au dernier frein de bloc. Serrer un frein de bloc au pupitre (zone `B<n>` en MANU, `#zB<n>_k`) aide à libérer le dernier canton avant une sortie.
+- L'arrêt d'urgence immobilise aussi les manœuvres (moteurs de zone arrêtés, il faut redonner l'ordre) et fige l'appareil.
 
 Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », « Pont en mouvement »…).
 

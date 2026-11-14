@@ -55,12 +55,14 @@ const SITE=(()=>{
       frein:{label:'Frein final',x:-26,z:-30,s:12},garage:{label:'Garage',x:-31,z:-18,s:11}},
     labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Entrée',67,23]],
     text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur la Trace du Hourra !'},
-    helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final. Deux éléments mobiles : '
+    // Commande par zones : freins de bloc B1…B3 = freins seuls ; frein final, rail A, rail B (chariot), voies = freins + moteurs (défauts du moteur, ESTIMÉ,
+    // à confirmer par le propriétaire). Exemple pour changer : zones:{B:{drive:true}, RA:{drive:false}}.
+    helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final, commandées par zones. Deux éléments mobiles : '
       +'le rail A (rail du circuit, zone de freinage), sur le circuit (C) ou retiré vers l\'est (E), et le chariot du rail B (rail de garage), qui emporte le train : en ligne avec le circuit (G) ou face à une voie (1 à 6). '
-      +'Pour garer un train : bouton G du train (vide, il s\'arrête avant le pont), rail A sur E, chariot sur G (le train roule sur le rail B et s\'y arrête), '
-      +'chariot sur une voie libre (il emporte le train), AV : il entre dans la voie ; chariot ramené sur la voie 1, puis rail A sur C. '
-      +'Pour sortir un train : chariot sur la voie du train, AR (il recule sur le rail B), rail A sur E, chariot sur G avec le dernier canton libre : il entre en gare ; chariot sur une voie, puis rail A sur C. STOP arrête une manœuvre. '
+      +'Pour garer un train : envoyez-le vide (Gare AV), frein final en MANU et serré (il s\'arrête avant le pont), rail A sur E, chariot sur G, relâchez le frein final puis Frein final AV : il roule sur le rail B et s\'y arrête ; '
+      +'chariot sur une voie libre (il emporte le train), Rail B AV : il entre dans la voie ; chariot ramené sur la voie 1, rail A sur C, TOUT AUTO. '
+      +'Pour sortir un train : chariot sur la voie du train, Voie k AR (il recule sur le rail B), rail A sur E, chariot sur G avec le dernier canton libre, Rail B AV : il entre en gare ; chariot sur une voie, puis rail A sur C. '
       +'Le chariot ne vient en ligne que si le rail A est retiré ; le rail A ne revient que si le chariot n\'est pas en ligne. Ni l\'un ni l\'autre ne bouge si un train y roule ou n\'y est qu\'à moitié, ni avec des passagers. '
-      +'Aucun rail en ligne : les trains attendent avant le pont. Au plus cinq trains sur le parcours.'
+      +'Aucun rail du circuit en ligne : les trains attendent avant le pont. Au plus cinq trains sur le parcours.'
   };
 })();

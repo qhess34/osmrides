@@ -82,3 +82,7 @@
 - Vue : centre (43,-28), 190 × 150 m.
 
 Toutes ces coordonnées sont calculées sur plan, pas vérifiées à l'écran.
+
+## Pupitre par zones (T7) — estimé
+
+Zones à moteurs (pneus) supposées : gare, frein final, rail A, rail B (chariot), voies de garage ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).

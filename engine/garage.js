@@ -89,3 +89,31 @@ function stepOps(dt){
 }
 const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'course':'brake';
 
+/* ══════════ COMMANDE PAR ZONES (docs/manoeuvres.md, « Principe de commande ») ══════════
+   Le joueur commande des zones, jamais des trains : St (gare), Lift, B1…Bn (freins de bloc), Fin (frein final), RA / RB (pont droit :
+   rail A du circuit, rail B du chariot), L1…Ln (voies de garage). Chaque zone a des freins (G.zk[z] = serrés) et, selon SITE.zones,
+   des moteurs (pneus) Avancer / Reculer / Arrêt. Les zones de freinage B*, Fin, RA sont en AUTO par défaut (cantonnement) ;
+   le joueur peut passer chacune en MANU (G.zm[z]) : ses freins et moteurs obéissent alors au pupitre. Gare, rail B et voies : toujours manuels.
+   SITE.zones : { <zone ou groupe B / L> : {brake, drive} } ; défauts : freins partout, moteurs partout sauf freins de bloc (ESTIMÉ, à confirmer). */
+const ZCFG=z=>Object.assign({brake:true,drive:!/^B\d/.test(z)},SITE.zones&&SITE.zones[z.replace(/\d+$/,'')],SITE.zones&&SITE.zones[z]);
+const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
+  .concat(BLK.map((_,i)=>({id:'B'+(i+1),name:'Bloc '+(i+1),sec:'brk',auto:true})),[{id:'Fin',name:'Frein final',sec:'brk',auto:true}],
+    TRAV?[{id:'RA',name:RA?RAN:'Rail A',sec:'brk',auto:true},{id:'RB',name:'Rail B',sec:'brk'}]:[],
+    LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
+  .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id)));
+const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
+const isAutoZ=z=>/^(B\d+|Fin|RA)$/.test(z);
+const zK=z=>isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
+const bIn=()=>TRAV&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
+const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
+function tZone(t){ // zone où se trouve un train
+  if(t.st==='station')return 'St';
+  if(t.st==='garage')return TRAV&&(t.lane<0||onCar(t))?'RB':'L'+(t.lane+1);
+  const z=zoneOf(t.s);
+  if(z==='station')return 'St';
+  if(z==='lift'||z==='prelift')return 'Lift';
+  if(z==='course'){for(let i=0;i<BLK.length;i++)if(t.s>BLK[i]-10&&t.s<BLK[i]+.6)return 'B'+(i+1);return '';}
+  if(TRAV&&t.s>R0+.5)return bIn()?'RB':'RA';
+  return 'Fin';
+}
+const zT=z=>trains.filter(t=>tZone(t)===z);
