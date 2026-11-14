@@ -297,6 +297,7 @@ function act(a,arg){
     clearQueue();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
+  else if(a==='syn')toggleSyn();
   else if(a==='roof'){G.roofOff=!G.roofOff;}
   else if(a==='auto'){G.auto=!G.auto;log('Départs en mode '+(G.auto?'automatique.':'manuel.'));}
   else if(a==='gates'){if(!G.auto){

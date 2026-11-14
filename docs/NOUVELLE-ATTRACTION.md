@@ -16,6 +16,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 | Concept | Règle |
 |---|---|
+| 2026-11-14 | Synoptique technique du circuit (plan, zones, freins de bloc, garage, trains numérotés en direct) au lieu du profil en hauteur ; bouton `#bSyn`, générique. |
 | Circuit | Boucle fermée, abscisse `s` en mètres, 0 = début de gare. Repères `st0`, `st1`, `lift0`, `lift1`, `brk`, freins de bloc `blk1…`. |
 | Cantonnement | Un train par canton ; le lift et les freins de bloc retiennent un train si le canton suivant est occupé. Au moins un canton de plus qu'il n'y a de trains sur le circuit. |
 | Freins | Frein final (`brk` → arrêt à `holdBack` avant la fin du circuit) et freins de bloc `blk1…` (repères de la spec, patins dessinés sur ≈ 9 m avant chaque point d'arrêt). Chaque frein se ferme au pupitre, individuellement : `#bHold` (frein final), `#bBk1…#bBkN` (freins de bloc, `act('blk', n)`). Fermé, il arrête le prochain train même si le canton suivant est libre (message au journal) ; libéré, le cantonnement automatique reprend. Fermer est toujours permis. Voyant orange : un train est arrêté sur ce frein. |
@@ -37,6 +38,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 - Trains : couleurs du vrai matériel si connues, sinon teintes sourdes **signalées comme supposées**. Visiteurs : `person()` du moteur.
 - Dessins spécifiques (statue, décor thématique) : seulement dans `SITE.draw.*` (`floor`, `shadows`, `stationRoof`, `underRoof`, `landmarks`), formes simples, matières mates, en restant cohérent avec le reste de la carte.
 - Interface : thème de `jeu.html` (variables CSS `--bg #0f1626`, `--panel #18223a`, `--gold #f2c14e`, `--ok`, `--warn`, `--bad`, police système). Pupitre en boutons physiques (`.pb`, `.sel`, voyants `.lamp`), plaques de libellé `.plate`. Ne pas créer un autre style.
+- **Synoptique** (commun, rien à écrire par attraction) : plan technique du circuit en haut à gauche de la vue (`drawSyn()`, `engine/render.js`), alimenté par la voie, les repères `blk<n>`, `SITE.yard` et l'état de jeu ; bouton `#bSyn`. Il remplace le profil en hauteur. Pas de pictogramme : traits fins, couleurs sourdes.
 - Carte du parc (`parc.html`) : même palette ; les attractions avec simulateur sont en doré.
 
 ## 4. Fidélité et honnêteté

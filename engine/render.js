@@ -10,6 +10,7 @@ const cam={key:'vue',x:VIEW.x,z:VIEW.z,s:fitS(),g:null,follow:-1};
 function setCam(k){cam.key=k;if(k.startsWith('suivi')){cam.follow=+k.slice(5);cam.g={s:12};}else{cam.follow=-1;const c=CAMS[k];cam.g={x:c.x,z:c.z,s:c.s||fitS()};}}
 $('cams').innerHTML=Object.entries(CAMS).map(([k,c])=>`<button data-act="cam" data-arg="${k}">${c.label}</button>`).join('')
   +trains.map(t=>`<button data-act="cam" data-arg="suivi${t.i}">Suivre T${t.i+1}</button>`).join('')
+  +'<button data-act="syn" id="bSyn" title="Afficher ou masquer le synoptique du circuit">Synoptique</button>'
   +'<button data-act="roof" id="bRoof" title="Retirer ou remettre les toits de la gare, du poste de conduite et du garage">Toits en place</button>';
 (function controls(){
   const ptrs=new Map();let pinch=0,moved=0;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
@@ -17,7 +18,9 @@ $('cams').innerHTML=Object.entries(CAMS).map(([k,c])=>`<button data-act="cam" da
     LOOPS.forEach((l,i)=>{const g=l.g;for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});
     {const g=ENTRY_GATE,d=Math.min(Math.hypot(g.h[0]-wx,g.h[1]-wz),Math.hypot((g.h[0]+g.a[0])/2-wx,(g.h[1]+g.a[1])/2-wz),Math.hypot((g.h[0]+g.b[0])/2-wx,(g.h[1]+g.b[1])/2-wz));if(d<bd)best=-2;}
     return best;};
-  cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;});
+  const inSyn=e=>{const b=SYN.box;if(!synOn||!b)return false;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3];};
+  cv.addEventListener('click',e=>{if(!inSyn(e))return;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,h=SYN.hits.find(h=>Math.hypot(h.x-x,h.y-y)<=h.r);if(h)setCam('suivi'+h.i);});
+  cv.addEventListener('pointerdown',e=>{if(inSyn(e))return;cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);moved=0;});
   const up=e=>{if(ptrs.has(e.pointerId)&&e.type==='pointerup'&&moved<6&&ptrs.size===1){const i=gateAt(e);if(i>=0)act('loop',i);else if(i===-2)act('open');}ptrs.delete(e.pointerId);pinch=0;};
   cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
   cv.addEventListener('pointermove',e=>{const p=ptrs.get(e.pointerId);if(!p){cv.style.cursor=gateAt(e)!==-1?'pointer':'grab';return;}
@@ -351,6 +354,89 @@ function drawWorld(dt){
   if(bolt&&G.flash>.3){const g=ctx.createRadialGradient(bolt.x,bolt.z,0,bolt.x,bolt.z,30);g.addColorStop(0,`rgba(255,255,220,${G.flash})`);g.addColorStop(1,'rgba(255,255,220,0)');ctx.fillStyle=g;ctx.fillRect(bolt.x-30,bolt.z-30,60,60);
     ctx.strokeStyle=`rgba(255,250,200,${G.flash})`;lw(.5,1.5);ctx.beginPath();for(const b of bolt.br)b.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
 }
+/* Synoptique technique : plan du circuit (nord en haut) avec zones, freins de bloc, garage et trains en direct */
+let synOn=(()=>{try{const v=localStorage.getItem('t2z.syn');if(v!==null)return v==='1';}catch(e){}return VW>=600;})();
+function toggleSyn(){synOn=!synOn;try{localStorage.setItem('t2z.syn',synOn?'1':'0');}catch(e){}$('bSyn').classList.toggle('on',synOn);}
+$('bSyn').classList.toggle('on',synOn);
+const SYN={pts:null,lay:null,key:'',hits:[],box:null};
+function synBuild(){
+  const pts=[];for(let s=0;s<L;s+=1){const f=frameAt(s,_cf);pts.push([f.p.x,f.p.z]);}
+  const lanes=LANES.map(l=>l.path.filter((_,i)=>i%4===0||i===l.path.length-1).map(q=>[q.x,q.z]));
+  const box=()=>({x0:1e9,x1:-1e9,z0:1e9,z1:-1e9}),ext=(b,a)=>{for(const q of a){b.x0=Math.min(b.x0,q[0]);b.x1=Math.max(b.x1,q[0]);b.z0=Math.min(b.z0,q[1]);b.z1=Math.max(b.z1,q[1]);}};
+  const bb=box(),gb=box();ext(bb,pts);lanes.forEach(l=>{ext(bb,l);ext(gb,l);});
+  ext(gb,pts.slice(Math.max(0,Math.floor(SW_A-5)),Math.min(pts.length,Math.ceil(SW_B+5))));
+  if(TRAV){const e=[];for(const v of [-GAP-1.2,RET+1.2])for(const u of [-1,R1-R0+1])e.push([SW0.x+SW0.tx*u+SW0.vx*v,SW0.z+SW0.tz*u+SW0.vz*v]);ext(gb,e);ext(bb,e);}
+  for(const k of ['x0','z0'])gb[k]-=3;for(const k of ['x1','z1'])gb[k]+=3;
+  let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}
+  Object.assign(SYN,{pts,lanes,bb,gb,c:[cx/pts.length,cz/pts.length]});
+}
+function drawSyn(){
+  SYN.hits=[];SYN.box=null;if(!synOn)return;
+  if(!SYN.pts)synBuild();
+  const sm=VW<600,pad=sm?10:14,TT=sm?12:15,mw=sm?Math.min(200,VW-16):Math.min(430,VW*.45),mh=sm?Math.min(100,VH*.12):Math.min(270,VH*.36),GH=sm?58:150;
+  const bb=SYN.bb,gb=SYN.gb,bw=Math.max(1,bb.x1-bb.x0),bh=Math.max(1,bb.z1-bb.z0),sc=Math.min((mw-2*pad)/bw,(mh-2*pad-TT)/bh);
+  const pw=Math.max(bw*sc+2*pad,sm?mw:Math.min(300,mw)),ph=bh*sc+2*pad+TT+GH+TT,px=8,py=8,ox=px+(pw-bw*sc)/2,oy=py+pad+TT;
+  const X=x=>ox+(x-bb.x0)*sc,Z=z=>oy+(z-bb.z0)*sc;SYN.box=[px,py,pw,ph];
+  const gw=Math.max(1,gb.x1-gb.x0),gh=Math.max(1,gb.z1-gb.z0),gsc=Math.min((pw-2*pad)/gw,GH/gh),gx0=px+(pw-gw*gsc)/2,gy0=py+ph-pad*.4-GH+(GH-gh*gsc)/2;
+  const GX=x=>gx0+(x-gb.x0)*gsc,GZ=z=>gy0+(z-gb.z0)*gsc,iy=py+ph-pad*.4-GH-TT;
+  const fs=sm?9:10.5,R=sm?6.5:8;
+  ctx.save();ctx.fillStyle='rgba(15,22,38,.86)';ctx.beginPath();ctx.roundRect(px,py,pw,ph,6);ctx.fill();
+  ctx.strokeStyle='rgba(120,140,175,.35)';ctx.lineWidth=1;ctx.stroke();
+  ctx.font='600 '+fs+'px system-ui,sans-serif';ctx.textBaseline='alphabetic';ctx.textAlign='left';ctx.fillStyle='#cbd5ee';ctx.fillText('Synoptique — circuit '+Math.round(L)+' m',px+8,py+TT-1);
+  ctx.fillText('Garage'+(TRAV?' — '+DEVN.toLowerCase():''),px+8,iy+TT-3);
+  ctx.strokeStyle='rgba(120,140,175,.25)';ctx.beginPath();ctx.moveTo(px+6,iy);ctx.lineTo(px+pw-6,iy);ctx.stroke();
+  const P=SYN.pts;ctx.lineCap='round';ctx.lineJoin='round';
+  const seg=(a,b,X,Z)=>{a=clamp(Math.floor(a),0,P.length-1);b=clamp(Math.ceil(b),0,P.length-1);ctx.beginPath();for(let i=a;i<=b;i++)i===a?ctx.moveTo(X(P[i][0]),Z(P[i][1])):ctx.lineTo(X(P[i][0]),Z(P[i][1]));ctx.stroke();};
+  const at=s=>{const q=P[clamp(Math.round(s),0,P.length-1)];return [X(q[0]),Z(q[1])];},mid=t=>t.s-TLEN/2;
+  const cantons=[[S_REL,BLK.length?BLK[0]:L]].concat(BLK.map((b,i)=>[b,blkEnd(i)])); // canton i+1 : après le frein de bloc i
+  const lab=(t,x,y,c)=>{const dx=x-X(SYN.c[0]),dz=y-Z(SYN.c[1]),d=Math.hypot(dx,dz)||1,q=sm?9:12,w=ctx.measureText(t).width;let lx=x+(Math.abs(dx)>6?dx/d*q:0);const al=dx>6?'left':dx<-6?'right':'center';
+    lx=al==='left'?Math.min(lx,px+pw-5-w):al==='right'?Math.max(lx,px+5+w):clamp(lx,px+5+w/2,px+pw-5-w/2);ctx.textAlign=al;ctx.fillStyle=c;ctx.fillText(t,lx,y+dz/d*q+3);};
+  // garage : tracé commun au plan (fin) et à l'encart (agrandi)
+  const garage=(X,Z,lw)=>{
+    ctx.lineWidth=lw;ctx.strokeStyle='#6f7f9c';
+    SYN.lanes.forEach(l=>{ctx.beginPath();l.forEach((q,i)=>i?ctx.lineTo(X(q[0]),Z(q[1])):ctx.moveTo(X(q[0]),Z(q[1])));ctx.stroke();});
+    if(TRAV){
+      const pt=(u,v)=>[X(SW0.x+SW0.tx*u+SW0.vx*v),Z(SW0.z+SW0.tz*u+SW0.vz*v)],ln=(v,u0,u1)=>{const a=pt(u0,v),b=pt(u1,v);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke();};
+      const vA=raC(),vB=devC()-GAP,ul=R1-R0;
+      ctx.lineWidth=lw*1.8;ctx.strokeStyle=RA?'#a7b6d0':'#d8dfec';ln(vA,0,ul);ctx.strokeStyle='#d9bd82';ln(vB,0,ul);
+      ctx.lineWidth=1;ctx.strokeStyle='rgba(217,189,130,.65)';const a0=vB-.8,a1=(RA?vB:vA)+.8;
+      ctx.beginPath();[[a0,-.8],[a1,-.8],[a1,ul+.8],[a0,ul+.8]].forEach(([v,u],i)=>{const q=pt(u,v);i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]);});ctx.closePath();ctx.stroke();
+    }else{ctx.fillStyle='#d9bd82';ctx.beginPath();ctx.arc(X(SW0.x),Z(SW0.z),lw+1,0,7);ctx.fill();}
+  };
+  // cantons occupés (teinte)
+  ctx.lineWidth=sm?7:9;ctx.strokeStyle='rgba(205,165,85,.32)';
+  for(const [a,b] of cantons)if(trains.some(t=>t.st==='run'&&mid(t)>=a&&mid(t)<b))seg(a,b,X,Z);
+  garage(X,Z,1.2);
+  ctx.lineWidth=1.5;ctx.strokeStyle='#9aa9c4';seg(0,P.length-1,X,Z);ctx.lineTo(X(P[0][0]),Z(P[0][1]));ctx.stroke();
+  ctx.lineWidth=3;ctx.strokeStyle='#6f9fcf';seg(TAG.st0,TAG.st1,X,Z);
+  ctx.strokeStyle='#c9a45f';seg(S_LIFT0,S_LIFT1,X,Z);
+  ctx.font='600 '+fs+'px system-ui,sans-serif';
+  let p=at((TAG.st0+TAG.st1)/2);lab('Gare',p[0],p[1],'#8db4dc');
+  p=at((S_LIFT0+S_LIFT1)/2);lab('Lift',p[0],p[1],'#d9bd82');
+  BLK.forEach((b,i)=>{const held=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-b)<.5),closed=G.blkLock[i]||held;
+    ctx.lineWidth=4.5;ctx.strokeStyle=closed?'#c0584a':'#6fa585';seg(b,b+Math.max(8,TLEN*.5),X,Z);p=at(b);lab('B'+(i+1),p[0],p[1],closed?'#e08a7c':'#8fc4a4');});
+  ctx.lineWidth=4.5;ctx.strokeStyle=G.brakeLock?'#c0584a':'#6fa585';seg(S_BRK,L-1,X,Z);p=at((S_BRK+L)/2);lab('Frein final',p[0],p[1],G.brakeLock?'#e08a7c':'#8fc4a4');
+  // repère du garage sur le plan
+  ctx.strokeStyle='rgba(217,189,130,.7)';ctx.lineWidth=1;ctx.setLineDash([2,2]);ctx.strokeRect(X(gb.x0),Z(gb.z0),(gb.x1-gb.x0)*sc,(gb.z1-gb.z0)*sc);ctx.setLineDash([]);
+  // encart garage (agrandi, cadré sur la zone)
+  ctx.save();ctx.beginPath();ctx.rect(px+4,iy+3,pw-8,GH+TT-2);ctx.clip();
+  ctx.lineWidth=2;ctx.strokeStyle='#9aa9c4';seg(Math.max(0,SW_A-5),Math.min(P.length-1,SW_B+5),GX,GZ);
+  garage(GX,GZ,2);
+  ctx.font='600 '+fs+'px system-ui,sans-serif';
+  SYN.lanes.forEach((l,j)=>{const q=l[l.length-1],q0=l[Math.max(0,l.length-4)],dx=q[0]-q0[0],dz=q[1]-q0[1],d=Math.hypot(dx,dz)||1;ctx.fillStyle='#8a98b4';ctx.textAlign=Math.abs(dx/d)>.6?(dx>0?'left':'right'):'center';ctx.fillText(j+1,GX(q[0])+dx/d*5,GZ(q[1])+dz/d*8+3);});
+  if(TRAV){const u=(R1-R0)/2,pt=v=>[GX(SW0.x+SW0.tx*u+SW0.vx*v),GZ(SW0.z+SW0.tz*u+SW0.vz*v)],vA=raC(),vB=devC()-GAP,qa=pt(vA),qb=pt(vB),L2=[[qb,'Chariot','#d9bd82'],RA?[qa,'Rail A'+(raOut()?' retiré':raMoving()?' en mouvement':' en ligne'),'#a7b6d0']:null].filter(Boolean);
+    const ax=Math.min(qa[0],qb[0]);for(const [q,t,c] of L2){const left=q[0]<=(RA?(qa[0]+qb[0])/2:1e9);ctx.fillStyle=c;ctx.textAlign=left?'right':'left';ctx.fillText(t,q[0]+(left?-9:9),q[1]+3);}}
+  else{ctx.fillStyle='#d9bd82';ctx.textAlign='center';ctx.fillText(DEVN,GX(SW0.x),GZ(SW0.z)-7);}
+  ctx.restore();
+  // trains : numéro à leur position réelle (plan, et encart s'ils sont dans la zone du garage)
+  ctx.font='700 '+(sm?9:10.5)+'px system-ui,sans-serif';ctx.textAlign='center';
+  const mark=(t,x,y,r)=>{ctx.fillStyle=t.col;ctx.strokeStyle=cam.follow===t.i?'#fff':'rgba(10,16,28,.9)';ctx.lineWidth=cam.follow===t.i?2:1.5;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.stroke();
+    const c=t.col.replace('#',''),lum=c.length>=6?(parseInt(c.slice(0,2),16)*.3+parseInt(c.slice(2,4),16)*.59+parseInt(c.slice(4,6),16)*.11):0;
+    ctx.fillStyle=lum>140?'#101624':'#fff';ctx.fillText(t.i+1,x,y+3.4);SYN.hits.push({x,y,r:r+3,i:t.i});};
+  for(const t of trains){const f=carFrame(t,NCARS>>1,_cf),inG=f.p.x>gb.x0&&f.p.x<gb.x1&&f.p.z>gb.z0&&f.p.z<gb.z1;
+    if(t.st!=='garage')mark(t,X(f.p.x),Z(f.p.z),R);if(inG)mark(t,GX(f.p.x),GZ(f.p.z),R-1.5);}
+  ctx.restore();
+}
 const LABELS=typeof SITE.labels==='function'?SITE.labels({tunnel:tunnelC}):SITE.labels;
 function drawOverlay(dt){
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -370,11 +456,7 @@ function drawOverlay(dt){
   if(w==='rain'||w==='storm'){ctx.strokeStyle='rgba(215,228,255,.45)';ctx.lineWidth=1;ctx.beginPath();const n=w==='storm'?320:170,ph=clock*900;
     for(let i=0;i<n;i++){const x=(i*127.3+ph*.3)%VW,y=(i*71.9+ph)%VH;ctx.moveTo(x,y);ctx.lineTo(x-3,y+11);}ctx.stroke();}
   if(G.flash>0){ctx.fillStyle=`rgba(255,255,235,${.4*G.flash})`;ctx.fillRect(0,0,VW,VH);}
-  const pw=Math.min(380,VW-16),ph=62,px=8,py=8;
-  ctx.fillStyle='rgba(15,22,38,.72)';ctx.beginPath();ctx.roundRect(px,py,pw,ph,6);ctx.fill();
-  ctx.beginPath();ctx.moveTo(px+6,py+ph-6);for(let i=0;i<=N;i+=4)ctx.lineTo(px+6+(pw-12)*i/N,py+ph-6-TR[i%N].p.y*1.3);ctx.lineTo(px+pw-6,py+ph-6);ctx.closePath();ctx.fillStyle='rgba(200,165,110,.55)';ctx.fill();ctx.strokeStyle='#e6cfa0';ctx.lineWidth=1.2;ctx.stroke();
-  for(const t of trains)if(t.st==='run'||t.st==='station'){const i=Math.round(t.s/DS)%N;ctx.fillStyle=t.col;ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px+6+(pw-12)*t.s/L,py+ph-6-TR[i].p.y*1.3-3,4.5,0,7);ctx.fill();ctx.stroke();}
-  ctx.font='10px system-ui,sans-serif';ctx.textAlign='left';ctx.fillStyle='#cbd5ee';ctx.fillText('Profil du parcours — '+Math.round(L)+' m (hauteurs estimées)',px+8,py+12);
+  drawSyn();
   ctx.textAlign='right';ctx.fillStyle='rgba(255,255,255,.8)';ctx.fillText('Fond de carte © contributeurs OpenStreetMap',VW-8,VH-8);
 }
 function render(dt){
