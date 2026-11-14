@@ -69,6 +69,12 @@ Toute modification du moteur doit être revérifiée sur chaque attraction. Anno
 - Dépôt `qhess34/t2z`, branche `main`, commits directs. Messages en anglais, à l'impératif.
 - Ne rien pousser ailleurs sans demande explicite. Pas de pull request sauf demande.
 
+## Économie de tokens (obligatoire)
+
+- Commencer par `docs/ROADMAP.md` : il dit quelle tâche faire et quels fichiers lire.
+- Ne jamais lire `sites/*.data.js` en entier (généré, 60–70 Ko).
+- Garage, aiguillage, pont transbordeur, marche arrière : règles communes dans `docs/manoeuvres.md`, à appliquer sans les réécrire par attraction.
+
 ## État et suite
 
-Voir `docs/hourra-notes.md` : la Trace du Hourra a ses données, il reste à écrire `sites/hourra.js` et à étendre le moteur (garage à 5 voies).
+Voir `docs/ROADMAP.md` (ordre des tâches, questions ouvertes) et `docs/hourra-notes.md` (données de la Trace du Hourra).
