@@ -28,7 +28,7 @@ yard: {
 }
 ```
 
-Zeus = `device: 'switch'`, 1 voie (trains en file). Trace du Hourra = `device: 'table'`, 5 voies (un train par voie).
+Zeus = `device: 'switch'`, 1 voie (trains en file). Trace du Hourra = `device: 'table'`, 6 voies (un train par voie) ; le chariot dégage la portion du circuit en glissant à l'opposé du garage et y substitue la voie de transfert.
 Le moteur actuel ne gère que le cas Zeus (`SITE.garage`) ; la généralisation est la tâche T3 de `docs/ROADMAP.md`.
 
 ## Commandes au pupitre (identiques pour toutes les attractions)
