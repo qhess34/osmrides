@@ -380,7 +380,7 @@ function drawSyn(){
   const gw=Math.max(1,gb.x1-gb.x0),gh=Math.max(1,gb.z1-gb.z0),gsc=Math.min((pw-2*pad)/gw,GH/gh),gx0=px+(pw-gw*gsc)/2,gy0=py+ph-pad*.4-GH+(GH-gh*gsc)/2;
   const GX=x=>gx0+(x-gb.x0)*gsc,GZ=z=>gy0+(z-gb.z0)*gsc,iy=py+ph-pad*.4-GH-TT;
   const fs=sm?9:10.5,R=sm?6.5:8;
-  ctx.save();ctx.fillStyle='rgba(15,22,38,.86)';ctx.beginPath();ctx.roundRect(px,py,pw,ph,6);ctx.fill();
+  ctx.save();ctx.fillStyle='#0f1626';ctx.beginPath();ctx.roundRect(px,py,pw,ph,6);ctx.fill();
   ctx.strokeStyle='rgba(120,140,175,.35)';ctx.lineWidth=1;ctx.stroke();
   ctx.font='600 '+fs+'px system-ui,sans-serif';ctx.textBaseline='alphabetic';ctx.textAlign='left';ctx.fillStyle='#cbd5ee';ctx.fillText('Synoptique — circuit '+Math.round(L)+' m',px+8,py+TT-1);
   ctx.fillText('Garage'+(TRAV?' — '+DEVN.toLowerCase():''),px+8,iy+TT-3);
@@ -434,7 +434,7 @@ function drawSyn(){
     const c=t.col.replace('#',''),lum=c.length>=6?(parseInt(c.slice(0,2),16)*.3+parseInt(c.slice(2,4),16)*.59+parseInt(c.slice(4,6),16)*.11):0;
     ctx.fillStyle=lum>140?'#101624':'#fff';ctx.fillText(t.i+1,x,y+3.4);SYN.hits.push({x,y,r:r+3,i:t.i});};
   for(const t of trains){const f=carFrame(t,NCARS>>1,_cf),inG=f.p.x>gb.x0&&f.p.x<gb.x1&&f.p.z>gb.z0&&f.p.z<gb.z1;
-    if(t.st!=='garage')mark(t,X(f.p.x),Z(f.p.z),R);if(inG)mark(t,GX(f.p.x),GZ(f.p.z),R-1.5);}
+    if(t.st!=='garage')mark(t,X(f.p.x),Z(f.p.z),R);if(inG||t.st==='garage')mark(t,GX(f.p.x),GZ(f.p.z),R-1.5);}
   ctx.restore();
 }
 const LABELS=typeof SITE.labels==='function'?SITE.labels({tunnel:tunnelC}):SITE.labels;
