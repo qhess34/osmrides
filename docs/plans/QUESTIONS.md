@@ -52,3 +52,16 @@ Images : `zeus-vue-ensemble.jpg` et `zeus-gare-garage.jpg`.
 7. **Garage.** Une seule voie de maintenance, du repère 17 (ouest) au repère 18 (est), au nord de la gare. Combien de trains peut-elle contenir ? Les trains y entrent-ils par le bout ouest (17) et ressortent-ils par le même bout en marche arrière ?
 8. **Équipement.** La voie de garage a-t-elle des moteurs avant / arrière ou une butée à l'est (18) ?
 9. **Sortie du garage.** Pour ressortir, le train doit-il revenir en gare ou peut-il rejoindre directement le pied du lift (repère 3) ?
+
+---
+
+## La Trace du Hourra — file d'attente (à corriger)
+
+Images : `hourra-file-correction.jpg` (plan à annoter, un rond tous les 5 m de l'entrée 1 à la gare 48) et `hourra-file-vue-aerienne.jpg` (rendu actuel du jeu).
+La file de Tonnerre 2 Zeus est validée par le propriétaire : ne pas y toucher.
+
+13. **Tracé.** Dessinez le vrai chemin de la file, ou dites où le nôtre est faux avec les numéros.
+14. **Entrée.** Où est l'entrée réelle (près du 1 ?) et d'où arrivent les visiteurs (trait vert) ?
+15. **Boucles et raccourcis.** Combien de boucles peuvent être ouvertes ou fermées, où sont les barrières (la nôtre au 35 est estimée) ?
+16. **Arrivée en gare.** Par où la file entre-t-elle dans la gare (48), combien de couloirs vers les portillons ?
+17. **Sortie.** Le trait bleu (sortie) est-il juste ?
