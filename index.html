@@ -3,238 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tonnerre 2 Zeus — Simulateur d'exploitation</title>
+<title>Simulateurs d'exploitation — Parc Astérix</title>
 <style>
-:root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e;--ok:#4cc38a;--warn:#f0a23b;--bad:#e5484d;--blue:#4f8cff}
-*{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#app{display:flex;flex-direction:column;height:100%}
-header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:8px 14px;background:linear-gradient(#1b2743,#141d33);border-bottom:2px solid var(--gold)}
-header h1{font-size:17px;margin:0;color:var(--gold);letter-spacing:.5px;white-space:nowrap}
-.hud{display:flex;flex-wrap:wrap;gap:6px 8px;flex:1}
-.stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 10px;white-space:nowrap}
-.stat b{color:var(--gold);font-variant-numeric:tabular-nums}
-.speed{display:flex;gap:4px}
-main{display:flex;flex:1;min-height:0}
-#left{flex:1;min-width:0;display:flex;flex-direction:column}
-#view{position:relative;flex:1;min-height:380px;background:#8fc7ee;overflow:hidden}
-#view canvas{display:block;position:absolute;inset:0;touch-action:none}
-#dark{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .25s;z-index:1}
-#cams{position:absolute;left:8px;bottom:8px;display:flex;flex-wrap:wrap;gap:4px;z-index:2;max-width:calc(100% - 16px)}
-#cams button{padding:4px 8px;font-size:12.5px;background:rgba(24,34,58,.82)}
-#cams button.on{background:var(--blue)}
-#hint{position:absolute;right:8px;top:8px;font-size:11.5px;color:#fff;background:rgba(15,22,38,.55);padding:3px 8px;border-radius:6px;z-index:2;pointer-events:none}
-#log{flex:none;height:120px;overflow:auto;padding:6px 12px;font-size:13px;background:#0c1220;border-top:1px solid var(--line)}
-#log div{padding:1px 0;color:var(--dim)}
-#log .good{color:var(--ok)}#log .warn{color:var(--warn)}#log .bad{color:#ff7b7f}
-#log span{color:#62708f;margin-right:6px;font-variant-numeric:tabular-nums}
-#side{width:370px;flex:none;overflow:auto;padding:10px;background:var(--panel);border-left:1px solid var(--line)}
-section{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
-section h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--gold)}
-button{font:inherit;color:var(--txt);background:#2c3c63;border:1px solid #47598a;border-radius:7px;padding:6px 10px;cursor:pointer}
-button:hover:not(:disabled){background:#3a4d7d}
-button:disabled{opacity:.4;cursor:not-allowed}
-button.on{background:var(--blue);border-color:#8db4ff;color:#fff}
-button.go{background:#1f7a52;border-color:var(--ok)}
-button.stop{background:#8a1f24;border-color:var(--bad)}
-button.stop.on{background:var(--bad);animation:blink 1s infinite}
-@keyframes blink{50%{filter:brightness(1.5)}}
-.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.row+.row{margin-top:6px}
-#desk{position:relative;background:linear-gradient(160deg,#474d57,#2b2f36 60%,#23262c);border:2px solid #14161a;border-radius:10px;padding:12px 12px 14px;box-shadow:inset 0 1px 0 #6a717d,inset 0 -3px 8px #0009}
-#desk h2{color:#d5d9e0;letter-spacing:2px;text-align:center}
-.screw{position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#c9ced6,#5c626c);box-shadow:inset 0 0 0 1px #0006}
-.lcd{background:#0b1a11;color:#7dffa8;font:12.5px/1.3 ui-monospace,Menlo,Consolas,monospace;padding:7px 9px;border-radius:5px;border:2px solid #05080a;box-shadow:inset 0 0 8px #000;min-height:44px;margin-bottom:6px}
-.deskrow{display:flex;justify-content:space-around;gap:6px;margin-top:10px}
-.ctl{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
-.plate{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#b9bfca;text-align:center;margin-top:5px;line-height:1.25}
-.pair{display:flex;gap:6px;margin-top:5px}
-button.pb{width:54px;height:54px;border-radius:50%;border:4px solid #b4b9c2;padding:0;color:#fff;font-size:17px;background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36);box-shadow:0 3px 0 #0e0f12,0 5px 9px #000a;transition:transform .05s}
-button.pb:hover:not(:disabled){filter:brightness(1.12);background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36)}
-button.pb:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #0e0f12}
-button.pb.sq{border-radius:9px}button.pb.sm{width:38px;height:38px;font-size:13px;border-width:3px}button.pb.big{width:66px;height:66px;font-size:24px}
-button.pb.green,button.pb.green:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#3f8a60,#17402a)}
-button.pb.green.lit,button.pb.green.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#b6ffd2,#1fc267);box-shadow:0 3px 0 #0e0f12,0 0 16px #35ff8a;color:#063}
-button.pb.blue,button.pb.blue:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#44689e,#1b2d4d)}
-button.pb.blue.lit,button.pb.blue.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#cfe2ff,#3f86ff);box-shadow:0 3px 0 #0e0f12,0 0 16px #5c9cff;color:#024}
-button.pb.amber,button.pb.amber:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#a8782c,#4f3610)}
-button.pb.amber.lit,button.pb.amber.lit:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#ffe9b0,#f5a623);box-shadow:0 3px 0 #0e0f12,0 0 16px #ffb93d;color:#420}
-button.pb.estop,button.pb.estop:hover:not(:disabled){width:66px;height:66px;border:7px solid #f2c14e;background:radial-gradient(circle at 35% 30%,#ff7a6e,#a5130d)}
-button.pb.estop.lit{transform:translateY(3px);box-shadow:0 0 18px #ff3b30;animation:blink 1s infinite}
-button.sel{width:58px;height:58px;border-radius:50%;border:4px solid #b4b9c2;background:radial-gradient(circle at 35% 30%,#3a3f47,#15171b);box-shadow:0 3px 0 #0e0f12,0 5px 9px #000a;padding:0;position:relative}
-button.sel:hover:not(:disabled){background:radial-gradient(circle at 35% 30%,#3a3f47,#15171b);filter:brightness(1.15)}
-button.sel i{position:absolute;left:50%;top:50%;width:10px;height:40px;margin:-20px 0 0 -5px;border-radius:4px;background:linear-gradient(#f4f5f7 0 34%,#8b919c 34%);transform:rotate(-42deg);transition:transform .2s}
-button.sel.manu i{transform:rotate(42deg)}
-#desk .lamps{margin-top:12px}#desk .lamp{background:#17191e;border-color:#0c0d10;color:#c6cbd4}
-#crowd{flex:1;min-width:120px;accent-color:var(--gold)}#crowdV{color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
-.lamp.off i{background:#4a5059;box-shadow:none}#desk .pair .lamp{padding:4px 8px;min-width:52px}
-.lamps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
-.lamp{text-align:center;font-size:12px;padding:4px 2px;border-radius:6px;background:#141c30;border:1px solid var(--line)}
-.lamp i{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 3px;background:var(--ok);box-shadow:0 0 6px currentColor}
-.lamp.occ i{background:var(--warn)}.lamp.err i{background:var(--bad)}
-.card{background:#141c30;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px}
-.card .name{font-weight:600}.card .st{color:var(--dim);font-size:13px;min-height:18px}
-.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
-.bar{position:relative;height:14px;background:#0c1220;border-radius:7px;overflow:hidden;margin:4px 0 6px;border:1px solid var(--line)}
-.bar>i{position:absolute;inset:0 auto 0 0;background:var(--ok);border-radius:7px}
-.bar>span{position:absolute;inset:0;font-size:10.5px;line-height:13px;text-align:center;color:#fff;text-shadow:0 0 3px #000}
-.note{font-size:12px;color:var(--dim);margin-top:6px}
-#tech{font-size:13px;margin-bottom:4px}
-.modal{position:fixed;inset:0;background:rgba(5,8,16,.78);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
-.modal>div{background:var(--panel);border:2px solid var(--gold);border-radius:14px;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px 24px}
-.modal h2{margin:0 0 10px;color:var(--gold)}
-.modal li{margin:4px 0}
-.modal table{width:100%;border-collapse:collapse;margin:10px 0}
-.modal td{padding:4px 6px;border-bottom:1px solid var(--line)}
-.modal td:last-child{text-align:right;font-variant-numeric:tabular-nums}
-.hidden{display:none}
-small.legal{color:#62708f}
-@media(max-width:900px){#app{height:auto}#view{min-height:56vw}main{flex-direction:column}#side{width:auto;border-left:0;border-top:1px solid var(--line)}}
+body{margin:0;min-height:100vh;background:#0f1626;color:#e8ecf6;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:48px 16px;box-sizing:border-box}
+h1{color:#f2c14e;margin:0 0 6px;font-size:26px}p.sub{color:#9aa7c4;margin:0 0 28px;text-align:center;max-width:620px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;width:100%;max-width:760px}
+a.card,div.card{display:block;background:#18223a;border:1px solid #32426a;border-radius:12px;padding:18px 20px;color:inherit;text-decoration:none}
+a.card:hover{border-color:#f2c14e}
+.card h2{margin:0 0 6px;font-size:19px;color:#f2c14e}.card p{margin:0;color:#b9c3da;font-size:14.5px}
+.card.soon{opacity:.55}.card.soon h2{color:#9aa7c4}
+small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
 </style>
 </head>
 <body>
-<div id="app">
-<header>
-  <h1>Tonnerre 2 Zeus</h1>
-  <div class="hud">
-    <div class="stat">Jour <b id="hDay">1</b> · <b id="hTime">10:00</b></div>
-    <div class="stat">Météo <b id="hWx">☀️</b></div>
-    <div class="stat">Budget <b id="hMoney">0 €</b></div>
-    <div class="stat">Satisfaction <b id="hSat">75 %</b></div>
-    <div class="stat">File <b id="hQueue">0</b> · attente <b id="hWait">0 min</b></div>
-    <div class="stat">Quai <b id="hPlat">0/28</b></div>
-    <div class="stat">Passagers <b id="hRiders">0</b></div>
-  </div>
-  <div class="speed">
-    <button data-act="speed" data-arg="0" id="sp0">⏸</button>
-    <button data-act="speed" data-arg="1" id="sp1">▶</button>
-    <button data-act="speed" data-arg="2" id="sp2">×2</button>
-    <button data-act="speed" data-arg="4" id="sp4">×4</button>
-    <button data-act="speed" data-arg="8" id="sp8">×8</button>
-    <button data-act="mute" id="bMute">Son</button>
-    <button data-act="help">?</button>
-  </div>
-</header>
-<main>
-  <div id="left">
-    <div id="view"><div id="dark"></div>
-      <div id="cams">
-        <button data-act="cam" data-arg="vue">Vue d'ensemble</button>
-        <button data-act="cam" data-arg="gare">Gare</button>
-        <button data-act="cam" data-arg="file">File</button>
-        <button data-act="cam" data-arg="lift">Lift</button>
-        <button data-act="cam" data-arg="descente">Descente</button>
-        <button data-act="cam" data-arg="croisement">Croisement</button>
-        <button data-act="cam" data-arg="zeus">Zeus</button>
-        <button data-act="cam" data-arg="suivi0">Suivre T1</button>
-        <button data-act="cam" data-arg="suivi1">Suivre T2</button>
-        <button data-act="roof" id="bRoof" title="Retirer ou remettre les toits de la gare, du poste de conduite et du garage">Toits en place</button>
-      </div>
-      <div id="hint">Glisser : déplacer · Molette : zoom</div>
-    </div>
-    <div id="log"></div>
-  </div>
-  <aside id="side">
-    <section id="desk">
-      <i class="screw" style="left:6px;top:6px"></i><i class="screw" style="right:6px;top:6px"></i><i class="screw" style="left:6px;bottom:6px"></i><i class="screw" style="right:6px;bottom:6px"></i>
-      <h2>Pupitre de commande</h2>
-      <div class="lcd" id="opNote"></div>
-      <div class="deskrow">
-        <div class="ctl"><button class="pb sq green" id="bOpen" data-act="open" title="Ouvrir ou fermer l'entrée de la file ; les visiteurs déjà dans la file continuent d'embarquer">⏻</button><div class="plate">Entrée<br>ouverte</div></div>
-        <div class="ctl"><button class="pb sq amber" id="bEvac" data-act="evac" title="Évacuer la file d'attente">⇤</button><div class="plate">Évacuer<br>la file</div></div>
-        <div class="ctl"><button class="sel" id="bAuto" data-act="auto" title="Départs automatiques ou manuels"><i></i></button><div class="plate">Auto · Manuel</div></div>
-      </div>
-      <div class="deskrow">
-        <div class="ctl"><button class="pb sq blue" id="bGate" data-act="gates" title="Ouvrir ou fermer les portillons du quai (mode manuel)">▮▮</button><div class="plate">Portillons</div></div>
-        <div class="ctl"><button class="pb green big" id="bGo" data-act="depart" title="Donner le départ">▶</button><div class="plate">Départ</div></div>
-        <div class="ctl"><button class="pb estop" id="bStop" data-act="estop" title="Arrêt d'urgence (appuyer de nouveau pour réarmer)"></button><div class="plate">Arrêt<br>d'urgence</div></div>
-      </div>
-      <div class="lamps">
-        <div class="lamp" id="lGare"><i></i>Gare</div>
-        <div class="lamp" id="lLift"><i></i>Lift</div>
-        <div class="lamp" id="lCourse"><i></i>Parcours</div>
-        <div class="lamp" id="lBrake"><i></i>Freins</div>
-      </div>
-      <div class="deskrow">
-        <div class="ctl"><div class="pair"><div class="lamp off" id="lOp0"><i></i>Op. 1</div><div class="lamp off" id="lOp1"><i></i>Op. 2</div></div><div class="plate">Lapbars validés</div></div>
-        <div class="ctl"><button class="sel" id="bByp" data-act="bypass" title="By-pass de la validation des lapbars par les opérateurs"><i></i></button><div class="plate">Validation<br>Normale · By-pass</div></div>
-      </div>
-      <div class="deskrow">
-        <div class="ctl"><button class="sel" id="bSw" data-act="switch" title="Aiguillage : voie du lift ou voie du garage"><i></i></button><div class="plate">Aiguillage<br>Lift · Garage</div></div>
-        <div class="ctl"><button class="pb sq amber" id="bHold" data-act="hold" title="Retenir les trains au frein final, avant la gare">▮</button><div class="plate">Blocage<br>frein final</div></div>
-      </div>
-      <div class="deskrow" id="deskTrains"></div>
-    </section>
-
-    <section>
-      <h2>Fréquentation du parc</h2>
-      <div class="row"><input type="range" id="crowd" min="0" max="300" step="10" value="100" aria-label="Fréquentation du parc"><b id="crowdV">100 % — normale</b></div>
-      <div class="note">Règle l'afflux de visiteurs vers l'attraction. Au-delà de 200 %, la file se remplit jusqu'à saturation et les visiteurs en trop sont refoulés.</div>
-    </section>
-    <section>
-      <h2>Trains</h2>
-      <div id="trains"></div>
-    </section>
-    <section>
-      <h2>Maintenance</h2>
-      <div id="tech"></div>
-      <div class="bar"><i id="techBar" style="background:var(--blue)"></i><span id="techTxt"></span></div>
-      <div class="card">
-        <div class="name">Chaîne du lift</div>
-        <div class="bar"><i id="wChain"></i><span id="wChainT"></span></div>
-        <div class="row">
-          <button id="bLiftFix" data-act="job" data-arg="liftFix">Dépanner (250 €)</button>
-          <button id="bChainRev" data-act="job" data-arg="chainRev">Réviser (450 €)</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="name">Voie en bois</div>
-        <div class="bar"><i id="wTrack"></i><span id="wTrackT"></span></div>
-        <div class="row"><button id="bTrackRev" data-act="job" data-arg="trackRev">Entretien de la voie (900 €)</button></div>
-      </div>
-      <div class="card">
-        <div class="name">Freins de fin de parcours</div>
-        <div class="bar"><i id="wBrake"></i><span id="wBrakeT"></span></div>
-        <div class="row">
-          <button id="bBrakeFix" data-act="job" data-arg="brakeFix">Débloquer (200 €)</button>
-          <button id="bBrakeRev" data-act="job" data-arg="brakeRev">Réviser (350 €)</button>
-        </div>
-      </div>
-      <div class="note">Une seule équipe technique : une intervention à la fois. Les révisions de la chaîne, de la voie et des freins exigent des trains à l'arrêt et bloquent les départs.</div>
-    </section>
-    <small class="legal">Jeu de fan non officiel, sans lien avec le Parc Astérix. Tracé au sol et alentours : © contributeurs OpenStreetMap. Hauteurs estimées.</small>
-  </aside>
-</main>
+<h1>Simulateurs d'exploitation</h1>
+<p class="sub">Prenez le pupitre d'une attraction : trains, quai, file d'attente, garage, maintenance et météo, en vue aérienne sur le tracé réel.</p>
+<div class="grid">
+  <a class="card" href="jeu.html?site=zeus"><h2>Tonnerre 2 Zeus</h2><p>Montagnes russes en bois. 1 100 m, lift de 30 m, deux trains de 14 wagons, garage dans le prolongement de la gare.</p></a>
+  <div class="card soon"><h2>La Trace du Hourra</h2><p>Bobsleigh. Tracé et profil prêts ; la configuration du jeu (gare, file, garage à 5 voies) reste à écrire.</p></div>
 </div>
-
-<div class="modal" id="mHelp"><div>
-  <h2>Tonnerre 2 Zeus — à vous les commandes</h2>
-  <p>Vous êtes chef d'attraction des montagnes russes en bois de Zeus. Faites tourner les trains, gardez les visiteurs heureux et l'attraction en bon état.</p>
-  <ul>
-    <li><b>Ouvrez l'entrée</b> (bouton du pupitre, ou clic sur le portail au pied de la statue) pour laisser entrer les visiteurs. Fermez-la à tout moment : plus personne n'entre, et les visiteurs déjà dans la file continuent d'embarquer. Ils se rangent sur le quai, deux par travée, derrière les <b>portillons</b>.</li>
-    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, entrée de la file, aiguillage, blocage du frein final. En auto, tout s'enchaîne seul. En manuel : ouvrez les portillons, refermez-les, attendez la validation des lapbars, puis donnez le départ.</li>
-    <li><b>Quai</b> : les visiteurs se répartissent derrière les portillons, deux au plus par portillon, un portillon par wagon. Ils y restent jusqu'à l'ouverture, puis montent dans le wagon en face.</li>
-    <li><b>Lapbars</b> : portillons fermés, deux opérateurs de quai vérifient chacun une moitié du train puis valident sur leur bouton (voyants Op. 1 et Op. 2). Le sélecteur « By-pass » permet de partir sans cette validation, au risque d'un incident et d'une amende.</li>
-    <li><b>Garage</b> : la manœuvre est manuelle. Pour garer un train : attendez qu'il soit vide en gare, tournez l'aiguillage sur GARAGE, puis appuyez sur son bouton « Au garage ». Pour le ressortir : aiguillage sur GARAGE, gare libre (au besoin, bloquez l'autre train au frein final), puis « Retour » : il recule jusqu'à la gare. Remettez ensuite l'aiguillage sur LIFT.</li>
-    <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, lapbars). À 100 %, l'élément est hors service.</li>
-    <li><b>Orage</b> : quand Zeus se fâche, suspendez les départs (mode manuel ou arrêt d'urgence). Chaque train envoyé sous l'orage coûte une amende.</li>
-    <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le parc ferme à 18:00.</li>
-    <li><b>Fréquentation</b> : le curseur du panneau de droite règle l'afflux de visiteurs, de parc vide à saturé.</li>
-    <li><b>File modulable</b> : deux raccourcis (est et ouest) court-circuitent une boucle de la file. À chaque fourche de la file, une barrière pivote pour diriger les visiteurs vers la boucle ou vers le raccourci : cliquez dessus sur la carte. Les visiteurs ne franchissent que les barrières ouvertes ; ceux déjà engagés terminent leur chemin. Le bouton « Toits » retire les toitures pour voir l'intérieur de la gare et du garage. Raccourci ouvert : file courte. Raccourci fermé : file longue, plus de capacité.</li>
-    <li><b>Vue aérienne</b> : glissez pour vous déplacer, molette pour zoomer jusqu'aux visiteurs, ou suivez un train avec les boutons en bas de la vue.</li>
-  </ul>
-  <p>Chaque passager rapporte 5 €. Les salaires coûtent 350 € par jour.</p>
-  <button class="go" data-act="closeHelp">C'est parti !</button>
-</div></div>
-<div class="modal hidden" id="mDay"><div>
-  <h2 id="dTitle"></h2>
-  <table id="dTable"></table>
-  <p id="dMsg"></p>
-  <button class="go" data-act="nextDay" id="dBtn">Jour suivant</button>
-</div></div>
-
-<script src="data.js"></script>
-<script src="game.js"></script>
-
+<small>Jeux de fan non officiels, sans lien avec le Parc Astérix. Tracés au sol et alentours : © contributeurs OpenStreetMap (ODbL). Hauteurs estimées.</small>
 </body>
 </html>
