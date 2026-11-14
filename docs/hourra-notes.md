@@ -56,7 +56,7 @@
 
 ## Caractéristiques relevées
 
-- Photo du propriétaire (2026-11-14) : gouttière **rouge foncé** à nervures extérieures, bord rouge vif ; bobs **jaunes** à intérieur noir (train 1). Couleurs des autres trains non vérifiées.
+- Photo du propriétaire (2026-11-14) : gouttière **rouge foncé** à nervures extérieures, bord rouge vif ; bobs **jaunes** à intérieur noir, **tous les trains** (propriétaire).
 
 - Propriétaire (2026-11-14) : 1 ou 2 visiteurs par wagon, assis l'un derrière l'autre (`car {seats: 2, inline: true}`), un wagon peut partir avec un seul passager.
 
