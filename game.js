@@ -71,14 +71,31 @@ function gFrame(u,o){
 }
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x,rz:f.R.z,tx:f.T.x,tz:f.T.z});}
-const slotPos=i=>{const b=BAYS[i>>1],d=(i&1)?3.3:2.5;return [b.x+b.rx*d,0,b.z+b.rz*d];};
+const slotPos=i=>{const b=BAYS[i>>1],d=(i&1)?4.25:3.45;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // deux places d'attente par portillon
+// Deux opérateurs de quai vérifient les lapbars (moitié avant, moitié arrière) puis valident chacun sur un bouton
+const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*1.95,b.z+b.tz*e*1.7+b.rz*1.95];};
+const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});
+function startCheck(t){t.phase='check';for(const o of OPS){o.ok=false;o.st='go';o.k=o.i?NCARS-1:0;o.w=0;}}
+function resetOps(){for(const o of OPS){o.ok=false;if(o.st!=='idle')o.st='back';}}
+function stepOps(dt){
+  for(const o of OPS){
+    o.mv=false;if(o.st==='idle')continue;
+    if(o.st==='press'){o.w-=dt;if(o.w<=0){o.ok=true;o.st='idle';}continue;}
+    const b=BAYS[clamp(o.k,0,NCARS-1)],tg=o.st==='go'?[b.x+b.rx*1.95,b.z+b.rz*1.95]:opHome(o.i),dx=tg[0]-o.x,dz=tg[1]-o.z,d=Math.hypot(dx,dz),sp=3*dt;
+    if(d>sp){o.x+=dx/d*sp;o.z+=dz/d*sp;o.mv=true;continue;}
+    o.x=tg[0];o.z=tg[1];
+    if(o.st==='go'){o.w+=dt;if(o.w>=.3){o.w=0;o.k+=o.i?-1:1;if(o.i?o.k<NCARS/2:o.k>=NCARS/2)o.st='ret';}}
+    else if(o.st==='ret'){o.st='press';o.w=.45;}
+    else o.st='idle';
+  }
+}
 const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'course':'brake';
 
 /* ══════════ ÉTAT DU JEU ══════════ */
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,sw:0,swT:0,brakeLock:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
+  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,bypass:false,sw:0,swT:0,brakeLock:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
@@ -158,7 +175,7 @@ const JOBS={
   brakeFix:{label:'Déblocage des freins',dur:14,cost:200,ok:()=>G.brakeFault},
   brakeRev:{label:'Révision des freins',dur:25,cost:350,lock:true,ok:()=>trains.every(parked)},
   trainRev:{label:'Révision',dur:40,cost:600,ok:t=>t.st==='garage'},
-  rearm:{label:'Réarmement des harnais',dur:8,cost:0,ok:t=>t.fault==='harnais'}
+  rearm:{label:'Réarmement des lapbars',dur:8,cost:0,ok:t=>t.fault==='lapbars'}
 };
 function startJob(type,t){
   const j=JOBS[type];if(G.job||!j.ok(t))return;if(t)t.outReq=false;
@@ -173,7 +190,7 @@ function finishJob(){
   if(type==='brakeFix'){G.brakeFault=false;G.wear.brake=Math.max(0,G.wear.brake-15);log('Freins débloqués.','good');}
   if(type==='brakeRev'){G.brakeFault=false;G.wear.brake=0;log('Freins révisés.','good');}
   if(type==='trainRev'){t.wear=0;t.hs=false;t.fault=null;log(t.name+' révisé, prêt à rouler.','good');}
-  if(type==='rearm'){t.fault=null;t.phase='ready';log('Harnais réarmés sur '+t.name+'.','good');}
+  if(type==='rearm'){t.fault=null;t.phase='ready';for(const o of OPS)o.ok=true;log('Lapbars réarmés sur '+t.name+'.','good');}
 }
 
 /* ══════════ VISITEURS (chemins réels : promenade, file, sortie par la boutique) ══════════ */
@@ -307,20 +324,27 @@ function updateStation(t,dt){
     }
   }else if(t.phase==='board'){
     if(t.garReq&&count(t)===0)return;
-    const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]);
-    if(t.depReq){if(seated(t)===n&&G.gate<.05){t.phase='check';t.pt=2.5;}return;}
-    t.idle+=dt;
-    if(G.auto&&!t.garReq&&((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;
+    const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]),shut=!G.gatesOpen&&G.gate<.05&&seated(t)===n;
+    if(G.auto&&!t.depReq){t.idle+=dt;
+      if(!t.garReq&&((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;}
+    // portillons fermés : en auto après l'ordre de départ, en manuel dès qu'il y a des passagers, les opérateurs vérifient les lapbars
+    if(shut&&(G.auto?t.depReq:n>0||t.depReq)){if(n===0||G.bypass)t.phase='ready';else startCheck(t);}
   }else if(t.phase==='check'){
-    if(t.pt<=0){
-      if(Math.random()<Math.max(0,(t.wear-55)/45)*.3){t.fault='harnais';t.phase='fault';sfx.alarm();log('⚠️ Défaut capteur de harnais sur '+t.name+' : réarmement nécessaire.','warn');}
-      else t.phase='ready';
+    if(!G.auto&&G.gatesOpen){t.phase='board';resetOps();return;}
+    if(G.bypass){resetOps();t.phase='ready';return;}
+    if(OPS.every(o=>o.ok)){
+      if(Math.random()<Math.max(0,(t.wear-55)/45)*.3){t.fault='lapbars';t.phase='fault';resetOps();sfx.alarm();log('Défaut de lapbar détecté par un opérateur sur '+t.name+' : réarmement nécessaire.','warn');}
+      else{t.phase='ready';if(!G.auto)log('Lapbars validés par les deux opérateurs : départ possible.','good');}
     }
-  }else if(t.phase==='ready'&&!blockReason(t)){
-    t.st='run';t.v=.5;t.depReq=false;t.inLift=false;t.inBrake=false;t.screamed=false;G.stats.disp++;sfx.bell();
-    const n=count(t);
-    if(G.wx.type==='storm'&&n>0){pay(400,true);G.sat=clamp(G.sat-3,0,100);log('⚡ Infraction : train envoyé en plein orage ! Amende de 400 €.','bad');}
-    else log(t.name+' part avec '+n+' passager'+(n>1?'s':'')+'.');
+  }else if(t.phase==='ready'){
+    if(!G.auto&&G.gatesOpen){t.phase='board';t.depReq=false;resetOps();return;}
+    if((G.auto||t.depReq)&&!blockReason(t)){
+      const n=count(t),checked=OPS.every(o=>o.ok);
+      t.st='run';t.v=.5;t.depReq=false;t.inLift=false;t.inBrake=false;t.screamed=false;G.stats.disp++;sfx.bell();resetOps();
+      if(G.wx.type==='storm'&&n>0){pay(400,true);G.sat=clamp(G.sat-3,0,100);log('Infraction : train envoyé en plein orage ! Amende de 400 €.','bad');}
+      else log(t.name+' part avec '+n+' passager'+(n>1?'s':'')+(n>0&&!checked?' — lapbars non vérifiés (by-pass).':'.'));
+      if(n>0&&!checked&&Math.random()<.08+Math.max(0,(t.wear-55)/45)*.3){pay(600,true);G.sat=clamp(G.sat-6,0,100);sfx.alarm();log('Incident : un lapbar était mal verrouillé au départ. Amende de 600 €.','bad');}
+    }
   }
 }
 function updateRun(t,dt){
@@ -354,9 +378,10 @@ function updateRun(t,dt){
 function updatePlatform(dt){
   G.platT-=dt;const fr=EDGES.out.list[0];
   if(G.platT<=0&&fr&&fr.r<.4&&G.time<1140){
-    let i=SEATS-1;while(i>=0&&G.plat[i])i--;
+    let best=[],bo=2;for(let k=0;k<NCARS;k++){const o=(G.plat[2*k]?1:0)+(G.plat[2*k+1]?1:0);if(o<bo){bo=o;best=[k];}else if(o===bo&&o<2)best.push(k);}
+    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1,i=kb<0?-1:G.plat[2*kb]?2*kb+1:2*kb;
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
-      walker([[fr.x,0,fr.z],[-3.9,0,7.9],[-4,0,5.7],[p[0]+rnd(-.2,.2),0,5.5],p],fr.ci,()=>{r.on=true;},4.2);}
+      walker([[fr.x,0,fr.z],[-3.9,0,7.9],[-4,0,6.9],[p[0]+rnd(-.2,.2),0,6.6],p],fr.ci,()=>{r.on=true;},4.2);}
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);
   if(!t)G.gatesOpen=false;else if(G.auto)G.gatesOpen=true;
@@ -394,7 +419,7 @@ function updateWeather(dt){
 }
 function step(dt){
   G.time=Math.min(1140,G.time+dt*.5);
-  updateWeather(dt);updateVisitors(dt);updatePlatform(dt);updateTrains(dt);
+  updateWeather(dt);updateVisitors(dt);updatePlatform(dt);stepOps(dt);updateTrains(dt);
   if(G.job){G.job.rem-=dt;if(G.job.rem<=0)finishJob();}
   if(G.time>=1080&&!G.closedMsg){G.closedMsg=true;G.open=false;log('🔔 18:00 — le parc ferme, la file est fermée. Terminez les derniers tours.','warn');}
   if(G.time>=1080){
@@ -444,8 +469,14 @@ function act(a,arg){
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
   else if(a==='roof'){G.roofOff=!G.roofOff;}
   else if(a==='auto'){G.auto=!G.auto;log('Départs en mode '+(G.auto?'automatique.':'manuel.'));}
-  else if(a==='gates'){if(!G.auto){if(G.gatesOpen)G.gatesOpen=false;else if(trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq)){G.gatesOpen=true;log('🚪 Portillons ouverts : embarquement.');}}}
-  else if(a==='depart'){const s=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);if(s)s.depReq=true;}
+  else if(a==='gates'){if(!G.auto){
+      if(G.gatesOpen)G.gatesOpen=false;
+      else{const s=trains.find(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs&&!o.garReq);
+        if(s){s.phase='board';s.depReq=false;resetOps();G.gatesOpen=true;log('Portillons ouverts : embarquement.');}}}}
+  else if(a==='bypass'){G.bypass=!G.bypass;log(G.bypass?'BY-PASS de la validation des lapbars activé : départ possible sans vérification.':'Validation des lapbars par les opérateurs rétablie.',G.bypass?'bad':'good');}
+  else if(a==='depart'){
+    const s=G.auto?trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.find(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0))));
+    if(s)s.depReq=true;else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
   else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
   else if(a==='switch'){
@@ -475,7 +506,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
   <div class="bar"><i id="tW${t.i}"></i><span id="tW${t.i}T"></span></div>
   <div class="row">
     <button id="tR${t.i}" data-act="revise" data-arg="${t.i}">Réviser (600 €)</button>
-    <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer harnais</button>
+    <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer lapbars</button>
   </div></div>`).join('');
 $('deskTrains').innerHTML=trains.map(t=>`<div class="ctl"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
   <div class="pair"><button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Envoyer au garage">G</button><button class="pb sq sm green" id="tS${t.i}" data-act="sortir" data-arg="${t.i}" title="Marche arrière du garage vers la gare">◀</button></div>
@@ -489,9 +520,9 @@ function trainStatus(t){
   if(t.st==='station'){
     if(t.phase==='unload')return 'Débarquement';
     if(t.phase==='board')return t.hs?'Hors service':t.garReq&&!n?'Retenu en gare — à envoyer au garage':'Embarquement ('+n+'/'+SEATS+')';
-    if(t.phase==='check')return 'Vérification des harnais';
-    if(t.phase==='fault')return '⚠️ Défaut harnais';
-    const r=blockReason(t);return r?'Prêt — en attente ('+r+')':'Départ…';
+    if(t.phase==='check')return 'Vérification des lapbars ('+OPS.filter(o=>o.ok).length+'/2 validé)';
+    if(t.phase==='fault')return 'Défaut lapbar';
+    const r=blockReason(t);return !G.auto&&!t.depReq?'Lapbars validés — en attente de l\'ordre de départ':r?'Prêt — en attente ('+r+')':'Départ…';
   }
   const z=zoneOf(t.s);
   if(z==='prelift')return 'Vers le lift';
@@ -514,8 +545,9 @@ function ui(){
   $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.time>=1080;
   $('bEvac').disabled=!G.queue.length;
   $('bAuto').classList.toggle('manu',!G.auto);
-  {const can=trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=G.auto||(!G.gatesOpen&&!can);$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
-  $('bGo').disabled=!trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.depReq);$('bGo').classList.toggle('lit',!$('bGo').disabled);
+  {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs&&!o.garReq);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=G.auto||(!G.gatesOpen&&!can);$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
+  $('bGo').disabled=!(G.auto?trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.some(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0)))));$('bGo').classList.toggle('lit',!$('bGo').disabled);
+  $('bByp').classList.toggle('manu',G.bypass);OPS.forEach(o=>{$('lOp'+o.i).className='lamp'+(o.ok?'':' off');});
   $('bStop').classList.toggle('lit',G.estop);
   const inZ=z=>trains.some(t=>t.st==='run'&&zoneOf(t.s)===z);
   lamp('lGare',trains.some(t=>t.fault)?2:stationBusy()?1:0);
@@ -523,14 +555,14 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : départs bloqués.':'Aiguillage en retour vers LIFT.'):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : départs bloqués.':'Aiguillage en retour vers LIFT.'):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq&&t.st==='run'?' · garage demandé':'');
     bar('tW'+t.i,t.wear);
     $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('lit',t.garReq||t.st==='toGarage');
     $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('lit',t.st==='fromGarage');$('bSw').classList.toggle('manu',!!G.swT);$('bHold').classList.toggle('lit',G.brakeLock);
     $('tR'+t.i).disabled=!!G.job||t.st!=='garage';
-    $('tA'+t.i).disabled=!!G.job||t.fault!=='harnais';
+    $('tA'+t.i).disabled=!!G.job||t.fault!=='lapbars';
   }
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
@@ -716,8 +748,8 @@ function drawTable(){
   ctx.beginPath();ctx.rect(TBL.x0,TBL.z-SW_D-4,w,SW_D+5.4);ctx.fill();ctx.stroke();ctx.restore();
 }
 function drawStationFloor(s){
-  ctx.fillStyle='#b59c78';ctx.fill(stationP);ctx.fillRect(9,1.3,3.5,5.6);
-  if(s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha=.45;ctx.fill(stationP);ctx.fillRect(9,1.3,3.5,5.6);ctx.globalAlpha=1;}
+  ctx.fillStyle='#b59c78';ctx.fill(stationP);ctx.fillRect(9,1.3,4.6,6.6);
+  if(s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha=.45;ctx.fill(stationP);ctx.fillRect(9,1.3,4.6,6.6);ctx.globalAlpha=1;}
   const a=BAYS[NCARS-1],b=BAYS[0],ln=(lat,e)=>{ctx.moveTo(a.x-a.tx*e+a.rx*lat,a.z-a.tz*e+a.rz*lat);ctx.lineTo(b.x+b.tx*e+b.rx*lat,b.z+b.tz*e+b.rz*lat);};
   ctx.strokeStyle='#34322f';ctx.lineWidth=2.5;ctx.beginPath();ln(0,1.6);ctx.stroke();
   ctx.strokeStyle='#e8b93c';lw(.2,.8);ctx.beginPath();ln(1.34,1);ln(-1.34,1);ctx.stroke();
@@ -739,14 +771,20 @@ function leaf(g,t){ // vantail métallique : pivot h en bordure, extrémité en 
 }
 function drawGates(){
   ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
-  for(let k=0;k<=NCARS;k++){const b=BAYS[Math.min(k,NCARS-1)],e=k<NCARS?.5:-.5,cx=b.x+b.tx*CAR*e,cz=b.z+b.tz*CAR*e;ctx.moveTo(cx+b.rx*1.72,cz+b.rz*1.72);ctx.lineTo(cx+b.rx*3.9,cz+b.rz*3.9);}
+  for(let k=0;k<=NCARS;k++){const b=BAYS[Math.min(k,NCARS-1)],e=k<NCARS?.5:-.5,cx=b.x+b.tx*CAR*e,cz=b.z+b.tz*CAR*e;ctx.moveTo(cx+b.rx*2.70,cz+b.rz*2.70);ctx.lineTo(cx+b.rx*4.9,cz+b.rz*4.9);}
   ctx.stroke();
-  const a=G.gate*1.5,ca=Math.cos(a),sa=Math.sin(a),len=CAR-.3;
+  // un vantail par portillon, articulé sur le séparateur avant ; il pivote vers le train
+  const a=G.gate*1.45,ca=Math.cos(a),sa=Math.sin(a),len=CAR-.3,hx=CAR/2-.12;
   ctx.strokeStyle=G.gate>.5?'#4f9a72':'#a8443a';lw(.13,.9);ctx.lineCap='round';ctx.beginPath();
-  for(const b of BAYS){const px=b.x+b.tx*(CAR/2-.12)+b.rx*1.8,pz=b.z+b.tz*(CAR/2-.12)+b.rz*1.8,dx=-b.tx*ca+b.rx*sa,dz=-b.tz*ca+b.rz*sa;ctx.moveTo(px,pz);ctx.lineTo(px+dx*len,pz+dz*len);}
+  for(const b of BAYS){const px=b.x+b.tx*hx+b.rx*2.75,pz=b.z+b.tz*hx+b.rz*2.75;ctx.moveTo(px,pz);ctx.lineTo(px+(-b.tx*ca-b.rx*sa)*len,pz+(-b.tz*ca-b.rz*sa)*len);}
   ctx.stroke();ctx.lineCap='butt';
-  ctx.fillStyle='#e8b93c';for(const b of BAYS){ctx.beginPath();ctx.arc(b.x+b.tx*(CAR/2-.12)+b.rx*1.8,b.z+b.tz*(CAR/2-.12)+b.rz*1.8,.12,0,7);ctx.fill();}
+  ctx.fillStyle='#2b2e33';for(const b of BAYS){const px=b.x+b.tx*hx+b.rx*2.75,pz=b.z+b.tz*hx+b.rz*2.75;ctx.fillRect(px-.1,pz-.1,.2,.2);}
   G.plat.forEach((r,i)=>{if(r&&r.on){const p=slotPos(i);person(p[0],p[2],r.ci,r.ph,false);}});
+  // postes de validation des lapbars et opérateurs de quai
+  for(const o of OPS){const h=opHome(o.i),b=o.i?BAYS[NCARS-1]:BAYS[0],e=o.i?-1:1,qx=h[0]+b.tx*e*.7,qz=h[1]+b.tz*e*.7;
+    ctx.fillStyle='#30353c';ctx.fillRect(qx-.28,qz-.28,.56,.56);
+    ctx.fillStyle=o.ok?'#4fc27a':o.st==='idle'?'#59606a':'#d0a03a';ctx.beginPath();ctx.arc(qx,qz,.15,0,7);ctx.fill();
+    person(o.x,o.z,3,o.i+.6,o.mv,'#1d2b4f');}
 }
 function drawWorld(dt){
   const s=cam.s,x0=cam.x-VW/2/s,x1=cam.x+VW/2/s,z0=cam.z-VH/2/s,z1=cam.z+VH/2/s,vis=(a,b,c,d)=>a<x1&&b>x0&&c<z1&&d>z0,dry=1-wet*.8;

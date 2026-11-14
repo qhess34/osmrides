@@ -67,6 +67,7 @@ button.sel i{position:absolute;left:50%;top:50%;width:10px;height:40px;margin:-2
 button.sel.manu i{transform:rotate(42deg)}
 #desk .lamps{margin-top:12px}#desk .lamp{background:#17191e;border-color:#0c0d10;color:#c6cbd4}
 #crowd{flex:1;min-width:120px;accent-color:var(--gold)}#crowdV{color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
+.lamp.off i{background:#4a5059;box-shadow:none}#desk .pair .lamp{padding:4px 8px;min-width:52px}
 .lamps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
 .lamp{text-align:center;font-size:12px;padding:4px 2px;border-radius:6px;background:#141c30;border:1px solid var(--line)}
 .lamp i{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 3px;background:var(--ok);box-shadow:0 0 6px currentColor}
@@ -155,6 +156,10 @@ small.legal{color:#62708f}
         <div class="lamp" id="lBrake"><i></i>Freins</div>
       </div>
       <div class="deskrow">
+        <div class="ctl"><div class="pair"><div class="lamp off" id="lOp0"><i></i>Op. 1</div><div class="lamp off" id="lOp1"><i></i>Op. 2</div></div><div class="plate">Lapbars validés</div></div>
+        <div class="ctl"><button class="sel" id="bByp" data-act="bypass" title="By-pass de la validation des lapbars par les opérateurs"><i></i></button><div class="plate">Validation<br>Normale · By-pass</div></div>
+      </div>
+      <div class="deskrow">
         <div class="ctl"><button class="sel" id="bSw" data-act="switch" title="Aiguillage : voie du lift ou voie du garage"><i></i></button><div class="plate">Aiguillage<br>Lift · Garage</div></div>
         <div class="ctl"><button class="pb sq amber" id="bHold" data-act="hold" title="Retenir les trains au frein final, avant la gare">▮</button><div class="plate">Blocage<br>frein final</div></div>
       </div>
@@ -207,9 +212,11 @@ small.legal{color:#62708f}
   <p>Vous êtes chef d'attraction des montagnes russes en bois de Zeus. Faites tourner les trains, gardez les visiteurs heureux et l'attraction en bon état.</p>
   <ul>
     <li><b>Ouvrez l'entrée</b> (bouton du pupitre, ou clic sur le portail au pied de la statue) pour laisser entrer les visiteurs. Fermez-la à tout moment : plus personne n'entre, et les visiteurs déjà dans la file continuent d'embarquer. Ils se rangent sur le quai, deux par travée, derrière les <b>portillons</b>.</li>
-    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, ouverture de l'attraction, envoi des trains au garage ou en gare. En auto, les portillons s'ouvrent dès que le train est vide et il part une fois plein. En manuel, ouvrez les portillons puis donnez le départ (ils se referment avant le départ).</li>
+    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, entrée de la file, aiguillage, blocage du frein final. En auto, tout s'enchaîne seul. En manuel : ouvrez les portillons, refermez-les, attendez la validation des lapbars, puis donnez le départ.</li>
+    <li><b>Quai</b> : les visiteurs se répartissent derrière les portillons, deux au plus par portillon, un portillon par wagon. Ils y restent jusqu'à l'ouverture, puis montent dans le wagon en face.</li>
+    <li><b>Lapbars</b> : portillons fermés, deux opérateurs de quai vérifient chacun une moitié du train puis valident sur leur bouton (voyants Op. 1 et Op. 2). Le sélecteur « By-pass » permet de partir sans cette validation, au risque d'un incident et d'une amende.</li>
     <li><b>Garage</b> : la manœuvre est manuelle. Pour garer un train : attendez qu'il soit vide en gare, tournez l'aiguillage sur GARAGE, puis appuyez sur son bouton « Au garage ». Pour le ressortir : aiguillage sur GARAGE, gare libre (au besoin, bloquez l'autre train au frein final), puis « Retour » : il recule jusqu'à la gare. Remettez ensuite l'aiguillage sur LIFT.</li>
-    <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, harnais). À 100 %, l'élément est hors service.</li>
+    <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, lapbars). À 100 %, l'élément est hors service.</li>
     <li><b>Orage</b> : quand Zeus se fâche, suspendez les départs (mode manuel ou arrêt d'urgence). Chaque train envoyé sous l'orage coûte une amende.</li>
     <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le parc ferme à 18:00.</li>
     <li><b>Fréquentation</b> : le curseur du panneau de droite règle l'afflux de visiteurs, de parc vide à saturé.</li>
