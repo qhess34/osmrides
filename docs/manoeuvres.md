@@ -69,6 +69,8 @@ Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux 
 - Un train n'entre pas sur une voie déjà occupée au-delà de sa capacité (`cap`).
 - Appareil hors de `P` : les départs (raccordement en gare) ou l'entrée en gare (raccordement au frein final) sont bloqués.
 - Un train avec passagers ne quitte jamais le circuit.
+- Au plus `SITE.maxRun` trains sur le circuit : au-delà, la sortie du garage est refusée (Trace du Hourra : 5 sur 6).
+- Raccordement au frein final : le train qui sort du garage occupe le dernier canton ; les trains du parcours sont retenus au dernier frein de bloc. Fermer un frein de bloc au pupitre (`#bBk<n>`) aide à libérer le dernier canton avant une sortie.
 - L'arrêt d'urgence immobilise aussi les manœuvres (les trains s'arrêtent, il faut redonner l'ordre) et fige l'appareil.
 
 Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », « Pont en mouvement »…).

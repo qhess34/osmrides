@@ -54,6 +54,7 @@ function ui(){
     $('tA'+t.i).disabled=!!G.job||t.fault!=='lapbars';
   }
   $('bHold').classList.toggle('lit',G.brakeLock);
+  BLK.forEach((_,i)=>{$('bBk'+(i+1)).classList.toggle('lit',G.blkLock[i]);const h=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-BLK[i])<.5);$('lBk'+(i+1)).className='lamp'+(h?' occ':' off');}); // voyant orange : un train est arrêté sur ce frein
   OFF.forEach((_,p)=>{const b=$('y'+(p||'P'));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
   {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+(G.dev.to||'P'):'En place sur '+(G.dev.pos||'P')+(o?' — verrouillé':'');}
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);

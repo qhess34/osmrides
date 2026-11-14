@@ -65,7 +65,7 @@ Ouvrir `file:///…/jeu.html?site=<site>`, fermer l'aide (`[data-act=closeHelp]`
 
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - journée complète : boucler jusqu'à `G.dayDone`, en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
-- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold`, `#bByp` ; appareil de voie `#yP`, `#y1`…`#yN` ; par train `#tG0` retenir pour le garage, `#tF0` Avancer, `#tB0` Reculer, `#tX0` Arrêter…) ;
+- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold` (frein final), `#bBk1`…`#bBkN` (freins de bloc), `#bByp` ; appareil de voie `#yP`, `#y1`…`#yN` ; par train `#tG0` retenir pour le garage, `#tF0` Avancer, `#tB0` Reculer, `#tX0` Arrêter…) ;
 - test rapide : `node tools/check.js <site>` (manœuvre de garage scriptée aux boutons + journée complète, `--build` pour le fichier unique ; sortie courte PASS/FAIL, capture `/tmp/t1/<site>.png`) ;
 - relever `pageerror` ; faire des captures (`cam.g={x,z,s}` puis `render(.05)` plusieurs fois) et **les regarder**.
 

@@ -132,12 +132,12 @@ function hover(px,py){cv.classList.toggle('hit',!!pick(px,py))}
 function tap(px,py){
   const a=pick(px,py);
   if(!a){info.style.display='none';return}
-  if(a.site==='zeus'){location.href='jeu.html?site=zeus';return}
+  if(a.site){location.href='jeu.html?site='+encodeURIComponent(a.site);return} // toute attraction avec simulateur
   info.style.display='block';
   info.innerHTML='<h2></h2><p></p>';info.firstChild.textContent=a.name;
-  info.lastChild.textContent=a.site==='hourra'?'Simulateur en préparation.':'Pas de simulateur pour cette attraction.';
+  info.lastChild.textContent='Pas de simulateur pour cette attraction.';
 }
-document.getElementById('legend').textContent='Doré : simulateur disponible ou en préparation';
+document.getElementById('legend').textContent='Doré : simulateur disponible (cliquer pour jouer)';
 addEventListener('resize',resize);
 resize();fit();
 </script>

@@ -30,7 +30,31 @@ const root = path.resolve(__dirname, '..');
     const steps = [];
     const ok = (name, v) => { steps.push(name + (v ? '' : ':FAIL')); return v; };
     const hasYard = await page.evaluate(() => typeof LANES !== 'undefined' && trains.length > 1 && trains[1].st === 'garage');
-    if (hasYard) {
+    const brake = hasYard && await page.evaluate(() => YD.at === 'brake');
+    if (brake) { // garage sur le frein final (pont transbordeur à N voies) : sortir le train de la voie k, garer le train 0 sur une voie libre
+      const o = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage'), t = g[Math.min(2, g.length - 1)]; return { i: t.i, k: t.lane + 1 }; });
+      await click('#bAuto'); if (await page.evaluate(() => G.gatesOpen)) await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
+      await click('#bGo'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
+      // frein de bloc 1 fermé au pupitre : le train 0 y est arrêté (canton suivant libre) pendant la sortie du garage, puis libéré
+      await click('#bBk1'); ok('blk1Held', await until('trains[0].blk&&trains[0].v===0&&Math.abs(trains[0].s-BLK[0])<.5', 8000) && await logHas('arrêté au frein de bloc 1'));
+      await click('#tG0');
+      await click('#y' + o.k); ok('dev' + o.k, await until(`devOn(${o.k - 1})`, 800));
+      await click('#tB' + o.i); ok('out' + o.k, await until(`trains[${o.i}].st==='run'&&atAnchor(trains[${o.i}])`, 8000));
+      await click('#yP'); ok('devP', await until('!devOff()', 800));
+      ok('station' + o.i, await until(`trains[${o.i}].st==='station'`, 4000));
+      ok('stillHeld', await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5));
+      await click('#bBk1'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
+      ok('held0', await until('atAnchor(trains[0])', 20000));
+      await click('#tF0'); ok('refuseWrongPos', await logHas('sur P : positionnez'));
+      const f = await page.evaluate(k => LANES.findIndex((l, j) => j !== k - 1 && !trains.some(t => t.st === 'garage' && t.lane === j)) + 1, o.k);
+      await click('#y' + f); ok('dev' + f, await until(`devOn(${f - 1})`, 800));
+      await click('#tF0'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400));
+      await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
+      ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
+      await click('#yP'); ok('devP2', await until('!devOff()', 800));
+      await click('#bAuto');
+      if (process.argv.includes('--shot')) await page.evaluate(() => { cam.g = { x: SW0.x, z: SW0.z, s: 11 }; cam.follow = -1; for (let i = 0; i < 6; i++) render(.05); });
+    } else if (hasYard) {
       await click('#bAuto'); if (await page.evaluate(() => G.gatesOpen)) await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
       await click('#bGo'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>SW_B+TLEN+3", 4000));
       await click('#y1'); ok('dev1', await until('devOn(0)', 400));

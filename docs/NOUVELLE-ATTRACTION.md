@@ -18,10 +18,11 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 |---|---|
 | Circuit | Boucle fermée, abscisse `s` en mètres, 0 = début de gare. Repères `st0`, `st1`, `lift0`, `lift1`, `brk`, freins de bloc `blk1…`. |
 | Cantonnement | Un train par canton ; le lift et les freins de bloc retiennent un train si le canton suivant est occupé. Au moins un canton de plus qu'il n'y a de trains sur le circuit. |
+| Freins | Frein final (`brk` → arrêt à `holdBack` avant la fin du circuit) et freins de bloc `blk1…` (repères de la spec, patins dessinés sur ≈ 9 m avant chaque point d'arrêt). Chaque frein se ferme au pupitre, individuellement : `#bHold` (frein final), `#bBk1…#bBkN` (freins de bloc, `act('blk', n)`). Fermé, il arrête le prochain train même si le canton suivant est libre (message au journal) ; libéré, le cantonnement automatique reprend. Fermer est toujours permis. Voyant orange : un train est arrêté sur ce frein. |
 | Quai | Un portillon par wagon. Le nombre de places par wagon **dépend de l'attraction** (`SITE.car.seats`, disposition côte à côte ou l'un derrière l'autre avec `car.inline`) ; au plus autant de visiteurs en attente au portillon que de places. Un wagon peut partir partiellement rempli (ex. Trace du Hourra : 1 ou 2 passagers). Embarquement d'un côté (`loadSide`), débarquement de l'autre. |
 | Départ | Portillons fermés → deux opérateurs vérifient les lapbars → validation → départ. By-pass possible, avec risque d'amende. |
 | File | Chemins réels OSM, tronçons et fourches avec barrières pivotantes cliquables sur la carte. Les visiteurs ne quittent jamais les chemins et ne franchissent que les barrières ouvertes (sauf évacuation). |
-| Garage | Toujours via `SITE.yard` (`at` gare ou frein final, `device` `'switch'` ou `'table'`, géométrie `a`/`b`/`slide`/`side`/`len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}`) et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). Trains au garage au départ : tous sauf le premier, sur `SITE.trains[i].lane` ou la première voie libre. |
+| Garage | Toujours via `SITE.yard` (`at` gare ou frein final, `device` `'switch'` ou `'table'`, géométrie `a`/`b`/`slide`/`side`/`len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}`) et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). Trains au garage au départ : tous sauf le premier, sur `SITE.trains[i].lane` ou la première voie libre. `SITE.maxRun` : nombre maximal de trains sur le circuit (défaut : tous) ; la sortie d'un train de plus est refusée. |
 | Journée | Ouverture, fréquentation réglable, météo (pluie, orage = départs interdits), usure, pannes, maintenance, bilan de fin de journée. |
 | Textes | Français, vocabulaire du métier : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur. Messages du journal courts, factuels, avec la raison d'un refus. |
 
@@ -57,7 +58,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 - `node tools/check.js <id>` : journée complète, **0 erreur de page**, PASS. Pour les nouvelles attractions, ajouter au besoin un scénario dans `tools/check.js` (garage, manœuvres).
 - `node tools/check.js <id>` pour **chaque attraction existante** si le moteur a changé.
-- Boutons du pupitre pour les scénarios : appareil `#yP`, `#y1`…`#yN` ; par train `#tG<i>` (retenir pour le garage), `#tF<i>` (Avancer), `#tB<i>` (Reculer), `#tX<i>` (Arrêter) ; `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold`, `#bByp`.
+- Boutons du pupitre pour les scénarios : appareil `#yP`, `#y1`…`#yN` ; par train `#tG<i>` (retenir pour le garage), `#tF<i>` (Avancer), `#tB<i>` (Reculer), `#tX<i>` (Arrêter) ; `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold`, `#bBk<n>`, `#bByp`.
 - Captures regardées (vue d'ensemble, gare, garage pendant une manœuvre) : rendu cohérent avec Zeus.
 - `python3 tools/build.py <id> dist/<id>.html` fonctionne.
 - Compte rendu au propriétaire : ce qui a été testé, ce qui ne l'a pas été (souris réelle, tactile, son), ce qui est estimé.
@@ -74,6 +75,7 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-14 | T4 : Trace du Hourra. Freins de bloc commandables un par un au pupitre (`#bBk<n>`, `G.blkLock`), patins dessinés pour chaque frein de bloc, message au journal quand un train est arrêté par un frein fermé (bloc ou final) ; `SITE.maxRun` ; garage `at: 'brake'` + `device: 'table'` à 6 voies vérifié (scénario dans `tools/check.js`). |
 | 2026-11-14 | T3 : garage générique `SITE.yard` (aiguillage ou pont transbordeur, N voies), boutons `#yP/#yk`, `#tG/#tF/#tB/#tX` ; `car.seats` dans le moteur. |
 | 2026-11-14 | Places par wagon propres à chaque attraction (`car.seats`). |
 | 2026-11-14 | Création : concepts, rendu, fidélité, étapes, définition de « fait ». |

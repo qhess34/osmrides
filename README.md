@@ -5,9 +5,9 @@ Jeux de gestion en 2D vue du dessus : vous êtes chef d'attraction. Jeux de fan 
 | Attraction | État | Lien |
 |---|---|---|
 | Tonnerre 2 Zeus (montagnes russes en bois) | jouable | `jeu.html?site=zeus` |
-| La Trace du Hourra (bobsleigh) | données prêtes, configuration à écrire | — |
+| La Trace du Hourra (bobsleigh) | jouable (garage et pont transbordeur estimés) | `jeu.html?site=hourra` |
 
-Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable ; Zeus ouvre son simulateur, la Trace du Hourra est marquée « en préparation »).
+Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable ; chaque attraction dotée d'un simulateur l'ouvre d'un clic).
 
 ## Jouer
 
@@ -16,7 +16,7 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 
 ## Ce que fait le jeu
 
-- Pupitre de commande : entrée de la file, départs auto ou manuels, portillons, arrêt d'urgence, aiguillage, blocage du frein final.
+- Pupitre de commande : entrée de la file, départs auto ou manuels, portillons, arrêt d'urgence, aiguillage ou pont transbordeur, blocage du frein final et de chaque frein de bloc.
 - Quai : un portillon par wagon, deux visiteurs au plus par portillon ; deux opérateurs vérifient les lapbars et valident avant le départ (by-pass possible).
 - File d'attente : les visiteurs suivent les chemins ; des barrières pivotantes ouvrent ou court-circuitent des boucles.
 - Garage : manœuvre manuelle par un tronçon en S coulissant.

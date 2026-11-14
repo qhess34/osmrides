@@ -69,6 +69,8 @@ function yardBack(t){
   if(t.st!=='garage')return refuse(t.name+' est sur le circuit : la marche arrière ne sert qu\'à sortir du garage.');
   if(t.mv<0)return false;
   if(G.job&&G.job.t===t)return refuse(t.name+' est en révision.');
+  const MR=SITE.maxRun||trains.length,run=trains.filter(o=>o.st!=='garage').length; // au plus SITE.maxRun trains sur le circuit
+  if(run>=MR&&!sameLane(t).some(o=>o.g<t.g))return refuse('Déjà '+run+' trains sur le circuit (au plus '+MR+') : '+t.name+' reste au garage.');
   const L_=LANES[t.lane],out=t.g-TLEN>=L_.dev-.01,lim=backLim(t);
   if(t.g-lim<.05){
     if(out&&!devOn(t.lane))return refuse(t.name+' ne franchit pas '+DEVL+' : il n\'est pas en place sur '+posName(t.lane+1)+'.');
@@ -137,8 +139,10 @@ function updateRun(t,dt){
   }else if(z==='course'){
     const a=-9.81*(hAt(t.s)-hAt(t.s-TLEN))/TLEN-(PH.roll+t.wear*.0003)-PH.drag*t.v*t.v;
     let bi=-1;for(let i=0;i<BLK.length;i++)if(BLK[i]>t.s-.2){bi=i;break;}
-    if(bi>=0&&occupied(BLK[bi],blkEnd(bi),t)){const d=BLK[bi]-t.s;t.v=Math.min(Math.max(PH.vmin,t.v+a*dt),Math.sqrt(12*Math.max(0,d)));if(d<.2){t.v=0;t.blk=true;}} // arrêt au frein de bloc
-    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;}
+    const man=bi>=0&&G.blkLock[bi]; // frein de bloc fermé au pupitre : arrêt même si le canton suivant est libre
+    if(bi>=0&&(man||occupied(BLK[bi],blkEnd(bi),t))){const d=BLK[bi]-t.s;t.v=Math.min(Math.max(PH.vmin,t.v+a*dt),Math.sqrt(12*Math.max(0,d)));
+      if(d<.2){t.v=0;t.blk=true;if(man&&t.bkTold!==bi){t.bkTold=bi;log(t.name+' arrêté au frein de bloc '+(bi+1)+' (fermé au pupitre).','warn');}}} // arrêt au frein de bloc
+    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;}
     if(!t.screamed&&t.s>S_DROP){t.screamed=true;const n=count(t);if(n)sfx.scream(n);}
   }else{
     if(!t.inBrake){
@@ -151,8 +155,9 @@ function updateRun(t,dt){
     if(t.entering)t.v=Math.min(6,t.v+2*dt);
     else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);
       if(vm<.25){t.v=0;t.hold+=dt;const toGar=YD.at==='brake'&&t.garReq&&count(t)===0;
+        if(G.brakeLock&&!t.lkTold){t.lkTold=true;log(t.name+' arrêté au frein final (bloqué au pupitre).','warn');}
         if(toGar&&!t.told){t.told=true;log(t.name+' est retenu sur le frein final : positionnez '+DEVL+' sur une voie de garage, puis AV.','warn');}
-        if(t.hold>=1&&!G.brakeLock&&!stationBusy(t)&&!G.estop&&!G.brakeFault&&!toGar&&!(YD.at==='brake'&&(devOff()||trains.some(yardBusy)))){t.entering=true;t.hold=0;}}}
+        if(t.hold>=1&&!G.brakeLock&&!stationBusy(t)&&!G.estop&&!G.brakeFault&&!toGar&&!(YD.at==='brake'&&(devOff()||trains.some(yardBusy)))){t.entering=true;t.hold=0;t.lkTold=false;}}}
   }
   t.s+=t.v*dt;if(t.s>=L)t.s-=L;
 }
@@ -265,6 +270,8 @@ function act(a,arg){
   else if(a==='fwd')yardFwd(t);
   else if(a==='back')yardBack(t);
   else if(a==='halt')yardHalt(t);
+  else if(a==='blk'){const i=+arg-1;if(!(i>=0&&i<BLK.length))return; // freins de bloc : fermeture toujours permise, ouverture = retour au cantonnement automatique
+    G.blkLock[i]=!G.blkLock[i];log(G.blkLock[i]?'Frein de bloc '+(i+1)+' fermé : le prochain train y sera arrêté.':'Frein de bloc '+(i+1)+' libéré : cantonnement automatique.',G.blkLock[i]?'warn':'good');}
   else if(a==='hold'){G.brakeLock=!G.brakeLock;log(G.brakeLock?'Frein final bloqué : les trains sont retenus avant la gare.':'Frein final libéré.',G.brakeLock?'warn':'good');}
   else if(a==='garage'){ // aide : retenir le train vide au point de raccordement ; la manœuvre elle-même reste manuelle
     if(t.st==='station'||t.st==='run'){t.garReq=!t.garReq;t.told=false;
@@ -289,5 +296,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
   </div></div>`).join('');
 $('yPos').innerHTML=OFF.map((_,p)=>`<button class="pb sq sm blue" id="y${p||'P'}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${p||'P'}</button>`).join('');
 $('yName').textContent=DEVN;
+if(BLK.length)$('deskBlk').innerHTML=BLK.map((_,i)=>`<div class="ctl"><button class="pb sq sm amber" id="bBk${i+1}" data-act="blk" data-arg="${i+1}" title="Fermer ou libérer le frein de bloc ${i+1} : fermé, il arrête le prochain train même si le canton suivant est libre">B${i+1}</button><div class="lamp off" id="lBk${i+1}"><i></i>Bloc ${i+1}</div></div>`).join('')+'<div class="ctl"><div class="plate">Freins<br>de bloc</div></div>';
+else $('deskBlk').remove();
 $('deskTrains').innerHTML=`<div class="trow"><span class="plate"></span><span class="plate">Retenir</span><span class="plate">Avant</span><span class="plate">Arrière</span><span class="plate">Arrêt</span></div>`+trains.map(t=>`<div class="trow"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
   <button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Retenir le train vide au point de raccordement pour la mise au garage">G</button><button class="pb sq sm green" id="tF${t.i}" data-act="fwd" data-arg="${t.i}" title="Avancer : du point de raccordement vers la voie de garage, ou vers le fond de la voie">AV</button><button class="pb sq sm green" id="tB${t.i}" data-act="back" data-arg="${t.i}" title="Reculer : de la voie de garage vers le point de raccordement">AR</button><button class="pb sq sm amber" id="tX${t.i}" data-act="halt" data-arg="${t.i}" title="Arrêter la manœuvre en cours">STOP</button></div>`).join('');
