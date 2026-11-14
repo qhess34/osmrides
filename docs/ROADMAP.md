@@ -18,14 +18,14 @@ Tenue par le chef de projet. Une tâche = une session courte, qui lit ce fichier
 | T1 | Découper `game.js` en modules (`engine/*.js`, scripts classiques, sans changement de comportement) + test rapide `tools/check.js` | — | Sonnet | fait |
 | T2 | Carte du parc entier (`parc.html`) depuis l'extrait OSM du parc : allées, bâtiments, eau, tracés des attractions ; Tonnerre 2 Zeus et Trace du Hourra cliquables vers leur simulateur | T1 (pour le code de rendu partagé) | Sonnet | à faire |
 | T3 | Moteur : gare de triage générique `SITE.yard` (aiguillage ou pont à N positions, voies multiples, commandes Positionner / Avancer / Reculer / Arrêter, verrouillages) selon `docs/manoeuvres.md` ; migrer Zeus dessus sans régression | T1 | Fable ou Opus | à faire |
-| T4 | `sites/hourra.js` : Trace du Hourra jouable, garage à 5 voies sur pont transbordeur | T3 + réponse du propriétaire (Q1) | Fable ou Opus | bloquée |
+| T4 | `sites/hourra.js` : Trace du Hourra jouable, garage à 5 voies sur pont transbordeur | T3 | Fable ou Opus | à faire (Q1/Q2 répondues) |
 | T5 | Intégration progressive : depuis la carte du parc, chaque attraction s'ouvre à son emplacement ; état visible (ouverte, file) | T2, T4 | Sonnet | plus tard |
 | T6 | Attractions suivantes (une session chacune, en suivant « Ajouter une attraction » d'`AGENTS.md`) | T3, T5 | Sonnet + Opus pour les besoins moteur | plus tard |
 
 ## Questions ouvertes au propriétaire
 
-- **Q1 (bloque T4)** — Garage de la Trace du Hourra : où est le pont transbordeur (ou la rampe) et dans quel sens partent les 5 voies ? Bâtiment candidat OSM : way 148160581, à l'ouest du frein final. Une capture de carte ou un croquis suffit.
-- **Q2** — Trace du Hourra : combien de trains en exploitation (5 ou 6 selon les sources) ?
+- ~~Q1~~ répondue le 2026-11-14 (voir `docs/hourra-notes.md`, « Garage — réponse du propriétaire »). Reste à confirmer à l'écran : position exacte du pont et orientation des voies dans le bâtiment OSM 148160581.
+- ~~Q2~~ répondue : 6 trains, 5 au plus sur le parcours (toujours un au garage), 6 voies de garage.
 
 ## Journal
 

@@ -6,9 +6,17 @@
 - Le moteur sait déjà : piste en gouttière (`kind: 'bob'`), passagers l'un derrière l'autre (`car.inline`), quai côté gauche (`loadSide: -1`), freins de bloc (`blk1` à s ≈ 478), garage branché sur le frein final (`garage.at: 'brake'`), plusieurs trains au garage en file.
 - Rien de cela n'a encore tourné sur la Trace du Hourra : **`sites/hourra.js` n'existe pas**.
 
-## Demande du propriétaire non traitée
+## Garage — réponse du propriétaire (2026-11-14)
 
-- **Le garage a 5 voies.** Le moteur ne gère qu'une voie de garage (trains rangés en file). Il faut un pont transbordeur desservant 5 voies parallèles, une par train, avec choix de la voie au pupitre.
+- **6 trains**, au plus **5 sur le parcours** : il y a toujours au moins un train au garage.
+- **6 voies de garage**, un train par voie.
+- Pont transbordeur : la portion du circuit adjacente au garage se dégage en glissant dans la direction opposée au garage ; une voie spéciale, portée par le même chariot, prend sa place et raccorde le parcours, puis translate jusqu'à chacune des 6 voies de garage.
+- Interprétation retenue pour le moteur (à faire valider à l'écran) : chariot à 7 positions (`P` = circuit, `1…6` = voies) portant deux tronçons, celui du circuit et la voie de transfert, comme le tronçon en S de Zeus mais avec N voies. Modèle commun : `docs/manoeuvres.md` (`device: 'table'`).
+- Toujours supposé : emplacement exact du chariot sur le circuit (gare ou frein final) et orientation des voies dans le bâtiment OSM 148160581.
+
+## Demande initiale du propriétaire (historique)
+
+- **Le garage a plusieurs voies (6, voir ci-dessus).** Le moteur ne gère qu'une voie de garage (trains rangés en file). Il faut un pont transbordeur desservant 5 voies parallèles, une par train, avec choix de la voie au pupitre.
   Le bâtiment candidat dans OSM est le way 148160581, à l'ouest du frein final : sommets (-47.1,-13.1) (-40.2,6.9) (-32.6,4.2) (-34,0.1) (-22,-4) (-27.5,-20.1) (-39.5,-15.9). Demander au propriétaire où se trouve le pont et dans quel sens sont les voies avant d'inventer.
 
 ## Caractéristiques relevées
@@ -27,7 +35,7 @@
 
 ## Configuration envisagée pour `sites/hourra.js`
 
-- `car {len: 1.55, n: 7, inline: true, w: .95}`, 3 trains pour commencer (un canton de plus qu'il n'y a de trains : gare, lift, 2 cantons de parcours).
+- `car {len: 1.55, n: 7, inline: true, w: .95}`, 6 trains (5 au plus en circulation) (un canton de plus qu'il n'y a de trains : gare, lift, 2 cantons de parcours).
 - `stopBack: .5`, `holdBack: 27` (arrêt au frein final à s ≈ 752, avant la dernière courbe), `dropAfter: 12`.
 - Fourche de file en F = (5.6,-9.4) : raccourci F → (5.9,-6.5) → (4.9,-5) → (3.6,-3.6) ; boucle par `queueLoop` puis (0.2,-10.3) (0.9,-8.1) (0.7,-7.6) (1.6,-6.4) (2.6,-4.9) → (3.6,-3.6). Barrière : pivot (4.55,-8.84), raccourci fermé (6.74,-9.07), boucle fermée (5.95,-10.54).
 - Barrière d'entrée sur le raccord allée → file : pivot (58.35,14.71), fermée (57.65,16.79), ouverte (56.27,14.0) ; point d'attente extérieur (59.2,16.15).
