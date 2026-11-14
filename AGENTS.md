@@ -19,8 +19,15 @@ Jeu de fan non officiel. Interface et textes en français.
 | Fichier | Rôle |
 |---|---|
 | `index.html` | menu des attractions |
-| `jeu.html` | page de jeu commune ; charge `sites/<site>.data.js`, `sites/<site>.js`, puis `game.js` selon `?site=` |
-| `game.js` | moteur : aucune coordonnée ni texte propre à une attraction |
+| `jeu.html` | page de jeu commune ; charge `sites/<site>.data.js`, `sites/<site>.js`, puis `engine/*.js` selon `?site=` |
+| `engine/*.js` | moteur (aucune coordonnée ni texte propre à une attraction), scripts classiques à variables globales partagées, chargés dans cet ordre : |
+| `engine/core.js` | utilitaires, vecteurs, construction de la voie, constantes dérivées de `SITE` |
+| `engine/garage.js` | voie de garage, aiguillage/pont (`GAR`, `SW0`, `gFrame`), quai, opérateurs, zones |
+| `engine/state.js` | état `G`, trains, son, cantonnement, maintenance |
+| `engine/queue.js` | visiteurs, file (étapes, fourches), marcheurs |
+| `engine/sim.js` | trains, gare, parcours, météo, `step`, fin de journée, `act` |
+| `engine/ui.js` | pupitre et interface DOM |
+| `engine/render.js` | dessin canvas, caméra, boucle d'animation |
 | `sites/<site>.data.js` | `const OSM={cps, feats, trees, pois, others, paths, polys…}` — généré, ne pas éditer à la main |
 | `sites/<site>.js` | `const SITE={…}` — configuration écrite à la main |
 | `tools/make_site.py`, `tools/specs/<site>.json` | génération des données depuis un extrait `.osm` |
@@ -42,7 +49,7 @@ Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier 
 1. Récupérer un extrait OpenStreetMap de la zone (voir « Accès réseau »).
 2. Repérer les tronçons `roller_coaster=track`, la gare, la file, la sortie ; écrire `tools/specs/<site>.json` (profil en hauteur estimé).
 3. `python3 tools/make_site.py extrait.osm tools/specs/<site>.json sites/<site>.data.js apercu.png` : vérifier que tous les croisements ont au moins 3,2 m d'écart et que la vitesse reste plausible.
-4. Écrire `sites/<site>.js` en partant de `sites/zeus.js`. Si le moteur manque d'une capacité, l'ajouter dans `game.js` de façon générique, pilotée par `SITE`.
+4. Écrire `sites/<site>.js` en partant de `sites/zeus.js`. Si le moteur manque d'une capacité, l'ajouter dans le module `engine/` concerné de façon générique, pilotée par `SITE`.
 5. Ajouter la carte dans `index.html` et la ligne dans `README.md`.
 
 ## Vérifier avant de dire que c'est fait
@@ -53,6 +60,7 @@ Ouvrir `file:///…/jeu.html?site=<site>`, fermer l'aide (`[data-act=closeHelp]`
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - journée complète : boucler jusqu'à `G.dayDone`, en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
 - cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bSw`, `#bHold`, `#bByp`, `#tG0`, `#tS1`…) ;
+- test rapide : `node tools/check.js <site>` (journée complète, `--build` pour le fichier unique ; sortie courte PASS/FAIL, capture `/tmp/t1/<site>.png`) ;
 - relever `pageerror` ; faire des captures (`cam.g={x,z,s}` puis `render(.05)` plusieurs fois) et **les regarder**.
 
 Toute modification du moteur doit être revérifiée sur chaque attraction. Annoncer au propriétaire ce qui a été testé et ce qui ne l'a pas été (la souris réelle et le son ne sont pas testables ici).

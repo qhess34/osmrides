@@ -23,7 +23,14 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 ## Organisation
 
 - `index.html` : choix de l'attraction. `jeu.html` : page de jeu commune.
-- `game.js` : moteur (simulation, rendu, son), sans rien de propre à une attraction.
+- Moteur (scripts classiques chargés dans cet ordre, sans rien de propre à une attraction) :
+  - `engine/core.js` : utilitaires, vecteurs, construction de la voie, constantes dérivées de `SITE`
+  - `engine/garage.js` : voie de garage, aiguillage/pont (`GAR`, `SW0`, `gFrame`), quai, opérateurs, zones
+  - `engine/state.js` : état `G`, trains, son, cantonnement, maintenance
+  - `engine/queue.js` : visiteurs, file (étapes, fourches), marcheurs
+  - `engine/sim.js` : trains, gare, parcours, météo, `step`, fin de journée, `act`
+  - `engine/ui.js` : pupitre et interface DOM
+  - `engine/render.js` : dessin canvas, caméra, boucle d'animation
 - `sites/<site>.data.js` : données OpenStreetMap générées. `sites/<site>.js` : configuration écrite à la main.
 - `tools/make_site.py` + `tools/specs/<site>.json` : fabrication des données. `tools/build.py` : fichier unique.
 - `AGENTS.md` : consignes de travail. `docs/` : notes de conception.

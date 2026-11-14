@@ -1,5 +1,5 @@
 'use strict';
-/* Tonnerre 2 Zeus — configuration de l'attraction pour le moteur (game.js).
+/* Tonnerre 2 Zeus — configuration de l'attraction pour le moteur (engine/*.js).
    Les coordonnées viennent de sites/zeus.data.js (OpenStreetMap) ; ce qui est estimé est signalé. */
 const SITE=(()=>{
   // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare

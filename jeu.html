@@ -230,7 +230,9 @@ small.legal{color:#62708f}
   const load=(src,next)=>{const s=document.createElement('script');s.src=src;s.onload=next;
     s.onerror=()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">Attraction inconnue : '+site+'. <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
     document.body.appendChild(s);};
-  load('sites/'+site+'.data.js',()=>load('sites/'+site+'.js',()=>load('game.js')));
+  const ENGINE=['core','garage','state','queue','sim','ui','render'].map(n=>'engine/'+n+'.js');
+  const chain=i=>i<ENGINE.length?load(ENGINE[i],()=>chain(i+1)):0;
+  load('sites/'+site+'.data.js',()=>load('sites/'+site+'.js',()=>chain(0)));
 })();
 </script>
 
