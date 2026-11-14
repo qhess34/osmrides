@@ -2,9 +2,8 @@
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
-  if(t.st==='garage')return G.job&&G.job.t===t?'Au garage — en révision':'Au garage'+(t.hs?' — hors service':'');
-  if(t.st==='toGarage')return 'Roule vers le garage';
-  if(t.st==='fromGarage')return 'Sort du garage en marche arrière';
+  if(t.st==='garage'){const ln=LANES[t.lane],w=t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>YD.a?'Sur '+DEVL:'Tronçon de liaison';
+    return w+(t.mv>0?' — avance':t.mv<0?' — recule':G.job&&G.job.t===t?' — en révision':'')+(t.hs?' — hors service':'');}
   if(t.st==='station'){
     if(t.phase==='unload')return 'Débarquement';
     if(t.phase==='board')return t.hs?'Hors service':t.garReq&&!n?'Retenu en gare — à envoyer au garage':'Embarquement ('+n+'/'+SEATS+')';
@@ -16,7 +15,7 @@ function trainStatus(t){
   if(z==='prelift')return 'Vers le lift';
   if(z==='lift')return t.wait?'En attente en haut du lift (canton occupé)':t.v===0?'Bloqué sur le lift ('+n+' passagers)':'Montée du lift';
   if(z==='course')return t.blk?'Arrêté au frein de bloc (canton occupé)':'Sur le parcours — '+Math.round(t.v*3.6)+' km/h';
-  if(z==='brake')return t.v===0?(G.brakeFault?'Retenu aux freins (défaut)':GAR.at==='brake'&&t.garReq&&!n?'Retenu au frein final — à envoyer au garage':'En attente aux freins'):'Freinage';
+  if(z==='brake')return t.v===0?(G.brakeFault?'Retenu aux freins (défaut)':YD.at==='brake'&&t.garReq&&!n?'Retenu au frein final — à envoyer au garage':'En attente aux freins'):'Freinage';
   return 'Entrée en gare';
 }
 const lamp=(id,st)=>{$(id).className='lamp'+(st===2?' err':st===1?' occ':'');};
@@ -43,15 +42,20 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':G.sw>.01||G.swT?(G.sw<1&&G.swT?'Aiguillage en mouvement vers GARAGE.':G.swT?'Aiguillage sur GARAGE : '+(GAR.at==='brake'?'entrée en gare bloquée.':'départs bloqués.'):'Aiguillage en retour vers la voie principale.'):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':G.brakeLock?'Frein final bloqué : trains retenus avant la gare.':devOff()?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(YD.at==='brake'?'entrée en gare bloquée.':'départs bloqués.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(t.garReq&&t.st==='run'?' · garage demandé':'');
     bar('tW'+t.i,t.wear);
-    $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('lit',t.garReq||t.st==='toGarage');
-    $('tS'+t.i).disabled=t.st!=='garage'||!!(G.job&&G.job.t===t);$('tS'+t.i).classList.toggle('lit',t.st==='fromGarage');$('bSw').classList.toggle('manu',!!G.swT);$('bHold').classList.toggle('lit',G.brakeLock);
+    $('tG'+t.i).disabled=t.st!=='station'&&t.st!=='run';$('tG'+t.i).classList.toggle('lit',t.garReq);
+    $('tF'+t.i).disabled=t.st!=='garage'&&!atAnchor(t);$('tF'+t.i).classList.toggle('lit',t.mv>0);
+    $('tB'+t.i).disabled=t.st!=='garage';$('tB'+t.i).classList.toggle('lit',t.mv<0);
+    $('tX'+t.i).disabled=!t.mv;
     $('tR'+t.i).disabled=!!G.job||t.st!=='garage';
     $('tA'+t.i).disabled=!!G.job||t.fault!=='lapbars';
   }
+  $('bHold').classList.toggle('lit',G.brakeLock);
+  OFF.forEach((_,p)=>{const b=$('y'+(p||'P'));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
+  {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+(G.dev.to||'P'):'En place sur '+(G.dev.pos||'P')+(o?' — verrouillé':'');}
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
     $(id).disabled=!!G.job||!JOBS[k].ok();

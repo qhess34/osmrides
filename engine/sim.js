@@ -7,21 +7,87 @@ function carFrame(t,k,o){
     if(BOB&&t.v>2){const i=Math.floor((((sc%L)+L)%L)/DS)%N,off=clamp(-KAP[i]*t.v*t.v*.045,-.62,.62);o.p.x+=o.R.x*off;o.p.z+=o.R.z*off;} // le bob monte sur la paroi extérieure dans les courbes
     return o;
   }
-  const u=t.g-GAR.a-(k+.5)*CAR;return u<0?frameAt(SW_A+u,o):gFrame(u,o);
+  if(t.st!=='garage')return frameAt(S_ST-(k+.5)*CAR,o);
+  const u=t.g-YD.a-(k+.5)*CAR;return u<0?frameAt(SW_A+u,o):gFrame(t.lane,u,o);
 }
 function seatBase(t,i,o){
-  carFrame(t,i>>1,_f);o.copy(_f.p).addScaledVector(_f.U,.35);
-  return SITE.car.inline?o.addScaledVector(_f.T,(i&1)?-.36:.3):o.addScaledVector(_f.R,(i&1)?.33:-.33);
+  carFrame(t,Math.floor(i/CSEATS),_f);o.copy(_f.p).addScaledVector(_f.U,.35);
+  const q=seatOff(i%CSEATS);return o.addScaledVector(_f.T,q[0]).addScaledVector(_f.R,q[1]);
 }
 const _v=new V3;
 function arrive(t){
   t.st='station';t.s=S_ST;t.v=0;t.entering=false;t.phase='unload';t.pt=0;t.idle=0;t.depReq=false;
   if(t.wear>=100&&!t.hs){t.hs=true;t.garReq=true;log('⚠️ '+t.name+' est hors service : envoi au garage pour révision.','bad');}
 }
-const swFree=()=>!trains.some(o=>(o.st==='toGarage'&&o.g-GAR.a-TLEN<SW_LEN+.5)||o.st==='fromGarage'||(o.st==='run'&&o.s>ANCH+.2&&o.s<SW_B+TLEN+1));
-// train à l'arrêt au point d'où part la voie de garage : en gare, ou sur le frein final
-const atAnchor=t=>GAR.at==='brake'?(t.st==='run'&&t.v===0&&Math.abs(t.s-S_HOLD)<.4):(t.st==='station'&&t.phase==='board'&&!t.depReq);
-const swSet=()=>G.swT===1&&G.sw>=1;
+// train à l'arrêt au point de raccordement : en gare (vide possible, portillons en jeu), ou sur le frein final
+const atAnchor=t=>YD.at==='brake'?(t.st==='run'&&t.v===0&&Math.abs(t.s-S_HOLD)<.4):(t.st==='station'&&t.phase==='board'&&!t.depReq);
+/* ══════════ MANŒUVRES (docs/manoeuvres.md) : Positionner, Avancer, Reculer, Arrêter ══════════ */
+const ANCH_NAME=YD.at==='brake'?'le frein final':'la gare';
+function anchorFree(t){ // le point de raccordement peut recevoir un train qui sort du garage
+  if(YD.at==='brake')return !trains.some(o=>o!==t&&((o.st==='run'&&o.s>=(BLK.length?BLK[BLK.length-1]:S_BRK)-1)||(o!==t&&nearDev(o))));
+  return !trains.some(o=>o!==t&&(o.st==='station'||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))||nearDev(o)));
+}
+const sameLane=t=>trains.filter(o=>o!==t&&o.st==='garage'&&o.lane===t.lane);
+function fwdLim(t){let m=LANES[t.lane].end;for(const o of sameLane(t))if(o.g>t.g)m=Math.min(m,o.g-GSTEP);return m;}
+function backLim(t){
+  const L_=LANES[t.lane];let m=0;for(const o of sameLane(t))if(o.g<t.g)m=Math.max(m,o.g+GSTEP);
+  if(t.g-TLEN>=L_.dev-.01&&(!devOn(t.lane)||!anchorFree(t)))m=Math.max(m,L_.dev+TLEN+.6); // reste sur sa voie, avant l'appareil
+  return m;
+}
+const refuse=msg=>{log(msg,'warn');return false;};
+function yardPos(p){
+  if(G.estop)return refuse(DEVN+' : commande refusée, arrêt d\'urgence enclenché.');
+  if(devMoving())return refuse(DEVN+' en mouvement : attendez qu\'il soit en place.');
+  if(p===G.dev.pos)return refuse(DEVN+' déjà sur '+posName(p)+'.');
+  const o=devLock();if(o)return refuse(DEVN+' verrouillé : '+o.name+' est sur l\'appareil ou à moins d\'une longueur de train.');
+  G.dev.to=p;G.dev.k=0;
+  log(DEVN+' commandé vers '+posName(p)+(p?(YD.at==='brake'?' : entrée en gare bloquée.':' : départs bloqués.'):'.'));
+  return true;
+}
+function yardFwd(t){
+  if(G.estop)return refuse(t.name+' : manœuvre refusée, arrêt d\'urgence enclenché.');
+  if(t.st==='garage'){
+    const L_=LANES[t.lane];
+    if(t.mv>0)return false;
+    if(t.g-TLEN<L_.dev-.01&&!devOn(t.lane))return refuse(t.name+' ne franchit pas '+DEVL+' : il n\'est pas en place sur '+posName(t.lane+1)+'.');
+    if(fwdLim(t)-t.g<.05)return refuse(t.name+(t.g>=L_.end-.05?' est déjà en bout de voie.':' est bloqué par le train garé devant lui.'));
+    t.mv=1;log(t.name+' avance vers le fond de '+posName(t.lane+1)+'.');return true;
+  }
+  if(!atAnchor(t))return refuse(t.name+' doit être arrêté '+(YD.at==='brake'?'sur le frein final':'en gare, à quai')+' pour quitter le circuit.');
+  if(count(t)>0)return refuse(t.name+' a des passagers : il ne quitte jamais le circuit.');
+  if(YD.at!=='brake'&&G.gatesOpen)return refuse('Portillons ouverts : fermez-les avant de manœuvrer '+t.name+'.');
+  if(devMoving())return refuse(DEVN+' en mouvement : '+t.name+' ne peut pas le franchir.');
+  if(!G.dev.pos)return refuse(DEVN+' sur P : positionnez-le d\'abord sur une voie de garage.');
+  const j=G.dev.pos-1,n=trains.filter(o=>o.st==='garage'&&o.lane===j).length;
+  if(n>=LANES[j].cap)return refuse('Voie '+(j+1)+' ('+LANES[j].name+') pleine ('+LANES[j].cap+' train'+(LANES[j].cap>1?'s':'')+').');
+  if(trains.some(o=>o!==t&&nearDev(o)))return refuse('Manœuvre déjà en cours près de '+DEVL+'.');
+  t.st='garage';t.lane=j;t.g=0;t.mv=1;t.v=0;t.garReq=false;t.told=false;t.depReq=false;t.entering=false;t.phase='board';
+  log(t.name+' quitte le circuit vers '+posName(j+1)+'.');return true;
+}
+function yardBack(t){
+  if(G.estop)return refuse(t.name+' : manœuvre refusée, arrêt d\'urgence enclenché.');
+  if(t.st!=='garage')return refuse(t.name+' est sur le circuit : la marche arrière ne sert qu\'à sortir du garage.');
+  if(t.mv<0)return false;
+  if(G.job&&G.job.t===t)return refuse(t.name+' est en révision.');
+  const L_=LANES[t.lane],out=t.g-TLEN>=L_.dev-.01,lim=backLim(t);
+  if(t.g-lim<.05){
+    if(out&&!devOn(t.lane))return refuse(t.name+' ne franchit pas '+DEVL+' : il n\'est pas en place sur '+posName(t.lane+1)+'.');
+    if(out&&!anchorFree(t))return refuse(ANCH_NAME[0].toUpperCase()+ANCH_NAME.slice(1)+' n\'est pas libre : '+t.name+' reste au garage'+(YD.at==='brake'?'.':' (bloquez au besoin l\'autre train au frein final).'));
+    return refuse(t.name+' est bloqué par un autre train garé derrière lui.');
+  }
+  t.mv=-1;log(t.name+' recule'+(lim<=0?' vers '+ANCH_NAME+'.':'.'));return true;
+}
+function yardHalt(t){if(!t.mv)return refuse(t.name+' n\'est pas en manœuvre.');t.mv=0;log(t.name+' arrêté sur ordre du pupitre.');return true;}
+function updateYard(t,dt){
+  if(!t.mv||G.estop)return;
+  if(t.mv>0){const m=fwdLim(t);t.g=Math.min(m,t.g+MV.v*dt);
+    if(t.g>=m-1e-6){t.mv=0;log(t.g>=LANES[t.lane].end-.05?t.name+' est garé en bout de '+posName(t.lane+1)+'.':t.name+' arrêté derrière le train garé devant lui.');}}
+  else{const m=backLim(t);t.g=Math.max(m,t.g-MV.v*dt);
+    if(t.g<=1e-6){t.g=0;t.mv=0;t.seats.fill(null);
+      if(YD.at==='brake'){t.st='run';t.s=S_HOLD;t.v=0;t.inBrake=true;t.hold=1;t.entering=false;log(t.name+' est revenu sur le frein final. Remettez '+DEVL+' sur P pour qu\'il entre en gare.','good');}
+      else{t.st='station';t.s=S_ST;t.v=0;t.phase='board';t.pt=0;t.idle=0;t.depReq=false;log(t.name+' est en gare. Remettez '+DEVL+' sur P pour autoriser les départs.','good');}}
+    else if(t.g<=m+1e-6){t.mv=0;log(t.name+' arrêté avant '+DEVL+(devOn(t.lane)?' : '+ANCH_NAME+' n\'est pas libre.':' : il n\'est pas en place.'),'warn');}}
+}
 function updateStation(t,dt){
   t.pt-=dt;
   if(t.phase==='unload'){
@@ -30,14 +96,14 @@ function updateStation(t,dt){
       if(i>=0){
         const v=t.seats[i];t.seats[i]=null;t.pt=.12;G.stats.riders++;G.stats.income+=5;G.money+=5;
         let g=v.w<80?.07:v.w<180?.04:.015;if(G.wear.track>75)g*=.4;G.sat=clamp(G.sat+g,0,100);
-        seatBase(t,i,_v);{const b=BAYS[i>>1];walker(exitPath(_v.x-b.rx*1.2,_v.z-b.rz*1.2),v.ci,null,2.8);} // descente côté sortie, à l'opposé des portillons
-      }else if(count(t)===0){t.phase='board';t.idle=0;if(t.garReq)log(GAR.at==='brake'?t.name+' est vide : envoyez-le sans passagers, il sera retenu sur le frein final pour la mise au garage.':t.name+' est vide et retenu en gare : positionnez l\'aiguillage sur GARAGE puis envoyez-le.','warn');}
+        seatBase(t,i,_v);{const b=BAYS[Math.floor(i/CSEATS)];walker(exitPath(_v.x-b.rx*1.2,_v.z-b.rz*1.2),v.ci,null,2.8);} // descente côté sortie, à l'opposé des portillons
+      }else if(count(t)===0){t.phase='board';t.idle=0;if(t.garReq)log(YD.at==='brake'?t.name+' est vide : envoyez-le sans passagers, il sera retenu sur le frein final pour la mise au garage.':t.name+' est vide et retenu en gare : positionnez '+DEVL+' sur une voie de garage, puis AV.','warn');}
     }
   }else if(t.phase==='board'){
-    if(t.garReq&&count(t)===0&&GAR.at!=='brake')return;
+    if(t.garReq&&count(t)===0&&YD.at!=='brake')return;
     const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]),shut=!G.gatesOpen&&G.gate<.05&&seated(t)===n;
     if(G.auto&&!t.depReq){t.idle+=dt;
-      if(t.garReq?(GAR.at==='brake'&&n===0&&t.idle>2):((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;} // un train à garer part à vide
+      if(t.garReq?(YD.at==='brake'&&n===0&&t.idle>2):((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))))t.depReq=true;} // un train à garer part à vide
     // portillons fermés : en auto après l'ordre de départ, en manuel dès qu'il y a des passagers, les opérateurs vérifient les lapbars
     if(shut&&(G.auto?t.depReq:n>0||t.depReq)){if(n===0||G.bypass)t.phase='ready';else startCheck(t);}
   }else if(t.phase==='check'){
@@ -84,9 +150,9 @@ function updateRun(t,dt){
     const slow=t.v>6?Math.max(6,t.v-7*dt):t.v;
     if(t.entering)t.v=Math.min(6,t.v+2*dt);
     else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);
-      if(vm<.25){t.v=0;t.hold+=dt;const toGar=GAR.at==='brake'&&t.garReq&&count(t)===0;
-        if(toGar&&!t.told){t.told=true;log(t.name+' est retenu sur le frein final : positionnez l\'aiguillage sur GARAGE puis appuyez sur son bouton Garage.','warn');}
-        if(t.hold>=1&&!G.brakeLock&&!stationBusy(t)&&!G.estop&&!G.brakeFault&&!toGar&&!(GAR.at==='brake'&&(G.sw>.01||G.swT))){t.entering=true;t.hold=0;}}}
+      if(vm<.25){t.v=0;t.hold+=dt;const toGar=YD.at==='brake'&&t.garReq&&count(t)===0;
+        if(toGar&&!t.told){t.told=true;log(t.name+' est retenu sur le frein final : positionnez '+DEVL+' sur une voie de garage, puis AV.','warn');}
+        if(t.hold>=1&&!G.brakeLock&&!stationBusy(t)&&!G.estop&&!G.brakeFault&&!toGar&&!(YD.at==='brake'&&(devOff()||trains.some(yardBusy)))){t.entering=true;t.hold=0;}}}
   }
   t.s+=t.v*dt;if(t.s>=L)t.s-=L;
 }
@@ -94,10 +160,10 @@ function updateRun(t,dt){
 function updatePlatform(dt){
   G.platT-=dt;const fr=SEG_OUT.list[0];
   if(G.platT<=0&&fr&&fr.r<.4&&G.time<1140){
-    let best=[],bo=2;for(let k=0;k<NCARS;k++){const o=(G.plat[2*k]?1:0)+(G.plat[2*k+1]?1:0);if(o<bo){bo=o;best=[k];}else if(o===bo&&o<2)best.push(k);}
-    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1,i=kb<0?-1:G.plat[2*kb]?2*kb+1:2*kb;
+    let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
+    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let i=-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r]){i=kb*CSEATS+r;break;}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
-      const b=BAYS[i>>1],W=SITE.board.walk,j=rnd(-.2,.2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2);}
+      const b=BAYS[Math.floor(i/CSEATS)],W=SITE.board.walk,j=rnd(-.2,.2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2);}
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.garReq&&!o.depReq);
   if(!t)G.gatesOpen=false;else if(G.auto)G.gatesOpen=true;
@@ -109,13 +175,11 @@ function updateTrains(dt){
   for(const t of trains){
     if(t.st==='station')updateStation(t,dt);
     else if(t.st==='run')updateRun(t,dt);
-    else if(t.st==='toGarage'){t.g=Math.min(t.gT,t.g+2.6*dt);if(t.g>=t.gT){t.st='garage';t.seats.fill(null);log(t.name+' est au garage.');}}
-    else if(t.st==='fromGarage'){t.g=Math.max(0,t.g-2.2*dt);if(t.g<=0){
-      if(GAR.at==='brake'){t.st='run';t.s=S_HOLD;t.v=0;t.inBrake=true;t.hold=1;t.entering=false;log(t.name+' est revenu sur le frein final. Remettez l\'aiguillage en position normale pour qu\'il entre en gare.','good');}
-      else{t.st='station';t.s=S_ST;t.phase='board';t.pt=0;t.idle=0;t.depReq=false;log(t.name+' est en gare. Remettez l\'aiguillage sur LIFT pour autoriser les départs.','good');}}}
+    else if(t.st==='garage')updateYard(t,dt);
     if(t.st==='run'&&t.v===0&&((G.liftBroken&&zoneOf(t.s)==='lift')||(G.brakeFault&&zoneOf(t.s)==='brake')))G.sat=clamp(G.sat-.002*count(t)*dt,0,100);
   }
-  G.sw=clamp(G.sw+(G.swT?dt:-dt)/3,0,1); // l'aiguillage ne bouge que sur commande de l'opérateur
+  // l'appareil ne bouge que sur commande de l'opérateur ; l'arrêt d'urgence le fige
+  if(devMoving()&&!G.estop){G.dev.k+=dt/MV.t;if(G.dev.k>=1){G.dev.k=1;G.dev.pos=G.dev.to;log(DEVN+' en place sur '+posName(G.dev.pos)+'.');}}
 }
 
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
@@ -195,27 +259,18 @@ function act(a,arg){
   else if(a==='depart'){
     const s=G.auto?trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.find(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0))));
     if(s)s.depReq=true;else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
-  else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
+  else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();if(G.estop)trains.forEach(o=>{o.mv=0;});log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs et manœuvres bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
-  else if(a==='switch'){
-    if(!swFree())log('Aiguillage verrouillé : un train occupe la zone.','warn');
-    else{G.swT=G.swT?0:1;log(G.swT?'Aiguillage commandé vers GARAGE : le tronçon en S se met en place'+(GAR.at==='brake'?', entrée en gare bloquée.':', départs bloqués.'):'Aiguillage commandé vers la voie principale.');}}
+  else if(a==='pos')yardPos(+arg);
+  else if(a==='fwd')yardFwd(t);
+  else if(a==='back')yardBack(t);
+  else if(a==='halt')yardHalt(t);
   else if(a==='hold'){G.brakeLock=!G.brakeLock;log(G.brakeLock?'Frein final bloqué : les trains sont retenus avant la gare.':'Frein final libéré.',G.brakeLock?'warn':'good');}
-  else if(a==='garage'){
-    if(atAnchor(t)&&count(t)===0&&swSet()){
-      if(G.gar.length>=GCAP)log('Le garage est plein.','warn');
-      else{t.garReq=false;t.told=false;t.st='toGarage';t.g=0;t.gT=GMAX-G.gar.length*GSTEP;G.gar.push(t.i);log(t.name+' part au garage.');}}
-    else if(t.st==='station'||t.st==='run'){t.garReq=!t.garReq;t.told=false;
+  else if(a==='garage'){ // aide : retenir le train vide au point de raccordement ; la manœuvre elle-même reste manuelle
+    if(t.st==='station'||t.st==='run'){t.garReq=!t.garReq;t.told=false;
       log(!t.garReq?t.name+' reste en service.'
-        :GAR.at==='brake'?t.name+' sera retenu à vide sur le frein final : envoyez-le sans passagers, puis aiguillage sur GARAGE et bouton Garage.'
-        :t.st==='station'&&count(t)===0?t.name+' retenu hors service : positionnez l\'aiguillage sur GARAGE, puis appuyez de nouveau sur Garage.':t.name+' sera retenu vide en gare à son prochain passage.');}}
-  else if(a==='sortir'){
-    if(t.st==='garage'&&!(G.job&&G.job.t===t)){
-      const busy=GAR.at==='brake'?trains.some(o=>o!==t&&((o.st==='run'&&o.s>=(BLK.length?BLK[BLK.length-1]:S_BRK)-1)||o.st==='toGarage'||o.st==='fromGarage')):stationBusy(t);
-      if(G.gar[G.gar.length-1]!==t.i)log('Un autre train est garé devant : sortez-le d\'abord.','warn');
-      else if(!swSet())log('Positionnez d\'abord l\'aiguillage sur GARAGE.','warn');
-      else if(busy)log(GAR.at==='brake'?'Le frein final n\'est pas libre : attendez que la zone soit dégagée.':'La gare n\'est pas libre : attendez le départ du train ou bloquez l\'autre au frein final.','warn');
-      else{G.gar.pop();t.st='fromGarage';log(t.name+(GAR.at==='brake'?' recule vers le frein final.':' recule vers la gare.'));}}}
+        :YD.at==='brake'?t.name+' sera retenu à vide sur le frein final : envoyez-le sans passagers, puis '+DEVL+' sur une voie de garage et AV.'
+        :t.st==='station'&&count(t)===0?t.name+' retenu vide en gare : positionnez '+DEVL+' sur une voie de garage, puis AV.':t.name+' sera retenu vide en gare à son prochain passage.');}}
   else if(a==='revise')startJob('trainRev',t);
   else if(a==='rearm')startJob('rearm',t);
   ui();
@@ -232,6 +287,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     <button id="tR${t.i}" data-act="revise" data-arg="${t.i}">Réviser (600 €)</button>
     <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer lapbars</button>
   </div></div>`).join('');
-$('deskTrains').innerHTML=trains.map(t=>`<div class="ctl"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
-  <div class="pair"><button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Envoyer au garage">G</button><button class="pb sq sm green" id="tS${t.i}" data-act="sortir" data-arg="${t.i}" title="Marche arrière du garage vers la gare">◀</button></div>
-  <div class="plate">Au garage · Retour</div></div>`).join('');
+$('yPos').innerHTML=OFF.map((_,p)=>`<button class="pb sq sm blue" id="y${p||'P'}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${p||'P'}</button>`).join('');
+$('yName').textContent=DEVN;
+$('deskTrains').innerHTML=`<div class="trow"><span class="plate"></span><span class="plate">Retenir</span><span class="plate">Avant</span><span class="plate">Arrière</span><span class="plate">Arrêt</span></div>`+trains.map(t=>`<div class="trow"><div class="plate"><span class="dot" style="background:${t.col}"></span>Train ${t.i+1}</div>
+  <button class="pb sq sm amber" id="tG${t.i}" data-act="garage" data-arg="${t.i}" title="Retenir le train vide au point de raccordement pour la mise au garage">G</button><button class="pb sq sm green" id="tF${t.i}" data-act="fwd" data-arg="${t.i}" title="Avancer : du point de raccordement vers la voie de garage, ou vers le fond de la voie">AV</button><button class="pb sq sm green" id="tB${t.i}" data-act="back" data-arg="${t.i}" title="Reculer : de la voie de garage vers le point de raccordement">AR</button><button class="pb sq sm amber" id="tX${t.i}" data-act="halt" data-arg="${t.i}" title="Arrêter la manœuvre en cours">STOP</button></div>`).join('');

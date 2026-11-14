@@ -3,18 +3,19 @@
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(NCARS*2).fill(null),platT:0,gatesOpen:false,gate:0,bypass:false,sw:0,swT:0,brakeLock:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
+  queue:[],walkers:[],plat:new Array(SEATS).fill(null),platT:0,gatesOpen:false,gate:0,bypass:false,dev:{pos:0,to:0,k:1},brakeLock:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
 G.stats=newStats();
 function mkTrain(i,name,col,col2,wear,st){
-  return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,gT:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
+  return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
     depReq:false,garReq:false,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
 }
 const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
-G.gar=trains.filter(t=>t.st==='garage').map(t=>t.i); // trains au garage, du fond vers la sortie : seul le dernier peut sortir
-G.gar.forEach((i,r)=>{trains[i].g=GMAX-r*GSTEP;});
+// Trains au garage au départ : voie SITE.trains[i].lane (1…n) ou première voie qui a de la place ; rangés depuis la butée
+{const n=LANES.map(()=>0);trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,j=c?c-1:LANES.findIndex((l,k)=>n[k]<l.cap);
+  if(j<0||n[j]>=LANES[j].cap)throw new Error('SITE.yard : pas de place au garage pour '+t.name);t.lane=j;t.g=LANES[j].end-n[j]*GSTEP;n[j]++;});}
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){
@@ -65,16 +66,17 @@ const sfx=(()=>{
 
 /* ══════════ BLOCS, DÉPARTS, MAINTENANCE ══════════ */
 function stationBusy(self){
-  return trains.some(o=>o!==self&&(o.st==='station'||(GAR.at!=='brake'&&(o.st==='toGarage'||o.st==='fromGarage'))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
+  return trains.some(o=>o!==self&&(o.st==='station'||(YD.at!=='brake'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
 const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
 function occupied(a,b,self){
-  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&GAR.at==='brake'&&trains.some(o=>o!==self&&(o.st==='toGarage'||o.st==='fromGarage')));
+  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));
 }
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
-  if(GAR.at!=='brake'&&(G.sw>.01||G.swT||trains.some(o=>o.st==='toGarage'||o.st==='fromGarage')))return 'aiguillage sur garage';
+  if(YD.at!=='brake'&&devOff())return DEVN.toLowerCase()+' hors de P';
+  if(YD.at!=='brake'&&trains.some(yardBusy))return 'manœuvre au garage';
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';
   if(G.wear.track>=100)return 'voie hors service';
@@ -89,7 +91,7 @@ const JOBS={
   trackRev:{label:'Entretien de la voie',dur:55,cost:900,lock:true,ok:()=>trains.every(o=>parked(o)||held(o))},
   brakeFix:{label:'Déblocage des freins',dur:14,cost:200,ok:()=>G.brakeFault},
   brakeRev:{label:'Révision des freins',dur:25,cost:350,lock:true,ok:()=>trains.every(parked)},
-  trainRev:{label:'Révision',dur:40,cost:600,ok:t=>t.st==='garage'},
+  trainRev:{label:'Révision',dur:40,cost:600,ok:t=>t.st==='garage'&&!t.mv},
   rearm:{label:'Réarmement des lapbars',dur:8,cost:0,ok:t=>t.fault==='lapbars'}
 };
 function startJob(type,t){

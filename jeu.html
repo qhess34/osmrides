@@ -49,7 +49,9 @@ button.stop.on{background:var(--bad);animation:blink 1s infinite}
 .deskrow{display:flex;justify-content:space-around;gap:6px;margin-top:10px}
 .ctl{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
 .plate{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#b9bfca;text-align:center;margin-top:5px;line-height:1.25}
-.pair{display:flex;gap:6px;margin-top:5px}
+.pair{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;justify-content:center}
+#deskTrains{flex-direction:column;gap:5px}.trow{display:grid;grid-template-columns:1.5fr repeat(4,1fr);gap:6px;align-items:center;justify-items:center}.trow .plate{margin:0}
+button.pb.sm{letter-spacing:.3px}#deskTrains button.pb.sm{font-size:11px}button.pb.mv{animation:blink .6s infinite}
 button.pb{width:54px;height:54px;border-radius:50%;border:4px solid #b4b9c2;padding:0;color:#fff;font-size:17px;background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36);box-shadow:0 3px 0 #0e0f12,0 5px 9px #000a;transition:transform .05s}
 button.pb:hover:not(:disabled){filter:brightness(1.12);background:radial-gradient(circle at 35% 30%,#69707c,#2b2f36)}
 button.pb:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #0e0f12}
@@ -150,7 +152,7 @@ small.legal{color:#62708f}
         <div class="ctl"><button class="sel" id="bByp" data-act="bypass" title="By-pass de la validation des lapbars par les opérateurs"><i></i></button><div class="plate">Validation<br>Normale · By-pass</div></div>
       </div>
       <div class="deskrow">
-        <div class="ctl"><button class="sel" id="bSw" data-act="switch" title="Aiguillage : voie du lift ou voie du garage"><i></i></button><div class="plate">Aiguillage<br>Lift · Garage</div></div>
+        <div class="ctl" style="flex:2"><div class="pair" id="yPos"></div><div class="plate"><span id="yName"></span><br><span id="yState"></span></div></div>
         <div class="ctl"><button class="pb sq amber" id="bHold" data-act="hold" title="Retenir les trains au frein final, avant la gare">▮</button><div class="plate">Blocage<br>frein final</div></div>
       </div>
       <div class="deskrow" id="deskTrains"></div>
@@ -202,7 +204,7 @@ small.legal{color:#62708f}
   <p>Vous êtes chef d'attraction. Faites tourner les trains, gardez les visiteurs heureux et l'attraction en bon état.</p>
   <ul>
     <li><b>Ouvrez l'entrée</b> (bouton du pupitre, ou clic sur le portail à l'entrée de la file) pour laisser entrer les visiteurs. Fermez-la à tout moment : plus personne n'entre, et les visiteurs déjà dans la file continuent d'embarquer. Ils se rangent sur le quai, deux par travée, derrière les <b>portillons</b>.</li>
-    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, entrée de la file, aiguillage, blocage du frein final. En auto, tout s'enchaîne seul. En manuel : ouvrez les portillons, refermez-les, attendez la validation des lapbars, puis donnez le départ.</li>
+    <li><b>Pupitre de commande</b> : sélecteur Auto · Manuel, portillons, départ, arrêt d'urgence, entrée de la file, positions de l'aiguillage ou du pont transbordeur (P = circuit, 1… = voies de garage), blocage du frein final, et pour chaque train G (retenir pour le garage), AV, AR, STOP. En auto, tout s'enchaîne seul. En manuel : ouvrez les portillons, refermez-les, attendez la validation des lapbars, puis donnez le départ.</li>
     <li><b>Quai</b> : les visiteurs se répartissent derrière les portillons, deux au plus par portillon, un portillon par wagon. Ils y restent jusqu'à l'ouverture, puis montent dans le wagon en face.</li>
     <li><b>Lapbars</b> : portillons fermés, deux opérateurs de quai vérifient chacun une moitié du train puis valident sur leur bouton (voyants Op. 1 et Op. 2). Le sélecteur « By-pass » permet de partir sans cette validation, au risque d'un incident et d'une amende.</li>
     <li id="helpGarage"></li>

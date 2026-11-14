@@ -15,8 +15,9 @@ const SITE=(()=>{
     trains:[{name:'Train 1 « Éclair »',col:'#1c8a94',col2:'#f2c14e',wear:30},{name:'Train 2 « Foudre »',col:'#17727c',col2:'#d9dde2',wear:48}],
     stopBack:3,holdBack:4,dropAfter:14,loadSide:1,
     phys:{roll:.098,drag:.0006,vmin:3},
-    // garage dans le prolongement de la gare ; position du pont transbordeur déduite de la carte
-    garage:{at:'station',a:.8,b:6.4,slide:3.4,side:-1,len:8.6,p1:onGarage(21.5),end:onGarage(53.6)},
+    // Garage dans le prolongement de la gare (SITE.yard, voir docs/manoeuvres.md) : aiguillage = tronçon en S coulissant, une voie où les trains se rangent en file.
+    // Voie de garage = voie de maintenance réelle (OSM) ; position et course du chariot (a, b, slide) déduites de la carte ; vitesse de manœuvre et durée de déplacement estimées.
+    yard:{at:'station',device:'switch',a:.8,b:6.4,slide:3.4,side:-1,len:8.6,lanes:[{name:'Garage',pts:[onGarage(21.5),onGarage(53.6)]}],move:{v:2.4,t:3}},
     stationPoly:OSM.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
     fade:[[0,2.5,9],[7.3,-3.7,1.5],[49,-3,8],[-4,11.4,4]],   // toits qui s'effacent : gare, poste de conduite, garage, escalier
     plat:{load:7.9,exit:0,back:.1,front:1.6},
@@ -39,7 +40,7 @@ const SITE=(()=>{
     labels:o=>[['Gare',-4,-6.5],['Lift — 30 m',43,36],['Tunnel',o.tunnel[0]-2,o.tunnel[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-23.6,-3.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]],
     hideNames:['Zeus'],strike:{spot:[-31,-1],area:[-60,140,-20,125]},
     text:{storm:'Zeus est en colère : orage sur l\'attraction ! Aucun train ne doit partir.',great:'Excellente journée, Zeus est fier de vous !'},
-    helpGarage:'<b>Garage</b> : la manœuvre est manuelle. Pour garer un train : attendez qu\'il soit vide en gare, tournez l\'aiguillage sur GARAGE, puis appuyez sur son bouton « Au garage ». Pour le ressortir : aiguillage sur GARAGE, gare libre (au besoin, bloquez l\'autre train au frein final), puis « Retour » : il recule jusqu\'à la gare. Remettez ensuite l\'aiguillage sur LIFT.',
+    helpGarage:'<b>Garage</b> : manœuvre manuelle, commandée au pupitre. Pour garer un train : bouton G du train (il sera retenu vide en gare), aiguillage sur 1 (attendre qu\'il soit en place), puis AV : le train roule jusqu\'au fond du garage. Remettez l\'aiguillage sur P. Pour le sortir : gare libre (au besoin, bloquez l\'autre train au frein final), aiguillage sur 1, puis AR : il recule jusqu\'en gare ; aiguillage sur P. STOP arrête une manœuvre. L\'aiguillage ne bouge pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit.',
     draw:{
       floor(ctx,s,{lw}){ // garde-corps des quais et escalier d'accès
         ctx.strokeStyle='#4d525a';lw(.1,.6);ctx.beginPath();ctx.moveTo(-8.8,-3);ctx.lineTo(-1.7,-3);ctx.moveTo(.3,-3);ctx.lineTo(9,-2.7);ctx.moveTo(-8.9,7.6);ctx.lineTo(-6,7.7);ctx.moveTo(-1.9,7.8);ctx.lineTo(12.4,8.1);ctx.stroke();

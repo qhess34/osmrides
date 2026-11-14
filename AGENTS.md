@@ -8,6 +8,9 @@ Jeu de fan non officiel. Interface et textes en français.
 
 ## Attentes du propriétaire (à respecter)
 
+Règles complètes : `docs/NOUVELLE-ATTRACTION.md` — à tenir à jour à chaque ajout.
+
+
 - **Réalisme avant tout** : rendu aérien crédible, couleurs sourdes, aucun pictogramme ni emoji, rien d'enfantin.
 - **Fidélité** : tracé au sol, gare, file, garage pris dans OpenStreetMap. Ce qui est estimé ou supposé (hauteurs, longueur des wagons, couleurs, position d'un pont transbordeur) doit être signalé dans le code et dit au propriétaire, jamais présenté comme mesuré.
 - **Manœuvres manuelles** : aiguillage, envoi au garage, retour en marche arrière, portillons, validation des lapbars se commandent au pupitre ; les barrières de la file se cliquent sur la carte.
@@ -25,10 +28,10 @@ Jeu de fan non officiel. Interface et textes en français.
 | `jeu.html` | page de jeu commune ; charge `sites/<site>.data.js`, `sites/<site>.js`, puis `engine/*.js` selon `?site=` |
 | `engine/*.js` | moteur (aucune coordonnée ni texte propre à une attraction), scripts classiques à variables globales partagées, chargés dans cet ordre : |
 | `engine/core.js` | utilitaires, vecteurs, construction de la voie, constantes dérivées de `SITE` |
-| `engine/garage.js` | voie de garage, aiguillage/pont (`GAR`, `SW0`, `gFrame`), quai, opérateurs, zones |
+| `engine/garage.js` | gare de triage `SITE.yard` (`YD`, `LANES`, `SW0`, `gFrame`, état de l'appareil `G.dev`, verrouillages), quai, opérateurs, zones |
 | `engine/state.js` | état `G`, trains, son, cantonnement, maintenance |
 | `engine/queue.js` | visiteurs, file (étapes, fourches), marcheurs |
-| `engine/sim.js` | trains, gare, parcours, météo, `step`, fin de journée, `act` |
+| `engine/sim.js` | trains, gare, parcours, manœuvres (`yardPos`, `yardFwd`, `yardBack`, `yardHalt`), météo, `step`, fin de journée, `act` |
 | `engine/ui.js` | pupitre et interface DOM |
 | `engine/render.js` | dessin canvas, caméra, boucle d'animation |
 | `sites/<site>.data.js` | `const OSM={cps, feats, trees, pois, others, paths, polys…}` — généré, ne pas éditer à la main |
@@ -44,7 +47,7 @@ Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier 
 - Unités : mètres, secondes. `x` vers l'est, `z` vers le sud. `s` = abscisse le long de la voie (0 = début de gare).
 - Voie : `OSM.cps` = points `[x, hauteur, z, dévers, repère]`. Repères obligatoires : `st0`, `st1`, `lift0`, `lift1`, `brk` ; facultatifs : `blk1`, `blk2`… (freins de bloc).
 - Zones : gare, avant-lift, lift, parcours, frein final. Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre.
-- `SITE` (voir `sites/zeus.js`, la référence) : `kind` (`wood` | `bob`), `car`, `trains`, `loadSide`, `phys`, `garage` (`at: 'station' | 'brake'`), `queue.parts` (tronçons et fourches, de l'entrée vers la gare), `approach`, `exit`, `board`, `plat`, `booth`, `fade`, `view`, `cams`, `labels`, `jobsites`, et `draw.*` pour les dessins propres au site.
+- `SITE` (voir `sites/zeus.js`, la référence) : `kind` (`wood` | `bob`), `car` (`len`, `n`, `seats` = places par wagon, défaut 2, `inline`, `w`), `trains` (`lane` facultatif : voie de garage au départ), `loadSide`, `phys`, `yard` (garage : `at: 'station' | 'brake'`, `device: 'switch' | 'table'`, `a`, `b`, `slide`, `side`, `len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}` — voir `docs/manoeuvres.md`), `helpGarage`, `queue.parts` (tronçons et fourches, de l'entrée vers la gare), `approach`, `exit`, `board`, `plat`, `booth`, `fade`, `view`, `cams`, `labels`, `jobsites`, et `draw.*` pour les dessins propres au site.
 - État global `G`, trains `trains[]`, actions joueur `act(nom, arg)`, pas de simulation `step(dt)`, rendu `render(dt)`.
 
 ## Ajouter une attraction
@@ -62,8 +65,8 @@ Ouvrir `file:///…/jeu.html?site=<site>`, fermer l'aide (`[data-act=closeHelp]`
 
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - journée complète : boucler jusqu'à `G.dayDone`, en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
-- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bSw`, `#bHold`, `#bByp`, `#tG0`, `#tS1`…) ;
-- test rapide : `node tools/check.js <site>` (journée complète, `--build` pour le fichier unique ; sortie courte PASS/FAIL, capture `/tmp/t1/<site>.png`) ;
+- cliquer les vrais boutons du pupitre (`#bOpen`, `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold`, `#bByp` ; appareil de voie `#yP`, `#y1`…`#yN` ; par train `#tG0` retenir pour le garage, `#tF0` Avancer, `#tB0` Reculer, `#tX0` Arrêter…) ;
+- test rapide : `node tools/check.js <site>` (manœuvre de garage scriptée aux boutons + journée complète, `--build` pour le fichier unique ; sortie courte PASS/FAIL, capture `/tmp/t1/<site>.png`) ;
 - relever `pageerror` ; faire des captures (`cam.g={x,z,s}` puis `render(.05)` plusieurs fois) et **les regarder**.
 
 Toute modification du moteur doit être revérifiée sur chaque attraction. Annoncer au propriétaire ce qui a été testé et ce qui ne l'a pas été (la souris réelle et le son ne sont pas testables ici).

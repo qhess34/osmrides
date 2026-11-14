@@ -21,29 +21,37 @@ Une nouvelle attraction ne réécrit pas ces règles : elle déclare ses voies e
 ```
 yard: {
   at: 'station' | 'brake',        // point de raccordement sur le circuit
-  device: 'switch' | 'table',     // aiguillage à 2 positions ou pont transbordeur à N positions
-  link: {...},                    // géométrie du tronçon de liaison (depuis OSM ou estimée — le signaler)
-  lanes: [ {name, pts, cap}, … ], // voies de garage : tracé, nombre de trains qu'elle contient
-  move: { v: 1.2, t: 6 }          // vitesse de manœuvre (m/s) et durée de déplacement de l'appareil (s) — estimées
+  device: 'switch' | 'table',     // aiguillage à 2 positions ou pont transbordeur à N+1 positions (P, 1…n)
+  a, b,                           // l'appareil occupe le circuit de raccordement+a à raccordement+b (m)
+  slide, side, len,               // course du chariot (m), côté du garage (-1/1), longueur dessinée du chariot
+  lanes: [ {name, pts, cap, off}, … ], // voies : tracé (pts[0] = entrée de la voie), capacité (défaut : ce qui tient), décalage du chariot pour cette voie (défaut slide × k)
+  move: { v: 2.4, t: 3 },         // vitesse de manœuvre (m/s) et durée d'un déplacement de l'appareil (s) — estimées
+  devName, devLabel               // facultatif : nom au pupitre (« Aiguillage ») et dans une phrase (« l'aiguillage »)
 }
 ```
 
-Zeus = `device: 'switch'`, 1 voie (trains en file). Trace du Hourra = `device: 'table'`, 6 voies (un train par voie) ; le chariot dégage la portion du circuit en glissant à l'opposé du garage et y substitue la voie de transfert.
-Le moteur actuel ne gère que le cas Zeus (`SITE.garage`) ; la généralisation est la tâche T3 de `docs/ROADMAP.md`.
+Le tronçon de transfert de chaque voie est calculé par le moteur : courbe en S du circuit (raccordement + `a`) jusqu'à `pts[0]`.
+L'appareil est un chariot qui coulisse à l'opposé du garage et porte le tronçon du circuit et le tronçon de transfert : en position `k`, le transfert de la voie `k` est en place.
+Le train ne reste jamais sur le chariot pendant qu'il bouge : il franchit l'appareil une fois celui-ci en place (`table` : un seul tronçon de transfert dessiné, celui de la voie visée).
+Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Trace du Hourra = `device: 'table'`, 6 voies (un train par voie).
+Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
 
 ## Commandes au pupitre (identiques pour toutes les attractions)
 
 1. **Positionner l'appareil** : choisir `P` ou une voie `k`. Le déplacement prend `move.t` secondes ; pendant ce temps aucun train ne franchit l'appareil.
-2. **Avancer** un train sélectionné : vers l'appareil puis la voie choisie (entrée au garage), ou de la voie vers l'appareil.
-3. **Reculer** un train sélectionné : marche arrière sur sa voie, sur le tronçon de liaison, ou du tronçon vers le point de raccordement.
-4. **Arrêter** la manœuvre en cours (le train s'immobilise sur place).
+2. **Avancer** (`AV`) : du point de raccordement vers la voie où est l'appareil (entrée au garage), ou vers le fond de sa voie. Le train s'arrête seul en butée ou derrière le train garé devant.
+3. **Reculer** (`AR`) : de la voie vers le point de raccordement (sortie du garage) ; il s'arrête avant l'appareil si celui-ci n'est pas en place ou si le raccordement n'est pas libre.
+4. **Arrêter** (`STOP`) la manœuvre en cours (le train s'immobilise sur place).
+
+Aide conservée : le bouton `G` d'un train le retient vide au point de raccordement (en gare, ou sur le frein final), sans rien déclencher d'autre.
+Boutons : appareil `#yP`, `#y1`…`#yN` ; trains `#tG<i>`, `#tF<i>`, `#tB<i>`, `#tX<i>`.
 
 Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux étapes. Le pupitre affiche pour chaque train sa position (circuit, liaison, voie k, appareil) et pour l'appareil sa position et son état (en place / en mouvement / verrouillé).
 
 ### Séquence type : rentrer un train au garage
 
 1. Train vide, arrêté au point de raccordement (gare portillons fermés, ou frein final bloqué).
-2. Appareil sur la voie `k` libre → attendre « en place ».
+2. Portillons fermés, appareil sur la voie `k` libre → attendre « en place ».
 3. Avancer le train : il quitte le circuit, traverse la liaison et l'appareil, s'arrête en bout de voie `k`.
 4. Remettre l'appareil sur `P` pour rendre le circuit à l'exploitation.
 
@@ -51,17 +59,17 @@ Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux 
 
 1. Point de raccordement libre (bloquer au besoin l'autre train au frein final).
 2. Appareil sur la voie `k` du train → attendre « en place ».
-3. Reculer (ou avancer, selon le sens des voies) le train jusqu'au point de raccordement.
+3. Reculer le train jusqu'au point de raccordement.
 4. Appareil sur `P`. Le train reprend l'exploitation depuis la gare.
 
 ## Verrouillages (sécurité, toujours actifs)
 
-- L'appareil ne bouge pas si un train est dessus ou à moins d'une longueur de train de lui.
+- L'appareil ne bouge pas si un train est dessus ou à moins d'une longueur de train de lui (train du garage sur le circuit, la liaison ou l'appareil ; train du circuit qui le franchit). Pas de nouvelle commande pendant qu'il bouge.
 - Un train ne franchit l'appareil que si celui-ci est en place sur la voie qu'il vise.
 - Un train n'entre pas sur une voie déjà occupée au-delà de sa capacité (`cap`).
 - Appareil hors de `P` : les départs (raccordement en gare) ou l'entrée en gare (raccordement au frein final) sont bloqués.
 - Un train avec passagers ne quitte jamais le circuit.
-- L'arrêt d'urgence immobilise aussi les manœuvres.
+- L'arrêt d'urgence immobilise aussi les manœuvres (les trains s'arrêtent, il faut redonner l'ordre) et fige l'appareil.
 
 Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », « Pont en mouvement »…).
 

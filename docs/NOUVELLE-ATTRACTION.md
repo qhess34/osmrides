@@ -21,7 +21,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 | Quai | Un portillon par wagon. Le nombre de places par wagon **dépend de l'attraction** (`SITE.car.seats`, disposition côte à côte ou l'un derrière l'autre avec `car.inline`) ; au plus autant de visiteurs en attente au portillon que de places. Un wagon peut partir partiellement rempli (ex. Trace du Hourra : 1 ou 2 passagers). Embarquement d'un côté (`loadSide`), débarquement de l'autre. |
 | Départ | Portillons fermés → deux opérateurs vérifient les lapbars → validation → départ. By-pass possible, avec risque d'amende. |
 | File | Chemins réels OSM, tronçons et fourches avec barrières pivotantes cliquables sur la carte. Les visiteurs ne quittent jamais les chemins et ne franchissent que les barrières ouvertes (sauf évacuation). |
-| Garage | Toujours via `SITE.yard` et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). |
+| Garage | Toujours via `SITE.yard` (`at` gare ou frein final, `device` `'switch'` ou `'table'`, géométrie `a`/`b`/`slide`/`side`/`len`, `lanes:[{name, pts, cap, off}]`, `move:{v, t}`) et les commandes communes Positionner / Avancer / Reculer / Arrêter (`docs/manoeuvres.md`). Trains au garage au départ : tous sauf le premier, sur `SITE.trains[i].lane` ou la première voie libre. |
 | Journée | Ouverture, fréquentation réglable, météo (pluie, orage = départs interdits), usure, pannes, maintenance, bilan de fin de journée. |
 | Textes | Français, vocabulaire du métier : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur. Messages du journal courts, factuels, avec la raison d'un refus. |
 
@@ -48,7 +48,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 1. **Notes** : créer `docs/<id>-notes.md` (caractéristiques, sources, repères OSM, questions ouvertes).
 2. **Données** : extrait OSM (`https://api.openstreetmap.org/api/0.6/map?bbox=…`), spec `tools/specs/<id>.json`, puis `python3 tools/make_site.py extrait.osm tools/specs/<id>.json sites/<id>.data.js apercu.png`. Croisements ≥ 3,2 m d'écart, vitesse plausible.
-3. **Configuration** : `sites/<id>.js` en partant de `sites/zeus.js` (référence). Ne jamais éditer `sites/<id>.data.js` à la main.
+3. **Configuration** : `sites/<id>.js` en partant de `sites/zeus.js` (référence) ; garage dans `SITE.yard`, places par wagon dans `car.seats`. Ne jamais éditer `sites/<id>.data.js` à la main.
 4. **Moteur** : seulement si nécessaire, générique, documenté ici, toutes les attractions revérifiées.
 5. **Branchement** : carte dans `index.html`, `site` renseigné pour l'attraction dans `parc/parc.data.js` (via `tools/make_park.py`) et lien depuis `parc.html`, ligne dans `README.md`, tâche cochée dans `docs/ROADMAP.md`.
 6. **Vérification** (voir § 6), puis commit.
@@ -57,6 +57,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 - `node tools/check.js <id>` : journée complète, **0 erreur de page**, PASS. Pour les nouvelles attractions, ajouter au besoin un scénario dans `tools/check.js` (garage, manœuvres).
 - `node tools/check.js <id>` pour **chaque attraction existante** si le moteur a changé.
+- Boutons du pupitre pour les scénarios : appareil `#yP`, `#y1`…`#yN` ; par train `#tG<i>` (retenir pour le garage), `#tF<i>` (Avancer), `#tB<i>` (Reculer), `#tX<i>` (Arrêter) ; `#bAuto`, `#bGate`, `#bGo`, `#bStop`, `#bHold`, `#bByp`.
 - Captures regardées (vue d'ensemble, gare, garage pendant une manœuvre) : rendu cohérent avec Zeus.
 - `python3 tools/build.py <id> dist/<id>.html` fonctionne.
 - Compte rendu au propriétaire : ce qui a été testé, ce qui ne l'a pas été (souris réelle, tactile, son), ce qui est estimé.
@@ -73,5 +74,6 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-14 | T3 : garage générique `SITE.yard` (aiguillage ou pont transbordeur, N voies), boutons `#yP/#yk`, `#tG/#tF/#tB/#tX` ; `car.seats` dans le moteur. |
 | 2026-11-14 | Places par wagon propres à chaque attraction (`car.seats`). |
 | 2026-11-14 | Création : concepts, rendu, fidélité, étapes, définition de « fait ». |
