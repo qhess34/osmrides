@@ -16,7 +16,7 @@ Tenue par le chef de projet. Une tâche = une session courte, qui lit ce fichier
 |---|---|---|---|---|
 | T0 | Plan, consignes communes de manœuvre (`docs/manoeuvres.md`) | — | Opus | fait |
 | T1 | Découper `game.js` en modules (`engine/*.js`, scripts classiques, sans changement de comportement) + test rapide `tools/check.js` | — | Sonnet | fait |
-| T2 | Carte du parc entier (`parc.html`) depuis l'extrait OSM du parc : allées, bâtiments, eau, tracés des attractions ; Tonnerre 2 Zeus et Trace du Hourra cliquables vers leur simulateur | T1 (pour le code de rendu partagé) | Sonnet | à faire |
+| T2 | Carte du parc entier (`parc.html`) depuis l'extrait OSM du parc : allées, bâtiments, eau, tracés des attractions ; Tonnerre 2 Zeus et Trace du Hourra cliquables vers leur simulateur | T1 (pour le code de rendu partagé) | Sonnet | fait |
 | T3 | Moteur : gare de triage générique `SITE.yard` (aiguillage ou pont à N positions, voies multiples, commandes Positionner / Avancer / Reculer / Arrêter, verrouillages) selon `docs/manoeuvres.md` ; migrer Zeus dessus sans régression | T1 | Fable ou Opus | à faire |
 | T4 | `sites/hourra.js` : Trace du Hourra jouable, garage à 5 voies sur pont transbordeur | T3 | Fable ou Opus | à faire (Q1/Q2 répondues) |
 | T5 | Intégration progressive : depuis la carte du parc, chaque attraction s'ouvre à son emplacement ; état visible (ouverte, file) | T2, T4 | Sonnet | plus tard |

@@ -19,6 +19,9 @@ Jeu de fan non officiel. Interface et textes en français.
 | Fichier | Rôle |
 |---|---|
 | `index.html` | menu des attractions |
+| `parc.html` | plan du parc entier (canvas, déplacement/zoom) ; charge `parc/parc.data.js` ; les attractions avec `site` ouvrent `jeu.html?site=…` |
+| `parc/parc.data.js` | `const PARK={…}` — généré par `tools/make_park.py` depuis l'extrait du parc, ne pas éditer à la main |
+| `tools/make_park.py` | `python3 tools/make_park.py extrait.osm parc/parc.data.js` (origine = Trace du Hourra) |
 | `jeu.html` | page de jeu commune ; charge `sites/<site>.data.js`, `sites/<site>.js`, puis `engine/*.js` selon `?site=` |
 | `engine/*.js` | moteur (aucune coordonnée ni texte propre à une attraction), scripts classiques à variables globales partagées, chargés dans cet ordre : |
 | `engine/core.js` | utilitaires, vecteurs, construction de la voie, constantes dérivées de `SITE` |

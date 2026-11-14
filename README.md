@@ -7,6 +7,8 @@ Jeux de gestion en 2D vue du dessus : vous êtes chef d'attraction. Jeux de fan 
 | Tonnerre 2 Zeus (montagnes russes en bois) | jouable | `jeu.html?site=zeus` |
 | La Trace du Hourra (bobsleigh) | données prêtes, configuration à écrire | — |
 
+Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable ; Zeus ouvre son simulateur, la Trace du Hourra est marquée « en préparation »).
+
 ## Jouer
 
 Ouvrir `index.html` dans un navigateur et choisir une attraction (aucune installation, aucune dépendance).
