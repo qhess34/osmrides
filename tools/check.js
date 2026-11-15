@@ -253,6 +253,28 @@ const root = path.resolve(__dirname, '..');
     rs.push(await u4(`trains[${T0}].phase==='ready'`, 4000) && await p4.evaluate(i => trains[i].rc.every(v => v < .05) && OPS.every(o => o.ok), T0) ? 'validated' : 'validated:FAIL');
     await p4.click('#bGo'); rs.push(await u4(`trains[${T0}].st==='run'`, 200) ? 'depart' : 'depart:FAIL');
     man += ' | res: ' + rs.join(' '); await p4.close();
+    // règle de départ (propriétaire, 2026-11-15) : appareil de voie hors de P, départ autorisé seulement si une zone de freinage peut retenir le train avant l'appareil
+    const p5 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    p5.on('pageerror', e => errors.push(String(e.message || e)));
+    await p5.goto(url); await p5.waitForSelector('[data-act=closeHelp]'); await p5.click('[data-act=closeHelp]');
+    const u5 = (c, m = 4000) => p5.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [c, m]);
+    const log5 = re => p5.evaluate(r => new RegExp(r).test($('log').textContent), re);
+    const ds = [], dk = (n, v) => ds.push(n + (v ? '' : ':FAIL'));
+    const D = await p5.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.wear.track = 0; return { ra: TRAV && RA, at: YD.at, hold: DEV_HOLD, trav: TRAV, k: trains.findIndex(t => t.st === 'station') }; });
+    if (D.k >= 0) {
+      const off = D.ra ? '#yA1' : '#y1', on = D.ra ? '#yA0' : '#yP', T = `trains[${D.k}]`;
+      await p5.click(off); dk('devOff', await u5(D.ra ? 'raOut()' : 'devOn(0)', 800));
+      await p5.click('#bGo');
+      if (D.at === 'station' && D.hold < 0) { await u5('false', 400); dk('refuseNoBrake', await log5('ne peut pas partir : .* hors de P, aucune zone de freinage') && await p5.evaluate(T => eval(T).st === 'station', T)); }
+      else {
+        dk('departOk', await u5(`${T}.st==='run'&&${T}.s>S_ST+TLEN`, 4000));
+        const hs = D.at === 'station' ? `BLK[DEV_HOLD]` : D.trav ? 'S_PRE' : 'S_HOLD';
+        dk('heldBefore', await u5(`${T}.v===0&&Math.abs(${T}.s-${hs})<.6`, 30000) && await p5.evaluate(T => eval(T).st === 'run', T));
+        await u5('false', 200); dk('stillHeld', await p5.evaluate(([T, hs]) => eval(T).v === 0 && Math.abs(eval(T).s - eval(hs)) < .6, [T, hs]));
+        await p5.click(on); dk('released', await u5(`${T}.st==='station'||${T}.s>${hs}+3`, 12000));
+      }
+    }
+    man += ' | dep: ' + ds.join(' '); await p5.close();
   }
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {

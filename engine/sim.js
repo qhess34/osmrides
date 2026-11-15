@@ -135,7 +135,7 @@ function updateYard(t,dt){
 }
 /* ══════════ COMMANDES DE ZONE (pupitre) : freins Serrer / Relâcher, moteurs Avancer / Reculer / Arrêt, mode AUTO / MANU ══════════ */
 function nextBusy(z,t){ // anti-collision : section suivante occupée (refus du relâchement d'un frein qui retient un train)
-  if(/^B\d/.test(z)){const i=+z.slice(1)-1;return occupied(BLK[i],blkEnd(i),t)?(i+1<BLK.length?'canton du bloc '+(i+2):'canton du frein final'):'';}
+  if(/^B\d/.test(z)){const i=+z.slice(1)-1;return occupied(BLK[i],blkEnd(i),t)?(i+1<BLK.length?'canton du bloc '+(i+2):'canton du frein final'):devHoldAt(i)?DEVL+' hors de P':'';}
   const ahead=()=>aheadBusy(t)?(PSB?zName('Pre'):'gare'):'';
   if(z==='Fin')return TRAV?(trains.some(o=>o!==t&&(onRail(o)||onCar(o)))?DEVL:''):ahead();
   if(z===ZR)return ahead();
@@ -186,7 +186,7 @@ function zoneCmd(z,c){
   if(z==='St'){
     if(t.st!=='station')return refuse(t.name+' n\'est pas arrêté à quai.');
     if(LBK&&c==='b')return devMoving()||G.dev.pos?toLane():refuse(N+' : marche arrière seulement vers le garage : positionnez '+DEVL+' sur une voie.'); // aiguillage en amont : on recule de la gare vers la voie
-    if(YD.at==='station'&&(devMoving()||G.dev.pos))return LBK?refuse(DEVN+' sur une voie : '+t.name+' entre au garage en marche arrière (AR), pas en avant.'):toLane(); // aiguillage sur une voie : vers le garage
+    if(YD.at==='station'&&(devMoving()||G.dev.pos)&&!(LBK&&DEV_HOLD>=0))return LBK?refuse(DEVN+' sur une voie : '+t.name+' entre au garage en marche arrière (AR), pas en avant.'):toLane(); // aiguillage sur une voie : vers le garage (aiguillage en amont avec frein de retenue : départ normal, règle de départ)
     if(t.phase==='unload')return refuse(t.name+' : débarquement en cours.');
     if(count(t))return refuse(t.name+' a des passagers : départ par le bouton Départ, après validation des lapbars.');
     if(G.gatesOpen)return refuse('Portillons ouverts : fermez-les avant de faire avancer '+t.name+'.');
@@ -206,7 +206,7 @@ function zoneCmd(z,c){
       return refuse('Aucun rail en ligne avec le circuit : '+t.name+' attend avant '+DEVL+'.');}
     if(YD.at==='brake'&&(devMoving()||G.dev.pos))return toLane();
     return enter('sur le frein final');}
-  if(/^B\d/.test(z)){const i=+z.slice(1)-1;if(occupied(BLK[i],blkEnd(i),t))return refuse('Canton suivant occupé : '+t.name+' reste au frein de bloc '+(i+1)+'.');log(t.name+' repart du frein de bloc '+(i+1)+'.');return true;}
+  if(/^B\d/.test(z)){const i=+z.slice(1)-1;if(occupied(BLK[i],blkEnd(i),t))return refuse('Canton suivant occupé : '+t.name+' reste au frein de bloc '+(i+1)+'.');if(devHoldAt(i))return refuse(DEVN+' hors de P : '+t.name+' reste au frein de bloc '+(i+1)+'.');log(t.name+' repart du frein de bloc '+(i+1)+'.');return true;}
   return false;
 }
 function updateStation(t,dt){
@@ -243,6 +243,7 @@ function updateStation(t,dt){
       t.st='run';t.v=.5;t.depReq=false;t.inLift=false;t.inBrake=false;t.screamed=false;t.blk=false;t.told=false;G.stats.disp++;sfx.bell();resetOps();
       if(G.wx.type==='storm'&&n>0){pay(400,true);G.sat=clamp(G.sat-3,0,100);log('Infraction : train envoyé en plein orage ! Amende de 400 €.','bad');}
       else log(t.name+' part avec '+n+' passager'+(n>1?'s':'')+(n>0&&!checked?' — lapbars non vérifiés (by-pass).':'.'));
+      if(devHoldOn())log('Départ avec '+DEVL+' hors de P : '+t.name+' sera retenu au frein de bloc '+(DEV_HOLD+1)+' tant que '+DEVL+' n\'est pas revenu sur P.','warn');
       if(!G.sandbox&&n>0&&!checked&&Math.random()<.08+Math.max(0,(t.wear-55)/45)*.3){pay(600,true);G.sat=clamp(G.sat-6,0,100);sfx.alarm();log('Incident : un lapbar était mal verrouillé au départ. Amende de 600 €.','bad');}
     }
   }
@@ -262,10 +263,11 @@ function updateRun(t,dt){
   }else if(z==='course'){
     const a=-9.81*(hAt(t.s)-hAt(t.s-TLEN))/TLEN-(PH.roll+t.wear*.0003)-PH.drag*t.v*t.v;
     let bi=-1;for(let i=0;i<BLK.length;i++)if(BLK[i]>t.s-.2){bi=i;break;}
-    const man=bi>=0&&zK('B'+(bi+1)); // frein de bloc serré au pupitre (zone en MANU) : arrêt même si le canton suivant est libre
-    if(bi>=0&&(man||occupied(BLK[bi],blkEnd(bi),t))){const d=BLK[bi]-t.s;t.v=Math.min(Math.max(PH.vmin,t.v+a*dt),Math.sqrt(12*Math.max(0,d)));
-      if(d<.2){t.v=0;t.blk=true;if(man&&t.bkTold!==bi){t.bkTold=bi;log(t.name+' arrêté au frein de bloc '+(bi+1)+' (serré au pupitre).','warn');}}} // arrêt au frein de bloc
-    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;
+    const man=bi>=0&&zK('B'+(bi+1)),dh=bi>=0&&devHoldAt(bi); // frein de bloc serré au pupitre (zone en MANU) : arrêt même si le canton suivant est libre ; dh : retenu avant l'appareil hors de P (règle de départ)
+    if(bi>=0&&(man||dh||occupied(BLK[bi],blkEnd(bi),t))){const d=BLK[bi]-t.s;t.v=Math.min(Math.max(PH.vmin,t.v+a*dt),Math.sqrt(12*Math.max(0,d)));
+      if(d<.2){t.v=0;t.blk=true;if(man&&t.bkTold!==bi){t.bkTold=bi;log(t.name+' arrêté au frein de bloc '+(bi+1)+' (serré au pupitre).','warn');}
+        else if(dh&&!man&&t.dhTold!==bi){t.dhTold=bi;log(t.name+' retenu au frein de bloc '+(bi+1)+' : '+DEVL+' n\'est pas sur P (ou une manœuvre de garage est en cours).','warn');}}} // arrêt au frein de bloc
+    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;t.dhTold=-1;
       const tr=bi>=0&&!G.zm['B'+(bi+1)]?BTRIM[bi]:0;if(tr)t.v=Math.min(t.v,Math.sqrt(tr*tr+12*Math.max(0,BLK[bi]-t.s)));} // frein de ralentissement (zone en AUTO, canton libre) : vitesse ramenée à trim.v au point de frein, puis le train continue
     if(!t.screamed&&t.s>S_DROP){t.screamed=true;const n=count(t);if(n)sfx.scream(n);}
   }else{
@@ -419,7 +421,7 @@ function act(a,arg){
   else if(a==='depart'){
     const s=G.auto?trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.find(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0))));
     if(G.resOpen&&trains.some(o=>o.st==='station'))log('Départ refusé : sécurités ouvertes. Fermez les portillons puis verrouillez les sécurités (vérification par les opérateurs).','warn');
-    else if(s)s.depReq=true;else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
+    else if(s){s.depReq=true;const r=blockReason(s);if(r)log('Départ refusé pour l\'instant : '+s.name+' ne peut pas partir : '+r+'.','warn');}else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
   else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();if(G.estop)trains.forEach(o=>{o.mv=0;o.fdrive=0;});log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs et manœuvres bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
   else if(a==='pos')yardPos(+arg);

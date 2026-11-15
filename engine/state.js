@@ -87,8 +87,8 @@ function occupied(a,b,self){
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
   if(G.liftOff)return 'lift à l\'arrêt';
-  if(YD.at!=='brake'&&devOff())return DEVN.toLowerCase()+' hors de P';
-  if(YD.at!=='brake'&&trains.some(yardBusy))return 'manœuvre au garage';
+  if(YD.at!=='brake'&&devOff()&&DEV_HOLD<0)return DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de départ (DEV_HOLD, engine/garage.js)
+  if(YD.at!=='brake'&&trains.some(yardBusy)&&DEV_HOLD<0)return 'manœuvre au garage';
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';
   if(G.wear.track>=100)return 'voie hors service';

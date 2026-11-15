@@ -19,13 +19,16 @@ const CPS=OSM.cps;
 const TR=[],TAG={}; let L=0,N=0,DS=.5;
 (function buildTrack(){
   const n=CPS.length,SUB=24,dense=[]; let len=0,prev=null;
+  // dévers (°) déroulé : continu le long du circuit (vrilles : 0 → 720°, loopings : dévers ≈ 180° au sommet, voir tools/make_site.py « inversions ») ; D = tours complets accumulés sur un tour de circuit
+  const wr=a=>a-360*Math.round(a/360),BK=[CPS[0][3]||0];for(let i=1;i<n;i++)BK.push(BK[i-1]+wr((CPS[i][3]||0)-(CPS[i-1][3]||0)));
+  const D=BK[n-1]+wr((CPS[0][3]||0)-(CPS[n-1][3]||0))-BK[0],cp=j=>{const m=((j%n)+n)%n,c=CPS[m];return [c[0],c[1],c[2],BK[m]+D*Math.floor(j/n)];};
   for(let i=0;i<n;i++){
-    const p0=CPS[(i-1+n)%n],p1=CPS[i],p2=CPS[(i+1)%n],p3=CPS[(i+2)%n];
+    const p0=cp(i-1),p1=cp(i),p2=cp(i+1),p3=cp(i+2);
     for(let j=0;j<SUB;j++){
       const t=j/SUB,t2=t*t,t3=t2*t,q=[0,0,0,0];
       for(let k=0;k<4;k++) q[k]=.5*((2*p1[k])+(-p0[k]+p2[k])*t+(2*p0[k]-5*p1[k]+4*p2[k]-p3[k])*t2+(-p0[k]+3*p1[k]-3*p2[k]+p3[k])*t3);
       if(prev) len+=Math.hypot(q[0]-prev[0],q[1]-prev[1],q[2]-prev[2]);
-      if(j===0&&p1[4]) TAG[p1[4]]=len;
+      if(j===0) for(const tg of CPS[i].slice(4)) TAG[tg]=len;
       dense.push({v:q,s:len}); prev=q;
     }
   }
@@ -55,7 +58,8 @@ const ST_Y=OSM.cps[0][1],CAR=SITE.car.len,NCARS=SITE.car.n,TLEN=CAR*NCARS,CSEATS
 // Place r (0…CSEATS-1) d'un wagon : [décalage le long du wagon, décalage latéral]. Côte à côte par rangées de 2, ou l'un derrière l'autre (car.inline).
 // car.abreast : nombre de places côte à côte par rangée (défaut 2 ; ex. 4 pour un wagon de coaster inversé, une seule rangée).
 const S_COLS=SITE.car.inline?1:Math.min(SITE.car.abreast||2,CSEATS),S_ROWS=Math.ceil(CSEATS/S_COLS);
-const seatOff=r=>{const c=r%S_COLS,w=Math.floor(r/S_COLS),d=Math.min(.66*(S_ROWS-1),CAR-.5);return [S_ROWS>1?d/2*(1-2*w/(S_ROWS-1))-.03:0,S_COLS>2?(c-(S_COLS-1)/2)*.6:S_COLS>1?(c?.33:-.33):0];};
+// car.inline : places réparties sur la longueur utile du wagon (≈ 45 % chacune pour deux places), un peu en arrière pour laisser la lapbar devant le passager avant.
+const seatOff=r=>{const c=r%S_COLS,w=Math.floor(r/S_COLS),d=Math.min(.66*(S_ROWS-1),CAR-.5);return [S_ROWS<2?0:SITE.car.inline?CAR*.45*(.5-w/(S_ROWS-1))*(S_ROWS>2?2*(S_ROWS-1)/S_ROWS:1)-.05:d/2*(1-2*w/(S_ROWS-1))-.03,S_COLS>2?(c-(S_COLS-1)/2)*.6:S_COLS>1?(c?.33:-.33):0];};
 // Sécurités des passagers : SITE.car.restraint = 'lapbar' | 'otsr' (harnais par-dessus les épaules) | 'belt' ; SITE.car.restraintPer = 'seat' | 'car' (une barre par place, ou une barre commune au wagon).
 // Défauts par SITE.kind : wood → lapbar par place (Zeus, propriétaire), bob → lapbar par wagon (Trace du Hourra, propriétaire), inverted → otsr par place (OzIris), steel → otsr par place (Goudurix, estimé, à confirmer).
 const RES_KIND=SITE.car.restraint||({wood:'lapbar',bob:'lapbar',inverted:'otsr',steel:'otsr'})[SITE.kind]||'lapbar',RES_PER=SITE.car.restraintPer||(SITE.kind==='bob'?'car':'seat'),RES_T=1.5,RES_NAME={lapbar:'lapbars',otsr:'harnais',belt:'ceintures'}[RES_KIND]||'lapbars'; // RES_T : durée d'ouverture / de fermeture (s, estimée)

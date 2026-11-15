@@ -49,10 +49,13 @@ const SITE=(()=>{
     view:{x:25,z:52,w:200,h:190,bounds:[-90,120,-60,170]},
     // Figures (affiche du plan des figures, docs/sources/goudurix-plan-figures-affiche.png, recalée sur le tracé OSM par la forme ; positions ESTIMÉES) : après la grande descente,
     // Butterfly (2 inversions, S de (29..48 ; 62..78), s ≈ 206–272), Batwing (2, ∞ au bord du lac, s ≈ 312–382), Loop (1, ligne droite à l'est après le Batwing, entre les repères 9 et 10 du plan, s ≈ 400–450 : placement du propriétaire), Double Corkscrew (2, S de l'extrémité sud-ouest, s ≈ 540–590).
+    // Inversions dessinées (propriétaire, 2026-11-15 ; tools/specs/goudurix.json « inversions », générique) : Loop agrandi ×4 le long de la voie (boucle ESTIMÉE insérée entre s 388 et 455 au sol :
+    // 200 m de voie au lieu de 52 m, hauteur 21 m, vue de dessus une ellipse de ≈ 67 x 7,5 m, x 48–56, z 28–95 ; le linéaire ajouté n'est pas dans OSM) ; Double Corkscrew = deux vrilles de 360°
+    // (dévers 0 → 720°, déport hélicoïdal 3 m ESTIMÉ, s 538–592 au sol). Train tête en bas dessiné par le moteur (dessous de caisse, voie par-dessus).
     cams:{gare:{label:'Gare',x:3,z:0,s:17},file:{label:'File',x:22,z:50,s:7},lift:{label:'Lift',x:6,z:78,s:6.5},descente:{label:'Grande descente',x:29,z:96,s:8},
-      butterfly:{label:'Butterfly',x:38,z:70,s:11},loop:{label:'Loop',x:54,z:63,s:11},batwing:{label:'Batwing',x:55,z:28,s:11},corkscrew:{label:'Double Corkscrew',x:19,z:92,s:9},
+      butterfly:{label:'Butterfly',x:38,z:70,s:11},loop:{label:'Loop',x:54,z:62,s:6.5},batwing:{label:'Batwing',x:55,z:28,s:11},corkscrew:{label:'Double Corkscrew',x:19,z:92,s:9},
       frein:{label:'Frein final',x:-6,z:30,s:8},garage:{label:'Garage',x:-14,z:10,s:11}},
-    labels:()=>[['Gare',6,-4],['Lift — 36 m',12,78],['Grande descente',38,100],['Virage à 180°',14,128],['Butterfly',52,66],['Loop',66,63],['Batwing',60,22],['Double Corkscrew',3,92],
+    labels:()=>[['Gare',6,-4],['Lift — 36 m',12,78],['Grande descente',38,100],['Virage à 180°',14,128],['Butterfly',27,70],['Loop',66,62],['Batwing',60,22],['Double Corkscrew',3,92],
       ['Poste aiguillage',-10.5,-7.4],['Frein final',-32,35],['Garage',-32,12],['Entrée',32,88],["File d'attente",-42,52],['Sortie',14,-3]],
     strike:{area:[-60,100,-40,150]},
     // Le premier frein du parcours (B1) RALENTIT nettement le train (propriétaire) : vitesse ramenée à 8 m/s (≈ 29 km/h, ESTIMÉ) en passage normal ; arrêt seulement si le canton suivant est occupé.

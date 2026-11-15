@@ -143,18 +143,6 @@
    5
   ],
   [
-   412,
-   14
-  ],
-  [
-   425,
-   26
-  ],
-  [
-   438,
-   14
-  ],
-  [
    450,
    5
   ],
@@ -168,19 +156,19 @@
   ],
   [
    548,
-   14
+   9
   ],
   [
    560,
-   10
+   8
   ],
   [
    572,
-   16
+   10
   ],
   [
    584,
-   9
+   7
   ],
   [
    600,
@@ -237,5 +225,27 @@
   "station": 148159470
  },
  "png_scale": 5,
- "drop_ways": []
+ "drop_ways": [],
+ "inversions": [
+  {
+   "type": "loop",
+   "s0": 388.0,
+   "s1": 455.0,
+   "len": 200,
+   "h": 21,
+   "w": 6,
+   "e": 3,
+   "side": 1,
+   "note": "Loop : boucle ESTIMÉE insérée (OSM ne la dessine pas), 4 fois plus longue que la corde au sol (propriétaire, 2026-11-15)",
+   "at": 0.5
+  },
+  {
+   "type": "corkscrew",
+   "s0": 538,
+   "s1": 592,
+   "n": 2,
+   "r": 3,
+   "note": "Double Corkscrew : deux vrilles de 360° (propriétaire), déport hélicoïdal ESTIMÉ"
+  }
+ ]
 }

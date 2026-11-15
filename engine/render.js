@@ -84,13 +84,14 @@ const TRO=Object.assign({lo:[150,156,164],hi:[198,204,210],edge:'#4a4f57',deck:'
 // Coaster acier assis à rails tubulaires (SITE.kind 'steel') : deux rails tubulaires de roulement reliés par des entretoises, supports tubulaires en
 // A au-dessus de 1,5 m (jambes écartées avec la hauteur), train posé sur la voie. Couleurs par SITE.track = {spine, rail, support}.
 const TKC=Object.assign(STL?{spine:'#a88a2e',rail:'#c9a83c',support:'#8c3a2b'}:{spine:'#4a5d72',rail:'#2e3640',support:'#8c8577'},SITE.track),SUPW=2.3,WOODY=!BOB&&!INV&&!STL;
-const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;
+const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;
 function strip(sm){
-  const o={h:0,sw:0,deck:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
+  const o={h:0,sw:0,deck:new Path2D,spine:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,ch:null,bu:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(q.y)*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
-  let hs=0;
+  let hs=0,uy=0;
   sm.forEach((q,i)=>{
-    const sx=q.x+q.y*SHX,sz=q.z+q.y*SHZ;hs+=q.y;
+    const sx=q.x+q.y*SHX,sz=q.z+q.y*SHZ;hs+=q.y;uy+=q.uy==null?1:q.uy;
+    {const sp=STL?.42:0,x=q.x-(q.ux||0)*sp,z=q.z-(q.uz||0)*sp;i?o.spine.lineTo(x,z):o.spine.moveTo(x,z);} // poutre (tube central sous les rails) : vue du dessus, elle se déporte quand la voie pivote (vrilles, loopings)
     o.x0=Math.min(o.x0,q.x-9);o.x1=Math.max(o.x1,sx+9);o.z0=Math.min(o.z0,q.z-9);o.z1=Math.max(o.z1,sz+9);
     if(i){o.deck.lineTo(q.x,q.z);o.sh.lineTo(sx,sz);}else{o.deck.moveTo(q.x,q.z);o.sh.moveTo(sx,sz);}
     if(WOODY&&q.i%2===1){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
@@ -108,15 +109,16 @@ function strip(sm){
   else if(INV){side(o.rail,-.5);side(o.rail,.5);} // rails de roulement de part et d'autre de la poutre caisson
   else if(STL){side(o.rail,-.62);side(o.rail,.62);} // deux rails tubulaires
   else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);}
-  o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
+  o.h=hs/n;o.inv=uy/n<0;const k=clamp(o.h/30,0,1); // o.inv : tronçon tête en bas (la poutre passe au-dessus des rails)o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
 }
+const BZ=[]; // zones de freinage dessinées : {id, r0, r1, drive}
 (function buildChunks(){
   for(let i=0;i<=N;i++){const p=TR[i%N].p;i?dirtP.lineTo(p.x,p.z):dirtP.moveTo(p.x,p.z);}
   const iA=Math.round(SW_A/DS),iB=Math.round(SW_B/DS),cuts=new Set([iA,iB,N]);for(let i=0;i<N;i+=8)cuts.add(i);
   const cl=[...cuts].sort((a,b)=>a-b);
   for(let c=0;c<cl.length-1;c++){const sm=[];
-    for(let i=cl[c];i<=cl[c+1];i++){const f=TR[i%N],l=Math.hypot(f.R.x,f.R.z)||1;sm.push({x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,i});}
+    for(let i=cl[c];i<=cl[c+1];i++){const f=TR[i%N];sm.push({x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x,nz:f.R.z,ux:f.U.x,uz:f.U.z,uy:f.U.y,i});} // R projeté (non normalisé) : vue du dessus, la voie qui pivote (dévers, vrilles, loopings) se resserre, largeur ∝ |cos θ|
     const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
     if(!o.sw&&cl[c+1]!==iA){const a=TR[cl[c+1]%N].p,f=TR[(cl[c+1]+1)%N].p;o.deck.lineTo((a.x+f.x)/2,(a.z+f.z)/2);}
     for(let i=cl[c];i<cl[c+1];i++)chunkH[i]=o.h;}
@@ -129,9 +131,21 @@ function strip(sm){
     LANES.forEach(ln=>chunks.push(strip(LREV?line(laneU(ln.end),laneU(U_LANE),ln.d):line(U_LANE,ln.end,ln.d)))); // yard.rev : voies en amont du chariot
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
     const nl=LBK?Math.round(ln.link/.5):36,sP=strip(gs.slice(0,nl+1));sP.lk=j+1;chunks.push(sP,strip(gs.slice(nl)));});
-  for(let i=Math.round(S_LIFT0/DS);i<=Math.round((S_LIFT1+3)/DS);i++){const p=TR[i].p;chainP.lineTo(p.x,p.z);}
-  const finsR=[[S_BRK+3,TRAV?R0:S_HOLD]].concat(BLK.map(b=>[b-9,b]),PSB?[[PSB_A+1,S_PSB]]:[]); // frein final et freins de bloc (≈ 9 m de patins avant chaque point d'arrêt, estimé)
-  for(const [r0,r1] of finsR)for(let i=Math.round(r0/DS);i<Math.round(r1/DS);i+=3){const f=TR[i],l=Math.hypot(f.R.x,f.R.z)||1,nx=f.R.x/l,nz=f.R.z/l;finsP.moveTo(f.p.x-nx*.28,f.p.z-nz*.28);finsP.lineTo(f.p.x+nx*.28,f.p.z+nz*.28);}
+  // Chaîne du lift et équipements de freinage : rattachés à leur tronçon (dessinés avec lui), donc toujours SOUS les trains qui y passent et sous les voies plus hautes
+  const cOf=new Int32Array(N+1);for(let c=0;c<cl.length-1;c++)for(let i=cl[c];i<cl[c+1];i++)cOf[i]=c;
+  const lc0=Math.round(S_LIFT0/DS),lc1=Math.round((S_LIFT1+3)/DS);
+  for(let c=0;c<cl.length-1;c++){const a=Math.max(cl[c],lc0),b=Math.min(cl[c+1],lc1);if(a>=b)continue;const P=new Path2D;for(let i=a;i<=b;i++){const p=TR[i%N].p;i>a?P.lineTo(p.x,p.z):P.moveTo(p.x,p.z);}chunks[c].ch=P;}
+  const zc=id=>ZONES.find(z=>z.id===id)||{};
+  // zones de freinage dessinées (gare, freins de bloc ≈ 9 m de patins avant le point d'arrêt (estimé), frein final, rail du circuit du pont droit, frein avant gare) ; moteurs : SITE.zones … drive
+  BZ.push({id:'St',r0:S_ST-TLEN+.4,r1:S_ST-.2});BLK.forEach((b,i)=>BZ.push({id:'B'+(i+1),r0:b-9,r1:b}));
+  BZ.push({id:'Fin',r0:S_BRK+3,r1:TRAV?R0:S_HOLD});if(TRAV)BZ.push({id:ZR,r0:R0+.3,r1:R1-.3});if(PSB)BZ.push({id:'Pre',r0:PSB_A+1,r1:S_PSB});
+  if(TRAV&&!SG)BZ.push({id:'RB',r0:0,r1:0,car:1});
+  for(const z of BZ)z.drive=!!zc(z.id).drive;
+  const onDev=s=>!TRAV&&s>SW_A-1&&s<SW_B+1; // rien sur l'aiguillage lui-même (tronçon mobile)
+  for(const z of BZ){let k=0;const add=(o,u)=>{u.id=z.id;u.ty=z.drive&&k%2===1;o.bu.push(u);k++;};
+    if(z.car){const rb=chunks.find(o=>o.rb);for(let u=.6;u<R1-R0-.3;u+=1.5)add(rb,{x:SW0.x+SW0.tx*u,z:SW0.z+SW0.tz*u,nx:-SW0.tz,nz:SW0.tx,tx:SW0.tx,tz:SW0.tz});continue;} // rail du chariot (pont droit à deux rails)
+    for(let i=Math.round(z.r0/DS);i<Math.round(z.r1/DS);i+=3){const ii=((i%N)+N)%N;if(onDev(ii*DS))continue;const f=TR[ii],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(f.T.x,f.T.z)||1;
+      add(chunks[cOf[ii]],{x:f.p.x,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:f.T.x/tl,tz:f.T.z/tl});}}
 })();
 const swz=o=>o.sw===1?raC():o.rb?devC()-GAP:o.lk?devC()-OFF[o.lk]:0; // déplacement des tronçons portés par le chariot (circuit, transfert vers la voie lk), le long de (SW0.vx, SW0.vz)
 const rotC=()=>Math.cos(Math.PI*clamp(devC()/(SW_D||1),0,1)); // appareil rotatif : cos θ, θ = 0 sur le circuit, π sur la voie
@@ -253,9 +267,20 @@ const _cf=mkF();
 const CW=SITE.car.w||1.24,INL=!!SITE.car.inline;
 function drawCar(t,k,shadow){
   carFrame(t,k,_cf);const p=_cf.p,a=Math.atan2(_cf.T.z,_cf.T.x),hl=CAR/2-.07,hw=CW/2;
+  // vue du dessus : wagon raccourci sur une pente forte (|T| horizontal), aminci quand la voie pivote (|R| horizontal + hauteur de caisse vue de côté) ; tête en bas : on voit le dessous
+  const run=t.st==='run',sx=run?Math.max(.3,Math.hypot(_cf.T.x,_cf.T.z)):1,sy=run?clamp((CW*Math.hypot(_cf.R.x,_cf.R.z)+.9*Math.hypot(_cf.U.x,_cf.U.z))/CW,.3,1):1,up=run&&_cf.U.y<0;
   ctx.save();
-  if(shadow){const hy=INV?Math.max(0,p.y-2.6):p.y+.6;ctx.translate(p.x+hy*SHX,p.z+hy*SHZ);ctx.rotate(a);ctx.fillStyle='rgba(10,20,10,.3)';ctx.fillRect(-hl-.04,-hw-.04,2*hl+.08,CW+.08);ctx.restore();return;}
-  ctx.translate(p.x,p.z);ctx.rotate(a);
+  if(shadow){const hy=INV?Math.max(0,p.y-2.6):p.y+.6;ctx.translate(p.x+hy*SHX,p.z+hy*SHZ);ctx.rotate(a);ctx.scale(sx,sy);ctx.fillStyle='rgba(10,20,10,.3)';ctx.fillRect(-hl-.04,-hw-.04,2*hl+.08,CW+.08);ctx.restore();return;}
+  ctx.translate(p.x,p.z);ctx.rotate(a);ctx.scale(sx,sy);
+  if(up){ // wagon tête en bas (looping, vrille) : dessous de caisse, longeron, essieux et roues sur les rails ; passagers invisibles
+    ctx.fillStyle=t.col;ctx.beginPath();ctx.roundRect(-hl,-hw,2*hl,CW,.16);ctx.fill(); // caisse vue de dessous : bords de la coque
+    ctx.fillStyle='#34363c';ctx.beginPath();ctx.roundRect(-hl+.18,-hw+.3,2*hl-.36,CW-.6,.1);ctx.fill(); // plancher
+    ctx.fillStyle='#45484f';ctx.fillRect(-hl+.1,-.08,2*hl-.2,.16); // longeron central
+    for(const ex of [-hl+.3,hl-.3]){ctx.fillStyle='#55585e';ctx.fillRect(ex-.04,-hw+.1,.08,CW-.2);ctx.fillStyle='#121316';for(const e of [-1,1])ctx.fillRect(ex-.15,e*.62-.07,.3,.14);} // essieux, roues
+    // la voie passe AU-DESSUS du wagon tête en bas : rails (et poutre centrale) redessinés par-dessus, le wagon reste lisible de part et d'autre
+    ctx.strokeStyle=TKC.rail;ctx.lineWidth=.2;ctx.beginPath();for(const e of [-1,1]){ctx.moveTo(-CAR/2,e*.62);ctx.lineTo(CAR/2,e*.62);}ctx.stroke();
+    if(STL){ctx.strokeStyle=TKC.spine;ctx.lineWidth=.22;ctx.beginPath();ctx.moveTo(-CAR/2,0);ctx.lineTo(CAR/2,0);ctx.stroke();}
+    ctx.restore();return;}
   if(BOB){ // coque de bob : pas de roues apparentes, nez et queue arrondis
     ctx.fillStyle=t.col;ctx.beginPath();ctx.roundRect(-hl,-hw,2*hl,CW,k===0?[.2,.46,.46,.2]:k===NCARS-1?[.42,.2,.2,.42]:.22);ctx.fill();
     ctx.fillStyle=t.col2;ctx.fillRect(-hl+.12,-hw,2*hl-.24,.07);ctx.fillRect(-hl+.12,hw-.07,2*hl-.24,.07);
@@ -311,13 +336,48 @@ function drawRes(x,y,r,a){
     ctx.strokeStyle=resCol(r,24);ctx.lineWidth=.025;ctx.stroke();}
   ctx.restore();
 }
-function drawResCar(hl,r,a){ // lapbar commune au wagon (places l'une derrière l'autre) : cadre autour des deux passagers, axe à l'avant du wagon
-  const th=resTh(r),c=Math.cos(th),px=hl-.16,P=x0=>px+(x0-px)*c,xs=[];for(let sd=0;sd<CSEATS;sd++)xs.push(seatOff(sd)[0]+(INL?0:-.06)+.22);
-  const x0=Math.min(...xs)-.08,w=.25;ctx.save();ctx.globalAlpha=a;ctx.lineCap='round';ctx.lineJoin='round';
-  ctx.strokeStyle=resCol(r,40);ctx.lineWidth=.07;ctx.beginPath();ctx.moveTo(px,-w);ctx.lineTo(P(x0),-w);ctx.moveTo(px,w);ctx.lineTo(P(x0),w);ctx.stroke(); // longerons
-  ctx.fillStyle=resCol(r,74);for(const xb of xs){const b=P(xb);ctx.beginPath();ctx.roundRect(b-.05,-w,.1,2*w,.05);ctx.fill();} // traverses en mousse devant chaque passager
-  ctx.fillStyle=resCol(r,24);ctx.fillRect(px-.05,-w-.04,.1,2*w+.08); // axe
+function drawResCar(hl,r,a){ // lapbar commune au wagon : UNE barre en travers DEVANT le passager avant (fermée : posée sur ses genoux ; ouverte : relevée vers l'avant), bras articulés à l'avant du wagon
+  const th=resTh(r),c=Math.cos(th),px=hl-.06,P=x0=>px+(x0-px)*c,w=.25;let xf=-1e9;for(let sd=0;sd<CSEATS;sd++)xf=Math.max(xf,seatOff(sd)[0]+(INL?0:-.06));
+  const b=P(Math.min(px-.07,xf+.22));ctx.save();ctx.globalAlpha=a;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle=resCol(r,40);ctx.lineWidth=.06;ctx.beginPath();ctx.moveTo(px,-w);ctx.lineTo(b,-w);ctx.moveTo(px,w);ctx.lineTo(b,w);ctx.stroke(); // bras
+  ctx.fillStyle=resCol(r,74);ctx.beginPath();ctx.roundRect(b-.05,-w,.1,2*w,.05);ctx.fill();ctx.strokeStyle=resCol(r,24);ctx.lineWidth=.025;ctx.stroke(); // barre en mousse
+  ctx.fillStyle=resCol(r,24);ctx.fillRect(px-.04,-w-.04,.08,2*w+.08); // axe
   ctx.restore();
+}
+/* Équipements des zones de freinage, dessinés avec leur tronçon (sous les trains) :
+   - mâchoires mécaniques : deux patins de part et d'autre de l'ailette du train (axe de la voie), dans leur carter ; serrées (patins contre l'axe) ou écartées selon l'état des freins ;
+   - roues de propulsion (pneus) là où la zone a des moteurs (SITE.zones … drive ; défaut : toutes les zones sauf les freins de bloc), une unité sur deux : paire de pneus à axe vertical
+     qui pincent l'ailette (bois, acier, inversé), pneu à axe horizontal au fond de la gouttière (bob) ; ils tournent quand un train roule dessus.
+   Coaster inversé : étriers et pneus de part et d'autre de la poutre caisson. Matières mates ; de loin, un simple trait sombre. Dimensions ESTIMÉES. */
+const BZS={},PV=new WeakMap(),tSp=t=>t.st==='garage'?(t.mv?MV.v:0):t.st==='station'?0:t.v;
+const zTrains=z=>trains.filter(t=>z.car?tZone(t)==='RB':(t.st==='run'&&t.s>z.r0-.3&&t.s-TLEN<z.r1+.3)||(z.id==='St'&&t.st==='station')||(t.st==='garage'&&tZone(t)===z.id));
+function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu ou ralenti dans la zone ; zone vide : serrée si la section suivante est occupée (la gare, toujours)
+  for(const z of BZ){const b=BZS[z.id]||(BZS[z.id]={c:1,a:0}),ts=zTrains(z);
+    let cl=zK(z.id)||(z.id==='Fin'&&G.brakeFault)||ts.some(t=>tSp(t)<.05||(t.st==='run'&&PV.has(t)&&t.v<PV.get(t)-.01));
+    if(!ts.length&&!cl)cl=z.id==='St'||!!nextBusy(z.id,null);
+    if(dt>0){b.c=lerp(b.c,cl?1:0,Math.min(1,dt*6));if(z.drive)b.a+=Math.min(8,Math.max(0,...ts.map(tSp)))/.2*dt;}}
+  if(dt>0)for(const t of trains)PV.set(t,t.v);
+}
+function drawBU(o){
+  const s=cam.s;if(!o.bu.length||s<1.1)return;
+  const far=s<3.2,flt=G.brakeFault&&Math.sin(clock*9)>0;
+  for(const u of o.bu){const b=BZS[u.id]||{c:1,a:0},X=(a,v)=>u.x+u.tx*a+u.nx*v,Z=(a,v)=>u.z+u.tz*a+u.nz*v;
+    const quad=(a0,a1,v0,v1)=>{ctx.beginPath();ctx.moveTo(X(a0,v0),Z(a0,v0));ctx.lineTo(X(a1,v0),Z(a1,v0));ctx.lineTo(X(a1,v1),Z(a1,v1));ctx.lineTo(X(a0,v1),Z(a0,v1));ctx.closePath();ctx.fill();};
+    const disc=(a,v,r)=>{ctx.beginPath();ctx.arc(X(a,v),Z(a,v),r,0,7);ctx.fill();};
+    const c0=INV?.62:0,sides=INV?[-1,1]:[0]; // inversé : de part et d'autre de la poutre
+    if(far){ctx.fillStyle='rgba(44,46,50,.8)';for(const e of sides)quad(-.22,.22,e*c0-.16,e*c0+.16);continue;}
+    if(u.ty){ // roues de propulsion
+      if(BOB){ctx.fillStyle='#151618';quad(-.26,.26,-.11,.11);ctx.fillStyle='#3a3c40';const ph=(b.a*.2)%.13;for(let a=-.26+ph;a<.26;a+=.13)quad(a,a+.035,-.11,.11);continue;} // pneu à axe horizontal, rainures qui défilent
+      for(const e of sides){const cx=e*c0;ctx.fillStyle='#3b3f45';quad(-.12,.12,cx-.62,cx-.46);quad(-.12,.12,cx+.46,cx+.62); // moto-réducteurs
+        for(const w of [-1,1]){const v=cx+w*.24,an=b.a*w;ctx.fillStyle='#151618';disc(0,v,.2);ctx.fillStyle='#5f6368';disc(0,v,.085);
+          ctx.fillStyle='#2a2c30';for(let j=0;j<3;j++){const q=an+j*2.094;disc(Math.cos(q)*.055,v+Math.sin(q)*.055,.018);}}}
+      continue;}
+    const g=lerp(.19,.035,clamp(b.c,0,1)); // demi-écartement des patins : écartés (freins relâchés) ou serrés contre l'ailette
+    for(const e of sides){const cx=e*c0;
+      ctx.fillStyle='rgba(52,54,58,.85)';quad(-.3,.3,cx-.33,cx+.33); // traverse de fixation
+      ctx.fillStyle='#6b6258';quad(-.24,.24,cx+g,cx+g+.05);quad(-.24,.24,cx-g-.05,cx-g); // garnitures
+      ctx.fillStyle=u.id==='Fin'&&flt?'#7a2e28':'#2c2e33';quad(-.2,.2,cx+g+.05,cx+g+.16);quad(-.2,.2,cx-g-.16,cx-g-.05);} // carters des mâchoires
+  }
 }
 const API={lw,person,TEX}; // outils passés aux fonctions de dessin propres à chaque attraction (SITE.draw)
 function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
@@ -438,8 +498,16 @@ function drawWorld(dt){
   // voie + trains, triés par hauteur
   const items=[];
   for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o))items.push(o);
+  brakeState(dt);
+  const hI=s=>chunkH[Math.floor((((s%L)+L)%L)/DS)%N];
   for(const t of trains){const ex=t.st==='run'&&zoneOf(t.s)==='course'&&t.v>9;t.arms=lerp(t.arms,ex?1:0,Math.min(1,dt*4));
-    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:inTun((((sc%L)+L)%L))?-99:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:ST_Y)+(INV?-1.5:.02),t,k});}} // inversé : train suspendu sous sa voie
+    const cs=t.st==='run'?t.s:t.st==='station'?S_ST:null;
+    for(let k=0;k<NCARS;k++){let h=ST_Y+.05; // garage : au niveau des voies
+      if(cs!==null){const sc=cs-(k+.5)*CAR,hs=[hI(sc-CAR/2),hI(sc),hI(sc+CAR/2)],up=t.st==='run'&&frameAt(sc,_cf).U.y<0;
+        // le wagon est dessiné APRÈS tous les tronçons qu'il recouvre (le plus haut des trois + 5 cm) : jamais recouvert par sa propre voie, ses freins, sa chaîne ;
+        // suspendu (coaster inversé) : AVANT sa voie ; tête en bas (looping, vrille) : après, avec ses rails redessinés par-dessus (drawCar)
+        h=inTun(((sc%L)+L)%L)?-99:INV&&!up?Math.min(...hs)-1.5:Math.max(...hs)+.05;}
+      items.push({h,t,k});}}
   for(const u of TUN)items.push({h:u.h,tun:u});
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
@@ -456,11 +524,12 @@ function drawWorld(dt){
       ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=.3;ctx.stroke(o.deck);
       ctx.strokeStyle=TKC.rail;lw(.14,.6);ctx.stroke(o.rail);
       ctx.strokeStyle=TKC.support;lw(.5,.8);ctx.stroke(o.str);lw(.7,1);ctx.stroke(o.hand);
-    }else if(STL){ // supports en A, puis entretoises, rails tubulaires et filet central
+    }else if(STL){ // supports en A, puis entretoises, rails tubulaires et poutre centrale (au-dessus des rails quand la voie est tête en bas)
       ctx.strokeStyle=TKC.support;lw(.34,.7);ctx.stroke(o.str);lw(.18,.6);ctx.stroke(o.hand);
-      ctx.strokeStyle='rgba(20,24,30,.28)';ctx.lineWidth=DECKW+.35;ctx.stroke(o.deck);
-      ctx.strokeStyle=TKC.spine;lw(.1,.5);ctx.stroke(o.ties);lw(.16,.6);ctx.stroke(o.deck);
+      if(!o.inv){ctx.strokeStyle='rgba(20,24,30,.28)';ctx.lineWidth=DECKW+.35;ctx.stroke(o.deck);} // ombre sous la voie (tête en bas : voie ajourée, on voit le train dessous)
+      ctx.strokeStyle=TKC.spine;lw(.1,.5);ctx.stroke(o.ties);if(!o.inv){lw(.16,.6);ctx.stroke(o.spine);}
       ctx.strokeStyle=TKC.rail;lw(.2,.7);ctx.stroke(o.rail);
+      if(o.inv){ctx.strokeStyle=TKC.spine;lw(.22,.6);ctx.stroke(o.spine);}
     }else{
       ctx.strokeStyle='#6e6a63';lw(.16,.7);ctx.stroke(o.str);
       ctx.strokeStyle=o.col;ctx.lineWidth=DECKW;ctx.stroke(o.deck);
@@ -468,12 +537,10 @@ function drawWorld(dt){
       ctx.strokeStyle='#e6cfa0';lw(.12,.5);ctx.stroke(o.hand);
       ctx.strokeStyle='#2b2b30';lw(.17,.9);ctx.stroke(o.rail);
     }
+    drawBU(o);
+    if(o.ch){ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(o.ch);ctx.setLineDash([]);} // chaîne du lift
     if(k)ctx.restore();
   }
-  ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(chainP);ctx.setLineDash([]);
-  ctx.strokeStyle=G.brakeFault&&Math.sin(clock*9)>0?'#ff5a4d':'#c2372f';lw(.3,.9);ctx.stroke(finsP);
-  if(TRAV){ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.beginPath();const c=devC(); // patins des rails A et B du chariot (frein final, freins et pneus du rail de garage)
-    for(const v of SG?[c]:[raC(),c-GAP])for(let u=.5;u<R1-R0;u+=1.5){ctx.moveTo(u,v-.28);ctx.lineTo(u,v+.28);}ctx.stroke();ctx.restore();}
   // voies des attractions voisines
   if(otherP.length){ctx.strokeStyle='#3d4148';ctx.lineWidth=1.5;for(const p of otherP)ctx.stroke(p);ctx.strokeStyle='#9299a3';ctx.lineWidth=.8;for(const p of otherP)ctx.stroke(p);}
   // arbres

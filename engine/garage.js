@@ -101,12 +101,18 @@ function trFrame(t,k,o){ // pont droit : voiture k d'un train sur le chariot ou 
   const u=LREV?2*G_B-t.g-(k+.5)*CAR:t.g-(k+.5)*CAR,v=t.lane>=0&&(LREV?u<=laneU(U_LANE)+.3:u>=U_LANE-.3)?-LANES[t.lane].d:devC()-GAP;
   o.p.set(SW0.x+SW0.tx*u+SW0.vx*v,ST_Y,SW0.z+SW0.tz*u+SW0.vz*v);o.T.set(SW0.tx,0,SW0.tz);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
 }
+/* Règle de départ (propriétaire, 2026-11-15 : « le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre en attente avant ») :
+   raccordement en gare, appareil hors de P : départ autorisé seulement si une zone de freinage se trouve sur le trajet entre la gare et l'appareil ; le train y est alors
+   retenu automatiquement tant que l'appareil n'est pas revenu sur P (ou qu'une manœuvre de garage est en cours). DEV_HOLD = indice du dernier frein de bloc avant l'appareil,
+   -1 s'il n'y en a pas (ex. aiguillage juste après le quai : départ refusé). Raccordement au frein final (et pont droit) : le frein final / le rail du circuit retiennent déjà le train avant l'appareil. */
+const DEV_HOLD=YD.at==='brake'||TRAV?-1:BLK.reduce((h,b,i)=>b>S_ST+TLEN&&b<SW_A-.5?i:h,-1);
+const devHoldOn=()=>DEV_HOLD>=0&&(devOff()||trains.some(o=>yardBusy(o))),devHoldAt=i=>i===DEV_HOLD&&devHoldOn();
 const raLock=()=>trains.find(onRail); // rail A : immobile tant qu'un train y est, y roule ou s'en approche
 const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-TLEN<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
 const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&&!(atAnchor(o)&&G.dev.pos===PC&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
-  :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering))));
+  :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering)||(DEV_HOLD>=0&&o.s>BLK[DEV_HOLD]+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 const slotPos=i=>{const b=BAYS[Math.floor(i/CSEATS)],d=3.45+(i%CSEATS)*.8;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // une place d'attente par siège, en file derrière le portillon

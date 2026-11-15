@@ -158,13 +158,23 @@ Bouton **Sécurités** du pupitre (`#bRes`, `act('res')`, voyant `#lRes` : vert 
 - L'appareil ne bouge pas si un train est dessus ou à moins d'une longueur de train de lui (train du garage sur le circuit, la liaison ou l'appareil ; train du circuit qui le franchit). Pas de nouvelle commande pendant qu'il bouge.
 - Un train ne franchit l'appareil que si celui-ci est en place sur la voie qu'il vise.
 - Un train n'entre pas sur une voie déjà occupée au-delà de sa capacité (`cap`).
-- Appareil hors de `P` : les départs (raccordement en gare) ou l'entrée en gare (raccordement au frein final) sont bloqués.
+- Appareil hors de `P` : l'entrée en gare (raccordement au frein final) est bloquée ; les départs (raccordement en gare) suivent la **règle de départ** ci-dessous.
 - Un train avec passagers ne quitte jamais le circuit.
 - Au plus `SITE.maxRun` trains sur le circuit : au-delà, la sortie du garage est refusée (Trace du Hourra : 5 sur 6).
 - Raccordement au frein final : le train qui sort du garage occupe le dernier canton ; les trains du parcours sont retenus au dernier frein de bloc. Serrer un frein de bloc au pupitre (zone `B<n>` en MANU, `#zB<n>_k`) aide à libérer le dernier canton avant une sortie.
 - L'arrêt d'urgence immobilise aussi les manœuvres (moteurs de zone arrêtés, il faut redonner l'ordre) et fige l'appareil.
 
 Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », « Pont en mouvement »…).
+
+## Règle de départ (propriétaire, 2026-11-15)
+
+« Le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre en attente avant. »
+
+- Appareil hors de `P` (ou manœuvre de garage en cours), raccordement en gare : le départ est **autorisé** si au moins une zone de freinage se trouve sur le trajet entre la gare et l'appareil ; le train y est alors **retenu automatiquement** (zone en AUTO ou MANU) tant que l'appareil n'est pas revenu sur `P` (journal : « Départ avec l'aiguillage hors de P : … sera retenu au frein de bloc n », puis « … retenu au frein de bloc n »). Relâcher cette zone au pupitre est refusé avec la même raison.
+- Sinon (aucune zone de freinage avant l'appareil : aiguillage juste après le quai, Tonnerre 2 Zeus) : départ refusé, raison au journal (« … aiguillage hors de P, aucune zone de freinage entre la gare et l'aiguillage pour retenir le train »), au bouton Départ comme à Gare AV.
+- Moteur : `DEV_HOLD` (`engine/garage.js`) = dernier frein de bloc entre la gare et l'appareil (`yard.back`, aiguillage en amont : Goudurix, B1), `-1` sinon ; `devHoldAt(i)` retient le train dans `updateRun` ; `blockReason` ne refuse plus que si `DEV_HOLD<0`. L'appareil est verrouillé dès qu'un train a passé ce frein et roule vers lui. Avec l'aiguillage en amont (`yard.back`) et un frein de retenue, Gare AV fait partir le train à vide au lieu d'être refusé.
+- Raccordement au frein final (Trace du Hourra, OzIris) : déjà le cas — le frein final / le rail du circuit retiennent le train avant le pont ; départ toujours autorisé.
+- Vérifié par `tools/check.js <site>`, ligne `dep:` (`refuseNoBrake` pour Zeus ; `departOk heldBefore stillHeld released` pour les trois autres).
 
 ## Hypothèses à signaler
 
