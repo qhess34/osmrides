@@ -29,6 +29,7 @@ const root = path.resolve(__dirname, '..');
       for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [cond, max]);
     const click = async id => { try { await page.click(id, { timeout: 3000 }); } catch (e) { throw new Error('click ' + id + ' after: ' + steps.join(' ')); } };
     const logHas = re => page.evaluate(r => new RegExp(r).test($('log').textContent), re);
+    await page.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.liftBroken = false; G.brakeFault = false; }); // le scénario de manœuvre ne dépend pas des pannes aléatoires (usure)
     const steps = [];
     const ok = (name, v) => { steps.push(name + (v ? '' : ':FAIL')); return v; };
     const hasYard = await page.evaluate(() => typeof LANES !== 'undefined' && trains.length > 1 && trains[1].st === 'garage');
