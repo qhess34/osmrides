@@ -159,3 +159,6 @@ Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », «
 
 La position de l'appareil, l'orientation des voies, la longueur des wagons et les vitesses de manœuvre ne figurent pas dans OpenStreetMap.
 Elles sont estimées ; le dire en commentaire dans `sites/<site>.js` et au propriétaire.
+
+
+**Règle du lift (propriétaire, 2026-11-15)** : un seul train sur le lift ; en haut, le train attend tant que la zone de freinage suivante est occupée. Zone suivante = premier frein de bloc s'il y en a ; un train arrêté sur le frein final ne retient donc le lift que s'il n'existe aucun frein avant le frein final (ex. Zeus).
