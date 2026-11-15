@@ -53,7 +53,7 @@ const SITE=(()=>{
       butterfly:{label:'Butterfly',x:38,z:70,s:11},loop:{label:'Loop',x:54,z:63,s:11},batwing:{label:'Batwing',x:55,z:28,s:11},corkscrew:{label:'Double Corkscrew',x:19,z:92,s:9},
       frein:{label:'Frein final',x:-6,z:30,s:8},garage:{label:'Garage',x:-14,z:10,s:11}},
     labels:()=>[['Gare',6,-4],['Lift — 36 m',12,78],['Grande descente',38,100],['Virage à 180°',14,128],['Butterfly',52,66],['Loop',66,63],['Batwing',60,22],['Double Corkscrew',3,92],
-      ['Frein final',-32,35],['Garage',-32,12],['Entrée',32,88],["File d'attente",-42,52],['Sortie',14,-3]],
+      ['Poste aiguillage',-10.5,-7.4],['Frein final',-32,35],['Garage',-32,12],['Entrée',32,88],["File d'attente",-42,52],['Sortie',14,-3]],
     strike:{area:[-60,100,-40,150]},
     // Le premier frein du parcours (B1) RALENTIT nettement le train (propriétaire) : vitesse ramenée à 8 m/s (≈ 29 km/h, ESTIMÉ) en passage normal ; arrêt seulement si le canton suivant est occupé.
     zones:{B1:{trim:{v:8}}},
@@ -62,6 +62,53 @@ const SITE=(()=>{
       +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Gare AR : le train recule de la gare jusqu\'au fond de la voie. Remettez l\'aiguillage sur P. '
       +'Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Garage AV : il avance jusqu\'en gare ; aiguillage sur P. '
       +'L\'aiguillage ne tourne pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit.',
-    draw:{}
+    draw:(()=>{
+      // POSTE DE L'AIGUILLAGE (photo du propriétaire, docs/sources/goudurix-aiguillage-rotation.png) : plate-forme métallique rouille avec garde-corps, escalier galvanisé,
+      // passerelle grillagée grise inclinée le long du tronçon mobile, opérateur debout avec un boîtier de commande. Position ESTIMÉE (la photo n'est pas géoréférencée) :
+      // du côté EST du retour (opposé à la voie de garage, à l'ouest, comme sur la photo), entre le nœud railway=switch (-14,9 ; 1,6) et la courbe nord, dans le coin libre entre le retour,
+      // le quai et le raccord de la file (z > 1 : file). Dimensions (3,6 x 5 m, hauteur ≈ 2,4 m, passerelle 0,8 m de large, escalier 1,2 m) ESTIMÉES. L'escalier descend vers
+      // l'extrémité du raccord de la file (-13,5 ; 5,2), seul chemin voisin (le chemin de service n'est pas cartographié).
+      const D={x0:-13.1,x1:-9.5,z0:-5.6,z1:-.6,h:2.4},ST={x0:-12.7,x1:-11.5,z1:4.4},PG={x0:-13.95,x1:-13.15,z0:-4.4,z1:1.3},OP=[-11.2,-3.4],BOX=[-10.2,-4.6];
+      const rot=()=>typeof G!=='undefined'&&G.dev&&G.dev.pos!==G.dev.to; // aiguillage en rotation
+      const rail=(ctx,lw,pts,col)=>{ctx.strokeStyle=col;lw(.07,.8);ctx.beginPath();pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();};
+      return {
+        floor(ctx,s,{lw}){ // pieds de la plate-forme et escalier galvanisé (au sol)
+          ctx.fillStyle='#4a3329';for(const [x,z] of [[D.x0+.15,D.z0+.15],[D.x1-.15,D.z0+.15],[D.x1-.15,D.z1-.15],[D.x0+.15,D.z1-.15]])ctx.fillRect(x-.15,z-.15,.3,.3);
+          const w=ST.x1-ST.x0;ctx.fillStyle='#9ca1a5';ctx.fillRect(ST.x0,D.z1,w,ST.z1-D.z1);
+          if(s>4){ctx.strokeStyle='rgba(50,54,58,.7)';lw(.05,.5);ctx.beginPath();for(let z=D.z1+.3;z<ST.z1;z+=.3){ctx.moveTo(ST.x0+.08,z);ctx.lineTo(ST.x1-.08,z);}ctx.stroke();}
+          ctx.fillStyle='#7d8286';ctx.fillRect(ST.x0-.06,D.z1,.1,ST.z1-D.z1);ctx.fillRect(ST.x1-.04,D.z1,.1,ST.z1-D.z1);
+        },
+        shadows(ctx,dry){ // ombres dans la direction SHX/SHZ (hauteur de la plate-forme ≈ 2,4 m)
+          const dx=D.h*SHX,dz=D.h*SHZ;ctx.fillStyle=`rgba(12,28,14,${.26*dry})`;ctx.fillRect(D.x0+dx,D.z0+dz,D.x1-D.x0,D.z1-D.z0);
+          ctx.fillRect(PG.x0+dx*.7,PG.z0+dz*.7,PG.x1-PG.x0,PG.z1-PG.z0);
+          ctx.fillRect(ST.x0+dx*.4,D.z1+dz*.4,ST.x1-ST.x0,ST.z1-D.z1);
+          ctx.strokeStyle=`rgba(12,28,14,${.2*dry})`;ctx.lineWidth=.12;ctx.beginPath();ctx.moveTo(D.x0+dx,D.z1+dz);ctx.lineTo(D.x1+dx,D.z1+dz);ctx.lineTo(D.x1+dx,D.z0+dz);ctx.stroke();
+          ctx.fillStyle=`rgba(12,28,14,${.3*dry})`;ctx.beginPath();ctx.ellipse(OP[0]+1.1,OP[1]+.9,.3,.2,.6,0,7);ctx.fill(); // ombre de l'opérateur (debout)
+        },
+        landmarks(ctx,s,{lw,person}){
+          // plate-forme : tôle rouille, liseré plus sombre
+          ctx.fillStyle='#7a4d3b';ctx.fillRect(D.x0,D.z0,D.x1-D.x0,D.z1-D.z0);
+          ctx.strokeStyle='#573629';lw(.12,.8);ctx.strokeRect(D.x0,D.z0,D.x1-D.x0,D.z1-D.z0);
+          if(s>5){ctx.strokeStyle='rgba(40,24,18,.35)';lw(.04,.4);ctx.beginPath();for(let x=D.x0+.6;x<D.x1;x+=.6){ctx.moveTo(x,D.z0);ctx.lineTo(x,D.z1);}ctx.stroke();}
+          // passerelle grillagée grise inclinée (haute au nord, attachée à la plate-forme ; basse au sud) : plus étroite côté bas
+          const g=ctx.createLinearGradient(0,PG.z0,0,PG.z1);g.addColorStop(0,'#8c9094');g.addColorStop(1,'#6d7176');ctx.fillStyle=g;
+          ctx.beginPath();ctx.moveTo(PG.x0,PG.z0);ctx.lineTo(PG.x1,PG.z0);ctx.lineTo(PG.x1,PG.z1);ctx.lineTo(PG.x0+.12,PG.z1);ctx.closePath();ctx.fill();
+          if(s>5){ctx.strokeStyle='rgba(40,44,48,.35)';lw(.03,.4);ctx.beginPath();for(let z=PG.z0+.25;z<PG.z1;z+=.25){ctx.moveTo(PG.x0+.05,z);ctx.lineTo(PG.x1,z);}ctx.stroke();}
+          rail(ctx,lw,[[PG.x0,PG.z0],[PG.x0+.1,PG.z1]],'#5b5f64'); // main courante côté rail
+          // garde-corps de la plate-forme (ouvert à l'escalier et à la passerelle)
+          const R='#5e3b2e';
+          rail(ctx,lw,[[D.x0,D.z0],[D.x1,D.z0],[D.x1,D.z1],[ST.x1,D.z1]],R);
+          rail(ctx,lw,[[ST.x0,D.z1],[D.x0,D.z1],[D.x0,PG.z1<D.z1?D.z1:PG.z1]],R);
+          rail(ctx,lw,[[D.x0,D.z0],[D.x0,PG.z0]],R);
+          // garde-corps galvanisé de l'escalier
+          rail(ctx,lw,[[ST.x0,D.z1],[ST.x0,ST.z1]],'#aab0b4');rail(ctx,lw,[[ST.x1,D.z1],[ST.x1,ST.z1]],'#aab0b4');
+          // boîtier de commande (armoire grise sur le garde-corps nord-est)
+          ctx.fillStyle='#6b7075';ctx.fillRect(BOX[0]-.35,BOX[1]-.25,.7,.5);ctx.fillStyle='#34383c';ctx.fillRect(BOX[0]-.3,BOX[1]+.05,.6,.15);
+          if(s>6){ctx.fillStyle=rot()?'#c89a3a':'#4f8a62';ctx.beginPath();ctx.arc(BOX[0]+.18,BOX[1]-.12,.06,0,7);ctx.fill();}
+          // opérateur : face à l'aiguillage (ouest) quand il pivote, sinon tourné vers le sud (quai)
+          person(OP[0],OP[1],11,rot()?Math.PI:Math.PI/2+.3,false,'#8a8a8a');
+        }
+      };
+    })()
   };
 })();

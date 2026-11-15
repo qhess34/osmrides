@@ -71,3 +71,9 @@ Profil ajusté : sommet 36 m (s 123) → petite descente 34 m → virage à 180�
 ## Photo de l'aiguillage en rotation (propriétaire, 2026-11-15)
 
 `docs/sources/goudurix-aiguillage-rotation.png` : l'aiguillage pendant son retournement. Confirme l'hypothèse : tambour rotatif autour de l'axe longitudinal (grande poutre jaune), une face porte la voie droite du circuit, l'autre la voie courbe (S) vers le garage ; passerelle grillagée et plate-forme de l'opérateur avec escalier à côté. Couleurs vues de près : poutre et traverses **jaunes**, rails tubulaires **orange-rouge**, supports **rouille** — reportées dans `SITE.track`.
+
+### Passerelle et poste de l'aiguillage (dessin, 2026-11-15)
+
+Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique rouille avec garde-corps, escalier galvanisé, passerelle grillagée grise inclinée le long du tronçon mobile, opérateur debout avec un boîtier de commande. Dessinés vus du dessus dans `SITE.draw` (`floor`, `shadows`, `landmarks` de `sites/goudurix.js`), sans toucher au moteur ; étiquette « Poste aiguillage » (zoom proche). Capture : `docs/plans/goudurix-poste-aiguillage.jpg` (aiguillage sur P, en rotation, sur la voie 1).
+- **ESTIMÉ** : position (côté est du retour, opposé à la voie de garage comme sur la photo ; plate-forme x -13,1 → -9,5, z -5,6 → -0,6 ; passerelle de 0,8 m le long du nœud railway=switch ; escalier vers le bout du raccord de la file en (-13,5 ; 5,2), le chemin de service n'étant pas dans OSM), dimensions, hauteur (≈ 2,4 m pour l'ombre) et couleurs. La photo n'est pas géoréférencée.
+- L'opérateur est dessiné avec `person()` ; il se tourne vers l'aiguillage pendant la rotation, le voyant du boîtier passe à l'ambre. Pur décor : il ne fait pas partie des opérateurs de lapbars et n'a aucun effet sur le jeu. Non testé : rendu sur mobile.
