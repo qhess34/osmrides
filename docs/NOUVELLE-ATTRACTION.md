@@ -40,6 +40,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 - Dessins spécifiques (statue, décor thématique) : seulement dans `SITE.draw.*` (`floor`, `shadows`, `stationRoof`, `underRoof`, `landmarks`), formes simples, matières mates, en restant cohérent avec le reste de la carte.
 - Interface : thème de `jeu.html` (variables CSS `--bg #0f1626`, `--panel #18223a`, `--gold #f2c14e`, `--ok`, `--warn`, `--bad`, police système). Pupitre en boutons physiques (`.pb`, `.sel`, voyants `.lamp`), plaques de libellé `.plate`. Ne pas créer un autre style.
 - **Synoptique** (commun, rien à écrire par attraction) : plan technique du circuit en haut à gauche de la vue (`drawSyn()`, `engine/render.js`), alimenté par la voie, les repères `blk<n>`, `SITE.yard` et l'état de jeu ; bouton `#bSyn`. Il remplace le profil en hauteur. Pas de pictogramme : traits fins, couleurs sourdes.
+- **Plein écran et mobile** (commun, rien à écrire par attraction) : bouton « Plein écran » / « Quitter le plein écran » (`#bFs`, texte seulement) dans `#cams` ; API Fullscreen sur `#view`, repli CSS (la carte remplit la fenêtre) si indisponible (iOS) ; en plein écran le pupitre devient un tiroir (`#bDesk`) et la barre `#fsBar` donne heure, file, quai, dernier message, vitesse. Sous 900 px (ou paysage de téléphone) : carte pleine hauteur, pupitre et journal en tiroirs par les onglets `#tabs` (Carte / Pupitre / Journal), cibles tactiles >= 44 px, aucun défilement horizontal, `touch-action:none` sur le canevas (un doigt = déplacement, deux doigts = zoom, rayon de toucher >= 24 px sur barrières et numéros du synoptique). Tout nouveau contrôle doit respecter ces règles et rester utilisable au doigt ; ne pas ajouter de pictogramme.
 - Carte du parc (`parc.html`) : même palette ; les attractions avec simulateur sont en doré.
 
 ## 4. Fidélité et honnêteté
@@ -65,6 +66,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 - Boutons du pupitre pour les scénarios : appareil `#yP`, `#y1`…`#yN`, `#yG`, `#yA0/#yA1` ; zones `#z<Zone>_<k|f|b|x|m>`, `#zLift_on/_off`, `#zAuto` ; `#bAuto`, `#bGate` (à presser pour ouvrir et fermer, journée complète comprise), `#bGo`, `#bStop`, `#bByp`.
 - Captures regardées (vue d'ensemble, gare, garage pendant une manœuvre) : rendu cohérent avec Zeus.
 - `python3 tools/build.py <id> dist/<id>.html` fonctionne.
+- `node tools/mobile.js <id>` : PASS (tactile, onglets, plein écran, rotation, 0 erreur de page, pas de défilement horizontal) ; captures mobiles regardées.
 - Compte rendu au propriétaire : ce qui a été testé, ce qui ne l'a pas été (souris réelle, tactile, son), ce qui est estimé.
 
 ## 7. Économie de tokens
@@ -79,6 +81,7 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-15 | Plein écran de la carte (`#bFs`, repli CSS) et jeu sur mobile (onglets Carte / Pupitre / Journal, tiroirs, gestes tactiles, cibles >= 44 px) pour `jeu.html` et `parc.html` ; `tools/mobile.js`, `docs/plans/mobile.jpg`. |
 | 2026-11-15 | Visiteurs hors des chemins (propriétaire, Zeus d'abord) : couloirs d'embarquement et de débarquement (`plat.exit`, `plat.walkU`, `exit.door`), portillon maintenu ouvert tant qu'un visiteur le franchit, demi-tour des arrivants par leur chemin, promeneurs exclus de la gare, contrôle `offpath` dans `tools/check.js` (`tools/offpath.js`). |
 | 2026-11-15 | Freins de gare liés au départ (propriétaire) : plus de bouton `#zSt_k`, voyant `#zSt_fr` ; noms affichés « Rail mobile du parcours » (rail A, plaque « Rail parcours ») et « Rail du chariot » (rail B). |
 | 2026-11-14 | T7 : pupitre par zones (Gare, Lift, Zones de freinage AUTO/MANU avec anti-collision, Garage), plus aucune commande par train ; `SITE.zones` ; portillons uniquement au bouton, en auto aussi ; `docs/plans/pupitre-zones.jpg`. |

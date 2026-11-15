@@ -350,6 +350,9 @@ function act(a,arg){
   else if(a==='closeHelp'){$('mHelp').classList.add('hidden');sfx.init();}
   else if(a==='mute')$('bMute').textContent=sfx.toggle()?'Son coupé':'Son';
   else if(a==='cam')setCam(arg);
+  else if(a==='fs')setFs(!fsOn);
+  else if(a==='fsdesk')document.body.classList.toggle('fsdesk');
+  else if(a==='tab')setTab(arg);
   else if(a==='nextDay')nextDay();
   else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}

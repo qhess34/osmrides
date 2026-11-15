@@ -2,13 +2,14 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1626">
 <title>Plan du Parc Astérix — simulateurs d'exploitation</title>
 <style>
 :root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#app{display:flex;flex-direction:column;height:100%}
+html,body{margin:0;height:100%;overflow:hidden;touch-action:manipulation;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:flex;flex-direction:column;height:100%;height:100dvh}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;padding:8px 14px;background:linear-gradient(#1b2743,#141d33);border-bottom:2px solid var(--gold)}
 header h1{font-size:17px;margin:0;color:var(--gold);letter-spacing:.5px;white-space:nowrap}
 header h1 a{color:var(--dim);text-decoration:none;margin-right:4px}header h1 a:hover{color:var(--gold)}
@@ -24,7 +25,12 @@ canvas.drag{cursor:grabbing}canvas.hit{cursor:pointer}
 #zoom button{width:34px;height:34px;font:inherit;font-size:18px;color:var(--txt);background:rgba(24,34,58,.85);border:1px solid #47598a;border-radius:7px;cursor:pointer;padding:0}
 #zoom button:hover{background:#3a4d7d}
 #legend{position:absolute;right:8px;bottom:8px;font-size:11.5px;color:#fff;background:rgba(15,22,38,.6);padding:4px 8px;border-radius:6px;pointer-events:none}
-@media(max-width:560px){#info{max-width:none}#legend{display:none}header h1{font-size:15px}}
+#fsb{position:absolute;right:8px;top:8px;z-index:3;font:inherit;font-size:13px;color:var(--txt);background:rgba(24,34,58,.88);border:1px solid #47598a;border-radius:7px;padding:6px 12px;min-height:40px;cursor:pointer}
+#fsb:hover{background:#3a4d7d}
+#hint{top:56px}
+#view.fs{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:20}
+@media(pointer:coarse){#zoom button{width:44px;height:44px}#info a{padding:10px 16px}}
+@media(max-width:560px){#hint{display:none}#info{max-width:none}#legend{display:none}header h1{font-size:15px}}
 </style>
 </head>
 <body>
@@ -33,6 +39,7 @@ canvas.drag{cursor:grabbing}canvas.hit{cursor:pointer}
 <div id="view">
 <canvas id="c"></canvas>
 <div id="zoom"><button id="zi" aria-label="Zoom avant">+</button><button id="zo" aria-label="Zoom arrière">&minus;</button><button id="zf" aria-label="Recentrer" style="font-size:13px">&#9633;</button></div>
+<button id="fsb" aria-label="Plein écran">Plein écran</button>
 <div id="hint">Fond : © OpenStreetMap</div>
 <div id="legend"></div>
 <div id="info"></div>
@@ -57,7 +64,7 @@ const ATT=PARK.attr;
 // vue : centre monde (m), échelle px/m
 let W=0,H=0,dpr=1,cam={x:230,z:200,s:1};
 const fitS=()=>Math.min(W/760,H/780);
-function resize(){dpr=window.devicePixelRatio||1;W=view.clientWidth;H=view.clientHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+function resize(){const d=window.devicePixelRatio||1,w=view.clientWidth,h=view.clientHeight;if(d===dpr&&w===W&&h===H&&cv.width)return;dpr=d;W=w;H=h;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.width=W+'px';cv.style.height=H+'px';draw()}
 function fit(){cam={x:230,z:260,s:fitS()};draw()}
 const clampS=s=>Math.max(fitS()*.6,Math.min(12,s));
 const toS=(x,z)=>[(x-cam.x)*cam.s+W/2,(z-cam.z)*cam.s+H/2];
@@ -108,26 +115,26 @@ function render(){
   }
 }
 // interaction : glisser, molette, pincement
-const ptr=new Map();let moved=0,pd=0,dragStart=null;
-cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.offsetX,e.offsetY]);moved=0;dragStart=[e.offsetX,e.offsetY];pd=ptr.size==2?dist2():0;cv.classList.add('drag')});
+const ptr=new Map();let moved=0,pd=0,dragStart=null,multi=false;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,[e.offsetX,e.offsetY]);moved=0;if(ptr.size===1)multi=false;dragStart=[e.offsetX,e.offsetY];pd=ptr.size==2?dist2():0;cv.classList.add('drag')});
 cv.addEventListener('pointermove',e=>{
   const p=ptr.get(e.pointerId);
   if(!p){hover(e.offsetX,e.offsetY);return}
   const nx=e.offsetX,ny=e.offsetY;
   if(ptr.size==1){cam.x-=(nx-p[0])/cam.s;cam.z-=(ny-p[1])/cam.s;moved+=Math.abs(nx-p[0])+Math.abs(ny-p[1]);draw()}
   ptr.set(e.pointerId,[nx,ny]);
-  if(ptr.size==2){const d=dist2(),m=mid2();if(pd>0)zoomAt(m[0],m[1],d/pd);pd=d;moved+=10}
+  if(ptr.size==2){const d=dist2(),m=mid2();if(pd>0)zoomAt(m[0],m[1],d/pd);pd=d;moved+=10;multi=true}
 });
 function dist2(){const [a,b]=[...ptr.values()];return Math.hypot(a[0]-b[0],a[1]-b[1])}
 function mid2(){const [a,b]=[...ptr.values()];return[(a[0]+b[0])/2,(a[1]+b[1])/2]}
 function end(e){const was=ptr.size;ptr.delete(e.pointerId);cv.classList.remove('drag');pd=0;
-  if(e.type==='pointerup'&&was==1&&moved<6)tap(e.offsetX,e.offsetY)}
+  if(e.type==='pointerup'&&was==1&&!multi&&moved<(e.pointerType==='touch'?12:6))tap(e.offsetX,e.offsetY)}
 cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.offsetX,e.offsetY,Math.exp(-e.deltaY*.0015))},{passive:false});
 document.getElementById('zi').onclick=()=>zoomAt(W/2,H/2,1.5);
 document.getElementById('zo').onclick=()=>zoomAt(W/2,H/2,1/1.5);
 document.getElementById('zf').onclick=fit;
-function pick(px,py){let best=null,bd=1e9;for(const a of ATT){const [x,y]=toS(a.x,a.z);const d=Math.hypot(x-px,y-py),r=a.site?16:11;if(d<r&&d<bd){bd=d;best=a}}return best}
+function pick(px,py){let best=null,bd=1e9;for(const a of ATT){const [x,y]=toS(a.x,a.z);const d=Math.hypot(x-px,y-py),r=(a.site?16:11)+(matchMedia('(pointer:coarse)').matches?8:0);if(d<r&&d<bd){bd=d;best=a}}return best}
 function hover(px,py){cv.classList.toggle('hit',!!pick(px,py))}
 function tap(px,py){
   const a=pick(px,py);
@@ -138,7 +145,18 @@ function tap(px,py){
   info.lastChild.textContent='Pas de simulateur pour cette attraction.';
 }
 document.getElementById('legend').textContent='Doré : simulateur disponible (cliquer pour jouer)';
-addEventListener('resize',resize);
+// plein écran : API Fullscreen sur #view, repli CSS (la carte remplit la fenêtre) si indisponible (iOS Safari)
+let fsOn=false;const fsb=document.getElementById('fsb');
+function setFs(on){on=!!on;if(on===fsOn)return;fsOn=on;view.classList.toggle('fs',on);fsb.textContent=on?'Quitter le plein écran':'Plein écran';
+  if(on){const rq=view.requestFullscreen||view.webkitRequestFullscreen;if(rq){try{const r=rq.call(view);if(r&&r.catch)r.catch(()=>{})}catch(e){}}}
+  else{const ex=document.fullscreenElement?document.exitFullscreen:document.webkitFullscreenElement?document.webkitExitFullscreen:null;if(ex){try{const r=ex.call(document);if(r&&r.catch)r.catch(()=>{})}catch(e){}}}
+  resize();requestAnimationFrame(resize)}
+fsb.onclick=()=>setFs(!fsOn);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&fsOn)setFs(false)});
+for(const ev of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(ev,()=>{if(fsOn&&!document.fullscreenElement&&!document.webkitFullscreenElement)setFs(false);resize()});
+const onSize=()=>{resize();requestAnimationFrame(resize)};
+addEventListener('resize',onSize);addEventListener('orientationchange',onSize);
+if(window.ResizeObserver)new ResizeObserver(resize).observe(view);
 resize();fit();
 </script>
 </body>

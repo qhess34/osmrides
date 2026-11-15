@@ -28,7 +28,7 @@ function ui(){
   $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);
   $('hWait').textContent=active?Math.round(G.queue.length/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
   $('hRiders').textContent=G.stats.riders;
-  for(const s of [0,1,2,4,8])$('sp'+s).classList.toggle('on',G.speed===s);
+  for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
   $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.time>=1080;
   $('bEvac').disabled=!G.queue.length;
   $('bAuto').classList.toggle('manu',!G.auto);
@@ -69,7 +69,26 @@ function ui(){
   $('tech').textContent=G.job?G.job.label:'Équipe technique disponible';
   $('techBar').style.width=G.job?(100*(1-G.job.rem/G.job.dur))+'%':'0%';
   $('techTxt').textContent=G.job?Math.ceil(G.job.rem*.5)+' min restantes':'';
+  if(document.body.classList.contains('fs')){ // barre du plein écran : heure, file, quai, dernier message du journal
+    $('fsHud').textContent=fmtTime(G.time)+' · Jour '+G.day+' · File '+G.queue.length+' · Quai '+G.plat.filter(r=>r).length+'/'+SEATS+' · '+Math.round(G.money).toLocaleString('fr-FR')+' €';
+    const m=$('log').firstElementChild;$('fsMsg').textContent=m&&m.lastChild?m.firstChild.textContent+' '+m.lastChild.textContent:'';$('fsMsg').className=m?m.className:'';
+    $('bDesk').classList.toggle('on',document.body.classList.contains('fsdesk'));}
   for(const b of document.querySelectorAll('#cams button[data-act=cam]'))b.classList.toggle('on',b.dataset.arg===cam.key);
   $('bRoof').classList.toggle('on',!!G.roofOff);$('bRoof').textContent=G.roofOff?'Toits retirés':'Toits en place';
 }
 
+/* ══════════ MOBILE ET PLEIN ÉCRAN : onglets Carte / Pupitre / Journal, mode « dm » (téléphone, tablette étroite) ══════════ */
+const MQ=matchMedia('(max-width:900px), (max-height:520px) and (orientation:landscape)');
+function setTab(t){
+  const b=document.body;if(t===b.dataset.tab&&t!=='carte')t='carte';
+  b.dataset.tab=t;for(const x of document.querySelectorAll('#tabs button'))x.classList.toggle('on',x.dataset.arg===t);
+}
+function layoutVars(){ // hauteurs réelles de l'en-tête et de la barre du plein écran (le tiroir se place dessous en paysage)
+  const b=document.body,h=document.querySelector('header'),f=$('fsBar');
+  b.style.setProperty('--st',h.offsetHeight+'px');if(f.offsetHeight)b.style.setProperty('--fsh',f.offsetHeight+'px');
+}
+function setDm(){document.body.classList.toggle('dm',MQ.matches);layoutVars();}
+document.body.dataset.tab='carte';setDm();
+if(MQ.addEventListener)MQ.addEventListener('change',setDm);else MQ.addListener(setDm);
+if(window.ResizeObserver){const ro=new ResizeObserver(layoutVars);ro.observe(document.querySelector('header'));ro.observe($('fsBar'));}
+addEventListener('resize',layoutVars);

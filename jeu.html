@@ -2,13 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1626">
 <title>Simulateur d'exploitation</title>
 <style>
 :root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e;--ok:#4cc38a;--warn:#f0a23b;--bad:#e5484d;--blue:#4f8cff}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+html,body{margin:0;height:100%;-webkit-text-size-adjust:100%;touch-action:manipulation;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--txt);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 #app{display:flex;flex-direction:column;height:100%}
+button,input{touch-action:manipulation}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:8px 14px;background:linear-gradient(#1b2743,#141d33);border-bottom:2px solid var(--gold)}
 header h1 a{color:var(--dim);text-decoration:none;margin-right:4px}header h1 a:hover{color:var(--gold)}
 header h1{font-size:17px;margin:0;color:var(--gold);letter-spacing:.5px;white-space:nowrap}
@@ -95,7 +97,81 @@ button.sel.manu i{transform:rotate(42deg)}
 .modal td:last-child{text-align:right;font-variant-numeric:tabular-nums}
 .hidden{display:none}
 small.legal{color:#62708f}
-@media(max-width:900px){#app{height:auto}#view{min-height:56vw}main{flex-direction:column}#side{width:auto;border-left:0;border-top:1px solid var(--line)}}
+#fsBar,#tabs{display:none}
+#fsBar{position:absolute;top:0;left:0;right:0;z-index:32;flex-wrap:wrap;align-items:center;gap:4px 6px;padding:6px max(8px,env(safe-area-inset-right)) 6px max(8px,env(safe-area-inset-left));background:rgba(15,22,38,.82);border-bottom:1px solid var(--line)}
+#fsBar button{padding:4px 10px;font-size:13px;min-height:36px}
+#fsBar .grp{display:flex;gap:4px}#fsBar .sp{flex:1}
+#fsHud{font-size:12.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-variant-numeric:tabular-nums}
+#fsMsg{flex-basis:100%;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fsMsg.warn{color:var(--warn)}#fsMsg.bad{color:#ff7b7f}#fsMsg.good{color:var(--ok)}
+/* plein écran de la carte : API Fullscreen sur #view, ou repli CSS (la carte remplit la fenêtre) */
+#view.fs{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;min-height:0;z-index:20}
+body.fs{overflow:hidden}
+body.fs #fsBar{display:flex}body.fs #hint{display:none}
+body.fs #cams{bottom:max(8px,env(safe-area-inset-bottom));left:max(8px,env(safe-area-inset-left))}
+/* tiroir du pupitre : feuille basse en portrait, panneau à droite en paysage (téléphone ou plein écran) */
+body.dm #side,body.fs #side{position:fixed;z-index:31;margin:0;border:0;border-top:2px solid var(--gold);box-shadow:0 -6px 22px #000b;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;visibility:hidden;transition:transform .22s ease,visibility 0s .22s;
+  left:0;right:0;bottom:var(--sb,0px);width:auto;height:min(58vh,600px);height:min(58dvh,600px);transform:translateY(110%)}
+body.dm:not(.fs) #log{position:fixed;z-index:31;left:0;right:0;bottom:var(--sb,0px);height:min(42vh,320px);height:min(42dvh,320px);border-top:2px solid var(--gold);box-shadow:0 -6px 22px #000b;overscroll-behavior:contain;touch-action:pan-y;visibility:hidden;transform:translateY(110%);transition:transform .22s ease,visibility 0s .22s;font-size:13.5px;padding:8px 12px}
+body[data-tab=pupitre]:not(.fs) #side,body[data-tab=journal]:not(.fs) #log,body.fsdesk #side{transform:none;visibility:visible;transition:transform .22s ease,visibility 0s}
+body.dm main{flex-direction:column}
+body.dm #view{min-height:0;flex:1}
+body.dm #left{flex:1}
+body.dm #app{height:100vh;height:100dvh}
+body.dm{overflow:hidden}
+body.dm:not(.fs) #app{padding-bottom:var(--sb,0px)}
+body.dm #hint{display:none}
+body.dm header{padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));gap:4px 10px}
+body.dm header h1{font-size:15px;flex:1 1 auto}body.dm header h1 a{display:inline-block;padding:6px 10px 6px 0}
+body.dm .hud{flex:1 1 100%;order:3;gap:5px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch;margin:0 -10px;padding:0 10px}body.dm .hud::-webkit-scrollbar{display:none}body.dm .stat{flex:none}
+body.dm .stat{padding:1px 7px;font-size:12px}
+body.dm .speed{gap:4px;flex:none}body.dm .speed button{min-width:44px;min-height:44px;padding:4px 6px}
+body.dm button{min-height:44px}
+body.dm #cams{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:none;left:0;bottom:0;max-width:100%;width:100%;padding:6px 8px;gap:6px;background:linear-gradient(transparent,rgba(15,22,38,.55))}
+body.dm #cams::-webkit-scrollbar{display:none}
+body.dm #cams button,body.fs #cams button{flex:none;min-height:40px;padding:4px 12px;white-space:nowrap}
+body.dm #tabs{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;z-index:33;height:calc(var(--sb) );padding-bottom:env(safe-area-inset-bottom);background:#141d33;border-top:2px solid var(--gold)}
+body.dm #tabs button{border-radius:0;border:0;border-right:1px solid var(--line);background:#141d33;font-size:15px;font-weight:600;min-height:48px}
+body.dm #tabs button:last-child{border-right:0}
+body.dm #tabs button.on{background:var(--blue);color:#fff}
+body.dm.fs #tabs{display:none}
+body.dm .modal>div{padding:16px}
+:root{--sb:0px}
+body.dm{--sb:calc(48px + env(safe-area-inset-bottom))}
+body.fs{--sb:0px}
+body.fs #side{top:auto;--sb:0px}
+body.fs #side,body.dm #side{padding:10px max(10px,env(safe-area-inset-right)) 10px max(10px,env(safe-area-inset-left))}
+body.dm .zrow{grid-template-columns:minmax(0,1fr) repeat(5,44px);gap:3px}body.dm .zrow .zn{white-space:normal;line-height:1.1}
+body.dm .zrow button.pb.sm,body.dm .dsec button.pb.sm,body.dm #deskZones button.pb.sm[id$=_m]{width:44px;height:44px;font-size:11px}
+body.dm .dsec button.pb.sm{width:auto;padding:0 10px}
+body.dm button.pb.sm{width:44px;height:44px}
+body.dm .zrow .zn{font-size:9px}
+body.dm #crowd{min-height:32px}
+body.dm .row button{min-height:44px}
+.modal{z-index:40}
+.modal>div{max-height:92vh;max-height:92dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.modal>div>button.go{position:sticky;bottom:-20px;width:100%;min-height:44px;margin-top:8px;box-shadow:0 -10px 14px var(--panel)}
+@media(orientation:landscape){
+  body.dm #side,body.fs #side{left:auto;right:0;top:var(--st,0px);bottom:0;height:auto;width:min(48vw,430px);border-top:0;border-left:2px solid var(--gold);box-shadow:-6px 0 22px #000b;transform:translateX(110%)}
+  body.dm:not(.fs) #log{left:auto;right:0;top:var(--st,0px);bottom:0;height:auto;width:min(48vw,430px);border-top:0;border-left:2px solid var(--gold);transform:translateX(110%)}
+  body[data-tab=pupitre]:not(.fs) #side,body[data-tab=journal]:not(.fs) #log,body.fsdesk #side{transform:none}
+  body.fs #side{--st:var(--fsh,46px)}
+}
+/* paysage d'un téléphone : onglets dans l'en-tête, pas de barre basse */
+@media(orientation:landscape) and (max-height:520px){
+  body.dm{--sb:0px}
+  body.dm header{flex-wrap:nowrap;align-items:center;gap:4px 8px;padding-top:4px;padding-bottom:4px}
+  body.dm header h1{flex:none;font-size:14px;max-width:21vw;overflow:hidden;text-overflow:ellipsis}
+  body.dm .hud{order:0;flex:1 1 0;min-width:0;margin:0;padding:0}body.dm header h1 span{display:none}body.dm header h1{max-width:none}
+  body.dm .stat{font-size:11px;padding:0 5px;line-height:1.5}
+  body.dm .speed button{min-width:44px;min-height:44px}
+  body.dm #tabs{display:flex;position:static;height:auto;padding:0;background:none;border:0;gap:4px;flex:none}
+  body.dm #tabs button{border:1px solid #47598a;border-radius:7px;background:#2c3c63;min-height:44px;padding:4px 10px;font-size:13px}
+  body.dm #tabs button.on{background:var(--blue)}
+  body.dm .modal>div{max-height:96dvh}
+}
+@media(max-width:900px){body:not(.dm) #side{width:auto}}
+@media(max-width:380px){body.dm .stat{font-size:11.5px;padding:1px 5px}body.dm header h1{font-size:14px}}
 </style>
 </head>
 <body>
@@ -118,12 +194,21 @@ small.legal{color:#62708f}
     <button data-act="speed" data-arg="4" id="sp4">×4</button>
     <button data-act="speed" data-arg="8" id="sp8">×8</button>
     <button data-act="mute" id="bMute">Son</button>
-    <button data-act="help">?</button>
+    <button data-act="help" aria-label="Aide">?</button>
+  </div>
+  <div id="tabs" role="tablist">
+    <button data-act="tab" data-arg="carte" class="on">Carte</button>
+    <button data-act="tab" data-arg="pupitre">Pupitre</button>
+    <button data-act="tab" data-arg="journal">Journal</button>
   </div>
 </header>
 <main>
   <div id="left">
     <div id="view"><div id="dark"></div>
+      <div id="fsBar"><span id="fsHud"></span><span class="sp"></span>
+        <span class="grp"><button data-act="speed" data-arg="0">Pause</button><button data-act="speed" data-arg="1">×1</button><button data-act="speed" data-arg="2">×2</button><button data-act="speed" data-arg="4">×4</button></span>
+        <span class="grp"><button data-act="fsdesk" id="bDesk" title="Afficher ou masquer le pupitre par-dessus la carte">Pupitre</button><button data-act="fs" title="Quitter le plein écran">Quitter</button></span>
+        <span id="fsMsg"></span></div>
       <div id="cams"></div>
       <div id="hint">Glisser : déplacer · Molette : zoom</div>
     </div>
