@@ -28,6 +28,8 @@ const SITE=(()=>{
     // vitesse du chariot (0,5 m/s, 4 s au moins), vitesse de manœuvre des trains (1,5 m/s), sens d'entrée (marche arrière, d'après la position des voies).
     yard:{at:'brake',device:'traverser',single:true,railName:'Rail du pont',rev:true,side:-1,pre:.6,post:.6,laneGap:.8,move:{v:1.5,vc:.5,t:4},
       devName:'Pont transbordeur',devLabel:'le pont transbordeur',lanes:[lane(1,3.0),lane(2,7.0),lane(3,11.0)]},
+    // Tunnel (OSM way 421460641, tunnel=yes layer=-1) : le propriétaire dit qu'il passe SOUS L'EAU (bassin) ; profondeur ESTIMÉE (≈ -3 m, profil de la spec).
+    tunnels:[{under:'water'}],
     stationPoly:OSM.polys.station,stationAt:[-7,-8,9],stationRoofCol:'#b9a27a',
     fade:[[-7,-8,9],[-24,-24,12],[-35,-25,8]],   // toits qui s'effacent : gare, halle du frein final et du pont, garage
     // Quais : embarquement côté est (file), débarquement côté ouest ; profondeurs ESTIMÉES d'après le bâtiment OSM 420016980.
@@ -52,9 +54,9 @@ const SITE=(()=>{
     view:{x:-12,z:5,w:230,h:200,bounds:[-120,120,-110,110]},
     cams:{gare:{label:'Gare',x:-8,z:-9,s:17},file:{label:'File',x:-15,z:45,s:7},lift:{label:'Lift',x:-42,z:30,s:7},
       dive:{label:'Dive loop',x:-14,z:68,s:8},looping:{label:'Looping',x:24,z:38,s:9},imm:{label:'Immelmann',x:46,z:45,s:8},
-      zg1:{label:'Zéro-G 1',x:30,z:-66,s:8},zg2:{label:'Zéro-G 2',x:-20,z:34,s:8},frein:{label:'Frein final',x:-26,z:-20,s:11},garage:{label:'Garage',x:-27,z:-27,s:13}},
+      tunnel:{label:'Tunnel',x:18.5,z:2.5,s:15},zg1:{label:'Zéro-G 1',x:30,z:-66,s:8},zg2:{label:'Zéro-G 2',x:-20,z:34,s:8},frein:{label:'Frein final',x:-26,z:-20,s:11},garage:{label:'Garage',x:-27,z:-27,s:13}},
     labels:()=>[['Gare',-22,-18],['Lift — 40 m',-58,40],['Frein final',-44,-12],['Garage',-45,-30],['Pont transbordeur',-20,-46],
-      ["File d'attente",-30,57],['Entrée',38,36],['Tunnel',24,4],['Boutique',6,-12],
+      ["File d'attente",-30,57],['Entrée',38,36],['Tunnel sous l\'eau',28,3],['Boutique',6,-12],
       // Inversions : plan des figures fourni par le propriétaire (affiche, stylisée) rapproché du tracé OSM par la forme ; emplacements ± 10 m, hauteurs ESTIMÉES.
       ['Dive loop',-8,92],['Looping vertical',36,22],['Immelmann',66,57],['Roulis zéro-G',2,-70],['Roulis zéro-G',8,63]],
     strike:{area:[-90,90,-90,90]},

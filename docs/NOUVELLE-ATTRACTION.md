@@ -16,6 +16,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 | Concept | Règle |
 |---|---|
+| 2026-11-15 | Tunnels génériques : `OSM.tunnels` exporté par `make_site.py` (tronçons `tunnel=yes` / `covered=yes` layer<0, converti en s du moteur), couverture (eau ou remblai, `SITE.tunnels`), portails, synoptique en pointillé, toits retirés ; OzIris (way 421460641, sous l'eau). |
 | 2026-11-14 | Synoptique technique du circuit (plan, zones, freins de bloc, garage, trains numérotés en direct) au lieu du profil en hauteur ; bouton `#bSyn`, générique. |
 | Circuit | Boucle fermée, abscisse `s` en mètres, 0 = début de gare. Repères `st0`, `st1`, `lift0`, `lift1`, `brk`, freins de bloc `blk1…`. |
 | Cantonnement | Un train par canton ; le lift et les freins de bloc retiennent un train si le canton suivant est occupé. Au moins un canton de plus qu'il n'y a de trains sur le circuit. |
@@ -37,6 +38,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 - Sols et matières : utiliser **uniquement les textures du moteur** (`TEX.grass`, `lawn`, `canopy`, `wood`, `sand`, `dirt`, `asph`, `stone`, `water`, `rows`), transmises aux dessins propres au site via `API` (`{lw, person, TEX}`).
 - Ombres portées dans la direction commune du moteur (`SHX`, `SHZ`) ; un élément haut (statue, tour) projette son ombre dans `draw.shadows`.
 - Toits de gare et de garage qui s'effacent quand on zoome (`fade`), charpente visible dessous (`draw.underRoof`).
+- **Tunnels** (communs) : `OSM.tunnels` (tronçons du circuit tagués `tunnel=yes` / `covered=yes` + `layer<0` dans OSM, exportés par `tools/make_site.py` en abscisses du moteur) : voie et trains cachés par une couverture (eau `TEX.water` si le tunnel est sous un plan d'eau OSM, sinon remblai enherbé ; forçable par `SITE.tunnels:[{under,w}]`), portails en béton avec ouverture sombre, tracé en pointillé au synoptique, couverture translucide avec « Toits retirés ». Mettre dans le profil de la spec une hauteur sous le sol (profondeur ESTIMÉE) ; les polygones `man_made=tunnel` restent dessinés comme avant.
 - Trains : couleurs du vrai matériel si connues, sinon teintes sourdes **signalées comme supposées**. Visiteurs : `person()` du moteur.
 - Dessins spécifiques (statue, décor thématique) : seulement dans `SITE.draw.*` (`floor`, `shadows`, `stationRoof`, `underRoof`, `landmarks`), formes simples, matières mates, en restant cohérent avec le reste de la carte.
 - Interface : thème de `jeu.html` (variables CSS `--bg #0f1626`, `--panel #18223a`, `--gold #f2c14e`, `--ok`, `--warn`, `--bad`, police système). Pupitre en boutons physiques (`.pb`, `.sel`, voyants `.lamp`), plaques de libellé `.plate`. Ne pas créer un autre style.

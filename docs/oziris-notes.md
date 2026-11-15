@@ -37,6 +37,10 @@ Sources : https://en.wikipedia.org/wiki/OzIris · https://coasterbuzz.com/Roller
 - Pont : longueur du rail (un train + 2 × 0,6 m), jeu rail / voies (0,8 m), vitesse du chariot (0,5 m/s) et des manœuvres (1,5 m/s) ; entrée dans les voies en marche arrière (déduit de la position des voies).
 - Longueur (1,55 m) et largeur (2,6 m) d'un wagon ; teinte exacte du bleu des trains (`#2c4f8c`, lapbars gris clair) et de la voie (non vérifiées ; les trains sont bleus, confirmé).
 
+## Tunnel (propriétaire : « sous l'eau », 2026-11-15)
+
+OSM way 421460641 (`tunnel=yes`, `layer=-1`, `covered=yes`, 13 m au sol, de (15,7 ; 8,4) à (21,1 ; −3,2)) : section du circuit qui passe **sous le bassin** (le propriétaire confirme : sous l'eau). Exporté en `OSM.tunnels=[[491,503.8]]` (s du moteur) par `tools/make_site.py` ; `SITE.tunnels:[{under:'water'}]`. Rendu : dalle d'eau (TEX.water) sur la voie et les trains, deux portails en béton aux deux bouts, toits retirés = vue translucide du tunnel. **Profondeur ESTIMÉE** : fond à ≈ −3 m (rails sous le niveau de l'eau) ; pentes d'accès ≈ 20 %, vitesse maxi inchangée (92 km/h), croisements ≥ 3,4 m conservés. Le `man_made=tunnel` 1353118256 est à (505 ; 427), c'est-à-dire hors OzIris : ignoré.
+
 ## Inversions — affiche du propriétaire (2026-11-15)
 
 Source : `docs/sources/oziris-plan-figures-affiche.png` (affiche stylisée du plan : Dive Loop, Vertical Loop, Immelmann, Zero-G Roll ×2 ; hauteur 131,2 ft = 40 m, chute 114,8 ft = 35 m, vitesse 56 mph = 90 km/h, 5 inversions). C'est un dessin d'artiste : formes lissées, tournées d'environ 180° par rapport à la carte (nord en bas), recadrées à gauche (le bout de l'Immelmann sort de l'image). Rapprochée du tracé OSM **par la forme** : lift en diagonale le long de la gare, bec pointu du dive loop, zigzag du looping, longue pointe de l'Immelmann, boucle du haut, goutte près de la gare, rectangles = zone garage / pont. Confiance : bonne pour l'ordre et les cinq zones, moyenne pour les emplacements exacts (± 10 m) ; les flèches de légende des deux roulis zéro-G sont imprécises (placés sur les deux boucles croisées du tracé).

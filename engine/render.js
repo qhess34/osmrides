@@ -133,7 +133,7 @@ const devHide=o=>o.lk&&YD.device==='table'&&o.lk!==devShown(); // pont transbord
 const mkPath=(pts,close)=>{const p=new Path2D;pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1]));if(close)p.closePath();return p;};
 const cen=pts=>{let x=0,z=0;for(const p of pts){x+=p[0];z+=p[1];}return [x/pts.length,z/pts.length];};
 const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).map(p=>mkPath(p));
-let tunnelP=null,tunnelC=[5,98];
+let tunnelP=null,tunnelC=[5,98];const WATERPTS=[];
 (function scenery(){
   const ROOFS=['#a9553f','#b0694a','#9d6350','#8a8f96','#b9ab93','#7f8a8f','#a35f47'],seen=new Set();
   const SPOLY=SITE.stationPoly||[],inSt=(x,z)=>{let c=false;for(let i=0,j=SPOLY.length-1;i<SPOLY.length;j=i++)if((SPOLY[i][1]>z)!==(SPOLY[j][1]>z)&&x<(SPOLY[j][0]-SPOLY[i][0])*(z-SPOLY[i][1])/(SPOLY[j][1]-SPOLY[i][1])+SPOLY[i][0])c=!c;return c;};
@@ -147,7 +147,7 @@ let tunnelP=null,tunnelC=[5,98];
   OSM.feats.forEach((f,i)=>{
     const k=f.k,c=f.c&&f.p.length>3,p=mkPath(f.p,c);
     if(f.n&&!seen.has(f.n)&&!(SITE.hideNames||[]).includes(f.n)&&!k.startsWith('highway')){seen.add(f.n);const m=cen(f.p);PLACES.push([f.n.replace(/ \(\d+\)/,''),m[0],m[1]]);}
-    if(k==='natural=water'||k==='landuse=reservoir'){if(c)LY.water.push(p);}
+    if(k==='natural=water'||k==='landuse=reservoir'){if(c){LY.water.push(p);WATERPTS.push(f.p);}}
     else if(k.startsWith('waterway'))(c?LY.water:LY.canal).push(p);
     else if(k==='landuse=grass'||k==='landuse=meadow'){if(c)LY.lawn.push(p);}
     else if(k==='landuse=forest'||k==='natural=wood'||k==='natural=scrub'){if(c)LY.forest.push({p,pts:f.p});}
@@ -192,6 +192,42 @@ function strike(){const K=SITE.strike||{},A=K.area||[VIEW.x-VIEW.w/2,VIEW.x+VIEW
 const strollers=[];
 (function(){const tot=FOOT.reduce((a,f)=>a+f.len,0);for(const f of FOOT){const n=Math.round(90*f.len/tot);for(let i=0;i<n;i++)strollers.push({f,d:rnd(0,f.len),v:(Math.random()<.5?-1:1)*rnd(.9,1.6),side:rnd(-1.1,1.1),ci:Math.floor(Math.random()*12),ph:rnd(0,6),x:0,z:0});}})();
 let clock=0,wet=0,roofA=1;
+// Tunnels du circuit : OSM.tunnels=[[s0,s1],…] (tronçons tagués tunnel=yes, ou covered=yes et layer<0). Voie et trains y sont cachés par une couverture :
+// de l'eau si le tunnel passe sous un plan d'eau OSM (détection automatique), sinon un remblai enherbé. SITE.tunnels[k]={under:'water'|'ground',w:demi-largeur} force le choix.
+// Deux portails (tête en béton, ouverture sombre, rampe à murs) aux extrémités. Profondeur ESTIMÉE (profil de la spec). « Toits retirés » : la couverture devient translucide.
+const TUN=(function(){
+  const pip=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])c=!c;return c;};
+  const fr=i=>{const f=TR[((i%N)+N)%N],g=TR[(((i+1)%N)+N)%N],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(g.p.x-f.p.x,g.p.z-f.p.z)||1;return {x:f.p.x,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:(g.p.x-f.p.x)/tl,tz:(g.p.z-f.p.z)/tl};};
+  return (OSM.tunnels||[]).map((r,ti)=>{
+    const cf=(SITE.tunnels&&SITE.tunnels[ti])||{},i0=Math.round(r[0]/DS),i1=Math.round(r[1]/DS),w=cf.w||2.1,m=fr(Math.round((i0+i1)/2));
+    const e0=fr(i0),e1=fr(i1),under=cf.under||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':'ground'); // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
+    const band=(a,b,hw)=>{const P=new Path2D,L1=[],R1=[];for(let i=a;i<=b;i++){const f=fr(i);L1.push([f.x+f.nx*hw,f.z+f.nz*hw]);R1.push([f.x-f.nx*hw,f.z-f.nz*hw]);}
+      L1.forEach((q,i)=>i?P.lineTo(q[0],q[1]):P.moveTo(q[0],q[1]));R1.reverse().forEach(q=>P.lineTo(q[0],q[1]));P.closePath();return P;};
+    const walls=new Path2D,heads=new Path2D,mouth=[],RAMP=Math.round(6/DS);
+    for(const sg of [-1,1]){ // sg=-1 : portail d'entrée (début), +1 : portail de sortie
+      const ie=sg<0?i0:i1,f=fr(ie),ox=f.tx*sg,oz=f.tz*sg; // ox,oz : vers l'extérieur du tunnel
+      for(const e of [-1,1]){walls.moveTo(f.x+f.nx*w*e,f.z+f.nz*w*e);for(let k=0;k<=RAMP;k++){const g=fr(ie+sg*k);walls.lineTo(g.x+g.nx*(w+k*DS*.05)*e,g.z+g.nz*(w+k*DS*.05)*e);}}
+      const hw=w+.45,c=[f.x-ox*.4,f.z-oz*.4]; // tête : dalle de béton de 0,8 m, moitié dedans
+      heads.moveTo(c[0]+f.nx*hw+f.tx*.4,c[1]+f.nz*hw+f.tz*.4);heads.lineTo(c[0]-f.nx*hw+f.tx*.4,c[1]-f.nz*hw+f.tz*.4);heads.lineTo(c[0]-f.nx*hw-f.tx*.4,c[1]-f.nz*hw-f.tz*.4);heads.lineTo(c[0]+f.nx*hw-f.tx*.4,c[1]+f.nz*hw-f.tz*.4);heads.closePath();
+      mouth.push({x:f.x,z:f.z,ox,oz,nx:f.nx,nz:f.nz});}
+    const hs=[];for(let i=i0-2;i<=i1+2;i++)hs.push(chunkH[((i%N)+N)%N]);
+    return {a:r[0],b:r[1],under,w,cover:band(i0,i1,w+.3),core:band(i0,i1,w-.2),walls,heads,mouth,h:Math.max(...hs)+.01};
+  });
+})();
+const inTun=s=>{for(const t of TUN)if(s>=t.a-CAR/2&&s<=t.b+CAR/2)return true;return false;};
+function drawTunnel(t){
+  const ra=G.roofOff?roofA:1,wa=t.under==='water';
+  ctx.save();
+  if(wa){ctx.globalAlpha=.42+.5*ra;ctx.fillStyle=TEX.water;ctx.fill(t.cover);ctx.globalAlpha=ra*.5;ctx.strokeStyle='rgba(190,215,225,.55)';lw(.12,.5);ctx.stroke(t.cover);} // dalle de couverture sous l'eau
+  else{ctx.globalAlpha=.3+.7*ra;ctx.fillStyle=TEX.dirt;ctx.fill(t.cover);ctx.fillStyle=TEX.lawn;ctx.fill(t.core);ctx.fillStyle='rgba(20,40,16,.18)';ctx.fill(t.core);}
+  ctx.globalAlpha=1;
+  ctx.strokeStyle='rgba(30,30,28,.35)';lw(.5,1);ctx.translate(.18,.14);ctx.stroke(t.walls);ctx.translate(-.18,-.14); // murs de la rampe et têtes de portail
+  ctx.strokeStyle=TEX.stone;lw(.34,.8);ctx.stroke(t.walls);ctx.fillStyle=TEX.stone;ctx.fill(t.heads);ctx.strokeStyle='#8a867a';lw(.1,.6);ctx.stroke(t.heads);
+  for(const m of t.mouth){const x0=m.x,z0=m.z,x1=m.x+m.ox*2.4,z1=m.z+m.oz*2.4,g=ctx.createLinearGradient(x0,z0,x1,z1); // ombre de l'ouverture sur la rampe
+    g.addColorStop(0,'rgba(8,9,12,.9)');g.addColorStop(1,'rgba(8,9,12,0)');ctx.fillStyle=g;const hw=t.w-.15;
+    ctx.beginPath();ctx.moveTo(x0+m.nx*hw,z0+m.nz*hw);ctx.lineTo(x1+m.nx*hw,z1+m.nz*hw);ctx.lineTo(x1-m.nx*hw,z1-m.nz*hw);ctx.lineTo(x0-m.nx*hw,z0-m.nz*hw);ctx.closePath();ctx.fill();}
+  ctx.restore();
+}
 const lw=(w,minPx)=>{ctx.lineWidth=Math.max(w,(minPx||0)/cam.s);};
 function person(x,z,ci,ph,mv,helmet){
   if(cam.s<4.2){ctx.fillStyle=PAL[ci];const k=Math.max(.45,1.2/cam.s);ctx.fillRect(x-k/2,z-k/2,k,k);return;}
@@ -331,7 +367,7 @@ function drawWorld(dt){
     if(tunnelP){ctx.save();ctx.translate(2.2,1.7);ctx.fill(tunnelP);ctx.restore();}
     ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;
     for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
-    for(const t of trains)for(let k=0;k<NCARS;k++)drawCar(t,k,true);
+    for(const t of trains)for(let k=0;k<NCARS;k++)if(!inTun(((t.s-(k+.5)*CAR)%L+L)%L))drawCar(t,k,true);
     if(SITE.draw&&SITE.draw.shadows)SITE.draw.shadows(ctx,dry,API);
   }
   // sol de la gare, voie de garage
@@ -345,9 +381,11 @@ function drawWorld(dt){
   const items=[];
   for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o))items.push(o);
   for(const t of trains){const ex=t.st==='run'&&zoneOf(t.s)==='course'&&t.v>9;t.arms=lerp(t.arms,ex?1:0,Math.min(1,dt*4));
-    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:ST_Y)+(INV?-1.5:.02),t,k});}} // inversé : train suspendu sous sa voie
+    for(let k=0;k<NCARS;k++){const sc=t.s-(k+.5)*CAR;items.push({h:inTun((((sc%L)+L)%L))?-99:(t.st==='run'?chunkH[Math.floor((((sc%L)+L)%L)/DS)%N]:ST_Y)+(INV?-1.5:.02),t,k});}} // inversé : train suspendu sous sa voie
+  for(const u of TUN)items.push({h:u.h,tun:u});
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
+    if(o.tun){drawTunnel(o.tun);continue;}
     if(o.t){drawCar(o.t,o.k);continue;}
     const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}
     if(BOB){ // gouttière en acier : bords sombres, fond clair, reflet au centre
@@ -453,6 +491,7 @@ function drawSyn(){
   ctx.lineWidth=1.5;ctx.strokeStyle='#9aa9c4';seg(0,P.length-1,X,Z);ctx.lineTo(X(P[0][0]),Z(P[0][1]));ctx.stroke();
   const gap=(X,Z,w)=>{if(SG&&!circIn()){ctx.lineWidth=w;ctx.strokeStyle='#0f1626';seg(R0+1,R1-1,X,Z);}}; // rail unique hors de P : circuit interrompu
   gap(X,Z,3);
+  for(const u of TUN){ctx.lineWidth=3;ctx.strokeStyle='#0f1626';seg(u.a,u.b,X,Z);ctx.lineWidth=2;ctx.strokeStyle='#9aa9c4';ctx.setLineDash([3,3]);seg(u.a,u.b,X,Z);ctx.setLineDash([]);} // tunnel : tracé en pointillé
   ctx.lineWidth=3;ctx.strokeStyle='#6f9fcf';seg(TAG.st0,TAG.st1,X,Z);
   ctx.strokeStyle='#c9a45f';seg(S_LIFT0,S_LIFT1,X,Z);
   ctx.font='600 '+fs+'px system-ui,sans-serif';
