@@ -63,6 +63,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 3. **Configuration** : `sites/<id>.js` en partant de `sites/zeus.js` (référence) ; garage dans `SITE.yard`, places par wagon dans `car.seats`. Ne jamais éditer `sites/<id>.data.js` à la main.
 4. **Moteur** : seulement si nécessaire, générique, documenté ici, toutes les attractions revérifiées.
 5. **Branchement** : carte dans `index.html`, `site` renseigné pour l'attraction dans `parc/parc.data.js` (via `tools/make_park.py`) et lien depuis `parc.html`, ligne dans `README.md`, tâche cochée dans `docs/ROADMAP.md`.
+5 bis. **Hors ligne** : rien à faire si les fichiers sont dans `sites/` (le workflow injecte la liste dans `sw.js` via `tools/make_sw.py`) ; seulement si un nouveau dossier ou fichier racine est créé, l'ajouter à la copie du workflow `pages.yml`.
 6. **Vérification** (voir § 6), puis commit.
 
 ## 6. Définition de « fait »
@@ -88,6 +89,7 @@ Modifier ce fichier quand on ajoute ou change : un réglage `SITE`, une capacit�
 
 | Date | Changement |
 |---|---|
+| 2026-11-15 | Application installable (propriétaire : « ajouter l'appli à la page d'accueil ») : `manifest.webmanifest`, `icons/`, `sw.js` (liste des fichiers et version injectées par `tools/make_sw.py` dans le workflow), bouton « Installer l'application » / indication iOS sur `index.html`, marges de sécurité (encoche) en mode application. |
 | 2026-11-15 | Règle du lift par défaut pour toutes les attractions (propriétaire, via le chef de projet) : un seul train sur le lift, le suivant attend au pied ; train retenu en haut tant que la zone de freinage suivante (1er frein de bloc, sinon frein final) est occupée ; départ de gare refusé seulement si un train attend au pied (« zone avant-lift occupée ») ; `SITE.singleCourse` devient un alias ignoré ; `tools/check.js` : ligne `lift: footHold footGo topHold`. |
 | 2026-11-15 | Goudurix (propriétaire) : `yard.back` (garage en amont de la gare, entrée en marche arrière depuis la gare) et `yard.rotary` (aiguillage rotatif), scénario `tools/check.js` pour `back` (poussée par Gare AR) ; `tools/make_site.py` : `drop_ways`/`paths` ne dessinent plus le tronçon comme voie voisine ; cuvette avant le lift, portillons à l'ouest, trains rouges. |
 | 2026-11-15 | Goudurix : `kind:'steel'` (coaster acier assis à rails tubulaires, supports en A), anneaux intérieurs des multipolygones OSM (`f.h`, lac sous le tracé), `tools/make_plan.py` (plan « tracé complet » : ronds tous les 50 m + tableau), aiguillage `yard.at:'station'` avec voie de garage qui recopie la courbe de sortie de gare (`yard.k` petit, `lanes[].pts` partant des points de contrôle du circuit). |

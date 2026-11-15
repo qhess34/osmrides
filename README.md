@@ -14,6 +14,7 @@ Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable 
 ## Jouer
 
 Ouvrir `index.html` dans un navigateur et choisir une attraction (aucune installation, aucune dépendance).
+Sur téléphone, le jeu s'installe comme une application (une fois ouvert depuis https://qhess34.github.io/t2z/) et fonctionne ensuite hors ligne : Android / Chrome, bouton « Installer l'application » de la page d'accueil (ou menu du navigateur) ; iPhone / iPad (Safari) : Partager → Sur l'écran d'accueil.
 Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 
 ## Ce que fait le jeu

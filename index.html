@@ -2,10 +2,18 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1626">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="T2Z">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>Simulateurs d'exploitation — Parc Astérix</title>
 <style>
-body{margin:0;min-height:100vh;background:#0f1626;color:#e8ecf6;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:48px 16px;box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#0f1626;color:#e8ecf6;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:max(48px,calc(24px + env(safe-area-inset-top))) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));box-sizing:border-box}
 h1{color:#f2c14e;margin:0 0 6px;font-size:26px}p.sub{color:#9aa7c4;margin:0 0 28px;text-align:center;max-width:620px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;width:100%;max-width:760px}
 a.card,div.card{display:block;background:#18223a;border:1px solid #32426a;border-radius:12px;padding:18px 20px;color:inherit;text-decoration:none}
@@ -14,12 +22,16 @@ a.card:hover{border-color:#f2c14e}
 .card.soon{opacity:.55}.card.soon h2{color:#9aa7c4}
 small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
 .card .prog{display:block;margin-top:8px;color:#f2c14e;font-size:13px}#modeBar button{font:inherit;color:inherit;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:4px 12px;cursor:pointer}#modeBar button.on{border-color:#f2c14e;color:#f2c14e}
+#inst{display:none;margin:0 0 20px;text-align:center;color:#b9c3da;font-size:14px}
+#inst button{font:inherit;color:#f2c14e;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:6px 14px;cursor:pointer;min-height:36px}
+#inst button:hover{border-color:#f2c14e}#inst .x{color:#9aa7c4;margin-left:6px;padding:6px 10px}
 </style>
 </head>
 <body>
 <h1>Simulateurs d'exploitation</h1>
 <p class="sub">Prenez le pupitre d'une attraction : trains, quai, file d'attente, garage, maintenance et météo, en vue aérienne sur le tracé réel.</p>
 <p class="sub" id="modeBar">Mode : <button id="mCareer">Carrière</button> <button id="mSand">Bac à sable</button> <span id="modeTxt"></span></p>
+<p id="inst"><button id="bInst" hidden>Installer l'application</button><span id="iosHint" hidden>Pour l'installer : Partager → Sur l'écran d'accueil.</span><button class="x" id="bInstX" hidden aria-label="Masquer">Masquer</button></p>
 <div class="grid">
   <a class="card" href="parc.html"><h2>Plan du parc</h2><p>Carte du Parc Astérix entier d'après OpenStreetMap : allées, bâtiments, eau, tracés des montagnes russes. Point de départ vers chaque simulateur.</p></a>
   <a class="card" href="jeu.html?site=zeus" data-site="zeus"><h2>Tonnerre 2 Zeus</h2><p>Montagnes russes en bois. 1 100 m, lift de 30 m, deux trains de 14 wagons, garage dans le prolongement de la gare.</p><small class="prog"></small></a>
@@ -43,6 +55,26 @@ small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
   }
   for(const [id,m] of [['mCareer','career'],['mSand','sandbox']])document.getElementById(id).onclick=()=>{mode=m;try{localStorage.setItem('t2z.mode',m);}catch(e){}paint();};
   paint();
+})();
+</script>
+<script>
+/* Hors ligne : service worker, seulement en http(s) (rien sous file://) */
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+</script>
+<script>
+/* Installation : bouton (Android / Chrome, beforeinstallprompt) ou indication (iOS Safari). Rien en mode application ni sous file://. */
+(function(){
+  const box=document.getElementById('inst'),b=document.getElementById('bInst'),h=document.getElementById('iosHint'),x=document.getElementById('bInstX');
+  const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  if(standalone||!/^https?:$/.test(location.protocol))return;
+  const KEY='t2z.hintIos';let seen=false;try{seen=localStorage.getItem(KEY)==='1';}catch(e){}
+  let ev=null;
+  function show(){box.style.display='block';}
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();ev=e;b.hidden=false;show();});
+  addEventListener('appinstalled',()=>{box.style.display='none';});
+  b.onclick=()=>{if(!ev)return;ev.prompt();ev.userChoice.finally(()=>{ev=null;box.style.display='none';});};
+  const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(ios&&!seen){h.hidden=false;x.hidden=false;show();x.onclick=()=>{box.style.display='none';try{localStorage.setItem(KEY,'1');}catch(e){}};}
 })();
 </script>
 </body>

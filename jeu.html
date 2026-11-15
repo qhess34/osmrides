@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1626">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="T2Z">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>Simulateur d'exploitation</title>
 <style>
 :root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e;--ok:#4cc38a;--warn:#f0a23b;--bad:#e5484d;--blue:#4f8cff}
@@ -172,6 +179,9 @@ body.dm .row button{min-height:44px}
 }
 @media(max-width:900px){body:not(.dm) #side{width:auto}}
 @media(max-width:380px){body.dm .stat{font-size:11.5px;padding:1px 5px}body.dm header h1{font-size:14px}}
+/* mode application (écran d'accueil) : encoche et barre d'état */
+body:not(.fs) header{padding-top:max(4px,env(safe-area-inset-top));padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
 </style>
 </head>
 <body>
@@ -329,5 +339,9 @@ body.dm .row button{min-height:44px}
 })();
 </script>
 
+<script>
+/* Hors ligne : service worker, seulement en http(s) (rien sous file://) */
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+</script>
 </body>
 </html>

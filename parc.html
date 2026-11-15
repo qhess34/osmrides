@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1626">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="T2Z">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <title>Plan du Parc Astérix — simulateurs d'exploitation</title>
 <style>
 :root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e}
@@ -31,6 +38,8 @@ canvas.drag{cursor:grabbing}canvas.hit{cursor:pointer}
 #view.fs{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:20}
 @media(pointer:coarse){#zoom button{width:44px;height:44px}#info a{padding:10px 16px}}
 @media(max-width:560px){#hint{display:none}#info{max-width:none}#legend{display:none}header h1{font-size:15px}}
+header{padding-top:max(8px,env(safe-area-inset-top));padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right))}
+#fsb{top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right))}
 </style>
 </head>
 <body>
@@ -159,6 +168,10 @@ const onSize=()=>{resize();requestAnimationFrame(resize)};
 addEventListener('resize',onSize);addEventListener('orientationchange',onSize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(view);
 resize();fit();
+</script>
+<script>
+/* Hors ligne : service worker, seulement en http(s) (rien sous file://) */
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 </script>
 </body>
 </html>

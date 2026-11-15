@@ -25,7 +25,8 @@ jobs:
       - name: Assembler le site (fichiers du jeu uniquement)
         run: |
           mkdir _site
-          cp -r *.html engine sites parc _site/
+          cp -r *.html *.webmanifest sw.js engine sites parc icons _site/
+          python3 tools/make_sw.py _site
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:
