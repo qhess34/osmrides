@@ -279,11 +279,44 @@ function drawCar(t,k,shadow){
     ctx.fillStyle='#3a3d46';ctx.fillRect(-hl+.14,-hw+.12,.18,CW-.24);
     if(k===0){ctx.fillStyle=t.col2;ctx.beginPath();ctx.moveTo(hl-.3,-.22);ctx.lineTo(hl-.06,0);ctx.lineTo(hl-.3,.22);ctx.fill();}
   }
-  if(cam.s>2.2)for(let sd=0;sd<CSEATS;sd++){const s=t.seats[k*CSEATS+sd];if(!s||!s.on)continue;
-    const q=seatOff(sd),x=q[0]+(INL?0:-.06),y=q[1]*.91,up=((k*CSEATS+sd)%3!==1)?t.arms:0; // côte à côte, ou l'un derrière l'autre
-    ctx.fillStyle=PAL[s.ci];ctx.beginPath();ctx.ellipse(x,y,.2,INL?.24:.26,0,0,7);ctx.fill();
-    if(up>.3&&cam.s>7){ctx.strokeStyle='#e9c9a6';ctx.lineWidth=.09;ctx.beginPath();const d=.42*up;ctx.moveTo(x,y-.2);ctx.lineTo(x+d,y-.26);ctx.moveTo(x,y+.2);ctx.lineTo(x+d,y+.26);ctx.stroke();}
-    ctx.fillStyle=HAIR[(k*5+sd*3+t.i)%HAIR.length];ctx.beginPath();ctx.arc(x,y,.14,0,7);ctx.fill();}
+  if(cam.s>2.2){const ra=clamp((cam.s-2.2)/4,0,1); // sécurités : discrètes de loin, lisibles au zoom proche
+    for(let sd=0;sd<CSEATS;sd++){const s=t.seats[k*CSEATS+sd],q=seatOff(sd),x=q[0]+(INL?0:-.06),y=q[1]*.91;
+      if(s&&s.on){const up=((k*CSEATS+sd)%3!==1)?t.arms:0; // côte à côte, ou l'un derrière l'autre
+        ctx.fillStyle=PAL[s.ci];ctx.beginPath();ctx.ellipse(x,y,.2,INL?.24:.26,0,0,7);ctx.fill();
+        if(up>.3&&cam.s>7){ctx.strokeStyle='#e9c9a6';ctx.lineWidth=.09;ctx.beginPath();const d=.42*up;ctx.moveTo(x,y-.2);ctx.lineTo(x+d,y-.26);ctx.moveTo(x,y+.2);ctx.lineTo(x+d,y+.26);ctx.stroke();}}
+      const rr=t.rc[k],top=RES_KIND==='otsr'&&rr>.5;if(RES_PER==='seat'&&!top)drawRes(x,y,rr,ra); // la tête passe entre les épaulières du harnais fermé ; harnais relevé : au-dessus de la tête
+      if(s&&s.on){ctx.fillStyle=HAIR[(k*5+sd*3+t.i)%HAIR.length];ctx.beginPath();ctx.arc(x,y,.14,0,7);ctx.fill();}
+      if(RES_PER==='seat'&&top)drawRes(x,y,rr,ra);}
+    if(RES_PER==='car')drawResCar(hl,t.rc[k],ra);}
+  ctx.restore();
+}
+/* Sécurités vues du dessus (RES_KIND, RES_PER : engine/core.js). r = ouverture (0 verrouillée … 1 ouverte).
+   La barre pivote autour d'un axe transversal : vue du dessus, sa projection se rapproche de l'axe (x' = axe + (x − axe)·cos θ) et s'éclaircit en montant.
+   Couleurs mates : armature noire, mousse grise. */
+const resTh=r=>r*Math.PI/2*1.08,resCol=(r,b)=>{const c=Math.round(b+28*Math.sin(resTh(r)));return 'rgb('+c+','+c+','+(c+3)+')';};
+function drawRes(x,y,r,a){
+  const th=resTh(r),c=Math.cos(th),P=(px,x0)=>px+(x0-px)*c;ctx.save();ctx.globalAlpha=a;ctx.lineCap='round';ctx.lineJoin='round';
+  if(RES_KIND==='otsr'){ // harnais : deux épaulières reliées par un plastron, axe derrière l'appui-tête
+    const px=x-.24,w=.2+.04*Math.sin(th);
+    ctx.strokeStyle=resCol(r,40);ctx.lineWidth=.09;ctx.beginPath();ctx.moveTo(P(px,x-.14),y-w);ctx.lineTo(P(px,x+.17),y-w);ctx.quadraticCurveTo(P(px,x+.3),y-w,P(px,x+.3),y);ctx.quadraticCurveTo(P(px,x+.3),y+w,P(px,x+.17),y+w);ctx.lineTo(P(px,x-.14),y+w);ctx.stroke();
+    ctx.strokeStyle=resCol(r,80);ctx.lineWidth=.06;ctx.beginPath();ctx.moveTo(P(px,x-.1),y-w);ctx.lineTo(P(px,x+.14),y-w);ctx.moveTo(P(px,x-.1),y+w);ctx.lineTo(P(px,x+.14),y+w);ctx.stroke(); // mousse des épaulières
+    ctx.fillStyle=resCol(r,26);ctx.fillRect(P(px,x-.2),y-.09,Math.max(.04,(x-.12-(x-.2))*c+.04),.18);} // charnière
+  else if(RES_KIND==='belt'){ // ceinture : sangle posée sur le côté (ouverte) ou en travers des cuisses (bouclée)
+    ctx.strokeStyle=resCol(r*0,40);ctx.lineWidth=.06;ctx.beginPath();ctx.moveTo(x+.16,y-.22);ctx.lineTo(x+.16+(.02-.16)*0+.06*(1-r),y+.22*(1-r)-.22*r);ctx.stroke();
+    if(r<.5){ctx.fillStyle='#55585e';ctx.fillRect(x+.18,y-.04,.07,.08);}}
+  else{ // lapbar individuelle : barre transversale devant les cuisses, axe à l'avant de la place
+    const px=x+.46,bx=P(px,x+.22),w=.21;
+    ctx.strokeStyle=resCol(r,30);ctx.lineWidth=.06;ctx.beginPath();ctx.moveTo(px,y);ctx.lineTo(bx,y);ctx.stroke(); // bras
+    ctx.fillStyle=resCol(r,74);ctx.beginPath();ctx.roundRect(bx-.05,y-w,.1,2*w,.05);ctx.fill(); // mousse
+    ctx.strokeStyle=resCol(r,24);ctx.lineWidth=.025;ctx.stroke();}
+  ctx.restore();
+}
+function drawResCar(hl,r,a){ // lapbar commune au wagon (places l'une derrière l'autre) : cadre autour des deux passagers, axe à l'avant du wagon
+  const th=resTh(r),c=Math.cos(th),px=hl-.16,P=x0=>px+(x0-px)*c,xs=[];for(let sd=0;sd<CSEATS;sd++)xs.push(seatOff(sd)[0]+(INL?0:-.06)+.22);
+  const x0=Math.min(...xs)-.08,w=.25;ctx.save();ctx.globalAlpha=a;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle=resCol(r,40);ctx.lineWidth=.07;ctx.beginPath();ctx.moveTo(px,-w);ctx.lineTo(P(x0),-w);ctx.moveTo(px,w);ctx.lineTo(P(x0),w);ctx.stroke(); // longerons
+  ctx.fillStyle=resCol(r,74);for(const xb of xs){const b=P(xb);ctx.beginPath();ctx.roundRect(b-.05,-w,.1,2*w,.05);ctx.fill();} // traverses en mousse devant chaque passager
+  ctx.fillStyle=resCol(r,24);ctx.fillRect(px-.05,-w-.04,.1,2*w+.08); // axe
   ctx.restore();
 }
 const API={lw,person,TEX}; // outils passés aux fonctions de dessin propres à chaque attraction (SITE.draw)
@@ -304,7 +337,8 @@ function drawTraverser(){ // pont droit : fosse, chemins de roulement transversa
 }
 function drawTable(){ // pont transbordeur, dessiné dans son repère : u le long de la voie, v dans le sens du coulissement
   const len=YD.len||8.6,v0=-CMAX-4.4,v1=CMAX+2.2;
-  if(ROT){const L_=LBK?YD.b-YD.a:len; // appareil rotatif : carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation ; élargi du côté du garage pour contenir la face en S
+  if(ROT){if(!YD.slab)return; // appareil rotatif : dessiné seul (tronçon tournant, faces, supports) ; dalle au sol seulement si SITE.yard.slab (propriétaire, Goudurix : pas de plateforme)
+    const L_=LBK?YD.b-YD.a:len; // carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation ; élargi du côté du garage pour contenir la face en S
     let v0=-1.05;if(LBK&&LANES.length){const nl=Math.round(LANES[0].link/.5);for(const q of LANES[0].path.slice(0,nl+1))v0=Math.min(v0,((q.x-SW0.x)*SW0.vx+(q.z-SW0.z)*SW0.vz)-1.05);}
     ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.fillStyle='rgba(58,62,70,.9)';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#ff9f43':'#8c8f94';lw(.12,.7);
     ctx.beginPath();ctx.roundRect(-.5,v0,L_+1,1.05-v0,.35);ctx.fill();ctx.stroke();

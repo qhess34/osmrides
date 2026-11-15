@@ -29,7 +29,7 @@
       plat:G.plat.map(r=>r?[r.ci,R(r.w,1),r.on?1:0,R(r.ph,1)]:0),
       job:G.job?Object.assign({},G.job,{t:G.job.t?G.job.t.i:-1}):null,
       trains:trains.map(t=>{const o={};for(const k in t){if(['i','name','col','col2','seats'].includes(k))continue;if(simple(t[k]))o[k]=typeof t[k]==='number'?R(t[k],4):t[k];}
-        o.seats=t.seats.map(s=>s?[s.ci,R(s.w,1),s.on?1:0]:0);return o;}),
+        o.seats=t.seats.map(s=>s?[s.ci,R(s.w,1),s.on?1:0]:0);o.rc=t.rc.map(v=>R(v,3));return o;}),
       q,sl:SEGS.map(e=>e.list.map(v=>G.queue.indexOf(v))),walkers,
       loops:LOOPS.map(l=>[l.on?1:0,R(l.t,3)]),gate:R(ENTRY_GATE.t,3),
       cam:{key:cam.key,x:R(cam.x,2),z:R(cam.z,2),s:R(cam.s,3),follow:cam.follow,g:cam.g},syn:synOn,
@@ -46,7 +46,7 @@
   function restore(d){
     Object.assign(G,d.g);
     G.plat=d.plat.map(a=>a?{ci:a[0],w:a[1],on:!!a[2],ph:a[3]}:null);
-    d.trains.forEach((o,i)=>{const t=trains[i];Object.assign(t,o);t.seats=o.seats.map(a=>a?{ci:a[0],w:a[1],on:!!a[2]}:null);});
+    d.trains.forEach((o,i)=>{const t=trains[i];Object.assign(t,o);if(!Array.isArray(t.rc)||t.rc.length!==NCARS)t.rc=new Array(NCARS).fill(0);t.seats=o.seats.map(a=>a?{ci:a[0],w:a[1],on:!!a[2]}:null);});
     G.job=d.job?Object.assign({},d.job,{t:d.job.t>=0?trains[d.job.t]:undefined}):null;
     G.queue=d.q.map(a=>{const v={ci:a[0],w:a[1],pat:a[2],side:a[3],sp:a[4],ph:a[5],mv:!!a[6],y:0};
       if(a.length<=8){v.mode='q';v.r=a[7];v.x=0;v.z=0;v.pts=[];v.i=1;}

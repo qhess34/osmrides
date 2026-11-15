@@ -67,9 +67,12 @@ async function game(browser, site, mode) {
   ok('boutons >= 44 px', small.length === 0, small.slice(0, 8).join(' '));
   await page.tap('#bOpen'); ok('tap #bOpen', await page.evaluate(() => G.open));
   await page.evaluate(() => { for (let i = 0; i < 400 && !trains.some(t => t.st === 'station' && ['board', 'check', 'ready'].includes(t.phase)); i++) step(.025); ui(); });
+  await page.tap('#bRes'); ok('tap #bRes ouvre les sécurités', await page.evaluate(() => G.resOpen));
   await page.tap('#bGate'); ok('tap #bGate ouvre', await page.evaluate(() => G.gatesOpen));
   await page.tap('#bGate'); ok('tap #bGate ferme', await page.evaluate(() => !G.gatesOpen));
   await page.evaluate(() => { for (let i = 0; i < 400; i++) step(.025); ui(); });
+  await page.tap('#bRes'); ok('tap #bRes verrouille', await page.evaluate(() => !G.resOpen));
+  await page.evaluate(() => { for (let i = 0; i < 800 && trains.some(t => t.st === 'station' && t.phase === 'check'); i++) step(.025); ui(); });
   const go = await page.evaluate(() => !$('bGo').disabled);
   if (go) { await page.tap('#bGo'); ok('tap #bGo (départ)', await page.evaluate(() => trains.some(t => t.depReq || t.st === 'run'))); } else ok('#bGo grisé (pas de départ possible)', true, '(non testé)');
   await page.tap('#bStop'); ok('tap #bStop', await page.evaluate(() => G.estop)); await page.tap('#bStop');

@@ -27,7 +27,7 @@ const root = path.resolve(__dirname, '..');
   {
     const until = (cond, max = 20000) => page.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6;
       for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [cond, max]);
-    const click = async id => { try { await page.click(id, { timeout: 3000 }); } catch (e) { throw new Error('click ' + id + ' after: ' + steps.join(' ')); } };
+    const click = async id => { try { await page.click(id, { timeout: 3000 }); } catch (e) { throw new Error('click ' + id + ' after: ' + steps.join(' ') + (process.env.DBG ? ' ' + e.message : '')); } };
     const logHas = re => page.evaluate(r => new RegExp(r).test($('log').textContent), re);
     await page.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.liftBroken = false; G.brakeFault = false; }); // le scénario de manœuvre ne dépend pas des pannes aléatoires (usure)
     const steps = [];
@@ -232,34 +232,63 @@ const root = path.resolve(__dirname, '..');
       for (let k = 0; k < 40000 && A.st === 'run'; k++) { step(.025); if (prev < BLK[i] && A.s >= BLK[i]) vB = A.v; if (A.blk && A.v === 0) stop = true; prev = A.s; }
       return ' | trim: ' + (vB !== null && vB <= BTRIM[i] + 1 && !stop && A.st !== 'run' ? 'slows' : 'slows:FAIL'); });
     man += tr; await p3.close();
+    // sécurités (SITE.car.restraint) : arrivée verrouillée, ouverture au bouton, départ refusé sécurités ouvertes, verrouillage refusé portillons ouverts, verrouillage = fermeture wagon par wagon par les opérateurs puis validation
+    const p4 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    p4.on('pageerror', e => errors.push(String(e.message || e)));
+    await p4.goto(url); await p4.waitForSelector('[data-act=closeHelp]'); await p4.click('[data-act=closeHelp]');
+    const u4 = (c, m = 4000) => p4.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [c, m]);
+    const log4 = re => p4.evaluate(r => new RegExp(r).test($('log').textContent), re);
+    const rs = [];
+    const T0 = await p4.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; const t = trains.find(o => o.st === 'station'); t.seats = t.seats.map((_, i) => i < 2 ? { ci: 1, w: 50, on: true } : null);
+      t.st = 'run'; t.s = S_ST - 3; t.v = 1; return t.i; }); // un train arrive en gare avec deux passagers
+    rs.push(await u4(`trains[${T0}].st==='station'&&trains[${T0}].phase==='unload'`) && await log4('verrouillés. Ouvrez les sécurités') ? 'arriveLocked' : 'arriveLocked:FAIL');
+    await u4('false', 120); rs.push(await p4.evaluate(i => count(trains[i]) === 2 && !G.resOpen, T0) ? 'noUnloadLocked' : 'noUnloadLocked:FAIL');
+    await p4.click('#bAuto'); await p4.click('#bRes');
+    rs.push(await u4(`trains[${T0}].phase==='board'&&count(trains[${T0}])===0&&trains[${T0}].rc.every(v=>v>.98)`) ? 'openUnload' : 'openUnload:FAIL');
+    await p4.click('#bGo'); rs.push(await log4('Départ refusé : sécurités ouvertes') && await p4.evaluate(i => trains[i].st === 'station', T0) ? 'refuseDepartOpen' : 'refuseDepartOpen:FAIL');
+    await p4.click('#bGate'); await p4.click('#bRes'); rs.push(await log4('fermez d.abord les portillons') && await p4.evaluate(() => G.resOpen) ? 'refuseLockGates' : 'refuseLockGates:FAIL');
+    await p4.click('#bGate'); await u4('G.gate<.05', 200);
+    await p4.click('#bRes'); rs.push(await p4.evaluate(i => trains[i].phase === 'check' && !G.resOpen && trains[i].rc.every(v => v > .9), T0) ? 'lockStartsCheck' : 'lockStartsCheck:FAIL');
+    rs.push(await u4(`NCARS<3||(trains[${T0}].rc.some(v=>v<.05)&&trains[${T0}].rc.some(v=>v>.5))`, 2000) ? 'opsCloseByCar' : 'opsCloseByCar:FAIL');
+    rs.push(await u4(`trains[${T0}].phase==='ready'`, 4000) && await p4.evaluate(i => trains[i].rc.every(v => v < .05) && OPS.every(o => o.ok), T0) ? 'validated' : 'validated:FAIL');
+    await p4.click('#bGo'); rs.push(await u4(`trains[${T0}].st==='run'`, 200) ? 'depart' : 'depart:FAIL');
+    man += ' | res: ' + rs.join(' '); await p4.close();
   }
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
     act('speed', 0); G.wx.next = 1e6; __opStroll();
     if (!G.open) act('open');
     let it = 0, opened = null, gp = 0;
+    let rp = 0;
     const press = () => { ui(); $('bGate').click(); gp++; }; // le joueur ouvre et ferme les portillons au bouton du pupitre
+    const pressRes = () => { ui(); $('bRes').click(); rp++; }; // et les sécurités : ouvrir à l'arrivée, verrouiller portillons fermés (les opérateurs les ferment et les vérifient)
     for (; it < 400000 && !G.dayDone; it++) {
       step(.025);
       if (it % 5 === 0) __opSample();
       if (it === 9000 || it === 22000) act('evac'); // évacuation de la file en pleine journée
       if (it === 14000) for (const v of G.queue) if (Math.random() < .5) v.pat = 0; // abandons dans toute la file
       if (it % 40) continue;
+      const u = trains.find(t => t.st === 'station' && t.phase === 'unload' && count(t));
+      if (u && !G.resOpen) pressRes(); // arrivée : sécurités verrouillées tant que le joueur ne les ouvre pas
+      const h = trains.find(t => t.st === 'station' && t.phase === 'board' && t.hs);
+      if (h && G.resOpen && !G.gatesOpen && G.gate < .05) pressRes(); // train hors service vidé : verrouiller pour qu'il reparte au garage
       const s = trains.find(t => t.st === 'station' && t.phase === 'board' && !t.hs);
-      if (s) { if (!G.gatesOpen && opened !== s && !s.depReq) { press(); opened = s; } else if (G.gatesOpen && (s.depReq || count(s) === SEATS)) press(); }
+      if (s) { if (!G.gatesOpen && opened !== s && !s.depReq) { if (!G.resOpen) pressRes(); press(); opened = s; }
+        else if (G.gatesOpen && (s.depReq || count(s) === SEATS)) press();
+        else if (!G.gatesOpen && G.gate < .05 && opened === s && (G.resOpen || s.rcT) && (s.depReq || count(s) === SEATS)) pressRes(); }
       else { if (G.gatesOpen) press(); if (!trains.some(t => t.st === 'station')) opened = null; }
       if (G.liftBroken) act('job', 'liftFix');
       if (G.brakeFault) act('job', 'brakeFix');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.dayDone, it, gp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
+    return { done: G.dayDone, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
   });
   await page.evaluate(() => { document.getElementById('mDay').classList.add('hidden'); cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
   const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2;
-  console.log(`site ${site}${build ? ' (build)' : ''}: day done=${r.done} after ${r.it} steps, gate presses=${r.gp}`);
+  console.log(`site ${site}${build ? ' (build)' : ''}: day done=${r.done} after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
   console.log(`offpath=${r.off} (sur ${r.offN} positions)` + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);

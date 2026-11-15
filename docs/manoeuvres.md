@@ -123,7 +123,18 @@ Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux 
 
 ### Portillons
 
-Ils ne s'ouvrent et ne se ferment **qu'au bouton du pupitre** (`#bGate`), en auto comme en manuel. Un train prêt (départ décidé en auto) attend leur fermeture (indication au journal) ; la vérification des lapbars commence portillons fermés.
+Ils ne s'ouvrent et ne se ferment **qu'au bouton du pupitre** (`#bGate`), en auto comme en manuel. Un train prêt (départ décidé en auto) attend leur fermeture (indication au journal).
+
+### Sécurités des passagers (lapbars, harnais)
+
+Bouton **Sécurités** du pupitre (`#bRes`, `act('res')`, voyant `#lRes` : vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement), en auto comme en manuel ; type par attraction : `SITE.car.restraint` / `car.restraintPer` (`engine/core.js` `RES_KIND`, `RES_PER`, défauts par `kind`).
+- À l'arrivée en gare, les sécurités restent **verrouillées** (rappel au journal) ; le débarquement ne commence qu'une fois ouvertes.
+- **Ouvrir** : immédiat (`G.resOpen`), toutes les places s'ouvrent (~1,5 s). L'embarquement se fait sécurités ouvertes (un visiteur ne monte que si les sécurités de son wagon sont ouvertes).
+- **Verrouiller** (portillons fermés, sinon refus au journal) : verrouille le système et **lance la vérification** (propriétaire : « le verrouillage des harnais lance la vérification des opérateurs, qui ferment les harnais ») : Op. 1 (avant) et Op. 2 (arrière) passent wagon par wagon, ferment chaque harnais ou lapbar resté ouvert (`t.rcT`, `t.rc[k]` : animation de fermeture au passage) puis valident ; les deux validés → départ possible. By-pass : barres fermées sans contrôle.
+- Départ refusé tant que les sécurités sont ouvertes (journal, raison) ; manœuvre de garage depuis la gare (Gare AV / AR) aussi. Ouvrir les portillons ou les sécurités pendant la vérification la reprend à zéro.
+- Un train vide jamais déverrouillé (sorti du garage) part sans vérification. État sauvegardé (`engine/save.js`).
+
+**Aiguillage rotatif** : dessiné seul (tronçon tournant, faces, supports), sans dalle au sol ; `yard.slab:true` pour en dessiner une (propriétaire, Goudurix : « pas de plateforme sous l'aiguillage »).
 
 ### Séquence type : rentrer un train au garage (raccordement en gare, Zeus)
 

@@ -44,10 +44,12 @@
 <ol>
 <li><b>Ouvrir l'entrée.</b> Bouton « Entrée ouverte » du pupitre (ou clic sur le portail à l'entrée de la file). Le journal annonce « Entrée ouverte : les visiteurs entrent dans la file. » Fermée, plus personne n'entre, mais ceux qui sont déjà dans la file continuent d'embarquer.</li>
 <li><b>Laisser le quai se remplir.</b> Les visiteurs se rangent derrière les portillons, deux au plus par portillon, un portillon par wagon.</li>
-<li><b>Ouvrir les portillons</b> avec le bouton « Portillons » : le journal annonce « Portillons ouverts : embarquement. » Ils ne s'ouvrent jamais seuls, ni en auto ni en manuel. Le bouton est refusé s'il n'y a aucun train à quai prêt à embarquer.</li>
-<li><b>Fermer les portillons</b> avec le même bouton quand l'embarquement est fini. En <b>Auto</b>, attendez le message « Train 1 « Éclair » est prêt au départ : fermez les portillons… » (train plein ou attente écoulée). En <b>Manuel</b>, fermez dès qu'il y a des passagers.</li>
-<li><b>Lapbars.</b> Portillons fermés, deux opérateurs vérifient chacun une moitié du train : les voyants « Op. 1 » et « Op. 2 » s'allument l'un après l'autre.</li>
-<li><b>Départ.</b> En <b>Auto</b>, le train part seul une fois les lapbars validés (« Train 1 « Éclair » part avec 28 passagers. »). En <b>Manuel</b>, le journal dit « Lapbars validés par les deux opérateurs : départ possible. » et le bouton « Départ » s'allume ; tant que ce n'est pas le cas, il est refusé.</li>
+<li><b>Ouvrir les sécurités.</b> Un train arrive en gare lapbars verrouillés : le journal le rappelle. Bouton « Sécurités » du pupitre : les lapbars (harnais sur OzIris et Goudurix) se relèvent sur chaque place ; le voyant passe à l'ambre. Rien ne s'ouvre seul, ni en auto ni en manuel.</li>
+<li><b>Débarquement.</b> Il ne commence qu'une fois les sécurités ouvertes : les passagers descendent côté sortie.</li>
+<li><b>Embarquement.</b> Bouton « Portillons » : le journal annonce « Portillons ouverts : embarquement. » Les visiteurs montent dans les places dont les sécurités sont ouvertes. Le bouton est refusé s'il n'y a aucun train à quai prêt à embarquer.</li>
+<li><b>Fermer les portillons</b> avec le même bouton quand l'embarquement est fini. En <b>Auto</b>, attendez le message « … est prêt au départ : fermez les portillons, puis verrouillez les sécurités… » (train plein ou attente écoulée).</li>
+<li><b>Verrouiller et vérifier.</b> Portillons fermés, bouton « Sécurités » : le verrouillage lance la vérification. Les deux opérateurs passent wagon par wagon, abaissent chaque lapbar ou harnais resté ouvert puis valident : les voyants « Op. 1 » et « Op. 2 » s'allument l'un après l'autre. Portillons encore ouverts, le verrouillage est refusé.</li>
+<li><b>Départ.</b> En <b>Auto</b>, le train part seul une fois les lapbars validés (« … part avec 28 passagers. »). En <b>Manuel</b>, le journal dit « Lapbars validés par les deux opérateurs : départ possible. » et le bouton « Départ » s'allume. Sécurités ouvertes, le départ est refusé : « Départ refusé : sécurités ouvertes. »</li>
 </ol>
 <div class="pair">
 <figure><img src="img/tutos/03-portillons.jpg" width="1100" height="690" loading="lazy" alt="Le quai de Zeus portillons ouverts, des visiteurs derrière chaque portillon, le train à quai"><figcaption>Portillons ouverts : les visiteurs montent dans le wagon en face.</figcaption></figure>

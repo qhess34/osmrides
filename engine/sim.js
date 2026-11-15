@@ -20,9 +20,12 @@ function seatBase(t,i,o){
 const _v=new V3;
 function arrive(t){
   t.st='station';t.s=S_ST;t.v=0;t.entering=false;t.toPre=false;t.phase='unload';t.pt=0;t.idle=0;t.depReq=false;t.gTold=false;
+  G.resOpen=false;t.rcT=0;t.rcTold=false; // à l'arrivée, les sécurités restent verrouillées jusqu'à l'ordre du pupitre
+  if(count(t))log(t.name+' en gare : '+RES_NAME+' verrouillés. Ouvrez les sécurités (bouton Sécurités du pupitre) pour le débarquement.');
   if(t.wear>=100&&!t.hs){t.hs=true;log(t.name+' est hors service : rangez-le au garage pour révision (commandes de zone).','bad');}
 }
 // train à l'arrêt au point de raccordement : en gare (vide possible, portillons en jeu), ou sur le frein final
+const resShut=t=>!G.resOpen&&!t.rcT&&t.rc.every(v=>v<.05); // sécurités verrouillées et toutes fermées
 const atAnchor=t=>YD.at==='brake'?(t.st==='run'&&t.v===0&&Math.abs(t.s-S_HOLD)<.4):(t.st==='station'&&t.phase==='board'&&!t.depReq);
 /* ══════════ MANŒUVRES (docs/manoeuvres.md) : Positionner, Avancer, Reculer, Arrêter ══════════ */
 const ANCH_NAME=YD.at==='brake'?'le frein final':'la gare';
@@ -90,6 +93,7 @@ function yardFwd(t){
   if(!atAnchor(t))return refuse(t.name+' doit être arrêté '+(YD.at==='brake'?'sur le frein final':'en gare, à quai')+' pour quitter le circuit.');
   if(count(t)>0)return refuse(t.name+' a des passagers : il ne quitte jamais le circuit.');
   if(YD.at!=='brake'&&G.gatesOpen)return refuse('Portillons ouverts : fermez-les avant de manœuvrer '+t.name+'.');
+  if(YD.at!=='brake'&&!resShut(t))return refuse('Sécurités ouvertes : verrouillez-les avant de manœuvrer '+t.name+'.');
   if(devMoving())return refuse(DEVN+' en mouvement : '+t.name+' ne peut pas le franchir.');
   if(!G.dev.pos)return refuse(DEVN+' sur P : positionnez-le d\'abord sur une voie de garage.');
   const j=G.dev.pos-1,n=trains.filter(o=>o.st==='garage'&&o.lane===j).length;
@@ -186,6 +190,7 @@ function zoneCmd(z,c){
     if(t.phase==='unload')return refuse(t.name+' : débarquement en cours.');
     if(count(t))return refuse(t.name+' a des passagers : départ par le bouton Départ, après validation des lapbars.');
     if(G.gatesOpen)return refuse('Portillons ouverts : fermez-les avant de faire avancer '+t.name+'.');
+    if(!resShut(t))return refuse('Sécurités ouvertes : verrouillez-les avant de faire avancer '+t.name+'.');
     if(t.depReq)return false;
     const r=blockReason(t);if(r)return refuse(t.name+' ne peut pas partir : '+r+'.');
     t.depReq=true;log(t.name+' quitte la gare à vide (moteurs de gare).');return true;}
@@ -207,6 +212,7 @@ function zoneCmd(z,c){
 function updateStation(t,dt){
   t.pt-=dt;
   if(t.phase==='unload'){
+    if(count(t)&&t.rc.some(v=>v<.95))return; // débarquement : seulement sécurités ouvertes
     if(t.pt<=0){
       const i=t.seats.findIndex(s=>s&&s.on);
       if(i>=0){
@@ -216,22 +222,23 @@ function updateStation(t,dt){
       }else if(count(t)===0){t.phase='board';t.idle=0;}
     }
   }else if(t.phase==='board'){
-    const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]),shut=!G.gatesOpen&&G.gate<.05&&seated(t)===n;
+    const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]),shut=!G.gatesOpen&&G.gate<.05&&seated(t)===n&&resShut(t);
     if(G.auto&&!t.depReq){t.idle+=dt;
       if((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))||(t.hs&&n===0&&t.idle>2))t.depReq=true;} // un train hors service repart à vide
-    if(G.auto&&t.depReq&&G.gatesOpen&&!t.gTold){t.gTold=true;log(t.name+' est prêt au départ : fermez les portillons (bouton du pupitre) pour lancer la vérification des lapbars.','warn');}
-    // portillons fermés (seulement par le joueur) : en auto après l'ordre de départ, en manuel dès qu'il y a des passagers, les opérateurs vérifient les lapbars
+    if(G.auto&&t.depReq&&G.gatesOpen&&!t.gTold){t.gTold=true;log(t.name+' est prêt au départ : fermez les portillons, puis verrouillez les sécurités (boutons du pupitre) : les opérateurs fermeront et vérifieront les '+RES_NAME+'.','warn');}
+    if(G.auto&&t.depReq&&!G.gatesOpen&&G.resOpen&&!t.rcTold){t.rcTold=true;log(t.name+' est prêt au départ : verrouillez les sécurités (bouton Sécurités) pour lancer la vérification par les opérateurs.','warn');}
+    // train jamais déverrouillé (vide, sorti du garage) : portillons fermés, il part en auto après l'ordre de départ ; un train chargé passe par le verrouillage au pupitre (act 'res'), qui lance la vérification
     if(shut&&(G.auto?t.depReq:n>0||t.depReq)){if(n===0||G.bypass)t.phase='ready';else startCheck(t);}
   }else if(t.phase==='check'){
-    if(G.gatesOpen){t.phase='board';resetOps();return;}
-    if(G.bypass){resetOps();t.phase='ready';return;}
+    if(G.gatesOpen||G.resOpen){t.phase='board';resetOps();return;}
+    if(G.bypass){resetOps();t.rcT=0;t.phase='ready';return;}
     if(OPS.every(o=>o.ok)){
       if(Math.random()<Math.max(0,(t.wear-55)/45)*.3){t.fault='lapbars';t.phase='fault';resetOps();sfx.alarm();log('Défaut de lapbar détecté par un opérateur sur '+t.name+' : réarmement nécessaire.','warn');}
       else{t.phase='ready';if(!G.auto)log('Lapbars validés par les deux opérateurs : départ possible.','good');}
     }
   }else if(t.phase==='ready'){
-    if(G.gatesOpen){t.phase='board';t.depReq=false;resetOps();return;}
-    if((G.auto||t.depReq)&&!blockReason(t)){
+    if(G.gatesOpen||G.resOpen){t.phase='board';t.depReq=false;resetOps();return;}
+    if((G.auto||t.depReq)&&!blockReason(t)&&resShut(t)){
       const n=count(t),checked=OPS.every(o=>o.ok);
       t.st='run';t.v=.5;t.depReq=false;t.inLift=false;t.inBrake=false;t.screamed=false;t.blk=false;t.told=false;G.stats.disp++;sfx.bell();resetOps();
       if(G.wx.type==='storm'&&n>0){pay(400,true);G.sat=clamp(G.sat-3,0,100);log('Infraction : train envoyé en plein orage ! Amende de 400 €.','bad');}
@@ -298,11 +305,12 @@ function updatePlatform(dt){
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.depReq); // portillons : ouverts et fermés seulement au pupitre
   G.gate=clamp(G.gate+(G.gatesOpen||G.walkers.some(k=>k.kind==='board')?dt:-dt)/.7,0,1); // un portillon ne se referme pas sur un visiteur qui le franchit
-  if(t&&G.gate>.9)for(let i=0;i<SEATS;i++){const r=G.plat[i];
-    if(r&&r.on&&!t.seats[i]){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2,0,'board');}}
+  if(t&&G.gate>.9)for(let i=0;i<SEATS;i++){const r=G.plat[i]; // embarquement : sécurités du wagon ouvertes
+    if(r&&r.on&&!t.seats[i]&&t.rc[Math.floor(i/CSEATS)]>.95){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2,0,'board');}}
 }
 function updateTrains(dt){
   for(const t of trains){
+    for(let k=0;k<NCARS;k++){const o=t.st==='station'&&(G.resOpen||(t.rcT>>k&1));t.rc[k]=clamp(t.rc[k]+(o?dt:-dt)/RES_T,0,1);} // sécurités : ouverture / fermeture animées
     if(t.st==='station')updateStation(t,dt);
     else if(t.st==='run')updateRun(t,dt);
     else if(t.st==='garage')updateYard(t,dt);
@@ -394,10 +402,24 @@ function act(a,arg){
     else{const s=trains.find(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);
       if(s){s.phase='board';s.depReq=false;resetOps();G.gatesOpen=true;log('Portillons ouverts : embarquement.');}
       else refuse('Portillons : aucun train à quai prêt à embarquer.');}}
+  else if(a==='res'){ // sécurités : ouverture instantanée au pupitre ; le verrouillage (portillons fermés) lance la vérification : les opérateurs ferment wagon par wagon
+    const s=trains.find(o=>o.st==='station');
+    if(!s){G.resOpen=false;refuse('Sécurités : aucun train à quai.');}
+    else if(G.resOpen||(s.phase==='board'&&s.rcT)){
+      if(s.phase==='unload'&&count(s))refuse('Sécurités : débarquement en cours.');
+      else if(G.gatesOpen||G.gate>.05)refuse('Sécurités : fermez d\'abord les portillons ; le verrouillage lance la vérification par les opérateurs.');
+      else{G.resOpen=false;s.rcTold=false;resetOps();
+        if(s.phase!=='board'){s.rcT=0;log('Sécurités verrouillées.');}
+        else if(G.bypass){s.rcT=0;s.phase='ready';log('Sécurités verrouillées et fermées sans contrôle des opérateurs (BY-PASS).','bad');}
+        else{startCheck(s);log('Sécurités verrouillées : les deux opérateurs ferment et vérifient les '+RES_NAME+' wagon par wagon.');}}}
+    else if(s.phase==='fault')refuse('Sécurités : défaut sur '+s.name+', réarmez d\'abord.');
+    else{G.resOpen=true;s.rcT=(1<<NCARS)-1;if(s.phase==='check'||s.phase==='ready'){s.phase='board';s.depReq=false;resetOps();}
+      log('Sécurités ouvertes'+(s.phase==='unload'&&count(s)?' : débarquement.':' : embarquement possible (portillons).'));}}
   else if(a==='bypass'){G.bypass=!G.bypass;log(G.bypass?'BY-PASS de la validation des lapbars activé : départ possible sans vérification.':'Validation des lapbars par les opérateurs rétablie.',G.bypass?'bad':'good');}
   else if(a==='depart'){
     const s=G.auto?trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.find(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0))));
-    if(s)s.depReq=true;else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
+    if(G.resOpen&&trains.some(o=>o.st==='station'))log('Départ refusé : sécurités ouvertes. Fermez les portillons puis verrouillez les sécurités (vérification par les opérateurs).','warn');
+    else if(s)s.depReq=true;else if(!G.auto)log('Départ refusé : il faut les portillons fermés et les lapbars validés par les deux opérateurs.','warn');}
   else if(a==='estop'){G.estop=!G.estop;if(G.estop)sfx.alarm();if(G.estop)trains.forEach(o=>{o.mv=0;o.fdrive=0;});log(G.estop?'⛔ Arrêt d\'urgence enclenché : lift stoppé, départs et manœuvres bloqués.':'Arrêt d\'urgence réarmé.',G.estop?'bad':'good');}
   else if(a==='job')startJob(arg);
   else if(a==='pos')yardPos(+arg);

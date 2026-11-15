@@ -5,14 +5,14 @@ const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 /* Mode de jeu : carrière (budget, météo, pannes) ou bac à sable (?mode=sandbox, ou choix mémorisé t2z.mode) : ni budget, ni météo, ni pannes. */
 const MODE=(()=>{const m=/[?&]mode=([a-z]+)/.exec(location.search);if(m)return m[1]==='sandbox'?'sandbox':'career';try{return localStorage.getItem('t2z.mode')==='sandbox'?'sandbox':'career';}catch(e){return 'career';}})();
 const G={sandbox:MODE==='sandbox',day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(SEATS).fill(null),platT:0,gatesOpen:false,gate:0,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
+  queue:[],walkers:[],plat:new Array(SEATS).fill(null),platT:0,gatesOpen:false,gate:0,resOpen:false,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
 G.stats=newStats();
 function mkTrain(i,name,col,col2,wear,st){
   return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
-    depReq:false,toPre:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
+    depReq:false,toPre:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0,rc:new Array(NCARS).fill(0),rcT:0}; // sécurités : rc[k] = ouverture du wagon k (0 verrouillées … 1 ouvertes, animée) ; rcT = wagons à garder ouverts (bits) après le verrouillage, jusqu'au passage d'un opérateur
 }
 const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
 // Trains au garage au départ : voie SITE.trains[i].lane (1…n) ou première voie qui a de la place ; rangés depuis la butée

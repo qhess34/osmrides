@@ -121,7 +121,7 @@ function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des t
   if(DOOR)pts.push([DOOR[0],0,DOOR[1]]);return pts;
 }
 const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,SITE.board.walk),bayAt(NCARS-1,SITE.board.walk)]]; // couloirs de quai (contrôle offpath)
-// Deux opérateurs de quai vérifient les lapbars (moitié avant, moitié arrière) puis valident chacun sur un bouton
+// Deux opérateurs de quai (moitié avant, moitié arrière) ferment les sécurités wagon par wagon après le verrouillage au pupitre, les vérifient, puis valident chacun sur un bouton
 const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*1.95,b.z+b.tz*e*1.7+b.rz*1.95];};
 const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});
 function startCheck(t){t.phase='check';for(const o of OPS){o.ok=false;o.st='go';o.k=o.i?NCARS-1:0;o.w=0;}}
@@ -133,7 +133,8 @@ function stepOps(dt){
     const b=BAYS[clamp(o.k,0,NCARS-1)],tg=o.st==='go'?[b.x+b.rx*1.95,b.z+b.rz*1.95]:opHome(o.i),dx=tg[0]-o.x,dz=tg[1]-o.z,d=Math.hypot(dx,dz),sp=3*dt;
     if(d>sp){o.x+=dx/d*sp;o.z+=dz/d*sp;o.mv=true;continue;}
     o.x=tg[0];o.z=tg[1];
-    if(o.st==='go'){o.w+=dt;if(o.w>=.3){o.w=0;o.k+=o.i?-1:1;if(o.i?o.k<NCARS/2:o.k>=NCARS/2)o.st='ret';}}
+    if(o.st==='go'){const T=trains.find(x=>x.st==='station'&&x.phase==='check');if(T){T.rcT&=~(1<<o.k);if(T.rc[o.k]>.05)continue;} // l'opérateur ferme les sécurités du wagon devant lui, puis le contrôle
+      o.w+=dt;if(o.w>=.3){o.w=0;o.k+=o.i?-1:1;if(o.i?o.k<NCARS/2:o.k>=NCARS/2)o.st='ret';}}
     else if(o.st==='ret'){o.st='press';o.w=.45;}
     else o.st='idle';
   }

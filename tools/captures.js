@@ -23,9 +23,9 @@ async function save(p,name,o={}){const f=OUT+'/'+name+'.jpg';await p.screenshot(
  await p.click('#bOpen');await run(p,2400);
  console.log('after open',await log(p));
  await cam(p,'gare',22);await save(p,'02-quai');
- await p.click('#bGate');await run(p,600);console.log('gates',await p.evaluate(()=>[G.gatesOpen,trains[0].phase,count(trains[0])]));
+ await p.click('#bRes');await p.click('#bGate');await run(p,600);console.log('gates',await p.evaluate(()=>[G.gatesOpen,trains[0].phase,count(trains[0])]));
  await cam(p,'gare',22);await save(p,'03-portillons');
- await run(p,1500);console.log('ready?',await log(p));await p.click('#bGate');await p.evaluate(()=>{act('speed',0);for(let i=0;i<3000&&!OPS.some(o=>o.ok);i++)step(.05);ui();});console.log('shut',await p.evaluate(()=>[G.gatesOpen,trains[0].phase,G.auto]),await log(p));
+ await run(p,1500);console.log('ready?',await log(p));await p.click('#bGate');await run(p,40);await p.click('#bRes');await p.evaluate(()=>{act('speed',0);for(let i=0;i<3000&&!OPS.some(o=>o.ok);i++)step(.05);ui();});console.log('shut',await p.evaluate(()=>[G.gatesOpen,trains[0].phase,G.auto]),await log(p));
  {const bb=async id=>(await p.locator(id).boundingBox());const g=await bb('#bGate'),y=await bb('#bByp'),d=await bb('#desk');
   await save(p,'04-lapbars',{clip:{x:d.x,y:g.y-12,width:d.width,height:y.y+y.height+34-(g.y-12)}});}
  console.log(await p.evaluate(()=>[OPS.map(o=>o.ok),trains[0].phase]));
@@ -41,7 +41,7 @@ async function save(p,name,o={}){const f=OUT+'/'+name+'.jpg';await p.screenshot(
  await p.close();
  p=await open(b,'zeus',D);
  const until=(c,m=40000)=>p.evaluate(([c,m])=>{const f=new Function('return '+c);act('speed',0);G.wx.next=1e6;for(let i=0;i<m;i++){if(f())break;step(.05);}ui();return f();},[c,m]);
- await p.click('#bOpen');await until('G.plat.filter(Boolean).length>=20');await p.click('#bGate');await until('trains[0].depReq');await p.click('#bGate');
+ await p.click('#bOpen');await until('G.plat.filter(Boolean).length>=20');await p.click('#bRes');await p.click('#bGate');await until('trains[0].depReq');await p.click('#bGate');await until('G.gate<.05');await p.click('#bRes');
  await until("trains[0].st==='run'&&trains[0].s>S_LIFT0+25");await p.click('#zLift_off');await run(p,60);
  await p.evaluate(()=>{setCam('suivi0');cam.g.s=14;for(let i=0;i<60;i++)render(.05);});console.log('lift',await p.evaluate(()=>[trains[0].s,S_LIFT0,S_LIFT1,trains[0].v,G.lift]),await log(p));
  await save(p,'06-lift');await p.close();

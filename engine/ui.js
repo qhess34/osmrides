@@ -5,9 +5,10 @@ function trainStatus(t){
   if(t.st==='garage'){const ln=LANES[t.lane],w=t.lane<0||onCar(t)?'Sur le chariot de '+DEVL:t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>(LBK?YD.a-TLEN:YD.a)?'Sur '+DEVL:'Tronçon de liaison';
     return w+(t.mv>0?' — avance':t.mv<0?' — recule':G.job&&G.job.t===t?' — en révision':'')+(t.hs?' — hors service':'');}
   if(t.st==='station'){
-    if(t.phase==='unload')return 'Débarquement';
+    if(t.phase==='unload')return count(t)&&t.rc.some(v=>v<.95)?'En gare — sécurités verrouillées (à ouvrir)':'Débarquement';
+    if(t.phase==='board'&&!t.hs&&!G.resOpen&&!t.rcT&&t.rc.every(v=>v<.05)&&!count(t))return 'À quai — sécurités verrouillées';
     if(t.phase==='board')return t.hs?'Hors service':'Embarquement ('+n+'/'+SEATS+')';
-    if(t.phase==='check')return 'Vérification des lapbars ('+OPS.filter(o=>o.ok).length+'/2 validé)';
+    if(t.phase==='check')return 'Fermeture et vérification des '+RES_NAME+' ('+OPS.filter(o=>o.ok).length+'/2 validé)';
     if(t.phase==='fault')return 'Défaut lapbar';
     const r=blockReason(t);return !G.auto&&!t.depReq?'Lapbars validés — en attente de l\'ordre de départ':r?'Prêt — en attente ('+r+')':'Départ…';
   }
@@ -33,6 +34,8 @@ function ui(){
   $('bEvac').disabled=!G.queue.length;
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
+  {const s=trains.find(o=>o.st==='station'),op=G.resOpen||!!(s&&s.rcT),mv=!!s&&s.rc.some((v,k)=>v>.02&&v<.98); // sécurités : bouton allumé = ouvertes ; voyant vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement
+    $('bRes').classList.toggle('lit',op);$('bRes').disabled=!s;$('lRes').className='zl '+(op||(s&&s.rc.some(v=>v>.02))?'occ':'ok')+(mv?' blink':'');}
   $('bGo').disabled=!(G.auto?trains.some(o=>o.st==='station'&&o.phase==='board'&&!o.depReq):trains.some(o=>o.st==='station'&&!o.depReq&&(o.phase==='ready'||(o.phase==='board'&&!G.gatesOpen&&(G.bypass||count(o)===0)))));$('bGo').classList.toggle('lit',!$('bGo').disabled);
   $('bByp').classList.toggle('manu',G.bypass);OPS.forEach(o=>{$('lOp'+o.i).className='lamp'+(o.ok?'':' off');});
   $('bStop').classList.toggle('lit',G.estop);
@@ -42,7 +45,7 @@ function ui(){
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?'ORAGE : aucun départ autorisé.':G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':zK('Fin')?'Frein final serré (MANU) : trains retenus avant la gare.':G.liftOff?'Lift à l\'arrêt (commande du pupitre).':G.auto&&G.gatesOpen&&trains.some(o=>o.st==='station'&&o.depReq)?'Train prêt : fermez les portillons.':devOff()&&!(TRAV&&inLine())?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(TRAV?'rail du circuit hors ligne, trains retenus avant le pont.':YD.at==='brake'?'entrée en gare bloquée.':'départs bloqués.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.resOpen&&trains.some(o=>o.st==='station')?'Sécurités ouvertes : fermez les portillons puis verrouillez-les pour le départ.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':zK('Fin')?'Frein final serré (MANU) : trains retenus avant la gare.':G.liftOff?'Lift à l\'arrêt (commande du pupitre).':G.auto&&G.gatesOpen&&trains.some(o=>o.st==='station'&&o.depReq)?'Train prêt : fermez les portillons.':devOff()&&!(TRAV&&inLine())?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(TRAV?'rail du circuit hors ligne, trains retenus avant le pont.':YD.at==='brake'?'entrée en gare bloquée.':'départs bloqués.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(tZone(t)?' · zone '+zName(tZone(t)):'');
     bar('tW'+t.i,t.wear);
