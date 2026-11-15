@@ -223,7 +223,14 @@ const root = path.resolve(__dirname, '..');
       // train retenu en haut : un autre train occupe la zone suivante (A arrêté sur la zone de freinage, freins serrés au pupitre)
       A.st = 'run'; A.s = BLK.length ? BLK[0] - 3 : S_HOLD; A.v = 0; A.blk = true; A.hold = 0; G.zm.Fin = true; G.zk.Fin = true; if (BLK.length) { G.zm.B1 = true; G.zk.B1 = true; }
       run(() => B.wait && B.v === 0, 6000); o.push(B.wait && B.s > S_LIFT1 - 6 && B.s < S_REL ? 'topHold' : 'topHold:FAIL'); return o.join(' '); });
-    man += ' | lift: ' + lf; await p2.close();
+    man += ' | lift: ' + lf;
+    await p2.close(); const p3 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p3.goto(url); await p3.waitForSelector('[data-act=closeHelp]'); await p3.click('[data-act=closeHelp]');
+    const tr = await p3.evaluate(() => { const i = BTRIM.findIndex(v => v > 0); if (i < 0) return ''; act('speed', 0); G.wx.next = 1e6; const A = trains[0]; A.st = 'run'; A.s = Math.max(S_REL, BLK[i] - 120); A.v = 14; A.inLift = true; A.seats.fill(null); A.blk = false;
+      for (const t of trains) if (t !== A) { t.st = 'garage'; t.g = 1e3; } let vB = null, prev = A.s, stop = false;
+      for (let k = 0; k < 40000 && A.st === 'run'; k++) { step(.025); if (prev < BLK[i] && A.s >= BLK[i]) vB = A.v; if (A.blk && A.v === 0) stop = true; prev = A.s; }
+      return ' | trim: ' + (vB !== null && vB <= BTRIM[i] + 1 && !stop && A.st !== 'run' ? 'slows' : 'slows:FAIL'); });
+    man += tr; await p3.close();
   }
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {

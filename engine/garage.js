@@ -22,7 +22,7 @@ const YD=SITE.yard,TRAV=YD.device==='traverser',GSTEP=TLEN+1.2,MV=Object.assign(
 const SG=TRAV&&!!YD.single;
 const R0=TRAV?S_HOLD-TLEN-(YD.pre!=null?YD.pre:.6):0,R1=TRAV?S_HOLD+(YD.post!=null?YD.post:.6):0,G_B=S_HOLD-R0,
   GAP=SG?0:YD.gap||3.2,U_LANE=R1-R0+(YD.laneGap!=null?YD.laneGap:.8),S_PRE=R0-.4; // S_PRE : arrêt avant le chariot quand aucun rail n'est en ligne
-/* Aiguillage EN AMONT de la gare (yard.back, appareil à aiguillage seulement, yard.at:'station') : le train entre dans la voie de garage en MARCHE ARRIÈRE depuis la gare,
+/* yard.s : le tronçon mobile (rotatif) a deux faces, l'une porte le tronçon droit du circuit, l'autre un S vers la voie de garage (courbe de Bézier, première partie de la voie). Aiguillage EN AMONT de la gare (yard.back, appareil à aiguillage seulement, yard.at:'station') : le train entre dans la voie de garage en MARCHE ARRIÈRE depuis la gare,
    la voie se détache du circuit en amont. yard.a / yard.b = distances (m), mesurées en remontant le circuit depuis l'arrêt de l'avant du train en gare, du bord de l'appareil
    le plus proche de la gare (a) et du bord le plus éloigné, la pointe où la voie se détache (b). La logique du moteur reste celle de l'aiguillage de Zeus (abscisse g de l'avant du
    train = recul depuis la gare) ; seule la géométrie change (carFrame) : le wagon k est à q=(k+.5)·CAR+g en amont de l'arrêt, orienté vers l'avant du circuit ; la voie de garage
@@ -43,12 +43,23 @@ const LANES=TRAV?YD.lanes.map((ln,j)=>{
   const end=U_LANE+(ln.len||TLEN+1.4),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
   return {name:ln.name||'Voie '+(j+1),path,d:ln.d,dev:U_LANE,end,off:GAP-ln.d,cap:ln.cap||Math.max(1,Math.floor((end-U_LANE-TLEN)/GSTEP)+1)};
 }):LBK?YD.lanes.map((ln,j)=>{
-  const path=[],len=YD.b-YD.a,P=ln.pts;let acc=0,prev=null;
+  const path=[],P=ln.pts;let acc=0,prev=null,link=YD.b-YD.a;
   const push=(x,z)=>{if(prev)acc+=Math.hypot(x-prev[0],z-prev[1]);path.push({x,z,d:acc});prev=[x,z];};
-  for(let d=0;d<=len+.001;d+=.5){const f=frameAt(SW_B-d,mkF());push(f.p.x,f.p.z);} // recopie du circuit, du bord côté gare à la pointe
-  let A=[SW0.x,SW0.z];for(let q=1;q<P.length;q++){const B=P[q],l=Math.hypot(B[0]-A[0],B[1]-A[1]);for(let d=.5;d<=l;d+=.5)push(A[0]+(B[0]-A[0])*d/l,A[1]+(B[1]-A[1])*d/l);if(l%.5>.01)push(B[0],B[1]);A=B;}
-  const end=YD.a+acc-TLEN,dev=YD.b-2*TLEN; // butée : arrière du train au bout de la voie ; appareil franchi quand l'arrière a dépassé la pointe
-  return {name:ln.name||'Voie '+(j+1),path,link:len,dev,end,off:ln.off!=null?ln.off:SW_D*(j+1),cap:ln.cap||Math.max(1,Math.floor((end-dev-TLEN)/GSTEP)+1)};
+  let A;
+  if(YD.s){ // tronçon mobile en S (yard.s) : courbe de Bézier du circuit (bord côté gare, tangente = marche arrière) jusqu'au premier point de la voie (P[0], tangente vers P[1])
+    const fN=frameAt(SW_B,mkF()),N=[fN.p.x,fN.p.z],Tb=[-fN.T.x,-fN.T.z],F=P[0],md=[P[1][0]-F[0],P[1][1]-F[1]],ml=Math.hypot(md[0],md[1]);md[0]/=ml;md[1]/=ml;
+    const ch=Math.hypot(F[0]-N[0],F[1]-N[1]),k=(ln.k||.4)*ch,c1=[N[0]+Tb[0]*k,N[1]+Tb[1]*k],c2=[F[0]-md[0]*k,F[1]-md[1]*k],raw=[];
+    for(let i=0;i<=60;i++){const t=i/60,u=1-t,w=[u*u*u*N[0]+3*u*u*t*c1[0]+3*u*t*t*c2[0]+t*t*t*F[0],u*u*u*N[1]+3*u*u*t*c1[1]+3*u*t*t*c2[1]+t*t*t*F[1]];raw.push(w);}
+    let ra=0;const cum=[0];for(let i=1;i<raw.length;i++){ra+=Math.hypot(raw[i][0]-raw[i-1][0],raw[i][1]-raw[i-1][1]);cum.push(ra);}
+    let m=0;for(let d=0;d<=ra+.001;d+=.5){while(m<cum.length-2&&cum[m+1]<d)m++;const f=(d-cum[m])/((cum[m+1]-cum[m])||1);push(raw[m][0]+(raw[m+1][0]-raw[m][0])*f,raw[m][1]+(raw[m+1][1]-raw[m][1])*f);}
+    push(F[0],F[1]);link=acc;A=F;
+    if(Math.abs(link-(YD.b-YD.a))>.6)console.warn('SITE.yard.s : longueur de l\'appareil '+link.toFixed(2)+' m ≠ b−a = '+(YD.b-YD.a).toFixed(2)+' m');
+  }else{
+    for(let d=0;d<=link+.001;d+=.5){const f=frameAt(SW_B-d,mkF());push(f.p.x,f.p.z);} // recopie du circuit, du bord côté gare à la pointe
+    A=[SW0.x,SW0.z];}
+  for(let q=1;q<P.length;q++){const B=P[q],l=Math.hypot(B[0]-A[0],B[1]-A[1]);for(let d=.5;d<=l;d+=.5)push(A[0]+(B[0]-A[0])*d/l,A[1]+(B[1]-A[1])*d/l);if(l%.5>.01)push(B[0],B[1]);A=B;}
+  const end=YD.a+acc-TLEN,dev=YD.a+link-2*TLEN; // butée : arrière du train au bout de la voie ; appareil franchi quand l'arrière a dépassé la pointe
+  return {name:ln.name||'Voie '+(j+1),path,link,dev,end,off:ln.off!=null?ln.off:SW_D*(j+1),cap:ln.cap||Math.max(1,Math.floor((end-dev-TLEN)/GSTEP)+1)};
 }):YD.lanes.map((ln,j)=>{
   const P0=[SW0.x,SW0.z],T0=[SW0.tx,SW0.tz],P=ln.pts,P1=P[0],k=ln.k||YD.k||3.6,path=[],raw=[];
   let md=[P[1][0]-P1[0],P[1][1]-P1[1]];const ml=Math.hypot(md[0],md[1]);md=[md[0]/ml,md[1]/ml];
@@ -142,6 +153,9 @@ const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
     PSB?[{id:'Pre',name:PSB.name||'Frein avant gare',sec:'brk',auto:true}]:[],
     LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
   .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{fwd:false}:{})); // voies : pas d'Avancer (l'entrée est poussée par la zone porteuse CARR), Reculer et Arrêt seulement
+/* Frein de ralentissement (SITE.zones.B1.trim:{v}) : en passage normal (zone en AUTO, canton suivant libre), le train y est ramené à la vitesse v (m/s) puis continue ; il s'arrête
+   seulement si le canton suivant est occupé ou si les freins sont serrés au pupitre. Par zone de frein de bloc : BTRIM[i] (m/s, 0 = pas de ralentissement). */
+const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.trim&&Z.trim.v||0;});
 const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : pousse le train dans la voie en face de l'appareil (Avancer) // gare : pas de bouton de frein, freins liés au départ (stHeld)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;

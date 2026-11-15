@@ -12,9 +12,11 @@ const SITE=(()=>{
   // « brake_run » + début de 541092982), puis les figures dans le lac, retour par la diagonale ouest (OSM « lift_hill », ici zone de freinage) et la courbe nord (OSM « launch_straight »).
   // Garage (OSM) : voie de maintenance 1221386549 (45 m, butoir au sud) qui se raccorde à ce retour, au nœud railway=switch (-15,2 ; -4,5), à 30 m avant la gare.
   // Propriétaire : « les trains vont au garage en marche arrière de la gare si l'aiguillage est orienté vers la voie ; l'aiguillage est un rail qui tourne sur lui-même, avec pour axe
-  // le tube de rail » : yard.back (entrée en marche arrière depuis la gare, appareil en amont) et yard.rotary (rail rotatif). La pointe est le nœud OSM railway=switch, à 44,4 m
-  // en amont de l'arrêt de la tête du train ; longueur de l'appareil (5,6 m), course de rotation : ESTIMÉES.
-  const lanePts=OSM.paths.garage.slice().reverse(),BRIDGE=[[42.3,9.7],[87.8,21.7],[89.9,26.6]]; // pont de bois OSM 161214279 (layer 1)
+  // le tube de rail » : yard.back (entrée en marche arrière depuis la gare, appareil en amont) et yard.rotary (rail rotatif). « L'aiguillage est un S » (propriétaire, 2026-11-15) :
+  // yard.s, le tronçon mobile a deux faces (HYPOTHÈSE : une face droite = circuit, une face en S = voie de garage), le S est une courbe qui part du circuit au nœud OSM railway=switch
+  // (bord de l'appareil côté gare, à 44,4 m en amont de l'arrêt de la tête du train) et rejoint la voie de maintenance OSM (3,4 m plus loin latéralement, ≈ 6 m en amont). Longueur
+  // du S et durée de rotation (4 s) : ESTIMÉES.
+  const lanePts=OSM.paths.garage.slice().reverse().slice(2),BRIDGE=[[42.3,9.7],[87.8,21.7],[89.9,26.6]]; // pont de bois OSM 161214279 (layer 1)
   return {
     id:'goudurix',title:'Goudurix',kind:'steel',trackName:'Voie tubulaire',goal:500,lap:120,
     // 2 trains de 7 wagons, 28 places = 4 par wagon en 2 rangées de 2 (RCDB, Wikipédia). Longueur (2,55 m) et largeur (1,5 m) d'un wagon ESTIMÉES.
@@ -24,10 +26,10 @@ const SITE=(()=>{
     track:{spine:'#a88a2e',rail:'#cdaa38',support:'#8e3b2c'},
     // (propriétaire) un seul train sur le lift ; le lift retient le train en haut si la zone de freinage suivante est occupée : comportement par défaut du moteur
     // Deux zones de freinage (propriétaire) : frein de bloc B1 (repère blk1) juste avant la portion droite sous le lift, frein final (brk) sur la voie parallèle à la gare. Position d'après le propriétaire, emplacement exact ESTIMÉ.
-    stopBack:.5,holdBack:5,dropAfter:16,loadSide:1,   // frein final : tête du train 5 m avant la gare (ESTIMÉ) ; le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire)
+    stopBack:.5,holdBack:5,dropAfter:35,loadSide:1,   // frein final : tête du train 5 m avant la gare (ESTIMÉ) ; le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire)
     phys:{roll:.06,drag:.0009,vmin:3},
     // Garage : une seule voie (la voie de maintenance OSM), 2 trains au plus. Durée de rotation (4 s) et vitesse de manœuvre ESTIMÉES.
-    yard:{at:'station',device:'switch',back:true,rotary:true,a:38.8,b:44.4,slide:1,side:-1,len:5.6,devName:'Aiguillage rotatif',devLabel:'l\'aiguillage',lanes:[{name:'Garage',pts:lanePts,cap:2}],move:{v:2.4,t:4}},
+    yard:{at:'station',device:'switch',back:true,rotary:true,s:true,a:44.4,b:50.4,slide:1,side:-1,len:5.6,devName:'Aiguillage',devLabel:'l\'aiguillage',lanes:[{name:'Garage',pts:lanePts,cap:2}],move:{v:2.4,t:4}},
     stationPoly:OSM.polys.station,stationAt:[.4,0,12],stationRoofCol:'#9b8f7d',
     fade:[[.4,0,12]],   // toits qui s'effacent : gare
     // Quais ESTIMÉS (le bâtiment OSM, 6,8 m de large, ne couvre que la voie et ses abords) : embarquement à l'ouest (portillons), débarquement à l'est.
@@ -49,6 +51,8 @@ const SITE=(()=>{
       figures:{label:'Figures',x:48,z:50,s:5},frein:{label:'Frein final',x:-6,z:30,s:8},garage:{label:'Garage',x:-14,z:10,s:11}},
     labels:()=>[['Gare',6,-4],['Lift — 36 m',12,78],['Frein final',-32,35],['Garage',-32,12],['Entrée',32,88],["File d'attente",-42,52],['Sortie',14,-3]],
     strike:{area:[-60,100,-40,150]},
+    // Le premier frein du parcours (B1) RALENTIT nettement le train (propriétaire) : vitesse ramenée à 8 m/s (≈ 29 km/h, ESTIMÉ) en passage normal ; arrêt seulement si le canton suivant est occupé.
+    zones:{B1:{trim:{v:8}}},
     text:{storm:'Orage sur Goudurix : aucun train ne doit partir.',great:'Excellente journée sur Goudurix !'},
     helpGarage:'<b>Garage</b> : une voie de maintenance, en amont de la gare (≈ 44 m avant l\'arrêt du train). L\'aiguillage est un rail rotatif : il tourne sur lui-même autour du tube de rail, pour présenter le circuit (P) ou la voie (1). '
       +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Gare AR : le train recule de la gare jusqu\'au fond de la voie. Remettez l\'aiguillage sur P. '
