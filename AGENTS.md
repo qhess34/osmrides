@@ -21,8 +21,9 @@ Règles complètes : `docs/NOUVELLE-ATTRACTION.md` — à tenir à jour à chaqu
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | page d'accueil : présentation du jeu, cartes des attractions (`a.card[data-site]`, mode carrière / bac à sable, « Partie en cours »), bouton d'installation, liens vers `tutos.html` et `parc.html` ; style dans `site.css` |
-| `tutos.html`, `img/tutos/` | six guides illustrés en français (premiers pas, zones de freinage, garage avec une note par attraction, file, mobile, bac à sable et sauvegarde) ; captures JPEG < 120 Ko prises avec Playwright sur de vraies parties. À mettre à jour avec le jeu (libellés, boutons) |
+| `index.html` | écran titre de jeu, plein écran sans défilement : fond canvas (plan du parc, `parc/parc.data.js`), menu Continuer (dernière sauvegarde, `ts`) / Jouer (`#jouer` : vignettes `a.card[data-site]` + `.prog` « Partie en cours », mode carrière / bac à sable) / Plan du parc / Tutoriels / Installer ; vignettes `img/accueil/<site>.jpg` (captures du jeu, à refaire pour une nouvelle attraction) ; style `site.css` |
+| `apropos.html` | présentation du jeu (fonctions, données, limites) |
+| `tutos.html`, `img/tutos/` | six leçons illustrées en français (numérotées, bouton Essayer = `jeu.html?site=…&mode=sandbox`) (premiers pas, zones de freinage, garage avec une note par attraction, file, mobile, bac à sable et sauvegarde) ; captures JPEG < 120 Ko prises avec Playwright sur de vraies parties. À mettre à jour avec le jeu (libellés, boutons) |
 | `parc.html` | plan du parc entier (canvas, déplacement/zoom) ; charge `parc/parc.data.js` ; les attractions avec `site` ouvrent `jeu.html?site=…` |
 | `parc/parc.data.js` | `const PARK={…}` — généré par `tools/make_park.py` depuis l'extrait du parc, ne pas éditer à la main |
 | `tools/make_park.py` | `python3 tools/make_park.py extrait.osm parc/parc.data.js` (origine = Trace du Hourra) |
