@@ -114,6 +114,7 @@ for r in root.iter('relation'):
     t = tg(r)
     if t.get('type') == 'site' and 'Zeus' in t.get('name', ''):
         zeus_ways |= {m.get('ref') for m in r.findall('member') if m.get('type') == 'way'}
+oziris_ways = {'937048122', '541161843', '937048120', '541161845', '541161844', '421460641', '541161850', '1102773847', '541161849', '1101623925', '541161848', '541161847', '937048121', '1330192627'}  # tools/specs/oziris.json
 hourra_ways = {'1231613335', '937061488', '1182632576', '541427605', '1182632575', '541427599', '1182419818', '541427592'}
 
 # ── attractions nommées
@@ -140,6 +141,7 @@ def track_centroid(wset):
     return centroid(ps) if ps else None
 zc = track_centroid(zeus_ways) or track_centroid({i for i, t in WT.items() if t.get('roller_coaster') == 'track' and 'Zeus' in t.get('name', '')})
 hc = track_centroid(hourra_ways)
+oc = track_centroid(oziris_ways)
 
 # dédoublonnage : même nom normalisé à moins de 120 m => on garde les nœuds/les roller_coaster de préférence
 norm = lambda s: ''.join(c for c in s.lower() if c.isalnum())
@@ -151,10 +153,12 @@ for a in final:
     n = norm(a['name']); a['site'] = None
     if 'zeus' in n and 'tonnerre' in n: a['site'] = 'zeus'
     elif 'hourra' in n: a['site'] = 'hourra'
+    elif n == 'oziris': a['site'] = 'oziris'
     del a['kind']; del a['rc']
 for a in final:
     if a['site'] == 'zeus' and zc: a['track'] = [round(zc[0], 1), round(zc[1], 1)]
     if a['site'] == 'hourra' and hc: a['track'] = [round(hc[0], 1), round(hc[1], 1)]
+    if a['site'] == 'oziris' and oc: a['track'] = [round(oc[0], 1), round(oc[1], 1)]
 final.sort(key=lambda a: a['name'])
 
 # tronçons : un par way, nommé par son nom, sinon par l'attraction (relation Zeus, Hourra) ou la plus proche attraction à moins de 120 m
@@ -168,6 +172,7 @@ for i, w in WAY.items():
     P = pts_of(ids); nm = t.get('name')
     if not nm and i in zeus_ways: nm = 'Tonnerre 2 Zeus'
     if not nm and i in hourra_ways: nm = 'Trace du Hourra'
+    if not nm and i in oziris_ways: nm = 'OzIris'
     if not nm:
         c = centroid(P); best = min(((math.hypot(c[0] - x, c[1] - z), n) for x, z, n in rc_pts), default=(1e9, ''))
         nm = best[1] if best[0] < 150 else ''

@@ -50,11 +50,12 @@ function frameAt(s,o){
   o.p.lerpVectors(a.p,b.p,k);o.T.lerpVectors(a.T,b.T,k).normalize();o.U.lerpVectors(a.U,b.U,k).normalize();o.R.crossVectors(o.T,o.U);return o;
 }
 function hAt(s){s=((s%L)+L)%L;const f=s/DS,i=Math.floor(f)%N,k=f-Math.floor(f);return lerp(TR[i].p.y,TR[(i+1)%N].p.y,k);}
-const BOB=SITE.kind==='bob',LS=SITE.loadSide||1,PH=Object.assign({roll:.098,drag:.0006,vmin:3},SITE.phys);
+const BOB=SITE.kind==='bob',INV=SITE.kind==='inverted',LS=SITE.loadSide||1,PH=Object.assign({roll:.098,drag:.0006,vmin:3},SITE.phys);
 const ST_Y=OSM.cps[0][1],CAR=SITE.car.len,NCARS=SITE.car.n,TLEN=CAR*NCARS,CSEATS=SITE.car.seats||2,SEATS=NCARS*CSEATS;
 // Place r (0…CSEATS-1) d'un wagon : [décalage le long du wagon, décalage latéral]. Côte à côte par rangées de 2, ou l'un derrière l'autre (car.inline).
-const S_COLS=SITE.car.inline?1:Math.min(2,CSEATS),S_ROWS=Math.ceil(CSEATS/S_COLS);
-const seatOff=r=>{const c=r%S_COLS,w=Math.floor(r/S_COLS),d=Math.min(.66*(S_ROWS-1),CAR-.5);return [S_ROWS>1?d/2*(1-2*w/(S_ROWS-1))-.03:0,S_COLS>1?(c?.33:-.33):0];};
+// car.abreast : nombre de places côte à côte par rangée (défaut 2 ; ex. 4 pour un wagon de coaster inversé, une seule rangée).
+const S_COLS=SITE.car.inline?1:Math.min(SITE.car.abreast||2,CSEATS),S_ROWS=Math.ceil(CSEATS/S_COLS);
+const seatOff=r=>{const c=r%S_COLS,w=Math.floor(r/S_COLS),d=Math.min(.66*(S_ROWS-1),CAR-.5);return [S_ROWS>1?d/2*(1-2*w/(S_ROWS-1))-.03:0,S_COLS>2?(c-(S_COLS-1)/2)*.6:S_COLS>1?(c?.33:-.33):0];};
 const S_ST=TAG.st1-(SITE.stopBack||0),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=L-(SITE.holdBack||4),S_DROP=S_LIFT1+(SITE.dropAfter||14);
 const BLK=Object.keys(TAG).filter(k=>k.startsWith('blk')).map(k=>TAG[k]).sort((a,b)=>a-b); // freins de bloc en parcours
 // courbure signée (virage à droite > 0) : sert au balancement des bobs dans la gouttière

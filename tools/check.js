@@ -26,7 +26,7 @@ const root = path.resolve(__dirname, '..');
   {
     const until = (cond, max = 20000) => page.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6;
       for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [cond, max]);
-    const click = async id => { await page.click(id, { timeout: 3000 }); };
+    const click = async id => { try { await page.click(id, { timeout: 3000 }); } catch (e) { throw new Error('click ' + id + ' after: ' + steps.join(' ')); } };
     const logHas = re => page.evaluate(r => new RegExp(r).test($('log').textContent), re);
     const steps = [];
     const ok = (name, v) => { steps.push(name + (v ? '' : ':FAIL')); return v; };
@@ -109,6 +109,37 @@ const root = path.resolve(__dirname, '..');
           await until(`trains[${i}].phase==='board'`, 8000);
         }
       }
+      await click('#bAuto');
+    } else if (trav && await page.evaluate(() => LREV && !RA)) { // OzIris : pont transbordeur à deux rails (P, G, voies), voies EN AMONT du pont (yard.rev : entrée en marche arrière)
+      await click('#bAuto'); await gates();
+      await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
+      await click('#zLift_off'); ok('liftHeld', await until('trains[0].v===0&&trains[0].s>S_LIFT0-1&&trains[0].s<S_LIFT1', 4000)); // un seul frein de bloc : le train est retenu sur le lift
+      // sortir le train 2 (voie 1) : pont face à la voie 1, Voie 1 AV (vers le pont, marche avant), pont sur G (il l'emporte), Rail de garage AV vers la gare, pont sur P
+      await click('#y1'); ok('dev1', await until('devOn(0)', 4000));
+      await click('#zL1_f'); ok('onCar1', await until('trains[1].lane<0&&!trains[1].mv', 8000));
+      await click('#zRB_f'); ok('refuseRBfwd', await logHas('entre dans une voie en marche arrière'));
+      await click('#yG'); ok('carried1', await until('devMoving()&&onCar(trains[1])', 40));
+      ok('onRailB1', await until("trains[1].st==='run'&&G.dev.pos===PG&&tZone(trains[1])==='RB'", 4000));
+      await shot('1-sortie-rail-garage');
+      await click('#zRB_f'); ok('station1', await until("trains[1].st==='station'", 4000));
+      await click('#yP'); ok('devP', await until('!devOff()', 4000));
+      await click('#zLift_on'); ok('liftOn', await until('trains[0].s>S_LIFT1+5', 4000));
+      // garer le train 1 (vide) : frein final MANU serré (arrêt avant le pont), pont sur G, relâcher, Frein final AV (sur le rail de garage),
+      // pont sur une voie libre (il emporte le train), Rail de garage AR (il recule dans la voie), pont sur P
+      await click('#zFin_m'); await click('#zFin_k');
+      ok('preHeld0', await until('trains[0].v===0&&Math.abs(trains[0].s-S_PRE)<.5', 20000));
+      await click('#yG'); ok('devG2', await until('!devMoving()&&G.dev.pos===PG', 4000));
+      await click('#zFin_k'); ok('stillPre0', await until('false', 200) || await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - S_PRE) < .5));
+      await click('#zFin_f'); ok('onB0', await until('atAnchor(trains[0])&&G.dev.pos===PG', 4000)); await shot('2-rail-garage-en-ligne');
+      const f = await page.evaluate(() => LANES.findIndex((l, j) => !trains.some(t => t.st === 'garage' && t.lane === j)) + 1);
+      await click('#y' + f); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
+      ok('dev' + f, await until(`devOn(${f - 1})`, 4000)); await shot('3-pont-face-voie');
+      await click(`#zL${f}_k`); await click('#zRB_b'); ok('refuseLaneBrake', await logHas(`Freins de Voie ${f} serrés`)); await click(`#zL${f}_k`);
+      await click('#zRB_b'); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400)); await shot('4-recul-dans-la-voie');
+      await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
+      ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
+      await click('#yP'); ok('devP2', await until('!devOff()', 4000)); await shot('5-gare');
+      await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin && !G.zm.B1));
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus : aiguillage dans le prolongement de la gare ; commandes par zones
       ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zSt_f')));
