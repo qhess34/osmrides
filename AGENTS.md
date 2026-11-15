@@ -98,4 +98,4 @@ Toute modification du moteur doit être revérifiée sur chaque attraction. Anno
 
 ## État et suite
 
-Voir `docs/ROADMAP.md` (ordre des tâches, questions ouvertes), `docs/hourra-notes.md` (données de la Trace du Hourra) et `docs/oziris-notes.md` (OzIris) et `docs/goudurix-notes.md` (Goudurix). `tools/make_plan.py <site> out.png "Titre"` fabrique le plan « tracé complet » de `docs/plans/`.
+Voir `docs/ROADMAP.md` (ordre des tâches, questions ouvertes), `docs/hourra-notes.md` (données de la Trace du Hourra) et `docs/oziris-notes.md` (OzIris) et `docs/goudurix-notes.md` (Goudurix). `tools/make_plan.py <site> out.png "Titre" ["Nom:s0:s1:n;…"]` fabrique le plan « tracé complet » (ou, avec la liste de figures, le plan des figures) de `docs/plans/`.
