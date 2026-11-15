@@ -157,35 +157,73 @@ const root = path.resolve(__dirname, '..');
       await click('#yP'); ok('back2b', await until("trains[2].st==='run'&&circIn()&&atAnchor(trains[2])", 4000)); await shot('7-retour-en-P');
       ok('stored2', await until('false', 200) || await page.evaluate(() => atAnchor(trains[2]) && trains.some(t => t.st === 'station')));
       await click('#bAuto');
-    } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus : aiguillage dans le prolongement de la gare ; commandes par zones
+    } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus (aiguillage dans le prolongement de la gare) ; Goudurix : aiguillage en amont (yard.back), entrée au garage en marche arrière
+      const lbk = await page.evaluate(() => LBK), PUSH = lbk ? '#zSt_b' : '#zSt_f', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones
       ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zSt_f')));
       await click('#bAuto'); await gates();
-      await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>SW_B+TLEN+3", 4000));
-      await click('#y1'); ok('dev1', await until('devOn(0)', 400));
+      await click('#zSt_f'); ok('depart0', await until(`trains[0].st==='run'&&trains[0].s>${SB}+TLEN+3`, 4000));
+      await click('#y1'); ok('dev1', await until('devOn(0)', 800));
       await click('#zL1_b'); ok('out1', await until("trains[1].st==='station'", 8000));
-      await click('#yP'); ok('devP', await until('!devOff()', 400));
+      await click('#yP'); ok('devP', await until('!devOff()', 800));
       // frein final en MANU, serré : il retient le train 0 ; relâchement refusé tant que la gare est occupée (anti-collision)
       await click('#zFin_m'); await click('#zFin_k');
       ok('finHeld0', await until("trains[0].st==='run'&&trains[0].v===0&&Math.abs(trains[0].s-S_HOLD)<.4", 20000));
       await click('#zFin_k'); ok('refuseAntiCollision', await logHas('relâchement refusé, section suivante occupée'));
-      await click('#zSt_f'); ok('depart1', await until("trains[1].st==='run'&&trains[1].s>SW_B+TLEN+3", 4000));
+      await click('#zSt_f'); ok('depart1', await until(`trains[1].st==='run'&&trains[1].s>${SB}+TLEN+3`, 4000));
       await click('#zFin_k'); ok('arrive0', await until("trains[0].st==='station'&&trains[0].phase==='board'", 20000));
-      await click('#y1'); ok('dev1b', await until('devOn(0)', 400));
-      await click('#bGate'); await click('#zSt_f'); ok('refuseGates', await logHas('Portillons ouverts : fermez-les'));
+      await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
+      await click('#bGate'); await click(PUSH); ok('refuseGates', await logHas('Portillons ouverts : fermez-les'));
       await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
-      await click('#zL1_k'); await click('#zSt_f'); ok('refuseLaneBrake', await logHas('Freins de Garage serrés')); await click('#zL1_k');
-      await click('#zSt_f'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400));
+      await click('#zL1_k'); await click(PUSH); ok('refuseLaneBrake', await logHas('Freins de Garage serrés')); await click('#zL1_k');
+      await click(PUSH); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400));
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 8000));
-      await click('#yP'); ok('devP2', await until('!devOff()', 400));
+      await click('#yP'); ok('devP2', await until('!devOff()', 800));
       // frein final en MANU : serré, il retient le train 1 ; relâché, le train entre en gare
       await click('#zFin_k');
       ok('finHeld1', await until("trains[1].st==='run'&&trains[1].v===0&&Math.abs(trains[1].s-S_HOLD)<.4", 20000) && await logHas('serré au pupitre'));
       await click('#zFin_k'); ok('finRel1', await until("trains[1].st==='station'", 2000));
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin));
       await click('#bAuto');
+    } else if (hasYard && !trav && brake) { // Goudurix : aiguillage au frein final (le train s'arrête à l'aiguillage, la zone porteuse est le frein final)
+      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zFin_f')));
+      await click('#bAuto'); await gates();
+      await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
+      // sortir le train garé : aiguillage sur la voie, Garage AR, puis aiguillage sur P une fois le train dégagé
+      await click('#y1'); ok('dev1', await until('devOn(0)', 400));
+      await click('#zL1_b'); ok('out1', await until("trains[1].st==='run'&&trains[1].v===0&&Math.abs(trains[1].s-S_HOLD)<.4", 8000)); // revenu sur le frein final
+      await click('#yP'); ok('devP', await until('!devOff()', 800));
+      ok('in1', await until("trains[1].st==='station'", 8000));
+      // frein final en MANU, serré : il retient le train 0 ; relâchement refusé tant que la gare est occupée (anti-collision)
+      await click('#zFin_m'); await click('#zFin_k');
+      ok('finHeld0', await until("trains[0].st==='run'&&trains[0].v===0&&Math.abs(trains[0].s-S_HOLD)<.4", 30000));
+      await click('#zFin_k'); ok('refuseAntiCollision', await logHas('relâchement refusé, section suivante occupée'));
+      // le train 1 repart (gare libre), puis garer le train 0 (vide, arrêté à l'aiguillage) : aiguillage sur la voie (entrée en gare bloquée), freins relâchés, Frein final AV le pousse dans la voie
+      await click('#zSt_f'); ok('depart1', await until("trains[1].st==='run'&&trains[1].s>S_ST+TLEN+3", 4000));
+      await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
+      await click('#zFin_k'); ok('finRel0', await until("!G.zk.Fin", 400));
+      await click('#zFin_f'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000));
+      await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
+      ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 12000));
+      await click('#yP'); ok('devP2', await until('!devOff()', 800));
+      await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin));
+      await click('#bAuto');
     } else if (hasYard) steps.push('scenario-missing:FAIL');
     man = steps.length ? steps.join(' ') : 'no yard train';
+  }
+  { // règle du lift (par défaut pour toutes les attractions) : un seul train sur le lift (le suivant attend au pied), train retenu en haut tant que la zone de freinage suivante est occupée
+    const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p2.goto(url); await p2.waitForSelector('[data-act=closeHelp]'); await p2.click('[data-act=closeHelp]');
+    const lf = await p2.evaluate(() => { act('speed', 0); G.wx.next = 1e6; const o = [], A = trains[0], B = trains[1]; if (!B) return 'single-train';
+      const run = (c, m) => { for (let i = 0; i < m; i++) { if (c()) break; step(.025); } return c(); };
+      for (const t of trains) { t.seats.fill(null); } B.st = 'station'; B.s = S_ST; B.g = 0; B.phase = 'board'; B.v = 0; A.st = 'run'; A.s = S_LIFT0 + 20; A.v = 4; A.inLift = true; A.blk = false;
+      G.liftOff = true; B.st = 'run'; B.s = S_ST + 4; B.v = 3; B.inLift = false; B.blk = false; B.inBrake = false; G.estop = false;
+      run(() => false, 600); o.push(B.st === 'run' && B.v === 0 && B.s < S_LIFT0 && B.s > S_LIFT0 - 3 ? 'footHold' : 'footHold:FAIL');
+      G.liftOff = false; run(() => A.s > S_REL + 1, 4000); run(() => B.s > S_LIFT0 + 5, 2000); o.push(B.s > S_LIFT0 + 1 ? 'footGo' : 'footGo:FAIL');
+      // train retenu en haut : un autre train occupe la zone suivante (A arrêté sur la zone de freinage, freins serrés au pupitre)
+      A.st = 'run'; A.s = BLK.length ? BLK[0] - 3 : S_HOLD; A.v = 0; A.blk = true; A.hold = 0; G.zm.Fin = true; G.zk.Fin = true; if (BLK.length) { G.zm.B1 = true; G.zk.B1 = true; }
+      run(() => B.wait && B.v === 0, 6000); o.push(B.wait && B.s > S_LIFT1 - 6 && B.s < S_REL ? 'topHold' : 'topHold:FAIL'); return o.join(' '); });
+    man += ' | lift: ' + lf; await p2.close();
   }
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {

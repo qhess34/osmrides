@@ -83,5 +83,21 @@ Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « re
 25. **Sortie.** Nous faisons descendre les visiteurs par un escalier au milieu du quai ouest (F13), passer sous la gare (F14), traverser la boutique (F15) et sortir sur l'allée (F16) : où est la vraie sortie ?
 26. **File.** La boucle ouest (F6, F7) peut-elle être fermée par une barrière à la fourche F5 ? Y en a-t-il d'autres ?
 
+27. **OzIris — plan des figures.** La page envoyée ne contient que des miniatures : le panneau du plan des figures est illisible. Pouvez-vous envoyer l'image en grand (capture plein écran du panneau ou photo) ?
+28. **OzIris — trains.** Un article annonce un 4e train : combien de trains aujourd'hui, et de quelles couleurs ?
+
+## Goudurix
+
+Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone) et `goudurix-file-correction.jpg` (file, gare, sortie, garage, repères F1 à F12). Les numéros 1 à 16 renvoient à `goudurix-trace-complete.png`. Détails : `docs/goudurix-notes.md`.
+
+29. **Trains.** *(Répondu : 2 trains rouges.)* Reste : liseré, teinte exacte ; un seul ou deux sur le parcours en même temps ?
+30. **Inversions.** Nos bosses (vers 6, 10–11, 12–13, 14) sont estimées. Où sont le looping vertical, le batwing, le papillon et la double vrille, et dans quel ordre ? (« le looping est au 6 », etc.)
+31. **Freins.** *(Répondu : deux zones de freinage, l'une juste avant la portion droite sous le lift (rond 14, s ≈ 675 m), l'autre sur la voie parallèle à la gare (rond 15–16, s ≈ 735 m) ; faites, emplacements exacts estimés.)* Reste : longueur de chaque zone, nombre de patins ; un train en attente à la première zone bloque-t-il bien le lift ?
+32. **Lift.** *(Corrigé par le propriétaire : le lift est la montée après la gare, ligne droite entre 15 et 16 de l'ancien plan.)* Fait : lift du 44 au 136 m, sens de marche inversé par rapport à la première version. Début et fin de la chaîne exacts ?
+33. **Garage.** *(Répondu : le train recule de la gare vers la voie, aiguillage rotatif autour du tube de rail ; il repart en marche avant de la voie vers la gare ; fait.)* Reste : distance exacte de l'aiguillage à la gare (≈ 44 m, d'après le nœud OSM), nombre de trains qui tiennent dans la voie (nous : 2).
+34. **Moteurs.** Gare, frein final, voie de garage : freins seuls ou freins + pneus ?
+35. **Quais.** *(Répondu : portillons à l'ouest, fait.)* Profondeur des quais ? Où est la porte de sortie côté est (nous : F6) ?
+36. **File.** OSM ne cartographie pas la file : nous avons pris la promenade ouest (F2) puis un raccord vers le quai ouest (F3), qui passe sous le retour. Où est la vraie file (entrée, boucles, barrières) ?
+37. **Sortie.** Nous faisons sortir les visiteurs par une porte du mur est (F6), vers l'allée et le pont de bois (F7, F8) : où est la vraie sortie ?
 27. **OzIris — plan des figures.** *(Répondu, 2026-11-15 : affiche fournie, `docs/sources/oziris-plan-figures-affiche.png`, noms lisibles : Dive Loop, Vertical Loop, Immelmann, Zero-G Roll ×2 ; placement sur le tracé OSM dans `docs/oziris-notes.md`.)* Reste : l'affiche est stylisée, les emplacements exacts (± 10 m) et les hauteurs des inversions sont estimés ; l'ordre dive loop, looping, Immelmann, zéro-G, zéro-G se déduit de la forme : à confirmer (vidéo embarquée ou photo de la chute).
 28. **OzIris — trains.** *(Répondu, 2026-11-15 : 3 trains, tous bleus ; l'article sur un 4e train est dépassé.)* Reste : teinte exacte du bleu et des lapbars (supposée d'après les photos).

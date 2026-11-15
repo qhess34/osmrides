@@ -7,6 +7,7 @@ Jeux de gestion en 2D vue du dessus : vous êtes chef d'attraction. Jeux de fan 
 | Tonnerre 2 Zeus (montagnes russes en bois) | jouable | `jeu.html?site=zeus` |
 | La Trace du Hourra (bobsleigh) | jouable (garage et pont transbordeur estimés) | `jeu.html?site=hourra` |
 | OzIris (coaster inversé) | jouable (profil, garage et quais estimés) | `jeu.html?site=oziris` |
+| Goudurix (acier à rails tubulaires, 7 inversions) | jouable (profil, inversions, file, garage et quais estimés) | `jeu.html?site=goudurix` |
 
 Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable ; chaque attraction dotée d'un simulateur l'ouvre d'un clic).
 

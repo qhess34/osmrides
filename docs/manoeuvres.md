@@ -15,6 +15,7 @@ Une nouvelle attraction ne réécrit pas ces règles : elle déclare ses voies e
 | Tronçon de liaison | Voie courte entre le point de raccordement et l'appareil. |
 | Voie de garage | Voie en impasse où l'on range un ou plusieurs trains. |
 | Canton | Portion de voie qu'un seul train peut occuper. Le tronçon de liaison et chaque voie de garage sont des cantons. |
+| Lift | Règle par défaut (propriétaire, 2026-11-15) : un seul train sur le lift ; le suivant, parti de la gare, attend au pied du lift. Le train arrivé en haut y est retenu (chaîne arrêtée pour lui) tant que la zone de freinage suivante (1er frein de bloc, sinon frein final) est occupée. |
 
 ## Modèle de voies (`SITE.yard`)
 

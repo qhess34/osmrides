@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-/* Test de la sauvegarde automatique (engine/save.js) et du bac à sable : node tools/save.js [zeus hourra oziris]
+/* Test de la sauvegarde automatique (engine/save.js) et du bac à sable : node tools/save.js [zeus hourra oziris goudurix]
    Pour chaque site : 2 h de jeu, manœuvre de garage en cours, zone en MANU, barrière, instantané, départ vers index.html (pagehide),
    retour, comparaison, 30 min de plus ; puis alternance entre attractions, « Nouvelle partie », bac à sable. Sortie courte PASS/FAIL. */
 const { chromium } = require('playwright');
 const path = require('path'), root = path.resolve(__dirname, '..');
-const sites = process.argv.slice(2).filter(a => !a.startsWith('-')); if (!sites.length) sites.push('zeus', 'hourra', 'oziris');
+const sites = process.argv.slice(2).filter(a => !a.startsWith('-')); if (!sites.length) sites.push('zeus', 'hourra', 'oziris', 'goudurix');
 const URL = (s, m) => `file://${root}/jeu.html?site=${s}` + (m ? '&mode=' + m : '');
 const INDEX = `file://${root}/index.html`;
 let fails = [];

@@ -115,6 +115,7 @@ for r in root.iter('relation'):
     if t.get('type') == 'site' and 'Zeus' in t.get('name', ''):
         zeus_ways |= {m.get('ref') for m in r.findall('member') if m.get('type') == 'way'}
 oziris_ways = {'937048122', '541161843', '937048120', '541161845', '541161844', '421460641', '541161850', '1102773847', '541161849', '1101623925', '541161848', '541161847', '937048121', '1330192627'}  # tools/specs/oziris.json
+goudurix_ways = {'937067647', '541092977', '541092979', '541092993', '541092992', '541092990', '541092991', '541092989', '541092988', '541092987', '1181620312', '541092986', '1181620311', '541092985', '1181620310', '1181620309', '541092984', '541092983', '541092982', '937067646'}  # tools/specs/goudurix.json
 hourra_ways = {'1231613335', '937061488', '1182632576', '541427605', '1182632575', '541427599', '1182419818', '541427592'}
 
 # ── attractions nommées
@@ -142,6 +143,7 @@ def track_centroid(wset):
 zc = track_centroid(zeus_ways) or track_centroid({i for i, t in WT.items() if t.get('roller_coaster') == 'track' and 'Zeus' in t.get('name', '')})
 hc = track_centroid(hourra_ways)
 oc = track_centroid(oziris_ways)
+gxc = track_centroid(goudurix_ways)
 
 # dédoublonnage : même nom normalisé à moins de 120 m => on garde les nœuds/les roller_coaster de préférence
 norm = lambda s: ''.join(c for c in s.lower() if c.isalnum())
@@ -154,11 +156,13 @@ for a in final:
     if 'zeus' in n and 'tonnerre' in n: a['site'] = 'zeus'
     elif 'hourra' in n: a['site'] = 'hourra'
     elif n == 'oziris': a['site'] = 'oziris'
+    elif n == 'goudurix': a['site'] = 'goudurix'
     del a['kind']; del a['rc']
 for a in final:
     if a['site'] == 'zeus' and zc: a['track'] = [round(zc[0], 1), round(zc[1], 1)]
     if a['site'] == 'hourra' and hc: a['track'] = [round(hc[0], 1), round(hc[1], 1)]
     if a['site'] == 'oziris' and oc: a['track'] = [round(oc[0], 1), round(oc[1], 1)]
+    if a['site'] == 'goudurix' and gxc: a['track'] = [round(gxc[0], 1), round(gxc[1], 1)]
 final.sort(key=lambda a: a['name'])
 
 # tronçons : un par way, nommé par son nom, sinon par l'attraction (relation Zeus, Hourra) ou la plus proche attraction à moins de 120 m
