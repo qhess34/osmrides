@@ -81,8 +81,10 @@ const SHX=.55,SHZ=.42;
 const TRO=Object.assign({lo:[150,156,164],hi:[198,204,210],edge:'#4a4f57',deck:'#565c65',rim:'#2f3339',shine:'rgba(255,255,255,.2)'},SITE.trough); // couleurs de la gouttière (bob), réglables par SITE.trough
 // Coaster inversé (SITE.kind 'inverted') : poutre caisson en acier, deux rails de roulement, portiques de supports au-dessus de la voie, trains suspendus dessous.
 // Couleurs par SITE.track = {spine, rail, support} (défaut : teintes acier sourdes).
-const TKC=Object.assign({spine:'#4a5d72',rail:'#2e3640',support:'#8c8577'},SITE.track),SUPW=2.3;
-const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:3.1;
+// Coaster acier assis à rails tubulaires (SITE.kind 'steel') : deux rails tubulaires de roulement reliés par des entretoises, supports tubulaires en
+// A au-dessus de 1,5 m (jambes écartées avec la hauteur), train posé sur la voie. Couleurs par SITE.track = {spine, rail, support}.
+const TKC=Object.assign(STL?{spine:'#a88a2e',rail:'#c9a83c',support:'#8c3a2b'}:{spine:'#4a5d72',rail:'#2e3640',support:'#8c8577'},SITE.track),SUPW=2.3,WOODY=!BOB&&!INV&&!STL;
+const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,chainP=new Path2D,finsP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(q.y)*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
@@ -91,8 +93,12 @@ function strip(sm){
     const sx=q.x+q.y*SHX,sz=q.z+q.y*SHZ;hs+=q.y;
     o.x0=Math.min(o.x0,q.x-9);o.x1=Math.max(o.x1,sx+9);o.z0=Math.min(o.z0,q.z-9);o.z1=Math.max(o.z1,sz+9);
     if(i){o.deck.lineTo(q.x,q.z);o.sh.lineTo(sx,sz);}else{o.deck.moveTo(q.x,q.z);o.sh.moveTo(sx,sz);}
-    if(!BOB&&!INV&&q.i%2===1){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
-    if(INV){if(i<n-1&&q.i%13===0&&q.y>ST_Y+1.5){const e=(q.i/13)%2?1:-1,w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
+    if(WOODY&&q.i%2===1){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
+    if(STL){if(q.i%3===0){o.ties.moveTo(q.x-q.nx*.62,q.z-q.nz*.62);o.ties.lineTo(q.x+q.nx*.62,q.z+q.nz*.62);} // entretoises entre les deux rails tubulaires
+      if(i<n-1&&q.i%10===0&&q.y>ST_Y+1.5){const sp=.55+Math.min(q.y,40)*.07; // support en A : deux jambes qui s'écartent vers le sol, traverse à mi-hauteur
+        for(const e of [-1,1]){const bx=q.x+q.nx*sp*e,bz=q.z+q.nz*sp*e;o.str.moveTo(q.x+q.nx*.45*e,q.z+q.nz*.45*e);o.str.lineTo(bx,bz);o.shb.moveTo(bx,bz);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}
+        o.hand.moveTo(q.x-q.nx*sp*.7,q.z-q.nz*sp*.7);o.hand.lineTo(q.x+q.nx*sp*.7,q.z+q.nz*sp*.7);}}
+    if(STL){}else if(INV){if(i<n-1&&q.i%13===0&&q.y>ST_Y+1.5){const e=(q.i/13)%2?1:-1,w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
       o.str.moveTo(bx,bz);o.str.lineTo(q.x-q.nx*.6*e,q.z-q.nz*.6*e);o.hand.moveTo(bx-tx*.35,bz-tz*.35);o.hand.lineTo(bx+tx*.35,bz+tz*.35);o.shb.moveTo(bx,bz);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
     else if(i<n-1&&q.i%(BOB?12:6)===0){const w=wid(q.y);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
       if(!BOB&&q.y>7.5&&i+6<n){const b=sm[i+6],w2=wid(b.y),e=(q.i/6)%2?1:-1;o.str.moveTo(q.x-q.nx*w*e,q.z-q.nz*w*e);o.str.lineTo(b.x+b.nx*w2*e,b.z+b.nz*w2*e);}
@@ -100,6 +106,7 @@ function strip(sm){
   });
   if(BOB){side(o.rail,-1.02);side(o.rail,1.02);} // bords de la gouttière
   else if(INV){side(o.rail,-.5);side(o.rail,.5);} // rails de roulement de part et d'autre de la poutre caisson
+  else if(STL){side(o.rail,-.62);side(o.rail,.62);} // deux rails tubulaires
   else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);}
   o.h=hs/n;const k=clamp(o.h/30,0,1);o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
@@ -145,7 +152,7 @@ let tunnelP=null,tunnelC=[5,98];
     const near=q=>q&&Math.hypot(m[0]-q[0],m[1]-q[1])<q[2];
     LY.bld.push(Object.assign({p:mkPath(pts,true),m,lit,dark,st:near(SITE.stationAt),h:7,canopy:false,fade:(SITE.fade||[]).some(near)},o));};
   OSM.feats.forEach((f,i)=>{
-    const k=f.k,c=f.c&&f.p.length>3,p=mkPath(f.p,c);
+    const k=f.k,c=f.c&&f.p.length>3,p=mkPath(f.p,c);if(c&&f.h)for(const h of f.h)p.addPath(mkPath(h,true)); // anneaux intérieurs (lac dans une place…) : orientation opposée, trou
     if(f.n&&!seen.has(f.n)&&!(SITE.hideNames||[]).includes(f.n)&&!k.startsWith('highway')){seen.add(f.n);const m=cen(f.p);PLACES.push([f.n.replace(/ \(\d+\)/,''),m[0],m[1]]);}
     if(k==='natural=water'||k==='landuse=reservoir'){if(c)LY.water.push(p);}
     else if(k.startsWith('waterway'))(c?LY.water:LY.canal).push(p);
@@ -216,6 +223,12 @@ function drawCar(t,k,shadow){
     ctx.fillStyle='#17181c';ctx.beginPath();ctx.roundRect(-hl+.18,-hw+.12,2*hl-.44,CW-.24,.1);ctx.fill();
     ctx.fillStyle=t.col2;ctx.fillRect(-hl+.08,-hw,.16,CW);ctx.fillRect(-.35,-.32,.7,.64);
     if(k===0){ctx.fillStyle=t.col2;ctx.beginPath();ctx.moveTo(hl-.25,-.3);ctx.lineTo(hl+.05,0);ctx.lineTo(hl-.25,.3);ctx.fill();}
+  }else if(STL){ // wagon posé sur les rails : caisse arrondie, siège et barre de maintien (lapbar) sombres, roues en bout
+    ctx.fillStyle='#1c1d22';ctx.fillRect(-hl+.12,-hw-.12,.3,CW+.24);ctx.fillRect(hl-.42,-hw-.12,.3,CW+.24);
+    ctx.fillStyle=t.col;ctx.beginPath();ctx.roundRect(-hl,-hw,2*hl,CW,k===0?[.14,.55,.55,.14]:.16);ctx.fill();
+    ctx.fillStyle=t.col2;ctx.fillRect(-hl+.04,-hw,.1,CW);ctx.fillRect(-hl+.1,-.04,2*hl-.2,.08);
+    ctx.fillStyle='#17181c';ctx.beginPath();ctx.roundRect(-hl+.22,-hw+.14,2*hl-.5,CW-.28,.1);ctx.fill();
+    if(k===0){ctx.fillStyle=t.col2;ctx.beginPath();ctx.moveTo(hl-.3,-.25);ctx.lineTo(hl-.04,0);ctx.lineTo(hl-.3,.25);ctx.fill();}
   }else{
     ctx.fillStyle='#1c1d22';ctx.fillRect(-hl+.08,-hw-.2,.36,CW+.4);ctx.fillRect(hl-.44,-hw-.2,.36,CW+.4);
     ctx.fillStyle=t.col;ctx.beginPath();ctx.roundRect(-hl,-hw,2*hl,CW,k===0?[.18,.45,.45,.18]:.18);ctx.fill();
@@ -312,7 +325,7 @@ function drawWorld(dt){
   ctx.strokeStyle='#b8ad8c';lw(1.6,1);ctx.fillStyle=TEX.water;for(const p of LY.water){ctx.stroke(p);ctx.fill(p);}
   ctx.strokeStyle=TEX.water;ctx.lineWidth=5;for(const p of LY.canal)ctx.stroke(p);
   ctx.fillStyle='#9a7b55';for(const p of LY.pier)ctx.fill(p);
-  if(!BOB&&!INV){ctx.strokeStyle=TEX.dirt;ctx.globalAlpha=.85;ctx.lineWidth=8.5;ctx.stroke(dirtP);ctx.globalAlpha=1;} // terre battue sous la charpente en bois
+  if(WOODY){ctx.strokeStyle=TEX.dirt;ctx.globalAlpha=.85;ctx.lineWidth=8.5;ctx.stroke(dirtP);ctx.globalAlpha=1;} // terre battue sous la charpente en bois
   ctx.strokeStyle='#6f7176';ctx.lineWidth=5.2;for(const p of LY.road)ctx.stroke(p);ctx.strokeStyle=TEX.asph;ctx.lineWidth=4.4;for(const p of LY.road)ctx.stroke(p);
   ctx.fillStyle=TEX.sand;for(const p of LY.footA)ctx.fill(p);
   ctx.strokeStyle='#a89a78';ctx.lineWidth=3.8;for(const p of LY.foot)ctx.stroke(p);ctx.strokeStyle=TEX.sand;ctx.lineWidth=3.2;for(const p of LY.foot)ctx.stroke(p);
@@ -330,7 +343,7 @@ function drawWorld(dt){
     for(const b of LY.bld){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);if(b.fade)ctx.globalAlpha=roofA;ctx.fill(b.p);ctx.restore();}
     if(tunnelP){ctx.save();ctx.translate(2.2,1.7);ctx.fill(tunnelP);ctx.restore();}
     ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;
-    for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
+    for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:STL?.3:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
     for(const t of trains)for(let k=0;k<NCARS;k++)drawCar(t,k,true);
     if(SITE.draw&&SITE.draw.shadows)SITE.draw.shadows(ctx,dry,API);
   }
@@ -360,6 +373,11 @@ function drawWorld(dt){
       ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=.3;ctx.stroke(o.deck);
       ctx.strokeStyle=TKC.rail;lw(.14,.6);ctx.stroke(o.rail);
       ctx.strokeStyle=TKC.support;lw(.5,.8);ctx.stroke(o.str);lw(.7,1);ctx.stroke(o.hand);
+    }else if(STL){ // supports en A, puis entretoises, rails tubulaires et filet central
+      ctx.strokeStyle=TKC.support;lw(.34,.7);ctx.stroke(o.str);lw(.18,.6);ctx.stroke(o.hand);
+      ctx.strokeStyle='rgba(20,24,30,.28)';ctx.lineWidth=DECKW+.35;ctx.stroke(o.deck);
+      ctx.strokeStyle=TKC.spine;lw(.1,.5);ctx.stroke(o.ties);lw(.16,.6);ctx.stroke(o.deck);
+      ctx.strokeStyle=TKC.rail;lw(.2,.7);ctx.stroke(o.rail);
     }else{
       ctx.strokeStyle='#6e6a63';lw(.16,.7);ctx.stroke(o.str);
       ctx.strokeStyle=o.col;ctx.lineWidth=DECKW;ctx.stroke(o.deck);

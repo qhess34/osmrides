@@ -85,3 +85,17 @@ Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « re
 
 27. **OzIris — plan des figures.** La page envoyée ne contient que des miniatures : le panneau du plan des figures est illisible. Pouvez-vous envoyer l'image en grand (capture plein écran du panneau ou photo) ?
 28. **OzIris — trains.** Un article annonce un 4e train : combien de trains aujourd'hui, et de quelles couleurs ?
+
+## Goudurix
+
+Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone) et `goudurix-file-correction.jpg` (file, gare, sortie, garage, repères F1 à F11). Les numéros 1 à 16 renvoient à `goudurix-trace-complete.png`. Détails : `docs/goudurix-notes.md`.
+
+29. **Trains.** Deux trains de 7 wagons (RCDB) : combien en service aujourd'hui, de quelles couleurs (nouveaux trains 2025) ? Un seul ou deux sur le parcours en même temps ?
+30. **Inversions.** Nos bosses (vers 6, 10–11, 12–13, 14) sont estimées. Où sont le looping vertical, le batwing, le papillon et la double vrille, et dans quel ordre ? (« le looping est au 6 », etc.)
+31. **Freins.** Y a-t-il un frein de bloc en parcours ? Le nôtre (rouge, entre 8 et 9, s ≈ 360 m) est supposé. Le frein final va-t-il bien de 16 à la gare, la tête du train s'arrêtant à ≈ 5 m de la gare ?
+32. **Lift.** Va-t-il bien du 2 (s ≈ 44 m) au 4 (s ≈ 136 m) ?
+33. **Garage.** La voie de maintenance (violet, à gauche du lift) se détache au pied du lift (F10), mais notre aiguillage est branché juste après la gare. Les trains y vont-ils depuis la gare (marche avant, puis recul pour sortir) ? Combien de trains y tiennent-ils (nous : 2) ?
+34. **Moteurs.** Gare, frein final, voie de garage : freins seuls ou freins + pneus ?
+35. **Quais.** Embarquement côté est (F4) et débarquement côté ouest (F6) : juste, ou l'inverse ? Profondeur des quais ?
+36. **File.** OSM ne cartographie pas la file : nous avons pris le chemin F2 (80 m). Où est la vraie file (entrée, boucles, barrières) ? Peut-on l'allonger par la promenade ouest ?
+37. **Sortie.** Nous faisons sortir les visiteurs par la porte ouest (F6), sous le pied du lift (F7), vers la promenade (F8) : où est la vraie sortie ?

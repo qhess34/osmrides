@@ -121,10 +121,21 @@ X0, X1, Z0, Z1 = spec['bbox']; inb = lambda p: X0 <= p[0] <= X1 and Z0 <= p[1] <
 drop = set(track) | {str(i) for i in spec.get('drop_ways', [])} | {str(i) for i in spec.get('paths', {}).values()}
 KEYS = ('building', 'highway', 'natural', 'landuse', 'leisure', 'water', 'waterway', 'barrier', 'amenity', 'tourism', 'man_made', 'railway')
 feats = []; others = []
-def add(t, p, closed):
+def area(p): return sum(p[i][0] * p[(i + 1) % len(p)][1] - p[(i + 1) % len(p)][0] * p[i][1] for i in range(len(p))) / 2
+def inside(pt, P):
+    c = False; j = len(P) - 1
+    for i in range(len(P)):
+        if (P[i][1] > pt[1]) != (P[j][1] > pt[1]) and pt[0] < (P[j][0] - P[i][0]) * (pt[1] - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]: c = not c
+        j = i
+    return c
+def add(t, p, closed, holes=None):
     kind = next((k + '=' + t[k] for k in KEYS if k in t), None)
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
-        feats.append({'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p})
+        f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
+        if closed and holes:  # anneaux intérieurs (multipolygone) : lac dans une place, îlot…, orientés à l'opposé de l'anneau extérieur (remplissage « nonzero » du canevas)
+            h = [q if area(q) * area(p) < 0 else q[::-1] for q in holes if len(q) > 3 and inside(q[0], p)]
+            if h: f['h'] = h
+        feats.append(f)
 for wid, w in WAY.items():
     t = tags(w); n_ = nds(w)
     if not t or not n_: continue
@@ -137,10 +148,11 @@ for wid, w in WAY.items():
 for r in root.iter('relation'):
     t = tags(r)
     if t.get('type') == 'multipolygon':
+        holes = [[list(xy(i, 1)) for i in nds(WAY[m.get('ref')])] for m in r.findall('member') if m.get('type') == 'way' and m.get('role') == 'inner' and m.get('ref') in WAY]
         for m in r.findall('member'):
             if m.get('type') == 'way' and m.get('role') == 'outer' and m.get('ref') in WAY:
                 n_ = nds(WAY[m.get('ref')])
-                if n_: add(t, [list(xy(i, 1)) for i in n_], n_[0] == n_[-1])
+                if n_: add(t, [list(xy(i, 1)) for i in n_], n_[0] == n_[-1], holes)
 res = {'cps': cps, 'feats': feats, 'others': others,
        'paths': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('paths', {}).items()},
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
