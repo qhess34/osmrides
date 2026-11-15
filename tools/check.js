@@ -211,6 +211,20 @@ const root = path.resolve(__dirname, '..');
     } else if (hasYard) steps.push('scenario-missing:FAIL');
     man = steps.length ? steps.join(' ') : 'no yard train';
   }
+  { // règle du lift (par défaut pour toutes les attractions) : un seul train sur le lift (le suivant attend au pied), train retenu en haut tant que la zone de freinage suivante est occupée
+    const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    await p2.goto(url); await p2.waitForSelector('[data-act=closeHelp]'); await p2.click('[data-act=closeHelp]');
+    const lf = await p2.evaluate(() => { act('speed', 0); G.wx.next = 1e6; const o = [], A = trains[0], B = trains[1]; if (!B) return 'single-train';
+      const run = (c, m) => { for (let i = 0; i < m; i++) { if (c()) break; step(.025); } return c(); };
+      for (const t of trains) { t.seats.fill(null); } B.st = 'station'; B.s = S_ST; B.g = 0; B.phase = 'board'; B.v = 0; A.st = 'run'; A.s = S_LIFT0 + 20; A.v = 4; A.inLift = true; A.blk = false;
+      G.liftOff = true; B.st = 'run'; B.s = S_ST + 4; B.v = 3; B.inLift = false; B.blk = false; B.inBrake = false; G.estop = false;
+      run(() => false, 600); o.push(B.st === 'run' && B.v === 0 && B.s < S_LIFT0 && B.s > S_LIFT0 - 3 ? 'footHold' : 'footHold:FAIL');
+      G.liftOff = false; run(() => A.s > S_REL + 1, 4000); run(() => B.s > S_LIFT0 + 5, 2000); o.push(B.s > S_LIFT0 + 1 ? 'footGo' : 'footGo:FAIL');
+      // train retenu en haut : un autre train occupe la zone suivante (A arrêté sur la zone de freinage, freins serrés au pupitre)
+      A.st = 'run'; A.s = BLK.length ? BLK[0] - 3 : S_HOLD; A.v = 0; A.blk = true; A.hold = 0; G.zm.Fin = true; G.zk.Fin = true; if (BLK.length) { G.zm.B1 = true; G.zk.B1 = true; }
+      run(() => B.wait && B.v === 0, 6000); o.push(B.wait && B.s > S_LIFT1 - 6 && B.s < S_REL ? 'topHold' : 'topHold:FAIL'); return o.join(' '); });
+    man += ' | lift: ' + lf; await p2.close();
+  }
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
     act('speed', 0); G.wx.next = 1e6; __opStroll();

@@ -243,7 +243,9 @@ function updateStation(t,dt){
 function updateRun(t,dt){
   const z=zoneOf(t.s);
   if(z==='station'){t.v=Math.min(6,Math.sqrt(4*Math.max(0,S_ST-t.s))+.3);t.s+=t.v*dt;if(t.s>=S_ST-.05)arrive(t);return;}
-  if(z==='prelift')t.v=Math.min(5,t.v+1.5*dt);
+  if(z==='prelift'){const lb=liftBusy(t),d=S_LIFT0-.5-t.s; // un seul train sur le lift : le suivant attend au pied du lift
+    t.v=Math.min(lb?Math.sqrt(4*Math.max(0,d)):9,Math.min(5,t.v+1.5*dt));
+    if(lb&&d<.3){t.v=0;if(!t.lfTold){t.lfTold=true;log(t.name+' attend au pied du lift : un train est sur le lift.');}}else if(!lb)t.lfTold=false;}
   else if(z==='lift'){
     if(!t.inLift){t.inLift=true;G.wear.chain=Math.min(100,G.wear.chain+2.2);
       const c=G.wear.chain;t.failAt=Math.random()<(c>40?Math.pow((c-40)/60,2)*.35:0)?rnd(S_LIFT0+8,S_LIFT1-6):-1;}

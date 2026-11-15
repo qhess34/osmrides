@@ -71,7 +71,7 @@ function stationBusy(self){
   return trains.some(o=>o!==self&&(o.st==='station'||(YD.at!=='brake'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
-const LIFT_NEXT=BLK.length?BLK[0]:SITE.singleCourse?L:-1; // fin de la zone qui suit le lift : 1er frein de bloc ; SITE.singleCourse (sans frein de bloc) : un seul train entre la fin du lift et le frein final (fin du circuit)
+const LIFT_NEXT=BLK.length?BLK[0]:L; // fin de la zone qui suit le lift : 1er frein de bloc, sinon le frein final (fin du circuit) ; le train arrivé en haut du lift y est retenu tant que cette zone est occupée (SITE.singleCourse : ancien réglage, ignoré, devenu le comportement par défaut)
 const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
 const onRaSt=o=>RA&&o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
 const onPsb=o=>PSB&&o.st==='run'&&(o.toPre||o.s>S_HOLD+.5); // o est sur le frein avant gare ou s'y rend (zone de stockage Pre)
@@ -92,9 +92,10 @@ function blockReason(t){
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';
   if(G.wear.track>=100)return 'voie hors service';
-  if(trains.some(o=>o!==t&&o.st==='run'&&o.s>=S_ST&&o.s<S_REL))return 'bloc lift occupé';
+  if(trains.some(o=>o!==t&&o.st==='run'&&o.s>=S_ST&&o.s<S_LIFT0))return 'zone avant-lift occupée'; // un train attend au pied du lift ; un train sur le lift n'empêche pas de partir (le suivant attend au pied)
   return '';
 }
+const liftBusy=t=>trains.some(o=>o!==t&&o.st==='run'&&o.s>=S_LIFT0&&o.s<S_REL); // un autre train est sur le lift (ou retenu en haut) : un seul train à la fois sur le lift
 const parked=t=>t.st==='garage'||t.st==='station';
 const held=t=>t.st==='run'&&t.v===0&&(zoneOf(t.s)==='brake'||t.blk);
 const JOBS={
