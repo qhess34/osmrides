@@ -21,7 +21,9 @@ Règles complètes : `docs/NOUVELLE-ATTRACTION.md` — à tenir à jour à chaqu
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | menu des attractions |
+| `index.html` | écran titre de jeu, plein écran sans défilement : fond canvas (plan du parc, `parc/parc.data.js`), menu Continuer (dernière sauvegarde, `ts`) / Jouer (`#jouer` : vignettes `a.card[data-site]` + `.prog` « Partie en cours », mode carrière / bac à sable) / Plan du parc / Tutoriels / Installer ; vignettes `img/accueil/<site>.jpg` (captures du jeu, à refaire pour une nouvelle attraction) ; style `site.css` |
+| `apropos.html` | présentation du jeu (fonctions, données, limites) |
+| `tutos.html`, `img/tutos/` | six leçons illustrées en français (numérotées, bouton Essayer = `jeu.html?site=…&mode=sandbox`) (premiers pas, zones de freinage, garage avec une note par attraction, file, mobile, bac à sable et sauvegarde) ; captures JPEG < 120 Ko prises avec Playwright sur de vraies parties. À mettre à jour avec le jeu (libellés, boutons) |
 | `parc.html` | plan du parc entier (canvas, déplacement/zoom) ; charge `parc/parc.data.js` ; les attractions avec `site` ouvrent `jeu.html?site=…` |
 | `parc/parc.data.js` | `const PARK={…}` — généré par `tools/make_park.py` depuis l'extrait du parc, ne pas éditer à la main |
 | `tools/make_park.py` | `python3 tools/make_park.py extrait.osm parc/parc.data.js` (origine = Trace du Hourra) |
@@ -40,7 +42,7 @@ Règles complètes : `docs/NOUVELLE-ATTRACTION.md` — à tenir à jour à chaqu
 | `tools/make_site.py`, `tools/specs/<site>.json` | génération des données depuis un extrait `.osm` |
 | `tools/build.py` | fichier HTML unique autonome |
 | `manifest.webmanifest`, `icons/`, `sw.js` | application installable (PWA) : manifeste, icônes PNG (générées par `python3 tools/make_icons.py icons`), service worker hors ligne. Les pages l'enregistrent seulement en http(s) (rien sous `file://`). |
-| `tools/make_sw.py` | à la publication, `python3 tools/make_sw.py _site` écrit dans `_site/sw.js` la liste de TOUS les fichiers du site et une version (empreinte) : **une nouvelle attraction n'exige rien de plus**, tant que ses fichiers sont copiés dans `_site` par `.github/workflows/pages.yml` (ajouter là tout nouveau dossier ou type de fichier à la racine). Sans injection, `sw.js` met en cache à la volée. |
+| `tools/make_sw.py` | à la publication, `python3 tools/make_sw.py _site` écrit dans `_site/sw.js` la liste de TOUS les fichiers du site et une version (empreinte) : **une nouvelle attraction n'exige rien de plus**, tant que ses fichiers sont copiés dans `_site` par `.github/workflows/pages.yml` (ajouter là tout nouveau dossier ou type de fichier à la racine : `*.html *.css *.webmanifest sw.js engine sites parc icons img`). Sans injection, `sw.js` met en cache à la volée. |
 | `docs/` | notes de conception (relevés, choix, points ouverts) |
 
 Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier (`file://`). Pas de `fetch`, pas de modules ES.
