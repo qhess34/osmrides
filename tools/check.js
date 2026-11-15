@@ -116,7 +116,8 @@ const root = path.resolve(__dirname, '..');
       await click('#zLift_off'); ok('liftHeld', await until('trains[0].v===0&&trains[0].s>S_LIFT0-1&&trains[0].s<S_LIFT1', 4000)); // un seul frein de bloc : le train est retenu sur le lift
       // sortir le train 2 (voie 1) : pont face à la voie 1, Voie 1 AV (vers le pont, marche avant), pont sur G (il l'emporte), Rail de garage AV vers la gare, pont sur P
       await click('#y1'); ok('dev1', await until('devOn(0)', 4000));
-      await click('#zL1_f'); ok('onCar1', await until('trains[1].lane<0&&!trains[1].mv', 8000));
+      ok('laneBtnAV', await page.evaluate(() => !document.getElementById('zL1_f') && document.getElementById('zL1_b').textContent === 'AV'));
+      await click('#zL1_b'); ok('onCar1', await until('trains[1].lane<0&&!trains[1].mv', 8000));
       await click('#zRB_f'); ok('refuseRBfwd', await logHas('entre dans une voie en marche arrière'));
       await click('#yG'); ok('carried1', await until('devMoving()&&onCar(trains[1])', 40));
       ok('onRailB1', await until("trains[1].st==='run'&&G.dev.pos===PG&&tZone(trains[1])==='RB'", 4000));

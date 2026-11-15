@@ -156,13 +156,14 @@ function zoneCmd(z,c){
   if(c==='x'){let n=0;for(const t of z===CARR?ts.concat(trains.filter(o=>o.st==='garage'&&o.mv>0&&!ts.includes(o))):ts){if(t.mv){t.mv=0;n++;}if(t.fdrive){t.fdrive=0;n++;}if(t.st==='station'&&t.depReq&&t.phase!=='check'){t.depReq=false;t.phase='board';resetOps();n++;}}
     if(!n)return refuse(N+' : aucun mouvement à arrêter.');log('Moteurs arrêtés : '+N+'.');return true;}
   if(zK(z))return refuse(N+' : freins serrés, relâchez-les avant d\'avancer ou de reculer.');
-  if(z===CARR&&c==='f'&&!ts.some(o=>o.st==='garage'?!o.mv:o.v===0)){ // appareil face à une voie : la zone porteuse reprend la poussée du train arrêté à l'entrée de la voie
+  if(z===CARR&&c===(LREV?'b':'f')&&!ts.some(o=>o.st==='garage'?!o.mv:o.v===0)){ // appareil face à une voie : la zone porteuse reprend la poussée du train arrêté à l'entrée de la voie
     const j=G.dev.pos-1,lt=j>=0&&j<LANES.length&&!devMoving()?trains.filter(o=>o.st==='garage'&&o.lane===j&&!o.mv&&o.g<fwdLim(o)-.05):[];
     if(lt.length)return zK('L'+(j+1))?refuse('Freins de '+zName('L'+(j+1))+' serrés : '+lt[0].name+' ne peut pas y entrer.'):yardFwd(lt[0]);}
   if(!ts.length)return refuse(N+' : aucun train dans la zone.');
-  if(LREV&&(z[0]==='L'||(z==='RB'&&ts.some(o=>o.st==='garage')))){ // voies en arrière du chariot (yard.rev) : Reculer = vers le fond de la voie, Avancer = vers le chariot
-    if(z==='RB'&&c==='f')return refuse(N+' : le train sur le chariot entre dans une voie en marche arrière (Reculer).');
-    c=c==='f'?'b':'f';}
+  if(LREV&&z==='RB'&&ts.some(o=>o.st==='garage')){ // voies en amont du chariot (yard.rev) : le rail de garage pousse le train dans la voie en marche arrière (AR)
+    if(c==='f')return refuse(N+' : le train sur le chariot entre dans une voie en marche arrière (AR).');
+    c='f';}
+  // voie de garage : un seul moteur, _b = sortir de la voie vers l'appareil (marche avant si yard.rev, arrière sinon)
   if(z[0]==='L'){ // voie de garage : moteurs de la voie (le train de tête d'abord)
     if(c==='b'&&TRAV&&zK('RB'))return refuse('Freins du rail du chariot serrés : aucun train ne sort de '+N+'.');
     let ok=false;for(const t of ts.slice().sort((a,b)=>c==='f'?b.g-a.g:a.g-b.g)){if(c==='f'?t.mv>0:t.mv<0)continue;ok=(c==='f'?yardFwd(t):yardBack(t))||ok;if(ok)break;}
@@ -419,7 +420,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     if(z==='Lift')return `<div class="zrow">${nm}${E}${zb(z,'on','green','MAR','Lift : marche')}${zb(z,'off','amber','ARR','Lift : arrêt (la chaîne s\'arrête, le train sur le lift y reste)')}${E}${E}</div>`;
     return `<div class="zrow">${nm}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
       +(Z.brake?zb(z,'k','amber','F','Freins de la zone : serrer / relâcher (relâchement refusé si la section suivante est occupée)'):z==='St'?'<span class="plate" id="zSt_fr" title="Freins de gare : serrés automatiquement tant qu\'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)">AUTO</span>':E)
-      +(Z.drive?(Z.fwd===false?E:zb(z,'f','green','AV',z===CARR?'Moteurs de la zone : avancer le train qui s\'y trouve (appareil face à une voie : le pousse dans la voie)':'Moteurs de la zone : avancer le train qui s\'y trouve'))+zb(z,'b','green','AR','Moteurs de la zone : reculer le train qui s\'y trouve')+zb(z,'x','amber','STOP','Moteurs de la zone : arrêt'):E+E+E)+'</div>';};
+      +(Z.drive?(Z.fwd===false?E:zb(z,'f','green','AV',z===CARR?'Moteurs de la zone : avancer le train qui s\'y trouve (appareil face à une voie : le pousse dans la voie)':'Moteurs de la zone : avancer le train qui s\'y trouve'))+(Z.sec==='gar'?zb(z,'b','green',LREV?'AV':'AR','Moteurs de la voie : sortir le train de la voie vers '+DEVL+(LREV?' (marche avant)':' (marche arrière)')):zb(z,'b','green','AR',z===CARR&&LREV?'Moteurs de la zone : reculer (appareil face à une voie : pousse le train dans la voie, en marche arrière)':'Moteurs de la zone : reculer le train qui s\'y trouve'))+zb(z,'x','amber','STOP','Moteurs de la zone : arrêt'):E+E+E)+'</div>';};
   const sec=(t,k,x,h=1)=>`<div class="dsec"><span>${t}</span>${x||''}</div>`+(h?head:'')+ZONES.filter(Z=>Z.sec===k).map(row).join('');
   $('deskZones').innerHTML=sec('Gare','st')+sec('Lift','lift','',0)
     +sec('Zones de freinage','brk','<button class="pb sq sm blue" id="zAuto" data-act="zauto" title="Toutes les zones de freinage en AUTO">TOUT AUTO</button>')
