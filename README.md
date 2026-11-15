@@ -13,7 +13,7 @@ Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable 
 
 ## Jouer
 
-Ouvrir `index.html` dans un navigateur et choisir une attraction (aucune installation, aucune dépendance).
+Ouvrir `index.html` (page de présentation : le jeu, choix de l'attraction et du mode, lien vers les tutoriels `tutos.html`) dans un navigateur et choisir une attraction (aucune installation, aucune dépendance).
 Sur téléphone, le jeu s'installe comme une application (une fois ouvert depuis https://qhess34.github.io/t2z/) et fonctionne ensuite hors ligne : Android / Chrome, bouton « Installer l'application » de la page d'accueil (ou menu du navigateur) ; iPhone / iPad (Safari) : Partager → Sur l'écran d'accueil.
 Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 
@@ -27,7 +27,7 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 
 ## Organisation
 
-- `index.html` : choix de l'attraction. `jeu.html` : page de jeu commune.
+- `index.html` : page d'accueil (présentation, choix de l'attraction, mode, installation). `tutos.html` : six guides illustrés (captures `img/tutos/`). `site.css` : style commun de ces deux pages. `jeu.html` : page de jeu commune.
 - Moteur (scripts classiques chargés dans cet ordre, sans rien de propre à une attraction) :
   - `engine/core.js` : utilitaires, vecteurs, construction de la voie, constantes dérivées de `SITE`
   - `engine/garage.js` : voie de garage, aiguillage/pont (`GAR`, `SW0`, `gFrame`), quai, opérateurs, zones

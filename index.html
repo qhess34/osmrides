@@ -11,35 +11,60 @@
 <meta name="apple-mobile-web-app-title" content="T2Z">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<title>Simulateurs d'exploitation — Parc Astérix</title>
-<style>
-body{margin:0;min-height:100vh;background:#0f1626;color:#e8ecf6;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:max(48px,calc(24px + env(safe-area-inset-top))) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));box-sizing:border-box}
-h1{color:#f2c14e;margin:0 0 6px;font-size:26px}p.sub{color:#9aa7c4;margin:0 0 28px;text-align:center;max-width:620px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;width:100%;max-width:760px}
-a.card,div.card{display:block;background:#18223a;border:1px solid #32426a;border-radius:12px;padding:18px 20px;color:inherit;text-decoration:none}
-a.card:hover{border-color:#f2c14e}
-.card h2{margin:0 0 6px;font-size:19px;color:#f2c14e}.card p{margin:0;color:#b9c3da;font-size:14.5px}
-.card.soon{opacity:.55}.card.soon h2{color:#9aa7c4}
-small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
-.card .prog{display:block;margin-top:8px;color:#f2c14e;font-size:13px}#modeBar button{font:inherit;color:inherit;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:4px 12px;cursor:pointer}#modeBar button.on{border-color:#f2c14e;color:#f2c14e}
-#inst{display:none;margin:0 0 20px;text-align:center;color:#b9c3da;font-size:14px}
-#inst button{font:inherit;color:#f2c14e;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:6px 14px;cursor:pointer;min-height:36px}
-#inst button:hover{border-color:#f2c14e}#inst .x{color:#9aa7c4;margin-left:6px;padding:6px 10px}
-</style>
+<title>T2Z — simulateurs d'exploitation du Parc Astérix</title>
+<meta name="description" content="Jeu de fan : devenez chef d'attraction du Parc Astérix, pupitre par zones, trains, quai, file d'attente, garage, en vue aérienne sur le tracé réel.">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
-<h1>Simulateurs d'exploitation</h1>
-<p class="sub">Prenez le pupitre d'une attraction : trains, quai, file d'attente, garage, maintenance et météo, en vue aérienne sur le tracé réel.</p>
-<p class="sub" id="modeBar">Mode : <button id="mCareer">Carrière</button> <button id="mSand">Bac à sable</button> <span id="modeTxt"></span></p>
-<p id="inst"><button id="bInst" hidden>Installer l'application</button><span id="iosHint" hidden>Pour l'installer : Partager → Sur l'écran d'accueil.</span><button class="x" id="bInstX" hidden aria-label="Masquer">Masquer</button></p>
-<div class="grid">
-  <a class="card" href="parc.html"><h2>Plan du parc</h2><p>Carte du Parc Astérix entier d'après OpenStreetMap : allées, bâtiments, eau, tracés des montagnes russes. Point de départ vers chaque simulateur.</p></a>
-  <a class="card" href="jeu.html?site=zeus" data-site="zeus"><h2>Tonnerre 2 Zeus</h2><p>Montagnes russes en bois. 1 100 m, lift de 30 m, deux trains de 14 wagons, garage dans le prolongement de la gare.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=hourra" data-site="hourra"><h2>La Trace du Hourra</h2><p>Bobsleigh. 780 m, lift de 31 m, six trains de 7 bobs (cinq au plus en piste), garage à six voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=oziris" data-site="oziris"><h2>OzIris</h2><p>Coaster inversé Bolliger &amp; Mabillard. 1 000 m, lift de 40 m, cinq inversions, trois trains de 8 wagons à 4 places, garage à trois voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=goudurix" data-site="goudurix"><h2>Goudurix</h2><p>Montagnes russes en acier Vekoma à rails tubulaires. 950 m, lift de 36 m, sept inversions, deux trains de 7 wagons à 4 places, garage sur le retour.</p><small class="prog"></small></a>
+<a class="skip" href="#attractions">Aller aux attractions</a>
+<div class="wrap">
+<header class="top">
+  <h1>Simulateurs d'exploitation</h1>
+  <p>Vous êtes chef d'attraction au Parc Astérix : pupitre de commande, trains, quai, file d'attente, garage, maintenance et météo, en vue aérienne sur le tracé réel d'OpenStreetMap.</p>
+  <p id="inst"><button id="bInst" hidden>Installer l'application</button><span id="iosHint" hidden>Pour l'installer : Partager → Sur l'écran d'accueil.</span><button class="x" id="bInstX" hidden aria-label="Masquer">Masquer</button></p>
+  <nav class="nav" aria-label="Accès rapide">
+    <a class="btn main" href="#attractions">Jouer</a>
+    <a class="btn" href="parc.html">Plan du parc</a>
+    <a class="btn" href="tutos.html">Tutoriels</a>
+  </nav>
+</header>
+<main id="main">
+<section id="jeu" aria-labelledby="t-jeu">
+  <h2 id="t-jeu">Le jeu</h2>
+  <p>Chaque simulateur reprend une attraction du parc, vue de dessus. Vous ne conduisez pas les trains un par un : vous commandez des zones, comme au vrai pupitre.</p>
+  <div class="facts">
+    <div class="fact"><h3>Pupitre par zones</h3><p>Gare, lift, zones de freinage, garage : jamais de commande par train. Voyants, arrêt d'urgence, journal d'exploitation.</p></div>
+    <div class="fact"><h3>Portillons et lapbars</h3><p>Les portillons s'ouvrent et se ferment au bouton, en automatique aussi. Deux opérateurs vérifient les lapbars avant le départ.</p></div>
+    <div class="fact"><h3>Freins AUTO ou MANU</h3><p>Le cantonnement gère les freins de bloc et le frein final ; passez une zone en manuel pour la commander. Un seul train sur le lift, retenu en haut tant que la zone suivante est occupée.</p></div>
+    <div class="fact"><h3>Garage</h3><p>Aiguillage, rail mobile et chariot, pont transbordeur, marche arrière : on gare et on sort les trains à la main, avec verrouillages.</p></div>
+    <div class="fact"><h3>File d'attente</h3><p>Les visiteurs suivent les chemins, ne franchissent que les barrières ouvertes. Vous réglez les raccourcis sur la carte, ou évacuez la file.</p></div>
+    <div class="fact"><h3>Carrière ou bac à sable</h3><p>Budget, usure, pannes et météo, ou aucune contrainte pour s'entraîner. Sauvegarde automatique pour chaque attraction.</p></div>
+    <div class="fact"><h3>Mobile et hors ligne</h3><p>Pensé pour le téléphone (onglets, gestes, plein écran). Installable comme une application, il fonctionne ensuite sans connexion.</p></div>
+    <div class="fact"><h3>Tracé réel</h3><p>Tracé au sol, gares et files d'après OpenStreetMap. Les hauteurs et ce qui n'est pas relevé sont estimés, et signalés comme tels.</p></div>
+  </div>
+  <p style="margin-top:14px">Nouveau ? Les <a href="tutos.html">tutoriels</a> expliquent un premier départ, les zones de freinage, le garage, la file, le mobile et la sauvegarde.</p>
+</section>
+<section id="attractions" aria-labelledby="t-attr">
+  <h2 id="t-attr">Choisir une attraction</h2>
+  <p id="modeBar"><span id="modeLbl">Mode :</span> <button id="mCareer">Carrière</button> <button id="mSand">Bac à sable</button> <span id="modeTxt"></span></p>
+  <div class="grid">
+    <a class="card" href="jeu.html?site=zeus" data-site="zeus"><h3>Tonnerre 2 Zeus</h3><p>Montagnes russes en bois. 1 100 m, lift de 30 m, deux trains de 14 wagons, garage dans le prolongement de la gare.</p><small class="prog"></small></a>
+    <a class="card" href="jeu.html?site=hourra" data-site="hourra"><h3>La Trace du Hourra</h3><p>Bobsleigh. 780 m, lift de 31 m, six trains de 7 bobs (cinq au plus en piste), garage à six voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
+    <a class="card" href="jeu.html?site=oziris" data-site="oziris"><h3>OzIris</h3><p>Coaster inversé Bolliger &amp; Mabillard. 1 000 m, lift de 40 m, cinq inversions, trois trains de 8 wagons à 4 places, garage à trois voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
+    <a class="card" href="jeu.html?site=goudurix" data-site="goudurix"><h3>Goudurix</h3><p>Montagnes russes en acier Vekoma à rails tubulaires. 950 m, lift de 36 m, sept inversions, deux trains de 7 wagons à 4 places, garage sur le retour.</p><small class="prog"></small></a>
+    <a class="card" href="parc.html"><h3>Plan du parc</h3><p>Carte du Parc Astérix entier d'après OpenStreetMap : allées, bâtiments, eau, tracés des montagnes russes. Point de départ vers chaque simulateur.</p></a>
+  </div>
+</section>
+<section id="tutos" aria-labelledby="t-tuto">
+  <h2 id="t-tuto">Tutoriels</h2>
+  <p>Six guides courts, avec captures du jeu : <a href="tutos.html#premiers-pas">premiers pas</a>, <a href="tutos.html#freinage">zones de freinage</a>, <a href="tutos.html#garage">garer et sortir un train</a>, <a href="tutos.html#file">file d'attente</a>, <a href="tutos.html#mobile">mobile</a>, <a href="tutos.html#sauvegarde">bac à sable et sauvegarde</a>.</p>
+  <p><a class="btn" href="tutos.html">Ouvrir les tutoriels</a></p>
+</section>
+</main>
+<footer>
+  <p>Jeu de fan non officiel, sans lien avec le Parc Astérix. Tracés au sol et alentours : © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> (ODbL). Hauteurs et certains équipements estimés.</p>
+</footer>
 </div>
-<small>Jeux de fan non officiels, sans lien avec le Parc Astérix. Tracés au sol et alentours : © contributeurs OpenStreetMap (ODbL). Hauteurs estimées.</small>
 <script>
 /* Mode de jeu (carrière | bac à sable, mémorisé t2z.mode) et parties en cours (lecture seule de t2z.save.<site>.<mode>) */
 (function(){
