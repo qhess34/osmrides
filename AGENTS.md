@@ -94,6 +94,10 @@ Toute modification du moteur doit être revérifiée sur chaque attraction. Anno
 
 `nouvelle-attraction`, `corriger-attraction`, `verifier-attraction`, `captures-jeu`, `maj-tutos`, `compte-rendu-proprietaire` : procédures courtes qui renvoient à ce fichier et à `docs/`. Captures : `tools/captures.js` (tutoriels), `tools/thumbs.js` (vignettes).
 
+## Sous-agents (`.claude/agents/`)
+
+`explorateur` (Haiku, recherche en lecture seule), `testeur` (Haiku, tests et résumé PASS/FAIL), `attraction` (Sonnet, corrections et nouvelles attractions dans `SITE`), `moteur` (Opus, `engine/*.js`, générique, revérifie les 4 attractions). Une petite correction se fait directement, sans sous-agent ; une session par tâche, `/compact` en fin de tâche.
+
 ## Économie de tokens (obligatoire)
 
 - Commencer par `docs/ROADMAP.md` : il dit quelle tâche faire et quels fichiers lire.
