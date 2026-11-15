@@ -16,8 +16,12 @@ const YD=SITE.yard,TRAV=YD.device==='traverser',GSTEP=TLEN+1.2,MV=Object.assign(
    rail B en v=c-gap. Positions : P (c=0, rail A sur le circuit), G (c=gap, rail B sur le circuit), voie k (rail B face à la
    voie k, d'axe v=-d_k). Le train posé sur le rail B est emporté par le chariot : st 'garage', lane -1, g = avant du train
    en u. Voies droites, parallèles aux rails, de u=U_LANE à u=end ; le train y entre en marche avant et en sort en arrière. */
+/* Pont droit à rail unique (traverser + YD.single, OzIris) : le chariot porte UN rail, qui EST le tronçon du circuit (zone de freinage RB,
+   « Rail du pont ») : P = rail en ligne avec le circuit, 1…n = le même rail face à la voie k (circuit alors interrompu). Pas de rail B
+   distinct ni de position G : GAP = 0, le train arrêté à vide sur le rail en P est emporté par le chariot vers une voie. */
+const SG=TRAV&&!!YD.single;
 const R0=TRAV?S_HOLD-TLEN-(YD.pre!=null?YD.pre:.6):0,R1=TRAV?S_HOLD+(YD.post!=null?YD.post:.6):0,G_B=S_HOLD-R0,
-  GAP=YD.gap||3.2,U_LANE=R1-R0+(YD.laneGap!=null?YD.laneGap:.8),S_PRE=R0-.4; // S_PRE : arrêt avant le chariot quand aucun rail n'est en ligne
+  GAP=SG?0:YD.gap||3.2,U_LANE=R1-R0+(YD.laneGap!=null?YD.laneGap:.8),S_PRE=R0-.4; // S_PRE : arrêt avant le chariot quand aucun rail n'est en ligne
 const ANCH=YD.at==='brake'?S_HOLD:S_ST,SW_A=TRAV?R0:ANCH+YD.a,SW_B=TRAV?R1:ANCH+YD.b,SW_D=YD.slide||0;
 const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=f.T.x,tz=f.T.z;
   if(TRAV){const b=frameAt(SW_B,mkF()).p,d=Math.hypot(b.x-f.p.x,b.z-f.p.z);tx=(b.x-f.p.x)/d;tz=(b.z-f.p.z)/d;} // rail droit : corde du circuit
@@ -45,14 +49,14 @@ const LANES=TRAV?YD.lanes.map((ln,j)=>{
    le frein final (ou le rail mobile du parcours) va s'y arrêter et y attend que la gare soit libre. */
 const PSB=SITE.preBrake||null,S_PSB=PSB?L-(PSB.back!=null?PSB.back:1):L,PSB_A=PSB?S_PSB-(PSB.len||TLEN+.5):L;
 if(PSB&&PSB_A<S_HOLD+1)throw new Error('SITE.preBrake : pas de place entre le frein final et la gare');
-const PG=TRAV?LANES.length+1:-1; // position G du pont droit : rail B en ligne avec le circuit
+const PG=TRAV&&!SG?LANES.length+1:-1,PC=SG?0:PG; // position G du pont droit : rail B en ligne avec le circuit ; PC : position où le rail porteur raccorde le circuit (P si rail unique)
 /* Rail A escamotable (traverser + YD.retract) : le rail A n'est pas porté par le chariot ; il a deux positions, sur le circuit
    (G.ra.pos 0, v=0) ou retiré (1, v=RET, du côté opposé au garage). Le chariot ne porte que le rail B : positions G et voies 1…n
    (pas de P). Verrouillages : le rail A ne revient que si le rail B n'est pas en ligne ; le rail B ne vient en ligne que si le
    rail A est retiré. */
 const RA=TRAV&&!!YD.retract,RET=RA?(YD.retract.d||GAP):0,RAN=RA&&YD.retract.name||'Rail mobile du parcours',RAS=RA&&YD.retract.short||'Rail parcours'; // nom complet (phrases), forme courte (plaques)
-const OFF=[0].concat(LANES.map(l=>l.off),TRAV?[GAP]:[]),CMAX=Math.max(...OFF.map(Math.abs),RET);
-const POS_ORDER=TRAV?(RA?[]:[0]).concat([PG],LANES.map((_,j)=>j+1)):OFF.map((_,p)=>p),posId=p=>p===PG?'G':p||'P';
+const OFF=[0].concat(LANES.map(l=>l.off),TRAV&&!SG?[GAP]:[]),CMAX=Math.max(...OFF.map(Math.abs),RET);
+const POS_ORDER=TRAV?(RA?[]:[0]).concat(SG?[]:[PG],LANES.map((_,j)=>j+1)):OFF.map((_,p)=>p),posId=p=>p===PG?'G':p||'P';
 const DEV0=RA?(YD.retract.rest||1):0; // position du chariot au départ (rail A escamotable : face à une voie)
 function gFrame(j,u,o){
   const GP=LANES[j].path;u=clamp(u,0,GP[GP.length-1].d);let i=1;while(i<GP.length-1&&GP[i].d<u)i++;
@@ -75,7 +79,7 @@ const raLock=()=>trains.find(onRail); // rail A : immobile tant qu'un train y es
 const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-TLEN<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
-const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&&!(atAnchor(o)&&G.dev.pos===PG&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
+const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&&!(atAnchor(o)&&G.dev.pos===PC&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
   :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>ANCH+.2&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering))));
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
@@ -119,16 +123,16 @@ const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'cou
 const ZCFG=z=>Object.assign({brake:true,drive:!/^B\d/.test(z)},SITE.zones&&SITE.zones[z.replace(/\d+$/,'')],SITE.zones&&SITE.zones[z]);
 const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
   .concat(BLK.map((_,i)=>({id:'B'+(i+1),name:'Bloc '+(i+1),sec:'brk',auto:true})),[{id:'Fin',name:'Frein final',sec:'brk',auto:true}],
-    TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
+    SG?[{id:'RB',name:YD.railName||'Rail du pont',sec:'brk',auto:true}]:TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
     PSB?[{id:'Pre',name:PSB.name||'Frein avant gare',sec:'brk',auto:true}]:[],
     LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
   .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{fwd:false}:{})); // voies : pas d'Avancer (l'entrée est poussée par la zone porteuse CARR), Reculer et Arrêt seulement
 const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : pousse le train dans la voie en face de l'appareil (Avancer) // gare : pas de bouton de frein, freins liés au départ (stHeld)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
-const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z);
+const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z)||(SG&&z==='RB'),ZR=SG?'RB':'RA'; // ZR : zone du rail du circuit sur le pont droit (rail unique : RB, zone de freinage ET zone porteuse)
 const zK=z=>isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
-const bIn=()=>TRAV&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
+const bIn=()=>TRAV&&!SG&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
 const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
 function tZone(t){ // zone où se trouve un train
   if(t.st==='station')return 'St';
@@ -138,7 +142,7 @@ function tZone(t){ // zone où se trouve un train
   if(z==='lift'||z==='prelift')return 'Lift';
   if(z==='course'){for(let i=0;i<BLK.length;i++)if(t.s>BLK[i]-10&&t.s<BLK[i]+.6)return 'B'+(i+1);return '';}
   if(PSB&&t.s>PSB_A)return 'Pre';
-  if(TRAV&&t.s>R0+.5)return bIn()?'RB':'RA';
+  if(TRAV&&t.s>R0+.5)return SG||bIn()?'RB':'RA';
   return 'Fin';
 }
 const zT=z=>trains.filter(t=>tZone(t)===z);

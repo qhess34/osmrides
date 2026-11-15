@@ -34,9 +34,20 @@ Sources : https://en.wikipedia.org/wiki/OzIris · https://coasterbuzz.com/Roller
 - Profil en hauteur (lift 40 m, chute 35 m, cinq bosses pour les inversions à s ≈ 240, 340, 470–540, 610, 700) ; vitesse calculée max 26 m/s (93 km/h) ; croisements ≥ 4,4 m sauf s 493 × 558 (5,0 m).
 - Frein de bloc B1 (s ≈ 520, haut de la grande courbe nord) : supposé (3 trains imposent au moins 4 cantons).
 - Quais : embarquement à l'est (côté file), débarquement à l'ouest, sortie par un escalier et un passage sous la gare surélevée vers la boutique. Profondeurs de quai, poste de conduite.
-- Pont : deux rails (circuit P, garage G) sur le même chariot, écart 3,2 m ; entrée dans les voies en marche arrière (déduit de la position des voies) ; vitesses.
+- Pont : longueur du rail (un train + 2 × 0,6 m), jeu rail / voies (0,8 m), vitesse du chariot (0,5 m/s) et des manœuvres (1,5 m/s) ; entrée dans les voies en marche arrière (déduit de la position des voies).
 - Longueur (1,55 m) et largeur (2,6 m) d'un wagon ; couleurs des trains et de la voie (non vérifiées).
+
+## Garage — réponse du propriétaire (2026-11-15)
+
+« C'est la voie du parcours qui vient chercher les trains au garage. » Le pont porte **un seul rail**, le tronçon du circuit (fin du frein final) : `yard.single` (`docs/manoeuvres.md`, « Pont à rail unique »). P = en ligne ; 1…3 = face à la voie k, circuit interrompu (trains retenus avant le pont). Garer : le train vide s'arrête sur le rail (zone « Rail du pont » `RB` en MANU, freins serrés), le rail l'emporte devant la voie, Rail du pont AR le pousse dans la voie, le rail revient vide en P. Sortir : rail vide devant la voie, Voie k AV (sur le rail), rail en P, le train repart vers la gare. Captures : `docs/plans/oziris-garage.jpg`. Question 21 de `docs/plans/QUESTIONS.md` répondue (un rail) ; reste le sens de translation, déduit de la carte.
 
 ## Questions ouvertes
 
 Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
+
+## Documents fournis par le propriétaire (2026-11-15)
+
+- Page de recherche d'images enregistrée : seules des **miniatures** (≈ 590 × 330 px) y figurent.
+- `docs/sources/oziris-plan-figures-miniature.jpg` : panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Demander au propriétaire l'image en grand (capture plein écran du panneau) pour placer les inversions.
+- Une miniature d'article titre « Un quatrième train fera son arrivée sur le parcours d'OzIris » : **4 trains** possibles aujourd'hui (contre 3 dans la configuration). À confirmer par le propriétaire.
+- Photos : voie et poutre **bleues**, supports **crème / sable**, sièges suspendus ; décor égyptien (gare à colonnes, bassins).

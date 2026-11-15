@@ -50,6 +50,14 @@ yard: {
 }
 ```
 
+**Pont à rail unique (`single: true`, OzIris ; propriétaire, 2026-11-15 : « c'est la voie du parcours qui vient chercher les trains au garage »).** Le chariot porte **un seul rail**, qui **est** le tronçon du circuit (fin du frein final) : pas de rail B distinct, pas de `gap`, pas de position `G`.
+- Positions : `P` (`#yP`, rail en ligne avec le circuit) et `1…n` (`#y1…#yN`, le même rail face à la voie k ; le circuit est alors interrompu).
+- Zone unique `RB`, nom `yard.railName` (défaut « Rail du pont ») : zone de freinage du circuit en `P` (**AUTO** par défaut, comme `RA` : un train s'y arrête, y est stocké et repart vers la gare dès qu'elle est libre ; MANU : freins `#zRB_k`, Avancer `#zRB_f`) **et** zone porteuse face à une voie (`#zRB_b` pousse le train dans la voie en marche arrière avec `rev`, `#zRB_f` sinon). Les voies gardent leur seul bouton de sortie `#zL<k>_b` (+ freins, Arrêt).
+- Garer : Rail du pont en MANU, freins serrés (`#zRB_m`, `#zRB_k`) ; Gare AV (train vide) : il s'arrête sur le rail ; pont sur une voie libre (`#y<k>`, il emporte le train) ; relâcher (`#zRB_k`) puis `#zRB_b` (il recule dans la voie) ; `#yP` (rail vide), TOUT AUTO.
+- Sortir : pont (vide) face à la voie (`#y<k>`), `#zL<k>_b` (le train avance sur le rail), `#yP` (dernier canton libre, `maxRun`) : il retrouve le circuit sur le rail et, zone en AUTO, repart vers la gare dès qu'elle est libre.
+- Verrouillages : ceux du chariot ci-dessous (pas de mouvement avec un train qui roule sur le rail ou s'en approche, qui n'y est qu'en partie ou qui a des passagers ; voie occupée ; retour en `P` refusé si le dernier canton est occupé) ; rail hors de `P` : les trains du circuit s'arrêtent avant le pont (frein final en AUTO), le cantonnement retient les suivants ; tant qu'un train est porté, le dernier canton est tenu pour occupé ; l'arrêt d'urgence fige le chariot. Synoptique : un seul rail, circuit coupé tant que le rail n'est pas en `P`.
+- Vérifié par `tools/check.js oziris` (garer dans la voie 3, sortir les voies 1 et 2 ; refus : rail commandé pendant qu'un train y roule, train du circuit retenu rail hors de `P`, retour en `P` refusé dernier canton occupé, arrêt d'urgence).
+
 **Voies en amont du pont (`rev: true`, OzIris).** Les voies partent du bord amont du chariot, à côté du circuit, à contre-sens : le rail de garage (zone porteuse `RB`) pousse le train dans la voie en **marche arrière** (`#zRB_b`, AR ; `#zRB_f` refusé tant que le train porté fait face à une voie) ; il en ressort en **marche avant** par l'unique moteur de la voie, `#zL<k>_b` (étiquette « AV » pour ces voies, « AR » pour des voies en aval : l'id `_b` veut toujours dire « sortir de la voie vers l'appareil »). Le moteur garde ses abscisses et ses verrouillages ; seuls la géométrie (l'avant du train est en u = 2·G_B − g) et le sens de poussée de la zone porteuse sont retournés.
 
 **Rail mobile du parcours escamotable (`retract`, Trace du Hourra, prioritaire sur la description à deux rails ci-dessous).** Deux éléments mobiles indépendants :
@@ -94,9 +102,10 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 | Frein final | `Fin` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
 | Rail mobile du parcours du pont droit (rail A, plaque « Rail parcours ») | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
 | Rail du chariot (rail B, chariot) | `RB` | freins `k`, `f` (zone porteuse : pousse le train dans la voie en face), `b` (refusé), `x` | manuel |
+| Rail du pont (pont à rail unique, `single`) | `RB` | freins `k`, `f`, `b` (zone porteuse, voies en amont), `x` ; pas de `RA` | AUTO / MANU `m` |
 | Frein avant gare (si `SITE.preBrake`) | `Pre` | freins `k`, `f` (vers la gare), `x` | AUTO / MANU `m` |
 | Voies de garage | `L1…Ln` | freins `k`, **Reculer** `b`, Arrêt `x` — **pas d'Avancer** (propriétaire, 2026-11-15) | manuel |
-| Appareil | — | positions `#yP`, `#y1…#yN`, `#yG`, rail mobile du parcours `#yA0`/`#yA1` (inchangé) | manuel |
+| Appareil | — | positions `#yP`, `#y1…#yN`, `#yG` (deux rails), rail mobile du parcours `#yA0`/`#yA1` ; rail unique : `#yP`, `#y1…#yN` seulement | manuel |
 
 - **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`. Défaut : freins partout ; moteurs partout sauf sur les freins de bloc (estimé, à confirmer par attraction).
 - **AUTO / MANU** (zones de freinage) : en AUTO (défaut) le cantonnement serre et relâche seul ; en MANU, `k` serre / relâche et les moteurs obéissent au pupitre. Passer en MANU serre les freins si un train y est arrêté. `#zAuto` remet toutes les zones en AUTO. En MANU, freins relâchés, le cantonnement reste actif (sécurité).
