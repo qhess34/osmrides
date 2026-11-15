@@ -75,7 +75,7 @@ function yardFwd(t){
     if(t.mv)return false;
     if(devMoving()||!G.dev.pos||G.dev.pos===PG)return refuse(t.name+' : '+DEVL+' n\'est pas en place face à une voie de garage.');
     const j=G.dev.pos-1;if(trains.some(o=>o.st==='garage'&&o!==t&&o.lane===j))return refuse('Voie '+(j+1)+' ('+LANES[j].name+') occupée.');
-    t.lane=j;t.mv=1;log(t.name+' entre sur '+posName(j+1)+'.');return true;
+    t.lane=j;t.mv=1;log(t.name+' entre'+(LREV?' en marche arrière':'')+' sur '+posName(j+1)+'.');return true;
   }
   if(TRAV&&t.st!=='garage')return refuse(t.name+' : le chariot emporte le train. Pont sur G, train arrêté à vide sur le rail de garage, puis pont sur une voie libre.');
   if(t.st==='garage'){
@@ -83,7 +83,7 @@ function yardFwd(t){
     if(t.mv>0)return false;
     if(t.g-TLEN<L_.dev-.01&&!devOn(t.lane))return refuse(t.name+' ne franchit pas '+DEVL+' : il n\'est pas en place sur '+posName(t.lane+1)+'.');
     if(fwdLim(t)-t.g<.05)return refuse(t.name+(t.g>=L_.end-.05?' est déjà en bout de voie.':' est bloqué par le train garé devant lui.'));
-    t.mv=1;log(t.name+' avance vers le fond de '+posName(t.lane+1)+'.');return true;
+    t.mv=1;log(t.name+(LREV?' recule':' avance')+' vers le fond de '+posName(t.lane+1)+'.');return true;
   }
   if(!atAnchor(t))return refuse(t.name+' doit être arrêté '+(YD.at==='brake'?'sur le frein final':'en gare, à quai')+' pour quitter le circuit.');
   if(count(t)>0)return refuse(t.name+' a des passagers : il ne quitte jamais le circuit.');
@@ -111,7 +111,7 @@ function yardBack(t){
     if(out&&!anchorFree(t))return refuse(ANCH_NAME[0].toUpperCase()+ANCH_NAME.slice(1)+' n\'est pas libre : '+t.name+' reste au garage'+(YD.at==='brake'?'.':' (bloquez au besoin l\'autre train au frein final).'));
     return refuse(t.name+' est bloqué par un autre train garé derrière lui.');
   }
-  t.mv=-1;log(t.name+' recule'+(TRAV?' vers le rail de garage du pont.':lim<=0?' vers '+ANCH_NAME+'.':'.'));return true;
+  t.mv=-1;log(t.name+(LREV?' avance':' recule')+(TRAV?' vers le rail de garage du pont.':lim<=0?' vers '+ANCH_NAME+'.':'.'));return true;
 }
 function updateYard(t,dt){
   if(!t.mv||G.estop)return;
@@ -153,6 +153,9 @@ function zoneCmd(z,c){
     if(!n)return refuse(N+' : aucun mouvement à arrêter.');log('Moteurs arrêtés : '+N+'.');return true;}
   if(zK(z))return refuse(N+' : freins serrés, relâchez-les avant d\'avancer ou de reculer.');
   if(!ts.length)return refuse(N+' : aucun train dans la zone.');
+  if(LREV&&(z[0]==='L'||(z==='RB'&&ts.some(o=>o.st==='garage')))){ // voies en arrière du chariot (yard.rev) : Reculer = vers le fond de la voie, Avancer = vers le chariot
+    if(z==='RB'&&c==='f')return refuse(N+' : le train sur le chariot entre dans une voie en marche arrière (Reculer).');
+    c=c==='f'?'b':'f';}
   if(z[0]==='L'){ // voie de garage : moteurs de la voie (le train de tête d'abord)
     if(c==='b'&&TRAV&&zK('RB'))return refuse('Freins du rail du chariot serrés : aucun train ne sort de '+N+'.');
     let ok=false;for(const t of ts.slice().sort((a,b)=>c==='f'?b.g-a.g:a.g-b.g)){if(c==='f'?t.mv>0:t.mv<0)continue;ok=(c==='f'?yardFwd(t):yardBack(t))||ok;if(ok)break;}
@@ -257,7 +260,7 @@ function updateRun(t,dt){
       if(t.v<.25){t.v=0;if(!t.preTold){t.preTold=true;log(t.name+' attend avant '+DEVL+' : '+(FL?'frein final serré au pupitre.':raFull?zName('RA')+' occupé : '+t.name+' attend au frein final (stockage).':bIn()?'rail de garage en ligne ; à vide, Avancer (frein final en MANU) l\'y conduit.':'aucun rail du circuit en ligne.'),'warn');}}}
     else{const vm=Math.sqrt(8*Math.max(0,S_HOLD-t.s));t.v=Math.min(slow,vm);t.preTold=false;
       if(vm<.25){t.v=0;t.hold+=dt;t.fdrive=0;const lock=TRAV?onB||zK('RA'):FL;
-        if(lock&&!t.lkTold){t.lkTold=true;log(onB?t.name+' est arrêté sur le rail de garage : '+DEVL+' sur une voie libre (il l\'emporte) puis Avancer (rail B), ou Avancer (rail B) vers la gare.'
+        if(lock&&!t.lkTold){t.lkTold=true;log(onB?t.name+' est arrêté sur le rail de garage : '+DEVL+' sur une voie libre (il l\'emporte) puis '+(LREV?'Reculer':'Avancer')+' (rail B), ou Avancer (rail B) vers la gare.'
           :t.name+' arrêté '+(TRAV?'sur '+zName('RA'):'au frein final')+' (serré au pupitre).','warn');}
         if(t.hold>=1&&!lock&&!stationBusy(t)&&!G.estop&&!G.brakeFault&&!(YD.at==='brake'&&(TRAV?!circIn():devOff()||trains.some(yardBusy)))){t.entering=true;t.hold=0;t.lkTold=false;}}}
   }

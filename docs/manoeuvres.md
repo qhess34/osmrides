@@ -50,6 +50,8 @@ yard: {
 }
 ```
 
+**Voies en amont du pont (`rev: true`, OzIris).** Les voies partent du bord amont du chariot, à côté du circuit, à contre-sens : le train porté par le rail de garage y entre en **marche arrière** (Rail de garage AR, puis la voie recule vers le fond) et en ressort en **marche avant** (Voie k AV jusque sur le rail de garage). Le moteur garde ses abscisses et ses verrouillages ; seuls la géométrie (l'avant du train est en u = 2·G_B − g) et le sens des boutons Avancer / Reculer des zones `RB` et `L<k>` sont retournés.
+
 **Rail mobile du parcours escamotable (`retract`, Trace du Hourra, prioritaire sur la description à deux rails ci-dessous).** Deux éléments mobiles indépendants :
 - rail mobile du parcours (rail du circuit, zone de freinage) : deux positions seulement, sur le circuit (`#yA0`) ou retiré de `d` m à l'opposé du garage (`#yA1`) ; il ne porte jamais de train vers les voies ;
 - chariot du rail du chariot (rail de garage, porte le train) : `G` (`#yG`, rail du chariot en ligne) ou face à la voie k (`#yk`) ; pas de position `P` (pas de `#yP`) ; au départ face à la voie `rest`.

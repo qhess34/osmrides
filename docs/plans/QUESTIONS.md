@@ -1,6 +1,6 @@
 # Questions pour le propriétaire — plans à annoter
 
-Six images, trois par attraction. `<id>-trace-complete.png` montre le **tracé complet** seul, sur fond clair, avec un rond numéroté **tous les 50 m** (tableau : distance, hauteur estimée, zone), un point tous les 10 m et le sens de marche ; c'est la meilleure base pour placer freins et moteurs. Les deux autres images montrent la vue aérienne et la gare / le garage. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
+Images par attraction (Trace du Hourra, Tonnerre 2 Zeus, OzIris). `<id>-trace-complete.png` montre le **tracé complet** seul, sur fond clair, avec un rond numéroté **tous les 50 m** (tableau : distance, hauteur estimée, zone), un point tous les 10 m et le sens de marche ; c'est la meilleure base pour placer freins et moteurs. Les deux autres images montrent la vue aérienne et la gare / le garage. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
 
 **Comment répondre** (au choix, sur téléphone) :
 - ouvrir l'image, **dessiner ou entourer** directement dessus (zone de freinage, sens des voies, position du chariot), puis renvoyer l'image annotée ;
@@ -65,3 +65,20 @@ La file de Tonnerre 2 Zeus est validée par le propriétaire : ne pas y toucher.
 15. **Boucles et raccourcis.** Combien de boucles peuvent être ouvertes ou fermées, où sont les barrières (la nôtre au 35 est estimée) ?
 16. **Arrivée en gare.** Par où la file entre-t-elle dans la gare (48), combien de couloirs vers les portillons ?
 17. **Sortie.** Le trait bleu (sortie) est-il juste ?
+
+---
+
+## OzIris
+
+Images : `oziris-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone), `oziris-file-correction.jpg` (file, gare, sortie, repères 1 à 16) et `oziris.jpg` (rendu du jeu : vue d'ensemble, gare, inversion, garage).
+Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « repère F<n> » renvoie à `oziris-file-correction.jpg`.
+
+18. **Trains.** Combien de trains en service : 3 (Wikipédia / RCDB) ou 2 (CoasterBuzz) ? Combien au plus sur le parcours en même temps ? Couleurs des trains et de la voie ?
+19. **Freins.** Y a-t-il un frein de bloc en cours de parcours ? Le nôtre (rouge, au 11, s ≈ 520 m) est supposé. Le frein final va-t-il bien du 16 au pont (17), puis zone d'attente jusqu'à la gare (1) ?
+20. **Inversions.** Nos cinq bosses (vers 6, 7–8, 10–11, 13, 14–15) sont estimées : où sont les inversions (« dive loop au 6 », etc.) ?
+21. **Pont transbordeur.** Le pont (doré, 17) porte-t-il deux rails côte à côte (circuit et garage) ou un seul rail qui emporte le train en laissant un trou dans le circuit ? Dans quel sens se déplace-t-il ?
+22. **Voies de garage.** Les trois voies (violet, 1 à 3) sont en amont du pont, à côté du frein final : le train y entre-t-il bien **en marche arrière** et en ressort-il en marche avant ? Un train par voie ?
+23. **Moteurs.** Gare, frein final, pont, voies : freins seuls ou freins + pneus ?
+24. **Quais.** Embarquement côté est (file, repère F12) et débarquement côté ouest : juste, ou l'inverse ?
+25. **Sortie.** Nous faisons descendre les visiteurs par un escalier au milieu du quai ouest (F13), passer sous la gare (F14), traverser la boutique (F15) et sortir sur l'allée (F16) : où est la vraie sortie ?
+26. **File.** La boucle ouest (F6, F7) peut-elle être fermée par une barrière à la fourche F5 ? Y en a-t-il d'autres ?
