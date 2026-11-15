@@ -74,7 +74,7 @@ Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane
 | Lift | marche / arrêt |
 | Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés ; moteurs avancer / reculer là où il y en a |
 | Chariot / aiguillage | position (P ou voie k) |
-| Voies de garage | freins, moteurs avancer / reculer |
+| Voies de garage | freins, moteurs reculer / arrêt (pas d'Avancer : l'entrée dans la voie est poussée par la zone porteuse) |
 
 Fait en T7 (ci-dessous). Les verrouillages restent valables.
 
@@ -91,8 +91,9 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 | Freins de bloc | `B1…Bn` | freins `k` (moteurs si `SITE.zones`) | AUTO / MANU `m` |
 | Frein final | `Fin` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
 | Rail mobile du parcours du pont droit (rail A, plaque « Rail parcours ») | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
-| Rail du chariot (rail B, chariot) | `RB` | freins `k`, `f`, `b`, `x` | manuel |
-| Voies de garage | `L1…Ln` | freins `k`, `f`, `b`, `x` | manuel |
+| Rail du chariot (rail B, chariot) | `RB` | freins `k`, `f` (zone porteuse : pousse le train dans la voie en face), `b` (refusé), `x` | manuel |
+| Frein avant gare (si `SITE.preBrake`) | `Pre` | freins `k`, `f` (vers la gare), `x` | AUTO / MANU `m` |
+| Voies de garage | `L1…Ln` | freins `k`, **Reculer** `b`, Arrêt `x` — **pas d'Avancer** (propriétaire, 2026-11-15) | manuel |
 | Appareil | — | positions `#yP`, `#y1…#yN`, `#yG`, rail mobile du parcours `#yA0`/`#yA1` (inchangé) | manuel |
 
 - **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`. Défaut : freins partout ; moteurs partout sauf sur les freins de bloc (estimé, à confirmer par attraction).
@@ -101,7 +102,8 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 - **Gare `f`** : appareil sur une voie (raccordement en gare) : le train vide à quai part au garage (règles d'Avancer ci-dessous) ; sinon le train **vide** quitte la gare (départ à vide ; avec passagers, bouton Départ après les lapbars). Les freins de gare sont liés au départ : fermés tant qu'un train est à quai, ouverts uniquement par la séquence Départ (portillons fermés, lapbars validés).
 - **Frein final `f`** : pont droit, rail du chariot en ligne : conduit le train **vide** arrêté avant le pont sur le rail du chariot (il s'y arrête) ; appareil sur une voie (raccordement au frein final) : le train quitte le circuit vers la voie ; sinon vers la gare. Frein final serré (MANU) : le train est retenu avant le pont (pont droit) ou au point d'arrêt (sinon). C'est ce qui remplace « Retenir pour le garage ».
 - **Rail du chariot `f`** : train porté par le chariot face à une voie : il entre dans la voie (marche avant) ; rail du chariot en ligne : il part vers la gare (jamais automatiquement).
-- **Voie `f` / `b`** : Avancer vers le fond de la voie ; Reculer vers le point de raccordement (aiguillage) ou sur le rail du chariot (pont droit). `x` arrête les moteurs de la zone. Freins serrés : la zone ne bouge plus et ses moteurs sont refusés ; on n'entre pas dans une voie aux freins serrés.
+- **Zone porteuse (`CARR`) et voies** (propriétaire, 2026-11-15) : les voies de garage n'ont **pas de bouton Avancer**. L'entrée dans une voie est poussée par la zone porteuse, appareil en place face à la voie : `RB` (Rail du chariot) pour un pont droit, `St` (Gare) pour un raccordement en gare (Zeus), `Fin` pour un raccordement au frein final sans pont droit. Avancer de la zone porteuse sans train dans la zone reprend la poussée d'un train arrêté à l'entrée de la voie ; son Arrêt `x` arrête aussi le train qu'elle pousse. La sortie se fait au **Reculer de la voie** (`#zL<k>_b`) : sur le rail du chariot (pont droit, chariot face à la voie, rail du chariot libre) ou jusqu'en gare (aiguillage sur la voie, gare libre). `x` de la voie arrête ses moteurs. Freins de voie serrés : la voie ne bouge plus ; on n'y entre pas. Verrouillages inchangés (train vide, appareil en place, capacité de la voie, `maxRun`, arrêt d'urgence).
+- **Frein avant gare `Pre`** (`SITE.preBrake:{back, len, name}`, Trace du Hourra) : zone de freinage de stockage juste avant l'entrée en gare, un train de long (`len`, défaut un train + 0,5 m), point d'arrêt à `back` m (défaut 1) avant le début de la gare, pneus. En AUTO, le train qui quitte le frein final (ou le rail mobile du parcours) n'y va que si elle est libre, s'y arrête et attend que la gare soit libre ; en MANU, `k` serre / relâche (relâchement refusé gare occupée) et `f` envoie le train en gare. Le frein final et le rail mobile du parcours attendent donc « frein avant gare libre » au lieu de « gare libre ».
 - Marche arrière refusée sur le circuit (gare, freins, rail mobile du parcours / rail du chariot).
 - L'arrêt d'urgence arrête tous les moteurs et refuse toute commande de moteur.
 
@@ -114,19 +116,19 @@ Ils ne s'ouvrent et ne se ferment **qu'au bouton du pupitre** (`#bGate`), en aut
 ### Séquence type : rentrer un train au garage (raccordement en gare, Zeus)
 
 1. Train vide à quai, portillons fermés ; aiguillage sur la voie `k` libre → attendre « en place ».
-2. Gare AV : le train quitte le circuit et s'arrête en bout de voie. Aiguillage sur `P`.
+2. Gare AV (zone porteuse) : les moteurs de gare poussent le train hors du circuit jusqu'en bout de voie. Aiguillage sur `P`.
 
 ### Séquence type : sortir un train (Zeus)
 
 1. Gare libre (au besoin frein final en MANU et serré pour retenir l'autre train).
-2. Aiguillage sur la voie, Garage AR : le train recule jusqu'en gare. Aiguillage sur `P`.
+2. Aiguillage sur la voie, Garage AR (Reculer de la voie) : le train recule jusqu'en gare. Aiguillage sur `P`.
 
 ### Pont droit à rail mobile du parcours escamotable (Trace du Hourra)
 
-**Stockage (propriétaire, 2026-11-15).** Le rail mobile du parcours est une **zone de freinage de stockage** : en AUTO, un train arrive au frein final, avance sur le rail mobile s'il est sur le circuit et libre, s'y arrête entièrement et y est retenu jusqu'à ce que la gare soit libre ; le train suivant est retenu au frein final derrière lui (le frein final et le rail mobile stockent un train chacun, le canton B3 retient le suivant). Le synoptique colore les deux zones (vert libre, ambre train retenu, rouge freins serrés). Vérifié par `tools/check.js hourra` (storeRA, storeFin, enterA, enterB).
+**Stockage (propriétaire, 2026-11-15).** Le rail mobile du parcours est une **zone de freinage de stockage** : en AUTO, un train arrive au frein final, avance sur le rail mobile s'il est sur le circuit et libre, s'y arrête entièrement et y est retenu jusqu'à ce que la gare soit libre ; le train suivant est retenu au frein final derrière lui (le frein final et le rail mobile stockent un train chacun, le canton B3 retient le suivant). Le synoptique colore les deux zones (vert libre, ambre train retenu, rouge freins serrés). Avec le frein avant gare (propriétaire, 2026-11-15) : trois positions de stockage quand la gare est occupée — frein avant gare, rail mobile du parcours, frein final — puis chaque train entre en gare à son tour (Pre → gare, RA → Pre → gare, Fin → RA → Pre → gare). Vérifié par `tools/check.js hourra` (storePre, storeRA, storeFin, refusePre, enterA, enterB, enterC).
 
-- Garer : train vide (Gare AV), frein final MANU serré (arrêt avant le pont), rail mobile du parcours retiré, chariot sur G, relâcher, Frein final AV (sur le rail du chariot), chariot sur une voie libre (il l'emporte), Rail du chariot AV (dans la voie), chariot au repos, rail mobile du parcours sur le circuit, TOUT AUTO.
-- Sortir : chariot face à la voie, Voie k AR (sur le rail du chariot), rail mobile du parcours retiré, chariot sur G (dernier canton libre), Rail du chariot AV (vers la gare), chariot sur une voie, rail mobile du parcours sur le circuit.
+- Garer : train vide (Gare AV), frein final MANU serré (arrêt avant le pont), rail mobile du parcours retiré, chariot sur G, relâcher, Frein final AV (sur le rail du chariot), chariot sur une voie libre (il l'emporte), Rail du chariot AV (il le pousse dans la voie), chariot au repos, rail mobile du parcours sur le circuit, TOUT AUTO.
+- Sortir : chariot face à la voie, Voie k AR (sur le rail du chariot), rail mobile du parcours retiré, chariot sur G (dernier canton libre), Rail du chariot AV (vers le frein avant gare, puis la gare), chariot sur une voie, rail mobile du parcours sur le circuit.
 
 ## Verrouillages (sécurité, toujours actifs)
 

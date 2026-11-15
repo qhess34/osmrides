@@ -30,6 +30,9 @@ const SITE=(()=>{
     yard:{at:'brake',device:'traverser',side:1,gap:3.2,pre:.6,post:.6,laneGap:.8,move:{v:1.8,vc:.6,t:4},
       devName:'Chariot',devLabel:'le chariot',retract:{d:3.2,name:'Rail mobile du parcours',short:'Rail parcours',rest:1},
       lanes:[lane(1,8),lane(2,11.2),lane(3,14.4),lane(4,17.6),lane(5,20.8),lane(6,24)]},
+    // Frein avant gare (propriétaire, 2026-11-15) : zone de freinage de stockage entre le rail mobile du parcours et l'entrée de la gare, un train de long,
+    // avec pneus ; AUTO par défaut (retient le train tant que la gare est occupée), MANU au choix. Position exacte ESTIMÉE : avant du train arrêté à 1 m de la gare.
+    preBrake:{back:1,name:'Frein avant gare'},
     stationPoly:OSM.polys.station,stationAt:[1.5,1,9],
     fade:[[1.5,1,9],[-34,-7,12]],   // toits qui s'effacent : gare, garage
     plat:{load:5.9,exit:2.3,back:.6,front:1.2},
@@ -61,9 +64,9 @@ const SITE=(()=>{
     helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final, commandées par zones. Deux éléments mobiles : '
       +'le rail mobile du parcours (rail du circuit, zone de freinage), sur le circuit (C) ou retiré vers l\'est (E), et le chariot, qui porte le rail du chariot (rail de garage) et emporte le train : en ligne avec le circuit (G) ou face à une voie (1 à 6). '
       +'Pour garer un train : envoyez-le vide (Gare AV), frein final en MANU et serré (il s\'arrête avant le pont), rail parcours sur E, chariot sur G, relâchez le frein final puis Frein final AV : il roule sur le rail du chariot et s\'y arrête ; '
-      +'chariot sur une voie libre (il emporte le train), Rail du chariot AV : il entre dans la voie ; chariot ramené sur la voie 1, rail parcours sur C, TOUT AUTO. '
-      +'Pour sortir un train : chariot sur la voie du train, Voie k AR (il recule sur le rail du chariot), rail parcours sur E, chariot sur G avec le dernier canton libre, Rail du chariot AV : il entre en gare ; chariot sur une voie, puis rail parcours sur C. '
+      +'chariot sur une voie libre (il emporte le train), Rail du chariot AV : il le pousse dans la voie (les voies n\'ont pas de bouton Avancer) ; chariot ramené sur la voie 1, rail parcours sur C, TOUT AUTO. '
+      +'Pour sortir un train : chariot sur la voie du train, Voie k AR (il recule sur le rail du chariot), rail parcours sur E, chariot sur G avec le dernier canton libre, Rail du chariot AV : il va au frein avant gare puis entre en gare ; chariot sur une voie, puis rail parcours sur C. '
       +'Le chariot ne vient en ligne que si le rail mobile du parcours est retiré ; il ne revient que si le chariot n\'est pas en ligne. Ni l\'un ni l\'autre ne bouge si un train y roule ou n\'y est qu\'à moitié, ni avec des passagers. '
-      +'Aucun rail du circuit en ligne : les trains attendent avant le pont. Au plus cinq trains sur le parcours.'
+      +'Aucun rail du circuit en ligne : les trains attendent avant le pont. Gare occupée : un train attend sur le frein avant gare, un sur le rail mobile du parcours, un au frein final. Au plus cinq trains sur le parcours.'
   };
 })();

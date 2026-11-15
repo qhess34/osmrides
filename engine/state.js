@@ -10,7 +10,7 @@ const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0})
 G.stats=newStats();
 function mkTrain(i,name,col,col2,wear,st){
   return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
-    depReq:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
+    depReq:false,toPre:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0};
 }
 const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
 // Trains au garage au départ : voie SITE.trains[i].lane (1…n) ou première voie qui a de la place ; rangés depuis la butée
@@ -70,11 +70,15 @@ function stationBusy(self){
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
 const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
-const onRaSt=o=>o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
+const onRaSt=o=>RA&&o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
+const onPsb=o=>PSB&&o.st==='run'&&(o.toPre||o.s>S_HOLD+.5); // o est sur le frein avant gare ou s'y rend (zone de stockage Pre)
+// frein avant gare occupé : train arrêté dessus, qui s'y rend, ou qui en sort vers la gare (arrière pas encore entré)
+const preBusy=self=>trains.some(o=>o!==self&&o.st==='run'&&(o.toPre||o.s>PSB_A-.5||o.s<TLEN+.3));
+const aheadBusy=t=>PSB?preBusy(t):stationBusy(t); // section après le frein final / le rail mobile : frein avant gare s'il existe, sinon la gare
 function occupied(a,b,self){
-  if(b>=L&&RA){ // dernier canton : le frein final et le rail mobile stockent un train chacun (le suivant attend au frein final)
+  if(b>=L&&(RA||PSB)){ // dernier canton : frein final, rail mobile et frein avant gare stockent un train chacun (le suivant attend au frein final)
     const z=trains.filter(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN);
-    return z.length>=2||(z.length===1&&!onRaSt(z[0]))||trains.some(o=>o!==self&&yardBusy(o));}
+    return z.some(o=>!onRaSt(o)&&!onPsb(o))||(YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));}
   return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));
 }
 function blockReason(t){

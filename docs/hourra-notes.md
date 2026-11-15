@@ -10,6 +10,13 @@
 - Garage (T8) : voir « Pont transbordeur droit — fait (T8) » ci-dessous ; l'ancien chariot à tronçons en S (T4) est retiré.
 - File : way 1032354546 depuis l'allée (barrière d'entrée cliquable), fourche en (11.5,-9) : raccourci vers l'entrée principale (4.8,-1.7) ou boucle nord par les ways 1032685208/1032685209 jusqu'à la seconde entrée (2.9,-3.3). Sortie : way 1032354545 puis allées vers le sud et l'est.
 
+## Frein avant gare et voies sans Avancer (propriétaire, 2026-11-15)
+
+- **Frein avant gare** (zone `Pre`, « Frein avant gare ») entre le rail mobile du parcours et l'entrée de la gare : zone de freinage de stockage, un train de long, pneus (estimés), AUTO par défaut (retient le train tant que la gare est occupée), MANU au choix. Réglage générique `SITE.preBrake:{back:1, name}` (pas de repère de voie : données non régénérées). Position exacte **estimée** : avant du train arrêté à 1 m du début de la gare (s ≈ 770,5 sur 771,5), zone de s ≈ 759 à 770,5, soit ≈ 11 m après le bout du rail mobile du parcours (s ≈ 748).
+- Gare occupée : un train attend sur le frein avant gare, un sur le rail mobile du parcours, un au frein final ; ils entrent en gare à tour de rôle. Synoptique : trois zones colorées (« Frein final », « Rail parcours », « Avant gare »).
+- Voies de garage : plus de bouton Avancer. Rail du chariot AV pousse le train du chariot dans la voie en face ; Voie k AR le ramène sur le rail du chariot (freins et Arrêt de voie conservés).
+- Captures : `/home/user/t7shots/pupitre-hourra-v3.png`, `hourra-pregare.png` (non versionnées).
+
 ## Toujours estimé (à faire valider par le propriétaire)
 
 - Pont droit (T8) : côté des voies (ouest), écartement 3,2 m, première voie à 8 m de l'axe du circuit, longueur des voies (un train + 1,4 m), emplacement du chariot (s ≈ 736…748), vitesse du chariot (0,6 m/s, 4 s au moins), vitesse de manœuvre (1,8 m/s), entrée en marche avant / sortie en arrière.
@@ -86,4 +93,4 @@ Toutes ces coordonnées sont calculées sur plan, pas vérifiées à l'écran.
 
 ## Pupitre par zones (T7) — estimé
 
-Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), voies de garage ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
+Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), frein avant gare, voies de garage (Reculer seulement) ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).

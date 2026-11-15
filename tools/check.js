@@ -82,25 +82,36 @@ const root = path.resolve(__dirname, '..');
       if (f !== d0) { await click('#y' + d0); ok('devRest2', await until(`devOn(${d0 - 1})`, 4000)); }
       await click('#yA0'); ok('raIn2', await until('raIn()', 4000)); await shot('5-railA-revenu');
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin && !G.zm.B1));
-      // stockage : en AUTO, rail mobile du parcours (RA) et frein final (Fin) retiennent un train chacun pendant que la gare est occupée
-      const two = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage' && !t.mv).slice(0, 2); if (g.length < 2 || !trains.some(t => t.st === 'station')) return null;
-        g.forEach((t, k) => { t.st = 'run'; t.s = S_PRE - 14 - k * (TLEN + 3); t.v = 4; t.lane = 0; t.g = 0; t.mv = 0; t.depReq = false; t.inLift = false; t.inBrake = false; t.blk = false; t.entering = false; t.hold = 0; t.fdrive = 0; t.told = false; t.preTold = false; t.lkTold = false; });
-        return [g[0].i, g[1].i]; });
-      if (two) {
-        ok('storeRA', await until(`trains[${two[0]}].v===0&&tZone(trains[${two[0]}])==='RA'&&Math.abs(trains[${two[0]}].s-S_HOLD)<.5`, 2400));
-        ok('storeFin', await until(`trains[${two[1]}].v===0&&tZone(trains[${two[1]}])==='Fin'&&Math.abs(trains[${two[1]}].s-S_PRE)<.6`, 2400));
-        ok('heldStation', await page.evaluate(() => trains.some(t => t.st === 'station')) && await page.evaluate(i => trains[i].st === 'run', two[0]));
+      // stockage : en AUTO, frein avant gare (Pre), rail mobile du parcours (RA) et frein final (Fin) retiennent un train chacun pendant que la gare est occupée
+      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zPre_m')));
+      // le 3e train part d'avant le dernier frein de bloc (cantonnement)
+      const three = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage' && !t.mv).slice(0, 3); if (g.length < 3 || !trains.some(t => t.st === 'station')) return null;
+        g.forEach((t, k) => { t.st = 'run'; t.s = k < 2 ? S_PRE - 14 - k * (TLEN + 3) : BLK[BLK.length - 1] - 20; t.v = 4; t.lane = 0; t.g = 0; t.mv = 0; t.depReq = false; t.inLift = false; t.inBrake = false; t.blk = false; t.entering = false; t.toPre = false; t.hold = 0; t.fdrive = 0; t.told = false; t.preTold = false; t.lkTold = false; });
+        return g.map(t => t.i); });
+      if (three) {
+        const [a, b, c] = three;
+        ok('storePre', await until(`trains[${a}].v===0&&tZone(trains[${a}])==='Pre'&&Math.abs(trains[${a}].s-S_PSB)<.5`, 3000));
+        ok('storeRA', await until(`trains[${b}].v===0&&tZone(trains[${b}])==='RA'&&Math.abs(trains[${b}].s-S_HOLD)<.5`, 3000));
+        ok('storeFin', await until(`trains[${c}].v===0&&tZone(trains[${c}])==='Fin'&&Math.abs(trains[${c}].s-S_PRE)<.6`, 3000));
+        ok('heldStation', await page.evaluate(i => trains.some(t => t.st === 'station') && trains[i].st === 'run', a));
+        // frein avant gare en MANU : serré, relâchement refusé tant que la gare est occupée ; retour en AUTO
+        await click('#zPre_m'); await click('#zPre_k'); ok('preManu', await page.evaluate(() => zK('Pre')));
+        await click('#zPre_k'); ok('refusePre', await logHas('Frein avant gare : relâchement refusé'));
+        await click('#zAuto'); ok('preAuto', await page.evaluate(() => !G.zm.Pre));
         await shot('6-stockage');
-        await until("trains.some(t=>t.st==='station'&&t.phase==='board')", 8000);
-        await gates(); await click('#zSt_f'); // la gare se libère : le train du rail mobile entre, puis celui du frein final
-        ok('enterA', await until(`trains[${two[0]}].st==='station'`, 2400));
-        await until(`trains[${two[0]}].phase==='board'`, 8000);
-        await until(`!blockReason(trains[${two[0]}])`, 4000);
-        await gates(); await click('#zSt_f');
-        ok('enterB', await until(`trains[${two[1]}].st==='station'`, 2400));
+        if (shotDir) { await page.evaluate(() => { G.roofOff = true; const f = frameAt(L - 8, mkF()); cam.g = { x: f.p.x, z: f.p.z, s: 9 }; cam.follow = -1; for (let i = 0; i < 40; i++) render(.05); });
+          await page.screenshot({ path: path.join(shotDir, 'hourra-pregare.png') }); }
+        for (const [k, i] of [a, b, c].entries()) { // la gare se libère : chaque train entre à son tour (Pre, puis RA → Pre, puis Fin → RA → Pre)
+          await until("trains.some(t=>t.st==='station'&&t.phase==='board')", 8000);
+          await until("trains.some(t=>t.st==='station'&&!blockReason(t))", 4000);
+          await gates(); await click('#zSt_f');
+          ok('enter' + 'ABC'[k], await until(`trains[${i}].st==='station'`, 4000));
+          await until(`trains[${i}].phase==='board'`, 8000);
+        }
       }
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus : aiguillage dans le prolongement de la gare ; commandes par zones
+      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zSt_f')));
       await click('#bAuto'); await gates();
       await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>SW_B+TLEN+3", 4000));
       await click('#y1'); ok('dev1', await until('devOn(0)', 400));

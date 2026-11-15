@@ -117,7 +117,7 @@ function strip(sm){
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
     const sP=strip(gs.slice(0,37));sP.lk=j+1;chunks.push(sP,strip(gs.slice(36)));});
   for(let i=Math.round(S_LIFT0/DS);i<=Math.round((S_LIFT1+3)/DS);i++){const p=TR[i].p;chainP.lineTo(p.x,p.z);}
-  const finsR=[[S_BRK+3,TRAV?R0:S_HOLD]].concat(BLK.map(b=>[b-9,b])); // frein final et freins de bloc (≈ 9 m de patins avant chaque point d'arrêt, estimé)
+  const finsR=[[S_BRK+3,TRAV?R0:S_HOLD]].concat(BLK.map(b=>[b-9,b]),PSB?[[PSB_A+1,S_PSB]]:[]); // frein final et freins de bloc (≈ 9 m de patins avant chaque point d'arrêt, estimé)
   for(const [r0,r1] of finsR)for(let i=Math.round(r0/DS);i<Math.round(r1/DS);i+=3){const f=TR[i],l=Math.hypot(f.R.x,f.R.z)||1,nx=f.R.x/l,nz=f.R.z/l;finsP.moveTo(f.p.x-nx*.28,f.p.z-nz*.28);finsP.lineTo(f.p.x+nx*.28,f.p.z+nz*.28);}
 })();
 const swz=o=>o.sw===1?raC():o.rb?devC()-GAP:o.lk?devC()-OFF[o.lk]:0; // déplacement des tronçons portés par le chariot (circuit, transfert vers la voie lk), le long de (SW0.vx, SW0.vz)
@@ -441,9 +441,10 @@ function drawSyn(){
   p=at((S_LIFT0+S_LIFT1)/2);lab('Lift',p[0],p[1],'#d9bd82');
   BLK.forEach((b,i)=>{const held=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-b)<.5),closed=zK('B'+(i+1))||held;
     ctx.lineWidth=4.5;ctx.strokeStyle=closed?'#c0584a':'#6fa585';seg(b,b+Math.max(8,TLEN*.5),X,Z);p=at(b);lab('B'+(i+1),p[0],p[1],closed?'#e08a7c':'#8fc4a4');});
-  if(RA){ // pont droit à rail mobile : frein final et rail mobile du parcours sont deux zones de stockage (rouge = serrée, ambre = train retenu, vert = libre)
-    const hold=(a,b)=>trains.some(t=>t.st==='run'&&t.v===0&&t.s>a&&t.s<b+TLEN);
-    for(const [id,a,b,nm] of [['Fin',S_BRK,R0,'Frein final'],['RA',R0,L-1,'Rail parcours']]){const k=zK(id),h=hold(a,b+(id==='RA'?0:-TLEN+.5));
+  if(RA||PSB){ // zones de stockage : frein final, rail mobile du parcours, frein avant gare (rouge = serrée, ambre = train retenu, vert = libre)
+    const hold=id=>trains.some(t=>t.st==='run'&&t.v===0&&tZone(t)===id);
+    const zs=[['Fin',S_BRK,RA?R0:PSB_A,'Frein final']].concat(RA?[['RA',R0,PSB?R1:L-1,'Rail parcours']]:[],PSB?[['Pre',PSB_A,L-.5,'Avant gare']]:[]);
+    for(const [id,a,b,nm] of zs){const k=zK(id),h=hold(id);
       ctx.lineWidth=4.5;ctx.strokeStyle=k?'#c0584a':h?'#d9a441':'#6fa585';seg(a,b,X,Z);p=at((a+b)/2);lab(nm,p[0],p[1],k?'#e08a7c':h?'#ecc275':'#8fc4a4');}
   }else{
     ctx.lineWidth=4.5;ctx.strokeStyle=zK('Fin')?'#c0584a':'#6fa585';seg(S_BRK,L-1,X,Z);p=at((S_BRK+L)/2);lab('Frein final',p[0],p[1],zK('Fin')?'#e08a7c':'#8fc4a4');
