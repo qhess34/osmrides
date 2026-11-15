@@ -88,13 +88,13 @@ Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « re
 
 ## Goudurix
 
-Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone) et `goudurix-file-correction.jpg` (file, gare, sortie, garage, repères F1 à F11). Les numéros 1 à 16 renvoient à `goudurix-trace-complete.png`. Détails : `docs/goudurix-notes.md`.
+Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone) et `goudurix-file-correction.jpg` (file, gare, sortie, garage, repères F1 à F12). Les numéros 1 à 16 renvoient à `goudurix-trace-complete.png`. Détails : `docs/goudurix-notes.md`.
 
 29. **Trains.** Deux trains de 7 wagons (RCDB) : combien en service aujourd'hui, de quelles couleurs (nouveaux trains 2025) ? Un seul ou deux sur le parcours en même temps ?
 30. **Inversions.** Nos bosses (vers 6, 10–11, 12–13, 14) sont estimées. Où sont le looping vertical, le batwing, le papillon et la double vrille, et dans quel ordre ? (« le looping est au 6 », etc.)
-31. **Freins.** Y a-t-il un frein de bloc en parcours ? Le nôtre (rouge, entre 8 et 9, s ≈ 360 m) est supposé. Le frein final va-t-il bien de 16 à la gare, la tête du train s'arrêtant à ≈ 5 m de la gare ?
-32. **Lift.** Va-t-il bien du 2 (s ≈ 44 m) au 4 (s ≈ 136 m) ?
-33. **Garage.** La voie de maintenance (violet, à gauche du lift) se détache au pied du lift (F10), mais notre aiguillage est branché juste après la gare. Les trains y vont-ils depuis la gare (marche avant, puis recul pour sortir) ? Combien de trains y tiennent-ils (nous : 2) ?
+31. **Freins.** Y a-t-il un frein de bloc en parcours ? Le nôtre (rouge, au 9, s ≈ 437 m) est supposé. Le frein final est-il bien la diagonale ouest (du 14 au 16, juste avant l'aiguillage F10), le train s'arrêtant à l'aiguillage, ≈ 28 m avant la gare ?
+32. **Lift.** *(Corrigé par le propriétaire : le lift est la montée après la gare, ligne droite entre 15 et 16 de l'ancien plan.)* Fait : lift du 44 au 136 m, sens de marche inversé par rapport à la première version. Début et fin de la chaîne exacts ?
+33. **Garage.** La voie de maintenance (violet, F9) se raccorde au retour, à ≈ 30 m avant la gare (F10) ; notre aiguillage s'y branche et la voie repart à contre-sens (virage serré, estimé). Le train y entre-t-il en marche avant ou en arrière ? Combien de trains y tiennent-ils (nous : 2) ?
 34. **Moteurs.** Gare, frein final, voie de garage : freins seuls ou freins + pneus ?
 35. **Quais.** Embarquement côté est (F4) et débarquement côté ouest (F6) : juste, ou l'inverse ? Profondeur des quais ?
 36. **File.** OSM ne cartographie pas la file : nous avons pris le chemin F2 (80 m). Où est la vraie file (entrée, boucles, barrières) ? Peut-on l'allonger par la promenade ouest ?

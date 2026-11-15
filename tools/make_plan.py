@@ -47,15 +47,15 @@ for m in range(0, int(L) + 1, 50):
     rows.append((k, m, cps[i][1], zone(i)))
 d.rectangle([10, 10, 520, H - 10], fill='white', outline='black', width=3)
 d.text((30, 28), title, fill='black', font=FB(40))
-d.text((30, 90), 'Tracé complet (OSM), sens de marche : gare puis lift.', fill='black', font=F(20))
+d.text((30, 90), 'Tracé complet (OSM), sens de marche : gare puis lift droit au sud.', fill='black', font=F(20))
 d.text((30, 118), 'Ronds : tous les 50 m le long de la voie.', fill='black', font=F(20))
 y = 160
-for nm, c in (('Gare (quai estimé)', COL['gare']), ('Lift (estimé)', COL['lift']), ('Freins (estimés)', COL['frein']), ('Parcours', COL['parcours']), ('Voie de garage (OSM)', (122, 60, 150))):
+for nm, c in (('Gare (quai estimé)', COL['gare']), ('Lift (ligne droite après la gare)', COL['lift']), ('Freins (estimés)', COL['frein']), ('Parcours', COL['parcours']), ('Voie de garage (OSM)', (122, 60, 150))):
     d.rectangle([30, y, 70, y + 18], fill=c); d.text((82, y - 2), nm, fill='black', font=F(20)); y += 30
 y += 14; d.text((30, y), 'Rond  distance  hauteur  zone', fill='black', font=FB(20)); y += 32
 for r in rows: d.text((30, y), '%2d   s=%4d m   %4.1f m   %s' % (r[0], r[1], r[2], r[3]), fill='black', font=F(19)); y += 27
 y += 12
-for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Lift 36 m, chute 32,9 m (RCDB / Wikipédia).', 'Sept inversions : emplacements estimés.', 'Frein de bloc (s ≈ 360 m) : supposé.', 'Répondez avec les numéros : « inversion au 9 ».'):
+for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Lift 36 m, chute 32,9 m (RCDB / Wikipédia).', 'Sept inversions : emplacements estimés.', 'Frein de bloc (s ≈ 437 m) : supposé.', 'Répondez avec les numéros : « inversion au 9 ».'):
     d.text((30, y), t, fill=(110, 40, 40), font=F(19)); y += 26
 d.text((W - 60, 40), 'N', fill='black', font=FB(40)); d.polygon([(W - 48, 4), (W - 68, 36), (W - 28, 36)], fill='black')
 d.rectangle([W - 330, H - 70, W - 330 + 50 * sc, H - 60], fill='black'); d.text((W - 330, H - 100), '50 m', fill='black', font=F(22))

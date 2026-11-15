@@ -183,6 +183,29 @@ const root = path.resolve(__dirname, '..');
       await click('#zFin_k'); ok('finRel1', await until("trains[1].st==='station'", 2000));
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin));
       await click('#bAuto');
+    } else if (hasYard && !trav && brake) { // Goudurix : aiguillage au frein final (le train s'arrête à l'aiguillage, la zone porteuse est le frein final)
+      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zFin_f')));
+      await click('#bAuto'); await gates();
+      await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
+      // sortir le train garé : aiguillage sur la voie, Garage AR, puis aiguillage sur P une fois le train dégagé
+      await click('#y1'); ok('dev1', await until('devOn(0)', 400));
+      await click('#zL1_b'); ok('out1', await until("trains[1].st==='run'&&trains[1].v===0&&Math.abs(trains[1].s-S_HOLD)<.4", 8000)); // revenu sur le frein final
+      await click('#yP'); ok('devP', await until('!devOff()', 800));
+      ok('in1', await until("trains[1].st==='station'", 8000));
+      // frein final en MANU, serré : il retient le train 0 ; relâchement refusé tant que la gare est occupée (anti-collision)
+      await click('#zFin_m'); await click('#zFin_k');
+      ok('finHeld0', await until("trains[0].st==='run'&&trains[0].v===0&&Math.abs(trains[0].s-S_HOLD)<.4", 30000));
+      await click('#zFin_k'); ok('refuseAntiCollision', await logHas('relâchement refusé, section suivante occupée'));
+      // le train 1 repart (gare libre), puis garer le train 0 (vide, arrêté à l'aiguillage) : aiguillage sur la voie (entrée en gare bloquée), freins relâchés, Frein final AV le pousse dans la voie
+      await click('#zSt_f'); ok('depart1', await until("trains[1].st==='run'&&trains[1].s>S_ST+TLEN+3", 4000));
+      await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
+      await click('#zFin_k'); ok('finRel0', await until("!G.zk.Fin", 400));
+      await click('#zFin_f'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000));
+      await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
+      ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 12000));
+      await click('#yP'); ok('devP2', await until('!devOff()', 800));
+      await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin));
+      await click('#bAuto');
     } else if (hasYard) steps.push('scenario-missing:FAIL');
     man = steps.length ? steps.join(' ') : 'no yard train';
   }
