@@ -70,12 +70,15 @@ function stationBusy(self){
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
 const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
+const onRaSt=o=>o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
 function occupied(a,b,self){
+  if(b>=L&&RA){ // dernier canton : le frein final et le rail mobile stockent un train chacun (le suivant attend au frein final)
+    const z=trains.filter(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN);
+    return z.length>=2||(z.length===1&&!onRaSt(z[0]))||trains.some(o=>o!==self&&yardBusy(o));}
   return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));
 }
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
-  if(zK('St'))return 'freins de gare serrés';
   if(G.liftOff)return 'lift à l\'arrêt';
   if(YD.at!=='brake'&&devOff())return DEVN.toLowerCase()+' hors de P';
   if(YD.at!=='brake'&&trains.some(yardBusy))return 'manœuvre au garage';

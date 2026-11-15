@@ -27,7 +27,7 @@ Tenue par le chef de projet. Une tâche = une session courte, qui lit ce fichier
 
 ## Questions ouvertes au propriétaire
 
-- Q4 (T7) : quelles zones ont des moteurs (pneus) ? Supposé : gare, frein final, rails A/B, voies de garage ; freins de bloc sans moteurs. Les freins de gare sont-ils commandés à la main ou liés au départ ? Le rail A (Hourra) doit-il être une zone distincte du frein final ?
+- Q4 (T7) : quelles zones ont des moteurs (pneus) ? Supposé : gare, frein final, rails A/B, voies de garage ; freins de bloc sans moteurs. Les freins de gare sont-ils commandés à la main ou liés au départ ? **Réponse (propriétaire, 2026-11-15) : liés au départ.** Le rail mobile du parcours (rail A, Hourra) doit-il être une zone distincte du frein final ? **Réponse (propriétaire, 2026-11-15) : oui, zone de freinage de stockage (un train sur le rail mobile en attendant la gare, le suivant au frein final).**
 
 - ~~Q1~~ répondue le 2026-11-14 (voir `docs/hourra-notes.md`, « Garage — réponse du propriétaire »). Reste à confirmer à l'écran : position exacte du pont et orientation des voies dans le bâtiment OSM 148160581.
 - ~~Q2~~ répondue : 6 trains, 5 au plus sur le parcours (toujours un au garage), 6 voies de garage.

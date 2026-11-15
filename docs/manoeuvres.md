@@ -40,28 +40,28 @@ Zeus = `device: 'switch'`, 1 voie (trains en file, capacité calculée : 1). Tra
 ```
 yard: {
   at: 'brake', device: 'traverser',
-  side: 1,                 // côté du garage (1 = droite du sens de marche) ; le rail A sort du circuit du côté opposé
+  side: 1,                 // côté du garage (1 = droite du sens de marche) ; le rail mobile du parcours sort du circuit du côté opposé
   gap: 3.2,                // écart entre les axes des rails A (circuit) et B (garage) sur le chariot
   pre: .6, post: .6,       // rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
-  laneGap: .8,             // jeu entre le bout du rail B et le début des voies
+  laneGap: .8,             // jeu entre le bout du rail du chariot et le début des voies
   lanes: [ {name, d, len, cap}, … ],  // voies droites parallèles aux rails ; d = distance de l'axe du circuit à l'axe de la voie
   move: { v: 1.8, vc: .6, t: 4 },     // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
-  retract: { d: 3.2, name: 'Rail A', rest: 1 }  // facultatif : rail A escamotable, indépendant du chariot (ci-dessous)
+  retract: { d: 3.2, name: 'Rail mobile du parcours', short: 'Rail parcours', rest: 1 }  // facultatif : rail mobile du parcours escamotable, indépendant du chariot (ci-dessous)
 }
 ```
 
-**Rail A escamotable (`retract`, Trace du Hourra, prioritaire sur la description à deux rails ci-dessous).** Deux éléments mobiles indépendants :
-- rail A (rail du circuit, zone de freinage) : deux positions seulement, sur le circuit (`#yA0`) ou retiré de `d` m à l'opposé du garage (`#yA1`) ; il ne porte jamais de train vers les voies ;
-- chariot du rail B (rail de garage, porte le train) : `G` (`#yG`, rail B en ligne) ou face à la voie k (`#yk`) ; pas de position `P` (pas de `#yP`) ; au départ face à la voie `rest`.
-- Verrouillages : le rail B ne vient en ligne que si le rail A est retiré (et immobile) ; le rail A ne revient sur le circuit que si le chariot n'est ni en ligne ni en mouvement ; le rail A ne bouge pas si un train y est, y roule ou s'en approche ; le chariot garde les verrouillages ci-dessous (train en partie dessus, qui roule, passagers) ; les trains du circuit ne passent que si le rail A est sur le circuit ou le rail B en ligne (règle « à vide » inchangée) ; l'arrêt d'urgence fige les deux.
+**Rail mobile du parcours escamotable (`retract`, Trace du Hourra, prioritaire sur la description à deux rails ci-dessous).** Deux éléments mobiles indépendants :
+- rail mobile du parcours (rail du circuit, zone de freinage) : deux positions seulement, sur le circuit (`#yA0`) ou retiré de `d` m à l'opposé du garage (`#yA1`) ; il ne porte jamais de train vers les voies ;
+- chariot du rail du chariot (rail de garage, porte le train) : `G` (`#yG`, rail du chariot en ligne) ou face à la voie k (`#yk`) ; pas de position `P` (pas de `#yP`) ; au départ face à la voie `rest`.
+- Verrouillages : le rail du chariot ne vient en ligne que si le rail mobile du parcours est retiré (et immobile) ; le rail mobile du parcours ne revient sur le circuit que si le chariot n'est ni en ligne ni en mouvement ; le rail mobile du parcours ne bouge pas si un train y est, y roule ou s'en approche ; le chariot garde les verrouillages ci-dessous (train en partie dessus, qui roule, passagers) ; les trains du circuit ne passent que si le rail mobile du parcours est sur le circuit ou le rail du chariot en ligne (règle « à vide » inchangée) ; l'arrêt d'urgence fige les deux.
 - Séquences : voir « Commandes au pupitre par zones » ci-dessous.
 
-- Le chariot porte deux rails **droits et parallèles**, chacun long d'un train, posés sur une ligne droite du circuit (le train arrêté au point de raccordement y tient entier). Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus).
-- Positions : `P` (rail A en ligne), `G` (rail B en ligne, bouton `#yG`), `1…n` (rail B face à la voie k). La durée d'un déplacement dépend de la course.
-- Le train arrêté sur le rail B est **emporté** par le chariot (il suit le décalage du chariot à l'écran et dans la simulation). Il entre dans la voie en marche avant (`AV`) et en ressort en arrière (`AR`) jusque sur le rail B.
-- Rail du circuit hors ligne : les trains du circuit s'arrêtent avant le chariot ; seul un train vide conduit par Frein final AV roule sur le rail B en ligne, et il n'en repart vers la gare que sur Rail B AV.
-- Verrouillages propres : le chariot ne bouge pas si un train y roule, n'y est qu'en partie ou est en manœuvre ; il n'emporte qu'un train arrêté, vide, entièrement sur le rail B ; il ne porte pas un train vers une voie occupée ; il ne remet un train sur le circuit (`G`) que si le dernier canton est libre et que `maxRun` le permet. Tant qu'un train est sur le chariot, le dernier canton est tenu pour occupé.
-- Chaque voie est un canton ; le rail B en est un aussi.
+- Le chariot porte deux rails **droits et parallèles**, chacun long d'un train, posés sur une ligne droite du circuit (le train arrêté au point de raccordement y tient entier). Rail mobile du parcours = rail du circuit (zone de freinage), rail du chariot = rail de garage (freins et pneus).
+- Positions : `P` (rail mobile du parcours en ligne), `G` (rail du chariot en ligne, bouton `#yG`), `1…n` (rail du chariot face à la voie k). La durée d'un déplacement dépend de la course.
+- Le train arrêté sur le rail du chariot est **emporté** par le chariot (il suit le décalage du chariot à l'écran et dans la simulation). Il entre dans la voie en marche avant (`AV`) et en ressort en arrière (`AR`) jusque sur le rail du chariot.
+- Rail du circuit hors ligne : les trains du circuit s'arrêtent avant le chariot ; seul un train vide conduit par Frein final AV roule sur le rail du chariot en ligne, et il n'en repart vers la gare que sur Rail du chariot AV.
+- Verrouillages propres : le chariot ne bouge pas si un train y roule, n'y est qu'en partie ou est en manœuvre ; il n'emporte qu'un train arrêté, vide, entièrement sur le rail du chariot ; il ne porte pas un train vers une voie occupée ; il ne remet un train sur le circuit (`G`) que si le dernier canton est libre et que `maxRun` le permet. Tant qu'un train est sur le chariot, le dernier canton est tenu pour occupé.
+- Chaque voie est un canton ; le rail du chariot en est un aussi.
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
 
 ## Principe de commande (décision du propriétaire, 2026-11-14)
@@ -70,7 +70,7 @@ Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane
 
 | Zone | Actionneurs au pupitre |
 |---|---|
-| Gare | freins (serrer / relâcher), moteurs (pneus) avancer / reculer |
+| Gare | freins liés au départ (pas de bouton), moteurs (pneus) avancer / reculer |
 | Lift | marche / arrêt |
 | Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés ; moteurs avancer / reculer là où il y en a |
 | Chariot / aiguillage | position (P ou voie k) |
@@ -86,23 +86,23 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 
 | Zone | Id | Commandes | Mode |
 |---|---|---|---|
-| Gare | `St` | freins `k`, Avancer `f`, Reculer `b`, Arrêt `x` | manuel |
+| Gare | `St` | **pas de bouton de frein** (freins serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ), Avancer `f`, Reculer `b`, Arrêt `x` (déplacements à vide vers le garage) | manuel |
 | Lift | `Lift` | Marche `on`, Arrêt `off` (chaîne stoppée : le train sur le lift y reste ; départs bloqués) | — |
 | Freins de bloc | `B1…Bn` | freins `k` (moteurs si `SITE.zones`) | AUTO / MANU `m` |
 | Frein final | `Fin` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
-| Rail A du pont droit | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
-| Rail B (chariot) | `RB` | freins `k`, `f`, `b`, `x` | manuel |
+| Rail mobile du parcours du pont droit (rail A, plaque « Rail parcours ») | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
+| Rail du chariot (rail B, chariot) | `RB` | freins `k`, `f`, `b`, `x` | manuel |
 | Voies de garage | `L1…Ln` | freins `k`, `f`, `b`, `x` | manuel |
-| Appareil | — | positions `#yP`, `#y1…#yN`, `#yG`, rail A `#yA0`/`#yA1` (inchangé) | manuel |
+| Appareil | — | positions `#yP`, `#y1…#yN`, `#yG`, rail mobile du parcours `#yA0`/`#yA1` (inchangé) | manuel |
 
 - **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`. Défaut : freins partout ; moteurs partout sauf sur les freins de bloc (estimé, à confirmer par attraction).
 - **AUTO / MANU** (zones de freinage) : en AUTO (défaut) le cantonnement serre et relâche seul ; en MANU, `k` serre / relâche et les moteurs obéissent au pupitre. Passer en MANU serre les freins si un train y est arrêté. `#zAuto` remet toutes les zones en AUTO. En MANU, freins relâchés, le cantonnement reste actif (sécurité).
 - **Anti-collision** : relâcher les freins d'une zone qui retient un train est refusé si la section suivante est occupée (canton suivant, chariot, gare).
-- **Gare `f`** : appareil sur une voie (raccordement en gare) : le train vide à quai part au garage (règles d'Avancer ci-dessous) ; sinon le train **vide** quitte la gare (départ à vide ; avec passagers, bouton Départ après les lapbars). Freins de gare serrés : départs bloqués.
-- **Frein final `f`** : pont droit, rail B en ligne : conduit le train **vide** arrêté avant le pont sur le rail B (il s'y arrête) ; appareil sur une voie (raccordement au frein final) : le train quitte le circuit vers la voie ; sinon vers la gare. Frein final serré (MANU) : le train est retenu avant le pont (pont droit) ou au point d'arrêt (sinon). C'est ce qui remplace « Retenir pour le garage ».
-- **Rail B `f`** : train porté par le chariot face à une voie : il entre dans la voie (marche avant) ; rail B en ligne : il part vers la gare (jamais automatiquement).
-- **Voie `f` / `b`** : Avancer vers le fond de la voie ; Reculer vers le point de raccordement (aiguillage) ou sur le rail B (pont droit). `x` arrête les moteurs de la zone. Freins serrés : la zone ne bouge plus et ses moteurs sont refusés ; on n'entre pas dans une voie aux freins serrés.
-- Marche arrière refusée sur le circuit (gare, freins, rails A/B).
+- **Gare `f`** : appareil sur une voie (raccordement en gare) : le train vide à quai part au garage (règles d'Avancer ci-dessous) ; sinon le train **vide** quitte la gare (départ à vide ; avec passagers, bouton Départ après les lapbars). Les freins de gare sont liés au départ : fermés tant qu'un train est à quai, ouverts uniquement par la séquence Départ (portillons fermés, lapbars validés).
+- **Frein final `f`** : pont droit, rail du chariot en ligne : conduit le train **vide** arrêté avant le pont sur le rail du chariot (il s'y arrête) ; appareil sur une voie (raccordement au frein final) : le train quitte le circuit vers la voie ; sinon vers la gare. Frein final serré (MANU) : le train est retenu avant le pont (pont droit) ou au point d'arrêt (sinon). C'est ce qui remplace « Retenir pour le garage ».
+- **Rail du chariot `f`** : train porté par le chariot face à une voie : il entre dans la voie (marche avant) ; rail du chariot en ligne : il part vers la gare (jamais automatiquement).
+- **Voie `f` / `b`** : Avancer vers le fond de la voie ; Reculer vers le point de raccordement (aiguillage) ou sur le rail du chariot (pont droit). `x` arrête les moteurs de la zone. Freins serrés : la zone ne bouge plus et ses moteurs sont refusés ; on n'entre pas dans une voie aux freins serrés.
+- Marche arrière refusée sur le circuit (gare, freins, rail mobile du parcours / rail du chariot).
 - L'arrêt d'urgence arrête tous les moteurs et refuse toute commande de moteur.
 
 Le joueur enchaîne lui-même ces commandes : rien n'est automatique entre deux étapes de manœuvre ; l'exploitation normale du circuit reste automatique (zones en AUTO).
@@ -121,10 +121,12 @@ Ils ne s'ouvrent et ne se ferment **qu'au bouton du pupitre** (`#bGate`), en aut
 1. Gare libre (au besoin frein final en MANU et serré pour retenir l'autre train).
 2. Aiguillage sur la voie, Garage AR : le train recule jusqu'en gare. Aiguillage sur `P`.
 
-### Pont droit à rail A escamotable (Trace du Hourra)
+### Pont droit à rail mobile du parcours escamotable (Trace du Hourra)
 
-- Garer : train vide (Gare AV), frein final MANU serré (arrêt avant le pont), rail A retiré, chariot sur G, relâcher, Frein final AV (sur le rail B), chariot sur une voie libre (il l'emporte), Rail B AV (dans la voie), chariot au repos, rail A sur le circuit, TOUT AUTO.
-- Sortir : chariot face à la voie, Voie k AR (sur le rail B), rail A retiré, chariot sur G (dernier canton libre), Rail B AV (vers la gare), chariot sur une voie, rail A sur le circuit.
+**Stockage (propriétaire, 2026-11-15).** Le rail mobile du parcours est une **zone de freinage de stockage** : en AUTO, un train arrive au frein final, avance sur le rail mobile s'il est sur le circuit et libre, s'y arrête entièrement et y est retenu jusqu'à ce que la gare soit libre ; le train suivant est retenu au frein final derrière lui (le frein final et le rail mobile stockent un train chacun, le canton B3 retient le suivant). Le synoptique colore les deux zones (vert libre, ambre train retenu, rouge freins serrés). Vérifié par `tools/check.js hourra` (storeRA, storeFin, enterA, enterB).
+
+- Garer : train vide (Gare AV), frein final MANU serré (arrêt avant le pont), rail mobile du parcours retiré, chariot sur G, relâcher, Frein final AV (sur le rail du chariot), chariot sur une voie libre (il l'emporte), Rail du chariot AV (dans la voie), chariot au repos, rail mobile du parcours sur le circuit, TOUT AUTO.
+- Sortir : chariot face à la voie, Voie k AR (sur le rail du chariot), rail mobile du parcours retiré, chariot sur G (dernier canton libre), Rail du chariot AV (vers la gare), chariot sur une voie, rail mobile du parcours sur le circuit.
 
 ## Verrouillages (sécurité, toujours actifs)
 

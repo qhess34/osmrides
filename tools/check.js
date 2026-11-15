@@ -81,6 +81,23 @@ const root = path.resolve(__dirname, '..');
       if (f !== d0) { await click('#y' + d0); ok('devRest2', await until(`devOn(${d0 - 1})`, 4000)); }
       await click('#yA0'); ok('raIn2', await until('raIn()', 4000)); await shot('5-railA-revenu');
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin && !G.zm.B1));
+      // stockage : en AUTO, rail mobile du parcours (RA) et frein final (Fin) retiennent un train chacun pendant que la gare est occupée
+      const two = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage' && !t.mv).slice(0, 2); if (g.length < 2 || !trains.some(t => t.st === 'station')) return null;
+        g.forEach((t, k) => { t.st = 'run'; t.s = S_PRE - 14 - k * (TLEN + 3); t.v = 4; t.lane = 0; t.g = 0; t.mv = 0; t.depReq = false; t.inLift = false; t.inBrake = false; t.blk = false; t.entering = false; t.hold = 0; t.fdrive = 0; t.told = false; t.preTold = false; t.lkTold = false; });
+        return [g[0].i, g[1].i]; });
+      if (two) {
+        ok('storeRA', await until(`trains[${two[0]}].v===0&&tZone(trains[${two[0]}])==='RA'&&Math.abs(trains[${two[0]}].s-S_HOLD)<.5`, 2400));
+        ok('storeFin', await until(`trains[${two[1]}].v===0&&tZone(trains[${two[1]}])==='Fin'&&Math.abs(trains[${two[1]}].s-S_PRE)<.6`, 2400));
+        ok('heldStation', await page.evaluate(() => trains.some(t => t.st === 'station')) && await page.evaluate(i => trains[i].st === 'run', two[0]));
+        await shot('6-stockage');
+        await until("trains.some(t=>t.st==='station'&&t.phase==='board')", 8000);
+        await gates(); await click('#zSt_f'); // la gare se libère : le train du rail mobile entre, puis celui du frein final
+        ok('enterA', await until(`trains[${two[0]}].st==='station'`, 2400));
+        await until(`trains[${two[0]}].phase==='board'`, 8000);
+        await until(`!blockReason(trains[${two[0]}])`, 4000);
+        await gates(); await click('#zSt_f');
+        ok('enterB', await until(`trains[${two[1]}].st==='station'`, 2400));
+      }
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus : aiguillage dans le prolongement de la gare ; commandes par zones
       await click('#bAuto'); await gates();

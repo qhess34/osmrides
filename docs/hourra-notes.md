@@ -19,26 +19,27 @@
 ## Pont transbordeur — précision du propriétaire (2026-11-14, prioritaire sur ce qui suit)
 
 - Le pont est **droit** : deux rails **droits et parallèles** sur le chariot, pas de courbe en S.
-- Rail A = rail du parcours, qui est **une zone de freinage** ; quand le chariot se déplace, il se **décale vers l'est**.
-- Rail B = rail de garage : il **prend la place du rail A sur le parcours** pour aller chercher chaque train qui s'y est arrêté, puis le chariot le translate devant la voie de garage voulue (le train est porté par le chariot).
+- **Rail mobile du parcours = zone de freinage de stockage (propriétaire, 2026-11-15)** : en AUTO, un train du frein final avance sur le rail mobile (sur le circuit et libre), s'y arrête entièrement et attend là que la gare soit libre ; le train suivant est retenu au frein final derrière lui (un train par zone). Synoptique : les deux zones sont colorées selon l'occupation.
+- Rail mobile du parcours (« rail A » dans les premières notes) = rail du parcours, qui est **une zone de freinage** ; quand le chariot se déplace, il se **décale vers l'est**.
+- Rail du chariot (« rail B ») = rail de garage : il **prend la place du rail mobile du parcours sur le parcours** pour aller chercher chaque train qui s'y est arrêté, puis le chariot le translate devant la voie de garage voulue (le train est porté par le chariot).
 - **Confirmé** : le rail mobile du garage est droit et se déplace **avec le train dessus**.
 - Voies de garage droites et parallèles. À confirmer sur plan : sens de sortie des trains, côté des voies, position exacte du chariot.
 - La version T4 (tronçons de transfert en S, train jamais porté) est remplacée (T8, ci-dessous).
 
-## Rail A escamotable et poste de conduite — correction du propriétaire (2026-11-14, prioritaire)
+## Rail mobile du parcours escamotable et poste de conduite — correction du propriétaire (2026-11-14, prioritaire)
 
-- Le rail A (rail du circuit, zone de freinage) n'a que **deux positions** : sur le circuit ou retiré vers l'est. Il **n'est pas** porté avec le rail B vers les voies.
-- Modèle : `yard.retract:{d:3.2, name:'Rail A', rest:1}` (moteur générique, `docs/manoeuvres.md`). Rail A : `#yA0` (C, circuit) / `#yA1` (E, retiré à 3,2 m à l'est — course estimée). Chariot du rail B : `#yG` (en ligne) et `#y1…#y6` ; au repos face à la voie 1 (estimé) ; `#yP` supprimé.
-- Séquence : G du train → rail A sur E → chariot sur G (le train s'arrête sur le rail B) → chariot sur la voie k (il emporte le train) → AV → chariot ramené sur la voie 1 → rail A sur C. Refus testés : chariot sur G avec le rail A sur le circuit, rail A sur C avec le rail B en ligne ou le chariot en mouvement.
+- Le rail mobile du parcours (rail du circuit, zone de freinage) n'a que **deux positions** : sur le circuit ou retiré vers l'est. Il **n'est pas** porté avec le rail du chariot vers les voies.
+- Modèle : `yard.retract:{d:3.2, name:'Rail mobile du parcours', short:'Rail parcours', rest:1}` (moteur générique, `docs/manoeuvres.md`). Rail mobile du parcours : `#yA0` (C, circuit) / `#yA1` (E, retiré à 3,2 m à l'est — course estimée). Chariot du rail du chariot : `#yG` (en ligne) et `#y1…#y6` ; au repos face à la voie 1 (estimé) ; `#yP` supprimé.
+- Séquence : G du train → rail mobile du parcours sur E → chariot sur G (le train s'arrête sur le rail du chariot) → chariot sur la voie k (il emporte le train) → AV → chariot ramené sur la voie 1 → rail mobile du parcours sur C. Refus testés : chariot sur G avec le rail mobile du parcours sur le circuit, rail mobile du parcours sur C avec le rail du chariot en ligne ou le chariot en mouvement.
 - Poste de conduite : à l'extrémité **sud-est** de la gare (propriétaire), côté sud-ouest de la voie, là où elle sort du bâtiment OSM 148160006, vitre vers la voie, à 2,8 m de l'axe : `booth:[2.8, 8.0, -2.427]` — emplacement exact **estimé**.
-- Captures : `docs/plans/hourra-garage-pont-droit.jpg` (repos, rail A retiré, chariot en ligne avec le train, chariot face à la voie, rail A revenu, poste de conduite).
+- Captures : `docs/plans/hourra-garage-pont-droit.jpg` (repos, rail mobile du parcours retiré, chariot en ligne avec le train, chariot face à la voie, rail mobile du parcours revenu, poste de conduite).
 
 ## Pont transbordeur droit — fait (T8, 2026-11-14 ; positions P/G remplacées par la correction ci-dessus)
 
 - `yard: {device: 'traverser', side: 1, gap: 3.2, …}` (moteur générique, `docs/manoeuvres.md`). Chariot sur la dernière ligne droite du frein final : rails A et B droits, parallèles, de 12 m (un train de 10,85 m + 0,6 m de chaque côté), s ≈ 736…748 ; `holdBack: 24` pour que le train arrêté y tienne entier. Ligne droite vérifiée : écart au rail droit < 1 cm.
-- Positions : `P` (rail A en ligne), `G` (chariot décalé de 3,2 m vers l'est-nord-est, perpendiculaire au circuit qui file au sud-sud-est : rail B en ligne), `1…6` (rail B face à la voie k, chariot vers l'ouest).
-- Voies 1…6 droites, parallèles aux rails, côte à côte à l'ouest du circuit (axes à 8 ; 11,2 ; … ; 24 m), dans le bâtiment OSM 148160581 dont le grand côté est parallèle au frein final ; elles commencent 0,8 m après le bout du rail B. Aucun autre tronçon du circuit dans la course du chariot (le circuit passe à l'est).
-- Séquence : bouton G du train → il s'arrête à vide avant le pont ; pont sur G → il roule sur le rail B et s'y arrête ; pont sur la voie k → le chariot l'emporte ; AV → il entre en marche avant dans la voie. Sortie : pont sur la voie, AR → il recule sur le rail B ; pont sur G (dernier canton libre, au plus 5 trains en piste) → il redevient un train du circuit et entre en gare ; pont sur P.
+- Positions : `P` (rail mobile du parcours en ligne), `G` (chariot décalé de 3,2 m vers l'est-nord-est, perpendiculaire au circuit qui file au sud-sud-est : rail du chariot en ligne), `1…6` (rail du chariot face à la voie k, chariot vers l'ouest).
+- Voies 1…6 droites, parallèles aux rails, côte à côte à l'ouest du circuit (axes à 8 ; 11,2 ; … ; 24 m), dans le bâtiment OSM 148160581 dont le grand côté est parallèle au frein final ; elles commencent 0,8 m après le bout du rail du chariot. Aucun autre tronçon du circuit dans la course du chariot (le circuit passe à l'est).
+- Séquence : bouton G du train → il s'arrête à vide avant le pont ; pont sur G → il roule sur le rail du chariot et s'y arrête ; pont sur la voie k → le chariot l'emporte ; AV → il entre en marche avant dans la voie. Sortie : pont sur la voie, AR → il recule sur le rail du chariot ; pont sur G (dernier canton libre, au plus 5 trains en piste) → il redevient un train du circuit et entre en gare ; pont sur P.
 - Captures : `docs/plans/hourra-garage-pont-droit.jpg`.
 
 ## Garage — réponse du propriétaire (2026-11-14)
@@ -85,4 +86,4 @@ Toutes ces coordonnées sont calculées sur plan, pas vérifiées à l'écran.
 
 ## Pupitre par zones (T7) — estimé
 
-Zones à moteurs (pneus) supposées : gare, frein final, rail A, rail B (chariot), voies de garage ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
+Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), voies de garage ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
