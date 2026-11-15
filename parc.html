@@ -59,7 +59,8 @@ const P={};
 for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ringPath);
 P.canal=linePath(PARK.water.flatMap(f=>f.filter(r=>r.l).map(r=>r.l)));
 P.paths=linePath(PARK.paths);P.roads=linePath(PARK.roads);
-const TRK=PARK.tracks.map(t=>({name:t.name,p:linePath([t.pts]),hl:/Zeus|Hourra/.test(t.name)}));
+const SIMN=new Set(PARK.attr.filter(a=>a.site).map(a=>a.name.toLowerCase())); // tracés des attractions avec simulateur, en doré (générique)
+const TRK=PARK.tracks.map(t=>({name:t.name,p:linePath([t.pts]),hl:SIMN.has(t.name.toLowerCase())}));
 const ATT=PARK.attr;
 // vue : centre monde (m), échelle px/m
 let W=0,H=0,dpr=1,cam={x:230,z:200,s:1};
