@@ -162,3 +162,10 @@ Elles sont estimées ; le dire en commentaire dans `sites/<site>.js` et au propr
 
 
 **Règle du lift (propriétaire, 2026-11-15)** : un seul train sur le lift ; en haut, le train attend tant que la zone de freinage suivante est occupée. Zone suivante = premier frein de bloc s'il y en a ; un train arrêté sur le frein final ne retient donc le lift que s'il n'existe aucun frein avant le frein final (ex. Zeus).
+
+
+## Aiguillage rotatif en S, garage en amont (Goudurix) et frein de ralentissement
+
+- `yard.back:true` (aiguillage en amont de la gare) : le train entre au garage en marche arrière depuis la gare (Gare AR avec l'aiguillage sur la voie), en sort en marche avant (Garage AV). `a` / `b` : distances en remontant le circuit depuis l'arrêt de la tête du train.
+- `yard.rotary:true` : l'aiguillage est un tronçon qui tourne autour de l'axe du tube (vu du dessus : largeur ∝ cos θ). `yard.s:true` : face droite = circuit, face en S (courbe de Bézier) = voie de garage ; `lanes[0].pts[0]` est le bout du S, `b − a` doit égaler sa longueur (avertissement console sinon).
+- Frein de ralentissement : `SITE.zones.B<n>.trim:{v}` (m/s) : un frein de bloc en AUTO ramène le train à `v` puis le laisse continuer ; arrêt seulement si le canton suivant est occupé ou freins serrés (MANU).

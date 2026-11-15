@@ -258,7 +258,8 @@ function updateRun(t,dt){
     const man=bi>=0&&zK('B'+(bi+1)); // frein de bloc serré au pupitre (zone en MANU) : arrêt même si le canton suivant est libre
     if(bi>=0&&(man||occupied(BLK[bi],blkEnd(bi),t))){const d=BLK[bi]-t.s;t.v=Math.min(Math.max(PH.vmin,t.v+a*dt),Math.sqrt(12*Math.max(0,d)));
       if(d<.2){t.v=0;t.blk=true;if(man&&t.bkTold!==bi){t.bkTold=bi;log(t.name+' arrêté au frein de bloc '+(bi+1)+' (serré au pupitre).','warn');}}} // arrêt au frein de bloc
-    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;}
+    else{t.v=Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;
+      const tr=bi>=0&&!G.zm['B'+(bi+1)]?BTRIM[bi]:0;if(tr)t.v=Math.min(t.v,Math.sqrt(tr*tr+12*Math.max(0,BLK[bi]-t.s)));} // frein de ralentissement (zone en AUTO, canton libre) : vitesse ramenée à trim.v au point de frein, puis le train continue
     if(!t.screamed&&t.s>S_DROP){t.screamed=true;const n=count(t);if(n)sfx.scream(n);}
   }else{
     if(!t.inBrake){
