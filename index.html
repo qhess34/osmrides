@@ -11,50 +11,166 @@
 <meta name="apple-mobile-web-app-title" content="T2Z">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
-<title>Simulateurs d'exploitation — Parc Astérix</title>
+<title>T2Z — simulateurs d'exploitation du Parc Astérix</title>
+<meta name="description" content="T2Z : jeu de fan, devenez chef d'attraction du Parc Astérix, en vue aérienne sur le tracé réel.">
+<link rel="stylesheet" href="site.css">
 <style>
-body{margin:0;min-height:100vh;background:#0f1626;color:#e8ecf6;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;padding:max(48px,calc(24px + env(safe-area-inset-top))) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));box-sizing:border-box}
-h1{color:#f2c14e;margin:0 0 6px;font-size:26px}p.sub{color:#9aa7c4;margin:0 0 28px;text-align:center;max-width:620px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;width:100%;max-width:760px}
-a.card,div.card{display:block;background:#18223a;border:1px solid #32426a;border-radius:12px;padding:18px 20px;color:inherit;text-decoration:none}
-a.card:hover{border-color:#f2c14e}
-.card h2{margin:0 0 6px;font-size:19px;color:#f2c14e}.card p{margin:0;color:#b9c3da;font-size:14.5px}
-.card.soon{opacity:.55}.card.soon h2{color:#9aa7c4}
-small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
-.card .prog{display:block;margin-top:8px;color:#f2c14e;font-size:13px}#modeBar button{font:inherit;color:inherit;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:4px 12px;cursor:pointer}#modeBar button.on{border-color:#f2c14e;color:#f2c14e}
-#inst{display:none;margin:0 0 20px;text-align:center;color:#b9c3da;font-size:14px}
-#inst button{font:inherit;color:#f2c14e;background:#18223a;border:1px solid #32426a;border-radius:8px;padding:6px 14px;cursor:pointer;min-height:36px}
-#inst button:hover{border-color:#f2c14e}#inst .x{color:#9aa7c4;margin-left:6px;padding:6px 10px}
+html,body{height:100%;margin:0;overflow:hidden;background:#0f1626}
+body{padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+#bg{position:fixed;inset:0;width:100%;height:100%;display:block}
+#veil{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 85% 75% at 50% 42%,rgba(15,22,38,.22),rgba(15,22,38,.85)),rgba(15,22,38,.34)}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));transition:opacity .45s ease,transform .45s ease,visibility 0s linear 0s}
+.screen.off{opacity:0;visibility:hidden;pointer-events:none;transform:scale(.985);transition:opacity .35s ease,transform .35s ease,visibility 0s linear .35s}
+.hero{text-align:center}
+.hero h1{margin:0;color:var(--gold);font-size:clamp(54px,15vh,104px);line-height:1;letter-spacing:.14em;padding-left:.14em;text-shadow:0 3px 0 #0008,0 8px 28px #000a}
+.hero p{margin:8px 0 0;color:#c4cde2;font-size:clamp(13px,2.2vh,16px);letter-spacing:.06em;text-shadow:0 1px 8px #000}
+.menu{width:min(360px,100%);display:flex;flex-direction:column;gap:9px}
+.menu .lcd{margin-bottom:3px;min-height:46px}
+.mrow{justify-content:flex-start;width:100%;min-height:50px;font-size:14px;letter-spacing:1.2px}
+.mrow small{margin-left:auto;font-size:10px;letter-spacing:.5px;opacity:.8;text-transform:none;font-weight:500;text-align:right}
+.mrow[hidden]{display:none}
+.foot{position:fixed;left:0;right:0;bottom:max(8px,env(safe-area-inset-bottom));text-align:center;font-size:11.5px;color:#8392b3;padding:0 16px;text-shadow:0 1px 6px #000}
+.foot a{color:#aab6d2}
+/* choix de l'attraction */
+.pick{justify-content:flex-start;padding-top:max(14px,env(safe-area-inset-top));overflow:auto}
+.pick .bar{width:min(960px,100%);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.pick h2{margin:0;font-size:clamp(17px,3vh,22px);color:var(--gold);letter-spacing:.04em;flex:1 1 180px}
+.seg{display:flex;gap:8px}.seg .btn{min-height:44px;padding:6px 14px;font-size:12px}
+.tiles{width:min(960px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(min-width:700px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+a.tile{display:block;background:linear-gradient(160deg,#474d57,#2b2f36 60%,#23262c);border:2px solid #14161a;border-radius:10px;padding:7px;color:inherit;text-decoration:none;box-shadow:inset 0 1px 0 #6a717d,0 6px 18px #0009;transition:transform .15s,box-shadow .15s}
+a.tile:hover,a.tile:focus-visible{transform:translateY(-2px);box-shadow:inset 0 1px 0 #6a717d,0 0 0 2px var(--gold),0 8px 22px #000b}
+a.tile img{display:block;width:100%;height:auto;aspect-ratio:7/4;object-fit:cover;border-radius:5px;border:1px solid #0b0d10;background:#1c2230}
+a.tile h3{margin:7px 2px 0;font-size:clamp(14px,2.4vh,17px);color:#f3f4f7;line-height:1.2}
+a.tile p{margin:1px 2px 0;font-size:12px;color:#aeb6c6;line-height:1.3}
+a.tile .prog{display:block;margin:5px 0 0;padding:4px 6px;border-radius:4px;font:11.5px/1.25 ui-monospace,Menlo,Consolas,monospace;background:#0b1a11;color:#7dffa8;border:1px solid #05080a;min-height:1.6em}
+a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
+@media(orientation:landscape) and (max-height:520px){
+  .screen{gap:10px}
+  #home{flex-direction:row;gap:6vw}
+  .hero{text-align:left}.hero h1{font-size:clamp(46px,18vh,90px)}
+  .menu{gap:6px;width:min(330px,46vw)}.mrow{min-height:44px}.menu .lcd{min-height:40px;padding:5px 8px}
+  .pick .bar{gap:6px 12px}
+  a.tile p{display:none}a.tile h3{margin-top:5px}
+}
+@media(max-height:620px) and (orientation:portrait){.hero h1{font-size:60px}.mrow{min-height:46px}.menu{gap:7px}}
+@media(prefers-reduced-motion:reduce){.screen,.screen.off{transition:none}}
 </style>
 </head>
 <body>
-<h1>Simulateurs d'exploitation</h1>
-<p class="sub">Prenez le pupitre d'une attraction : trains, quai, file d'attente, garage, maintenance et météo, en vue aérienne sur le tracé réel.</p>
-<p class="sub" id="modeBar">Mode : <button id="mCareer">Carrière</button> <button id="mSand">Bac à sable</button> <span id="modeTxt"></span></p>
-<p id="inst"><button id="bInst" hidden>Installer l'application</button><span id="iosHint" hidden>Pour l'installer : Partager → Sur l'écran d'accueil.</span><button class="x" id="bInstX" hidden aria-label="Masquer">Masquer</button></p>
-<div class="grid">
-  <a class="card" href="parc.html"><h2>Plan du parc</h2><p>Carte du Parc Astérix entier d'après OpenStreetMap : allées, bâtiments, eau, tracés des montagnes russes. Point de départ vers chaque simulateur.</p></a>
-  <a class="card" href="jeu.html?site=zeus" data-site="zeus"><h2>Tonnerre 2 Zeus</h2><p>Montagnes russes en bois. 1 100 m, lift de 30 m, deux trains de 14 wagons, garage dans le prolongement de la gare.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=hourra" data-site="hourra"><h2>La Trace du Hourra</h2><p>Bobsleigh. 780 m, lift de 31 m, six trains de 7 bobs (cinq au plus en piste), garage à six voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=oziris" data-site="oziris"><h2>OzIris</h2><p>Coaster inversé Bolliger &amp; Mabillard. 1 000 m, lift de 40 m, cinq inversions, trois trains de 8 wagons à 4 places, garage à trois voies desservi par un pont transbordeur.</p><small class="prog"></small></a>
-  <a class="card" href="jeu.html?site=goudurix" data-site="goudurix"><h2>Goudurix</h2><p>Montagnes russes en acier Vekoma à rails tubulaires. 950 m, lift de 36 m, sept inversions, deux trains de 7 wagons à 4 places, garage sur le retour.</p><small class="prog"></small></a>
-</div>
-<small>Jeux de fan non officiels, sans lien avec le Parc Astérix. Tracés au sol et alentours : © contributeurs OpenStreetMap (ODbL). Hauteurs estimées.</small>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div id="veil" aria-hidden="true"></div>
+
+<main>
+<section id="home" class="screen" aria-label="Écran titre">
+  <div class="hero">
+    <h1>T2Z</h1>
+    <p>Simulateurs d'exploitation du Parc Astérix</p>
+  </div>
+  <nav class="menu desk" aria-label="Menu principal">
+    <div class="lcd" id="lcd" role="status" aria-live="polite">Aucune partie en cours.</div>
+    <a class="btn green mrow" id="rCont" href="#" hidden><i class="lp"></i>Continuer<small id="contInfo"></small></a>
+    <a class="btn blue mrow lit" id="rPlay" href="#jouer"><i class="lp"></i>Jouer</a>
+    <a class="btn mrow" href="parc.html"><i class="lp"></i>Plan du parc</a>
+    <a class="btn mrow" href="tutos.html"><i class="lp"></i>Tutoriels</a>
+    <button class="btn amber mrow" id="rInst" type="button" hidden><i class="lp"></i>Installer</button>
+  </nav>
+  <div class="foot">Jeu de fan non officiel, sans lien avec le Parc Astérix · © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="apropos.html">À propos du jeu</a></div>
+</main>
+
+<section id="pickScr" class="screen pick off" aria-label="Choix de l'attraction">
+  <div class="bar">
+    <a class="btn" id="back" href="#">Retour</a>
+    <h2>Choisir une attraction</h2>
+    <div class="seg" role="group" aria-label="Mode de jeu">
+      <button class="btn" id="mCareer" type="button" aria-pressed="true"><i class="lp"></i>Carrière</button>
+      <button class="btn" id="mSand" type="button" aria-pressed="false"><i class="lp"></i>Bac à sable</button>
+    </div>
+  </div>
+  <div class="lcd bar" id="modeTxt" style="width:min(960px,100%);min-height:0">budget, météo et pannes</div>
+  <div class="tiles">
+    <a class="tile card" href="jeu.html?site=zeus" data-site="zeus"><img src="img/accueil/zeus.jpg" width="630" height="360" alt="Gare de Tonnerre 2 Zeus vue de dessus"><h3>Tonnerre 2 Zeus</h3><p>Montagnes russes en bois, 1 100 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?site=hourra" data-site="hourra"><img src="img/accueil/hourra.jpg" width="630" height="360" alt="Gare de la Trace du Hourra vue de dessus"><h3>La Trace du Hourra</h3><p>Bobsleigh, 780 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?site=oziris" data-site="oziris"><img src="img/accueil/oziris.jpg" width="630" height="360" alt="Gare d'OzIris vue de dessus"><h3>OzIris</h3><p>Coaster inversé, 1 000 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?site=goudurix" data-site="goudurix"><img src="img/accueil/goudurix.jpg" width="630" height="360" alt="Gare de Goudurix vue de dessus"><h3>Goudurix</h3><p>Acier à rails tubulaires, 950 m</p><small class="prog"></small></a>
+  </div>
+</section>
+
+<script src="parc/parc.data.js"></script>
 <script>
-/* Mode de jeu (carrière | bac à sable, mémorisé t2z.mode) et parties en cours (lecture seule de t2z.save.<site>.<mode>) */
+'use strict';
+/* ───────── fond animé : plan du parc en lent travelling, assombri ───────── */
 (function(){
-  let mode='career';try{if(localStorage.getItem('t2z.mode')==='sandbox')mode='sandbox';}catch(e){}
+  const cv=document.getElementById('bg'),ctx=cv.getContext('2d');
+  const COL={ground:'#7b8561',lawn:'#8a9a66',forest:'#4d6340',water:'#5f7f8c',waterEdge:'#4a6874',bldFill:'#b3aa9d',bldEdge:'#7d766b',path:'#cbbf9f',pathEdge:'#9b9078',road:'#8c8c88',roadEdge:'#6b6b68',track:'#4a4540',hl:'#f2c14e'};
+  const ring=f=>{const p=new Path2D();for(const r of f){if(r.l)continue;p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);p.closePath();}return p;};
+  const line=a=>{const p=new Path2D();for(const r of a){p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);}return p;};
+  const P={};for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ring);
+  P.canal=line(PARK.water.flatMap(f=>f.filter(r=>r.l).map(r=>r.l)));P.paths=line(PARK.paths);P.roads=line(PARK.roads);
+  const sim=new Set(PARK.attr.filter(a=>a.site).map(a=>a.name.toLowerCase()));
+  const TRK=PARK.tracks.map(t=>({p:line([t.pts]),hl:sim.has(t.name.toLowerCase())}));
+  const way=PARK.attr.filter(a=>a.site).map(a=>[a.x,a.z]);if(!way.length)way.push([230,260]);
+  let W=0,H=0,dpr=1;
+  function size(){dpr=Math.min(window.devicePixelRatio||1,1.25);W=innerWidth;H=innerHeight;cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const ease=t=>t*t*(3-2*t);
+  function frame(sec){
+    const SEG=26,i=Math.floor(sec/SEG),f=(sec%SEG)/SEG,a=way[i%way.length],b=way[(i+1)%way.length],k=ease(f);
+    const x=a[0]+(b[0]-a[0])*k+Math.sin(sec*.11)*6,z=a[1]+(b[1]-a[1])*k+Math.cos(sec*.09)*6;
+    const s=Math.max(1.5,Math.min(3.4,Math.min(W,H)/190))*(1+.06*Math.sin(sec*.07));
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=COL.ground;ctx.fillRect(0,0,W,H);
+    ctx.save();ctx.translate(W/2-x*s,H/2-z*s);ctx.scale(s,s);ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.fillStyle=COL.lawn;for(const p of P.lawn)ctx.fill(p,'evenodd');
+    ctx.fillStyle=COL.forest;for(const p of P.forest)ctx.fill(p,'evenodd');
+    ctx.fillStyle=COL.water;ctx.strokeStyle=COL.waterEdge;ctx.lineWidth=1/s;for(const p of P.water){ctx.fill(p,'evenodd');ctx.stroke(p);}
+    ctx.strokeStyle=COL.water;ctx.lineWidth=Math.max(3,1.6/s);ctx.stroke(P.canal);
+    ctx.strokeStyle=COL.roadEdge;ctx.lineWidth=Math.max(6,2.6/s);ctx.stroke(P.roads);ctx.strokeStyle=COL.road;ctx.lineWidth=Math.max(4.6,1.8/s);ctx.stroke(P.roads);
+    ctx.strokeStyle=COL.pathEdge;ctx.lineWidth=Math.max(2.8,1.5/s);ctx.stroke(P.paths);ctx.strokeStyle=COL.path;ctx.lineWidth=Math.max(2,1/s);ctx.stroke(P.paths);
+    ctx.fillStyle=COL.bldFill;ctx.strokeStyle=COL.bldEdge;ctx.lineWidth=.8/s;for(const p of P.bld){ctx.fill(p);ctx.stroke(p);}
+    for(const t of TRK){ctx.strokeStyle=t.hl?COL.hl:COL.track;ctx.lineWidth=t.hl?Math.max(1.2,3/s):Math.max(.8,1.5/s);ctx.stroke(t.p);}
+    ctx.restore();
+  }
+  size();addEventListener('resize',()=>{size();frame(cur);});
+  const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let cur=0,last=0,raf=0;
+  function loop(ts){raf=requestAnimationFrame(loop);if(ts-last<42)return;cur+=Math.min(.1,(ts-last)/1000);last=ts;frame(cur);}
+  frame(0);
+  if(!still){const go=()=>{cancelAnimationFrame(raf);if(!document.hidden){last=performance.now();raf=requestAnimationFrame(loop);}};document.addEventListener('visibilitychange',go);go();}
+})();
+
+/* ───────── menu : dernière partie, choix d'attraction et de mode ───────── */
+(function(){
+  const NAMES={zeus:'Tonnerre 2 Zeus',hourra:'La Trace du Hourra',oziris:'OzIris',goudurix:'Goudurix'};
+  const MODES={career:'Carrière',sandbox:'Bac à sable'};
+  const $=id=>document.getElementById(id);
   const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.floor(m)%60).padStart(2,'0');
+  let mode='career';try{if(localStorage.getItem('t2z.mode')==='sandbox')mode='sandbox';}catch(e){}
+  // dernière partie sauvegardée (horodatage ts de engine/save.js), tous sites et modes confondus
+  let last=null;
+  for(const s in NAMES)for(const m in MODES){try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+m)||'null');if(d&&d.day&&(!last||(d.ts||0)>(last.ts||0)))last={s,m,day:d.day,time:d.time,ts:d.ts||0};}catch(e){}}
+  const lcd=$('lcd'),cont=$('rCont');
+  if(last){const t=NAMES[last.s]+' · '+MODES[last.m]+' · jour '+last.day+' '+fmt(last.time);
+    cont.hidden=false;cont.href='jeu.html?site='+last.s+'&mode='+last.m;cont.classList.add('lit');$('contInfo').textContent=NAMES[last.s];
+    lcd.textContent='Dernière partie : '+t;}
   function paint(){
-    document.getElementById('mCareer').classList.toggle('on',mode==='career');document.getElementById('mSand').classList.toggle('on',mode==='sandbox');
-    document.getElementById('modeTxt').textContent=mode==='sandbox'?'sans budget, météo ni pannes':'budget, météo et pannes';
+    $('mCareer').setAttribute('aria-pressed',mode==='career');$('mSand').setAttribute('aria-pressed',mode==='sandbox');
+    $('mCareer').classList.toggle('lit',mode==='career');$('mSand').classList.toggle('lit',mode==='sandbox');
+    $('mCareer').classList.toggle('blue',mode==='career');$('mSand').classList.toggle('blue',mode==='sandbox');
+    $('modeTxt').textContent=mode==='sandbox'?'Bac à sable : sans budget, météo ni pannes':'Carrière : budget, météo et pannes';
     for(const a of document.querySelectorAll('a.card[data-site]')){
       const s=a.dataset.site;a.href='jeu.html?site='+s+'&mode='+mode;const p=a.querySelector('.prog');p.textContent='';
       try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+mode)||'null');if(d&&d.day)p.textContent='Partie en cours \u2014 jour '+d.day+' '+fmt(d.time);}catch(e){}
     }
   }
-  for(const [id,m] of [['mCareer','career'],['mSand','sandbox']])document.getElementById(id).onclick=()=>{mode=m;try{localStorage.setItem('t2z.mode',m);}catch(e){}paint();};
+  for(const [id,m] of [['mCareer','career'],['mSand','sandbox']])$(id).onclick=()=>{mode=m;try{localStorage.setItem('t2z.mode',m);}catch(e){}paint();};
   paint();
+  // deux écrans, sans défilement : #jouer = choix de l'attraction
+  const home=$('home'),pick=$('pickScr');
+  function route(){const p=location.hash==='#jouer';home.classList.toggle('off',p);pick.classList.toggle('off',!p);
+    (p?$('back'):$('rPlay')).focus({preventScroll:true});}
+  addEventListener('hashchange',route);
+  $('back').onclick=e=>{e.preventDefault();if(history.length>1&&location.hash==='#jouer')history.back();else location.hash='';};
+  addEventListener('keydown',e=>{if(e.key==='Escape'&&location.hash==='#jouer')$('back').click();});
+  home.classList.toggle('off',location.hash==='#jouer');pick.classList.toggle('off',location.hash!=='#jouer');
 })();
 </script>
 <script>
@@ -62,19 +178,17 @@ small{color:#62708f;margin-top:32px;text-align:center;max-width:620px}
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
 </script>
 <script>
-/* Installation : bouton (Android / Chrome, beforeinstallprompt) ou indication (iOS Safari). Rien en mode application ni sous file://. */
+/* Installation : ligne « Installer » (Android / Chrome, beforeinstallprompt) ou indication (iOS Safari). Rien en mode application ni sous file://. */
 (function(){
-  const box=document.getElementById('inst'),b=document.getElementById('bInst'),h=document.getElementById('iosHint'),x=document.getElementById('bInstX');
+  const b=document.getElementById('rInst'),lcd=document.getElementById('lcd');
   const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
   if(standalone||!/^https?:$/.test(location.protocol))return;
-  const KEY='t2z.hintIos';let seen=false;try{seen=localStorage.getItem(KEY)==='1';}catch(e){}
   let ev=null;
-  function show(){box.style.display='block';}
-  addEventListener('beforeinstallprompt',e=>{e.preventDefault();ev=e;b.hidden=false;show();});
-  addEventListener('appinstalled',()=>{box.style.display='none';});
-  b.onclick=()=>{if(!ev)return;ev.prompt();ev.userChoice.finally(()=>{ev=null;box.style.display='none';});};
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();ev=e;b.hidden=false;});
+  addEventListener('appinstalled',()=>{b.hidden=true;});
   const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-  if(ios&&!seen){h.hidden=false;x.hidden=false;show();x.onclick=()=>{box.style.display='none';try{localStorage.setItem(KEY,'1');}catch(e){}};}
+  if(ios)b.hidden=false;
+  b.onclick=()=>{if(ev){ev.prompt();ev.userChoice.finally(()=>{ev=null;b.hidden=true;});}else lcd.textContent='Installer : Partager, puis Sur l\'écran d\'accueil.';};
 })();
 </script>
 </body>
