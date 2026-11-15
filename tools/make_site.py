@@ -141,7 +141,7 @@ for wid, w in WAY.items():
     if not t or not n_: continue
     p = [list(xy(i, 1)) for i in n_]
     if t.get('roller_coaster'):
-        if wid not in track and any(inb(q) for q in p): others.append(p)
+        if wid not in track and wid not in drop and any(inb(q) for q in p): others.append(p)  # drop_ways / paths : tronçons exportés à part (ex. voie de garage), pas dessinés comme voie voisine
         continue
     if wid in drop: continue
     add(t, p, n_[0] == n_[-1])

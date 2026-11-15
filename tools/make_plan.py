@@ -23,7 +23,7 @@ def zone(i):
     return 'parcours'
 COL = {'gare': (40, 110, 200), 'avant lift': (110, 110, 120), 'lift': (230, 140, 30), 'frein': (200, 40, 40), 'parcours': (105, 105, 115)}
 xs = [r[0] for r in cps]; zs = [r[2] for r in cps]
-sc = 6.2; W, H = 1450, 1100; ox, oz = 560, 60; x0, z0 = min(xs + [q[0] for o in D['others'] for q in o]) - 4, min(zs) - 4
+sc = 6.2; W, H = 1450, 1100; ox, oz = 560, 60; x0, z0 = min(xs + [q[0] for o in D['others'] + ([D['paths']['garage']] if 'garage' in D.get('paths', {}) else []) for q in o]) - 4, min(zs) - 4
 mx = lambda x: ox + (x - x0) * sc; mz = lambda z: oz + (z - z0) * sc
 im = Image.new('RGB', (W, H), (242, 239, 230)); d = ImageDraw.Draw(im)
 try: F = lambda s: ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', s); FB = lambda s: ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', s)
@@ -34,7 +34,7 @@ for f in D['feats']:
 for f in D['feats']:  # trous (îlots) du lac : on les repeint
     if f['k'] == 'natural=water':
         for h in f.get('h', []): d.polygon([(mx(p[0]), mz(p[1])) for p in h], fill=(242, 239, 230))
-for o in D['others']: d.line([(mx(p[0]), mz(p[1])) for p in o], fill=(122, 60, 150), width=9)
+for o in D['others'] + ([D['paths']['garage']] if 'garage' in D.get('paths', {}) else []): d.line([(mx(p[0]), mz(p[1])) for p in o], fill=(122, 60, 150), width=9)
 for i in range(n): d.line([(mx(cps[i][0]), mz(cps[i][2])), (mx(cps[(i + 1) % n][0]), mz(cps[(i + 1) % n][2]))], fill=COL[zone(i)], width=9)
 for i in range(0, n, 3):  # flèches de sens : un point blanc plus loin
     pass

@@ -128,13 +128,19 @@ function strip(sm){
     if(!SG){const rb=strip(line(0,R1-R0,0));rb.rb=1;chunks.push(grow(rb));} // rail unique (SG) : le tronçon du circuit est le seul rail porté
     LANES.forEach(ln=>chunks.push(strip(LREV?line(laneU(ln.end),laneU(U_LANE),ln.d):line(U_LANE,ln.end,ln.d)))); // yard.rev : voies en amont du chariot
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
-    const sP=strip(gs.slice(0,37));sP.lk=j+1;chunks.push(sP,strip(gs.slice(36)));});
+    const nl=LBK?Math.round(ln.link/.5):36,sP=strip(gs.slice(0,nl+1));sP.lk=j+1;chunks.push(sP,strip(gs.slice(nl)));});
   for(let i=Math.round(S_LIFT0/DS);i<=Math.round((S_LIFT1+3)/DS);i++){const p=TR[i].p;chainP.lineTo(p.x,p.z);}
   const finsR=[[S_BRK+3,TRAV?R0:S_HOLD]].concat(BLK.map(b=>[b-9,b]),PSB?[[PSB_A+1,S_PSB]]:[]); // frein final et freins de bloc (≈ 9 m de patins avant chaque point d'arrêt, estimé)
   for(const [r0,r1] of finsR)for(let i=Math.round(r0/DS);i<Math.round(r1/DS);i+=3){const f=TR[i],l=Math.hypot(f.R.x,f.R.z)||1,nx=f.R.x/l,nz=f.R.z/l;finsP.moveTo(f.p.x-nx*.28,f.p.z-nz*.28);finsP.lineTo(f.p.x+nx*.28,f.p.z+nz*.28);}
 })();
 const swz=o=>o.sw===1?raC():o.rb?devC()-GAP:o.lk?devC()-OFF[o.lk]:0; // déplacement des tronçons portés par le chariot (circuit, transfert vers la voie lk), le long de (SW0.vx, SW0.vz)
-const devHide=o=>o.lk&&YD.device==='table'&&o.lk!==devShown(); // pont transbordeur : un seul tronçon de transfert, celui de la voie visée
+const rotC=()=>Math.cos(Math.PI*clamp(devC()/(SW_D||1),0,1)); // appareil rotatif : cos θ, θ = 0 sur le circuit, π sur la voie
+const devHide=o=>o.lk&&YD.device==='table'&&o.lk!==devShown()||ROT&&(o.sw===1?rotC()<0:o.lk?rotC()>0:false)||ROT&&o.lk&&o.lk!==devShown();
+// décalage ou rotation des tronçons portés par l'appareil ; rend true si un ctx.save() a été fait
+function swPush(o){
+  if(ROT){const c=(o.sw===1?rotC():o.lk?-rotC():1);if(c===1)return false;const a=1+(c-1)*SW0.vx*SW0.vx,b=(c-1)*SW0.vx*SW0.vz,d=1+(c-1)*SW0.vz*SW0.vz;
+    ctx.save();ctx.translate(SW0.x,SW0.z);ctx.transform(a,b,b,d,0,0);ctx.translate(-SW0.x,-SW0.z);return true;} // un rail qui tourne autour de son axe vu du dessus : largeur ∝ cos θ
+  const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);return true;}return false;} // pont transbordeur : un seul tronçon de transfert, celui de la voie visée
 
 // Décor réel : bâtiments, allées, plans d'eau, bois
 const mkPath=(pts,close)=>{const p=new Path2D;pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1]));if(close)p.closePath();return p;};
@@ -262,6 +268,10 @@ function drawTraverser(){ // pont droit : fosse, chemins de roulement transversa
 }
 function drawTable(){ // pont transbordeur, dessiné dans son repère : u le long de la voie, v dans le sens du coulissement
   const len=YD.len||8.6,v0=-CMAX-4.4,v1=CMAX+2.2;
+  if(ROT){const L_=LBK?YD.b-YD.a:len; // appareil rotatif : carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation
+    ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.fillStyle='rgba(58,62,70,.9)';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#ff9f43':'#8c8f94';lw(.12,.7);
+    ctx.beginPath();ctx.roundRect(-.5,-1.05,L_+1,2.1,.35);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#2a2c31';ctx.fillRect(-.5,-1.05,.5,2.1);ctx.fillRect(L_,-1.05,.5,2.1);ctx.restore();return;}
   ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
   ctx.fillStyle='#8f9296';ctx.fillRect(-1,v0,len+1.7,v1-v0);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.55;ctx.fillRect(-1,v0,len+1.7,v1-v0);ctx.globalAlpha=1;
   ctx.strokeStyle='#2c2e33';lw(.22,.8);ctx.beginPath();for(const u of [.4,len/2+.05,len-.3]){ctx.moveTo(u,v0+.3);ctx.lineTo(u,v1-.3);}ctx.stroke();
@@ -343,7 +353,7 @@ function drawWorld(dt){
     for(const b of LY.bld){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);if(b.fade)ctx.globalAlpha=roofA;ctx.fill(b.p);ctx.restore();}
     if(tunnelP){ctx.save();ctx.translate(2.2,1.7);ctx.fill(tunnelP);ctx.restore();}
     ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;
-    for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:STL?.3:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
+    for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swPush(o);ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:STL?.3:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
     for(const t of trains)for(let k=0;k<NCARS;k++)drawCar(t,k,true);
     if(SITE.draw&&SITE.draw.shadows)SITE.draw.shadows(ctx,dry,API);
   }
@@ -362,7 +372,7 @@ function drawWorld(dt){
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
     if(o.t){drawCar(o.t,o.k);continue;}
-    const k=swz(o);if(k){ctx.save();ctx.translate(SW0.vx*k,SW0.vz*k);}
+    const k=swPush(o);
     if(BOB){ // gouttière en acier : bords sombres, fond clair, reflet au centre
       ctx.strokeStyle=TRO.edge;lw(.22,.7);ctx.stroke(o.str);
       ctx.strokeStyle=TRO.deck;ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);

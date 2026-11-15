@@ -2,7 +2,7 @@
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
-  if(t.st==='garage'){const ln=LANES[t.lane],w=t.lane<0||onCar(t)?'Sur le chariot de '+DEVL:t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>YD.a?'Sur '+DEVL:'Tronçon de liaison';
+  if(t.st==='garage'){const ln=LANES[t.lane],w=t.lane<0||onCar(t)?'Sur le chariot de '+DEVL:t.g-TLEN>=ln.dev-.01?(LANES.length>1?'Voie '+(t.lane+1)+' — '+ln.name:ln.name):t.g>(LBK?YD.a-TLEN:YD.a)?'Sur '+DEVL:'Tronçon de liaison';
     return w+(t.mv>0?' — avance':t.mv<0?' — recule':G.job&&G.job.t===t?' — en révision':'')+(t.hs?' — hors service':'');}
   if(t.st==='station'){
     if(t.phase==='unload')return 'Débarquement';

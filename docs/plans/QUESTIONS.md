@@ -90,12 +90,12 @@ Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « re
 
 Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tableau distance / hauteur estimée / zone) et `goudurix-file-correction.jpg` (file, gare, sortie, garage, repères F1 à F12). Les numéros 1 à 16 renvoient à `goudurix-trace-complete.png`. Détails : `docs/goudurix-notes.md`.
 
-29. **Trains.** Deux trains de 7 wagons (RCDB) : combien en service aujourd'hui, de quelles couleurs (nouveaux trains 2025) ? Un seul ou deux sur le parcours en même temps ?
+29. **Trains.** *(Répondu : 2 trains rouges.)* Reste : liseré, teinte exacte ; un seul ou deux sur le parcours en même temps ?
 30. **Inversions.** Nos bosses (vers 6, 10–11, 12–13, 14) sont estimées. Où sont le looping vertical, le batwing, le papillon et la double vrille, et dans quel ordre ? (« le looping est au 6 », etc.)
 31. **Freins.** Y a-t-il un frein de bloc en parcours ? Le nôtre (rouge, au 9, s ≈ 437 m) est supposé. Le frein final est-il bien la diagonale ouest (du 14 au 16, juste avant l'aiguillage F10), le train s'arrêtant à l'aiguillage, ≈ 28 m avant la gare ?
 32. **Lift.** *(Corrigé par le propriétaire : le lift est la montée après la gare, ligne droite entre 15 et 16 de l'ancien plan.)* Fait : lift du 44 au 136 m, sens de marche inversé par rapport à la première version. Début et fin de la chaîne exacts ?
-33. **Garage.** La voie de maintenance (violet, F9) se raccorde au retour, à ≈ 30 m avant la gare (F10) ; notre aiguillage s'y branche et la voie repart à contre-sens (virage serré, estimé). Le train y entre-t-il en marche avant ou en arrière ? Combien de trains y tiennent-ils (nous : 2) ?
+33. **Garage.** *(Répondu : le train recule de la gare vers la voie, aiguillage rotatif autour du tube de rail ; fait.)* Reste : distance exacte de l'aiguillage à la gare (≈ 44 m, d'après le nœud OSM), nombre de trains qui tiennent dans la voie (nous : 2), le train peut-il entrer en marche avant depuis le frein final ?
 34. **Moteurs.** Gare, frein final, voie de garage : freins seuls ou freins + pneus ?
-35. **Quais.** Embarquement côté est (F4) et débarquement côté ouest (F6) : juste, ou l'inverse ? Profondeur des quais ?
-36. **File.** OSM ne cartographie pas la file : nous avons pris le chemin F2 (80 m). Où est la vraie file (entrée, boucles, barrières) ? Peut-on l'allonger par la promenade ouest ?
-37. **Sortie.** Nous faisons sortir les visiteurs par la porte ouest (F6), sous le pied du lift (F7), vers la promenade (F8) : où est la vraie sortie ?
+35. **Quais.** *(Répondu : portillons à l'ouest, fait.)* Profondeur des quais ? Où est la porte de sortie côté est (nous : F6) ?
+36. **File.** OSM ne cartographie pas la file : nous avons pris la promenade ouest (F2) puis un raccord vers le quai ouest (F3), qui passe sous le retour. Où est la vraie file (entrée, boucles, barrières) ?
+37. **Sortie.** Nous faisons sortir les visiteurs par une porte du mur est (F6), vers l'allée et le pont de bois (F7, F8) : où est la vraie sortie ?
