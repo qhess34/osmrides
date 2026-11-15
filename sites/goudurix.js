@@ -23,7 +23,7 @@ const SITE=(()=>{
     car:{len:2.55,n:7,seats:4,abreast:2,w:1.5},
     // Trains rouges (propriétaire, 2026-11-15) ; teinte exacte et liseré gris sombre SUPPOSÉS ; voie tubulaire jaune et supports rouges d'après la photo du propriétaire (teintes assourdies).
     trains:[{name:'Train 1',col:'#9a2d28',col2:'#3a3a3e',wear:30},{name:'Train 2',col:'#9a2d28',col2:'#3a3a3e',wear:44}],
-    track:{spine:'#a88a2e',rail:'#cdaa38',support:'#8e3b2c'},
+    track:{spine:'#c4a32e',rail:'#b9532f',support:'#8e3b2c'}, // poutre et traverses jaunes, rails tubulaires orange-rouge, supports rouille (photo du propriétaire, 2026-11-15),
     // (propriétaire) un seul train sur le lift ; le lift retient le train en haut si la zone de freinage suivante est occupée : comportement par défaut du moteur
     // Deux zones de freinage (propriétaire) : frein de bloc B1 (repère blk1) juste avant la portion droite sous le lift, frein final (brk) sur la voie parallèle à la gare. Position d'après le propriétaire, emplacement exact ESTIMÉ.
     stopBack:.5,holdBack:5,dropAfter:35,loadSide:1,   // frein final : tête du train 5 m avant la gare (ESTIMÉ) ; le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire)

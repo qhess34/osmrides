@@ -66,3 +66,8 @@ Profil ajusté : sommet 36 m (s 123) → petite descente 34 m → virage à 180�
 Étiquettes sur la carte (Butterfly, Loop, Batwing, Double Corkscrew, Grande descente, Virage à 180°) et une caméra par figure (boutons du jeu).
 
 **Correction du propriétaire (2026-11-15)** : « Le loop est après le batwing, à l'est, entre 9 et 10. » (repères du plan `docs/plans/goudurix-figures.jpg`). Notre recalage par la forme le mettait à tort avant le Batwing (s 280–304). Corrigé : Loop à s ≈ 400–450 (sommet 26 m estimé, s 425, ligne droite est x ≈ 54 m, z 46 → 81 m) ; l'ancienne portion 280–304 redevient une ligne basse (4–4,5 m) entre Butterfly et Batwing. Nouvel ordre : Butterfly 206–272, Batwing 312–382, Loop 400–450, Double Corkscrew 540–590. Vitesse maxi calculée 90 km/h, croisements ≥ 3,3 m, longueur 3D 854 m. Étiquette et caméra « Loop » déplacées. Reste estimé : hauteur et emplacement exact (± 10 m).
+
+
+## Photo de l'aiguillage en rotation (propriétaire, 2026-11-15)
+
+`docs/sources/goudurix-aiguillage-rotation.png` : l'aiguillage pendant son retournement. Confirme l'hypothèse : tambour rotatif autour de l'axe longitudinal (grande poutre jaune), une face porte la voie droite du circuit, l'autre la voie courbe (S) vers le garage ; passerelle grillagée et plate-forme de l'opérateur avec escalier à côté. Couleurs vues de près : poutre et traverses **jaunes**, rails tubulaires **orange-rouge**, supports **rouille** — reportées dans `SITE.track`.
