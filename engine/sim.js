@@ -248,7 +248,7 @@ function updateRun(t,dt){
     if(!t.inLift){t.inLift=true;G.wear.chain=Math.min(100,G.wear.chain+2.2);
       const c=G.wear.chain;t.failAt=Math.random()<(c>40?Math.pow((c-40)/60,2)*.35:0)?rnd(S_LIFT0+8,S_LIFT1-6):-1;}
     if(t.failAt>0&&t.s>=t.failAt){t.failAt=-1;G.liftBroken=true;sfx.alarm();log('🚨 Panne du lift ! '+t.name+' est bloqué dans la montée.','bad');}
-    t.wait=BLK.length>0&&t.s>S_LIFT1-4&&occupied(S_REL-TLEN,BLK[0],t); // le lift retient le train tant que le premier canton est occupé
+    t.wait=LIFT_NEXT>=0&&t.s>S_LIFT1-4&&occupied(S_REL-TLEN,LIFT_NEXT,t); // le lift retient le train (chaîne arrêtée) tant que la zone suivante est occupée : premier frein de bloc, ou, avec SITE.singleCourse, tout le parcours jusqu'au frein final
     t.v=(G.liftBroken||G.estop||t.wait||G.liftOff)?0:Math.min(5.5,Math.max(t.v,2)+3*dt);
   }else if(z==='course'){
     const a=-9.81*(hAt(t.s)-hAt(t.s-TLEN))/TLEN-(PH.roll+t.wear*.0003)-PH.drag*t.v*t.v;

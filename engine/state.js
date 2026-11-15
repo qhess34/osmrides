@@ -69,6 +69,7 @@ function stationBusy(self){
   return trains.some(o=>o!==self&&(o.st==='station'||(YD.at!=='brake'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
+const LIFT_NEXT=BLK.length?BLK[0]:SITE.singleCourse?L:-1; // fin de la zone qui suit le lift : 1er frein de bloc ; SITE.singleCourse (sans frein de bloc) : un seul train entre la fin du lift et le frein final (fin du circuit)
 const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
 const onRaSt=o=>RA&&o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
 const onPsb=o=>PSB&&o.st==='run'&&(o.toPre||o.s>S_HOLD+.5); // o est sur le frein avant gare ou s'y rend (zone de stockage Pre)

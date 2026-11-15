@@ -22,6 +22,7 @@ const SITE=(()=>{
     // Trains rouges (propriétaire, 2026-11-15) ; teinte exacte et liseré gris sombre SUPPOSÉS ; voie tubulaire jaune et supports rouges d'après la photo du propriétaire (teintes assourdies).
     trains:[{name:'Train 1',col:'#9a2d28',col2:'#3a3a3e',wear:30},{name:'Train 2',col:'#9a2d28',col2:'#3a3a3e',wear:44}],
     track:{spine:'#a88a2e',rail:'#cdaa38',support:'#8e3b2c'},
+    singleCourse:true,   // propriétaire : un seul train entre l'après-lift et le frein final ; le lift s'arrête (train retenu au sommet) si un train occupe cette zone
     stopBack:.5,holdBack:5,dropAfter:16,loadSide:1,   // frein final : tête du train 5 m avant la gare (ESTIMÉ) ; le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire)
     phys:{roll:.06,drag:.0009,vmin:3},
     // Garage : une seule voie (la voie de maintenance OSM), 2 trains au plus. Durée de rotation (4 s) et vitesse de manœuvre ESTIMÉES.
