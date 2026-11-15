@@ -18,7 +18,7 @@ def zone(i):
     if i < sidx('st1'): return 'gare'
     if i < sidx('lift0'): return 'avant lift'
     if i < sidx('lift1'): return 'lift'
-    if 'blk1' in tag and abs(i - tag['blk1']) < 3: return 'frein'
+    if 'blk1' in tag and -4 < i - tag['blk1'] < 1: return 'frein'
     if i >= sidx('brk'): return 'frein'
     return 'parcours'
 COL = {'gare': (40, 110, 200), 'avant lift': (110, 110, 120), 'lift': (230, 140, 30), 'frein': (200, 40, 40), 'parcours': (105, 105, 115)}
@@ -55,7 +55,7 @@ for nm, c in (('Gare (quai estimé)', COL['gare']), ('Lift (ligne droite après 
 y += 14; d.text((30, y), 'Rond  distance  hauteur  zone', fill='black', font=FB(20)); y += 32
 for r in rows: d.text((30, y), '%2d   s=%4d m   %4.1f m   %s' % (r[0], r[1], r[2], r[3]), fill='black', font=F(19)); y += 27
 y += 12
-for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Lift 36 m, chute 32,9 m (RCDB / Wikipédia).', 'Sept inversions : emplacements estimés.', 'Un seul train entre l\'après-lift et le frein final.', 'Répondez avec les numéros : « inversion au 9 ».'):
+for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Lift 36 m, chute 32,9 m (RCDB / Wikipédia).', 'Sept inversions : emplacements estimés.', 'Deux zones de freinage (propriétaire) : 1 avant la portion droite sous le lift, 2 parallèle à la gare ; position estimée.', 'Répondez avec les numéros : « inversion au 9 ».'):
     d.text((30, y), t, fill=(110, 40, 40), font=F(19)); y += 26
 d.text((W - 60, 40), 'N', fill='black', font=FB(40)); d.polygon([(W - 48, 4), (W - 68, 36), (W - 28, 36)], fill='black')
 d.rectangle([W - 330, H - 70, W - 330 + 50 * sc, H - 60], fill='black'); d.text((W - 330, H - 100), '50 m', fill='black', font=F(22))
