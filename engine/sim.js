@@ -207,7 +207,7 @@ function updateStation(t,dt){
     if(t.pt<=0){
       const i=t.seats.findIndex(s=>s&&s.on);
       if(i>=0){
-        const v=t.seats[i];t.seats[i]=null;t.pt=.12;G.stats.riders++;G.stats.income+=5;G.money+=5;
+        const v=t.seats[i];t.seats[i]=null;t.pt=.12;G.stats.riders++;if(!G.sandbox){G.stats.income+=5;G.money+=5;}
         let g=v.w<80?.07:v.w<180?.04:.015;if(G.wear.track>75)g*=.4;G.sat=clamp(G.sat+g,0,100);
         seatBase(t,i,_v);walker(exitPath(alightWalk(Math.floor(i/CSEATS),_v.x,_v.z)),v.ci,null,2.8,0,'alight'); // descente côté sortie, à l'opposé des portillons, par le quai et la porte
       }else if(count(t)===0){t.phase='board';t.idle=0;}
@@ -233,7 +233,7 @@ function updateStation(t,dt){
       t.st='run';t.v=.5;t.depReq=false;t.inLift=false;t.inBrake=false;t.screamed=false;t.blk=false;t.told=false;G.stats.disp++;sfx.bell();resetOps();
       if(G.wx.type==='storm'&&n>0){pay(400,true);G.sat=clamp(G.sat-3,0,100);log('Infraction : train envoyé en plein orage ! Amende de 400 €.','bad');}
       else log(t.name+' part avec '+n+' passager'+(n>1?'s':'')+(n>0&&!checked?' — lapbars non vérifiés (by-pass).':'.'));
-      if(n>0&&!checked&&Math.random()<.08+Math.max(0,(t.wear-55)/45)*.3){pay(600,true);G.sat=clamp(G.sat-6,0,100);sfx.alarm();log('Incident : un lapbar était mal verrouillé au départ. Amende de 600 €.','bad');}
+      if(!G.sandbox&&n>0&&!checked&&Math.random()<.08+Math.max(0,(t.wear-55)/45)*.3){pay(600,true);G.sat=clamp(G.sat-6,0,100);sfx.alarm();log('Incident : un lapbar était mal verrouillé au départ. Amende de 600 €.','bad');}
     }
   }
 }
@@ -311,7 +311,7 @@ function updateTrains(dt){
 
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
 function updateWeather(dt){
-  const w=G.wx;
+  const w=G.wx;if(G.sandbox){w.type='clear';w.next=1e6;G.flash=0;return;}
   if(w.type==='clear'){w.next-=dt;
     if(w.next<=0&&G.time<1040){
       if(Math.random()<.5){w.type='warn';w.t=30;log('🌩️ Orage en approche ! Suspendez les départs avant qu\'il n\'éclate.','warn');}
@@ -328,6 +328,7 @@ function updateWeather(dt){
 }
 function step(dt){
   G.time=Math.min(1140,G.time+dt*.5);
+  if(G.sandbox){G.wear.chain=G.wear.track=G.wear.brake=0;G.liftBroken=G.brakeFault=false;for(const t of trains){t.wear=0;t.hs=false;if(t.fault){t.fault=null;if(t.phase==='fault')t.phase='ready';}}}
   updateWeather(dt);updateVisitors(dt);updatePlatform(dt);stepOps(dt);updateTrains(dt);
   if(G.job){G.job.rem-=dt;if(G.job.rem<=0)finishJob();}
   if(G.time>=1080&&!G.closedMsg){G.closedMsg=true;G.open=false;log('🔔 18:00 — le parc ferme, la file est fermée. Terminez les derniers tours.','warn');}
@@ -341,11 +342,11 @@ function endDay(){
   const s=G.stats,net=s.income-s.costs;
   $('dTitle').textContent='Fin du jour '+G.day;
   $('dTable').innerHTML=[['Passagers transportés',s.riders],['Trains envoyés',s.disp],['Visiteurs repartis mécontents',s.quits],['Visiteurs refoulés (file pleine)',s.turned],
-    ['Recettes',s.income+' €'],['Dépenses (dont salaires 350 €)',s.costs+' €'],['dont amendes',s.fines+' €'],
-    ['Résultat du jour',(net>=0?'+':'')+net+' €'],['Budget',Math.round(G.money)+' €'],['Satisfaction',Math.round(G.sat)+' %']]
+    ...(G.sandbox?[]:[['Recettes',s.income+' €'],['Dépenses (dont salaires 350 €)',s.costs+' €'],['dont amendes',s.fines+' €'],
+    ['Résultat du jour',(net>=0?'+':'')+net+' €'],['Budget',Math.round(G.money)+' €']]),['Satisfaction',Math.round(G.sat)+' %']]
     .map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('');
-  G.over=G.money<-2000;
-  $('dMsg').textContent=G.over?'Le budget est dans le rouge : la direction vous retire les clés de l\'attraction…'
+  G.over=!G.sandbox&&G.money<-2000;
+  $('dMsg').textContent=G.sandbox?'Bac à sable : pas de verdict financier. Jour suivant quand vous voulez.':G.over?'Le budget est dans le rouge : la direction vous retire les clés de l\'attraction…'
     :s.riders>=(SITE.goal||400)?((SITE.text&&SITE.text.great)||'Excellente journée !'):s.riders>=(SITE.goal||400)/2?'Journée correcte. Un second train et moins de pannes feraient mieux.'
     :'Journée difficile. Pensez à ouvrir tôt et à sortir le second train.';
   $('dBtn').textContent=G.over?'Recommencer':'Jour suivant';
