@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* Test rapide : node tools/check.js <site> [--build] — joue une journée complète et résume en quelques lignes. */
 const { chromium } = require('playwright');
+const { INSTALL } = require('./offpath.js');
 const path = require('path'), { execFileSync } = require('child_process'), fs = require('fs');
 const site = process.argv[2] || 'zeus', build = process.argv.includes('--build');
 const root = path.resolve(__dirname, '..');
@@ -128,13 +129,17 @@ const root = path.resolve(__dirname, '..');
     } else if (hasYard) steps.push('scenario-missing:FAIL');
     man = steps.length ? steps.join(' ') : 'no yard train';
   }
+  await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
-    act('speed', 0); G.wx.next = 1e6;
+    act('speed', 0); G.wx.next = 1e6; __opStroll();
     if (!G.open) act('open');
     let it = 0, opened = null, gp = 0;
     const press = () => { ui(); $('bGate').click(); gp++; }; // le joueur ouvre et ferme les portillons au bouton du pupitre
     for (; it < 400000 && !G.dayDone; it++) {
       step(.025);
+      if (it % 5 === 0) __opSample();
+      if (it === 9000 || it === 22000) act('evac'); // évacuation de la file en pleine journée
+      if (it === 14000) for (const v of G.queue) if (Math.random() < .5) v.pat = 0; // abandons dans toute la file
       if (it % 40) continue;
       const s = trains.find(t => t.st === 'station' && t.phase === 'board' && !t.hs);
       if (s) { if (!G.gatesOpen && opened !== s && !s.depReq) { press(); opened = s; } else if (G.gatesOpen && (s.depReq || count(s) === SEATS)) press(); }
@@ -144,14 +149,15 @@ const root = path.resolve(__dirname, '..');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.dayDone, it, gp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money) };
+    return { done: G.dayDone, it, gp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
   });
   await page.evaluate(() => { document.getElementById('mDay').classList.add('hidden'); cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
-  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man);
+  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2;
   console.log(`site ${site}${build ? ' (build)' : ''}: day done=${r.done} after ${r.it} steps, gate presses=${r.gp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
+  console.log(`offpath=${r.off} (sur ${r.offN} positions)` + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);
   console.log(`page errors=${errors.length}` + (errors.length ? ' -> ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(ok ? 'PASS' : 'FAIL');

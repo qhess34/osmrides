@@ -196,7 +196,7 @@ function updateStation(t,dt){
       if(i>=0){
         const v=t.seats[i];t.seats[i]=null;t.pt=.12;G.stats.riders++;G.stats.income+=5;G.money+=5;
         let g=v.w<80?.07:v.w<180?.04:.015;if(G.wear.track>75)g*=.4;G.sat=clamp(G.sat+g,0,100);
-        seatBase(t,i,_v);{const b=BAYS[Math.floor(i/CSEATS)];walker(exitPath(_v.x-b.rx*1.2,_v.z-b.rz*1.2),v.ci,null,2.8);} // descente côté sortie, à l'opposé des portillons
+        seatBase(t,i,_v);walker(exitPath(alightWalk(Math.floor(i/CSEATS),_v.x,_v.z)),v.ci,null,2.8,0,'alight'); // descente côté sortie, à l'opposé des portillons, par le quai et la porte
       }else if(count(t)===0){t.phase='board';t.idle=0;}
     }
   }else if(t.phase==='board'){
@@ -270,12 +270,12 @@ function updatePlatform(dt){
     let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
     const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let i=-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r]){i=kb*CSEATS+r;break;}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
-      const b=BAYS[Math.floor(i/CSEATS)],W=SITE.board.walk,j=rnd(-.2,.2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2);}
+      const b=BAYS[Math.floor(i/CSEATS)],W=SITE.board.walk,j=rnd(-.2,.2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2,0,'wait');}
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.depReq); // portillons : ouverts et fermés seulement au pupitre
-  G.gate=clamp(G.gate+(G.gatesOpen?dt:-dt)/.7,0,1);
+  G.gate=clamp(G.gate+(G.gatesOpen||G.walkers.some(k=>k.kind==='board')?dt:-dt)/.7,0,1); // un portillon ne se referme pas sur un visiteur qui le franchit
   if(t&&G.gate>.9)for(let i=0;i<SEATS;i++){const r=G.plat[i];
-    if(r&&r.on&&!t.seats[i]){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2);}}
+    if(r&&r.on&&!t.seats[i]){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2,0,'board');}}
 }
 function updateTrains(dt){
   for(const t of trains){
@@ -354,7 +354,7 @@ function act(a,arg){
   else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
   else if(a==='evac'){const n=G.queue.length;if(!n)return;
-    for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8));
+    for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');
     clearQueue();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}

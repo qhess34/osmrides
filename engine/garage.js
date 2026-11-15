@@ -70,6 +70,17 @@ const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 const slotPos=i=>{const b=BAYS[Math.floor(i/CSEATS)],d=3.45+(i%CSEATS)*.8;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // une place d'attente par siège, en file derrière le portillon
+// Couloirs des visiteurs sur les quais (jamais en ligne droite à travers la gare, la voie ou les portillons) :
+//  embarquement : file → SITE.board.via → couloir d'attente (SITE.board.walk m de la voie, derrière les portillons) → place d'attente de la travée → (portillon ouvert seulement) → siège ;
+//  débarquement : siège → quai de débarquement, côté opposé aux portillons (couloir à SITE.plat.walkU m de la voie, par défaut au milieu du quai) → travée de la porte → SITE.exit.door → SITE.exit.path.
+const PLT=Object.assign({load:7.9,exit:0,back:.1,front:1.6},SITE.plat),ULAT=-(PLT.walkU||(PLT.exit?(1.3+PLT.exit)/2:1.8));
+const bayAt=(k,lat,du)=>{const b=BAYS[k];return [b.x+b.rx*lat+b.tx*(du||0),0,b.z+b.rz*lat+b.tz*(du||0)];};
+const DOOR=SITE.exit.door,DOORK=DOOR?BAYS.reduce((m,b,k)=>Math.hypot(b.x-DOOR[0],b.z-DOOR[1])<Math.hypot(BAYS[m].x-DOOR[0],BAYS[m].z-DOOR[1])?k:m,0):0;
+function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des travées jusqu'à la porte
+  const pts=[[x,0,z],bayAt(k,ULAT)],st=k<DOORK?-1:1;for(let j=k;j!==DOORK;j-=st)pts.push(bayAt(j-st,ULAT));
+  if(DOOR)pts.push([DOOR[0],0,DOOR[1]]);return pts;
+}
+const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,SITE.board.walk),bayAt(NCARS-1,SITE.board.walk)]]; // couloirs de quai (contrôle offpath)
 // Deux opérateurs de quai vérifient les lapbars (moitié avant, moitié arrière) puis valident chacun sur un bouton
 const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*1.95,b.z+b.tz*e*1.7+b.rz*1.95];};
 const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});

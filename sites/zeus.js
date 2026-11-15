@@ -20,7 +20,7 @@ const SITE=(()=>{
     yard:{at:'station',device:'switch',a:.8,b:6.4,slide:3.4,side:-1,len:8.6,lanes:[{name:'Garage',pts:[onGarage(21.5),onGarage(53.6)]}],move:{v:2.4,t:3}},
     stationPoly:OSM.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
     fade:[[0,2.5,9],[7.3,-3.7,1.5],[49,-3,8],[-4,11.4,4]],   // toits qui s'effacent : gare, poste de conduite, garage, escalier
-    plat:{load:7.9,exit:0,back:.1,front:1.6},
+    plat:{load:7.9,exit:3,back:.1,front:1.6},   // exit : quai de débarquement côté nord jusqu'au mur (ESTIMÉ d'après le bâtiment OSM) ; couloir de descente au milieu
     booth:[7.275,-3.7,0],boothLabel:[10.5,-6.6],beacon:[9.6,-4.9],
     queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],gate:{h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28]},
       parts:[
@@ -32,7 +32,7 @@ const SITE=(()=>{
     approach:[{w:.6,pts:PROM_W.concat([[-29.2,-9]])},{w:.4,pts:PROM_N.concat([[-29.2,-9]])}],
     noStroll:[[-27.5,-1.5]],
     board:{via:[[-3.9,7.9],[-4,6.9]],walk:6.3},
-    exit:{path:[[-.7,-3],[-.7,-4.1],[-11.1,-4.1],[-11,-7.3],[-8.8,-8.8],[-6.2,-8.8],[-4.6,-9.7],[-4.4,-11.3],[.3,-15.5],[1.9,-19.4],[-3.2,-20.1],[-8.6,-25]], // sortie par la boutique
+    exit:{door:[-.7,-3],path:[[-.7,-3],[-.7,-4.1],[-11.1,-4.1],[-11,-7.3],[-8.8,-8.8],[-6.2,-8.8],[-4.6,-9.7],[-4.4,-11.3],[.3,-15.5],[1.9,-19.4],[-3.2,-20.1],[-8.6,-25]], // sortie par la boutique
       tails:[[[-.2,-32.2],[3.6,-42.4],[4.8,-56.4]],[[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]].concat(PROM_W.slice().reverse())]},
     jobsites:{liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]},
     view:{x:38,z:52,w:222,h:162,bounds:[-170,210,-130,230]},

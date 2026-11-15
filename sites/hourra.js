@@ -47,7 +47,8 @@ const SITE=(()=>{
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     paths:[PROM,OSM.paths.exit],
     board:{via:[[3.6,-.6]],walk:5.2},
-    exit:{path:[[-.3,5.3],[-.6,7]].concat(OSM.paths.exit.slice(1)),
+    exit:{door:[-.6,7],path:[[-.6,7]].concat(OSM.paths.exit.slice(1)), // porte de sortie dans le décrochement sud-ouest de la gare (ESTIMÉ)
+     
       tails:[[[27.7,38.1],[42.8,43.4],[50.5,45.3],[52.9,52.8]],[[13.8,40],[2.2,44.3],[-1.4,49.1]]]},
     jobsites:{liftFix:[24,-6],chainRev:[24,-6],trackRev:[40,22],brakeFix:[-31,-38],brakeRev:[-31,-38],trainRev:[-30,-9],rearm:[1.5,-1.5]},
     view:{x:40,z:-28,w:190,h:150,bounds:[-130,200,-150,110]},

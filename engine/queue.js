@@ -27,15 +27,15 @@ function removeVisitor(v){const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1)
 function clearQueue(){G.queue.length=0;for(const s of SEGS)s.list.length=0;}
 const P3=(a,j)=>a.map(p=>[p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)]);
 function approach(){let r=Math.random()*SITE.approach.reduce((n,a)=>n+a.w,0);for(const a of SITE.approach){r-=a.w;if(r<=0)return a.pts;}return SITE.approach[0].pts;}
-function leavePath(x,z){return [[x,0,z]].concat(P3(approach().slice().reverse(),.7));}
+function leavePath(v){return [[v.x,0,v.z]].concat(v.pts.slice(0,v.i).reverse().map(p=>[p[0],0,p[2]]));} // demi-tour : repart par où il est venu (jamais en ligne droite vers l'entrée)
 function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniquement par les chemins ouverts. Évacuation : au plus court, barrières franchies.
-  if(v.mode!=='q')return leavePath(v.x,v.z);
+  if(v.mode!=='q')return leavePath(v);
   const pts=[[v.x,0,v.z]];let e=v.e,ds=e.len-v.r;
   while(e){for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);e=prevSeg(e,evac);ds=1e9;}
   return pts.concat(P3(approach().slice().reverse(),.7));
 }
-function exitPath(x,z){const X=SITE.exit,t=X.tails[Math.floor(Math.random()*X.tails.length)];return [[x,0,z]].concat(P3(X.path,.35),P3(t,.7));}
-function walker(pts,ci,done,sp,emo){G.walkers.push({pts,i:1,x:pts[0][0],y:pts[0][1],z:pts[0][2],ci,done,sp:sp||2.6,ph:rnd(0,6)});if(emo)emote(emo,pts[0]);}
+function exitPath(pre){const X=SITE.exit,t=X.tails[Math.floor(Math.random()*X.tails.length)];return pre.concat(P3(X.path,.35).slice(X.door?1:0),P3(t,.7));} // pre : trajet jusqu'à la porte (alightWalk) ; X.path commence à la porte
+function walker(pts,ci,done,sp,emo,kind){G.walkers.push({kind,pts,i:1,x:pts[0][0],y:pts[0][1],z:pts[0][2],ci,done,sp:sp||2.6,ph:rnd(0,6)});if(emo)emote(emo,pts[0]);}
 function moveAlong(k,dt){
   let st=k.sp*dt;
   while(st>0&&k.i<k.pts.length){
@@ -63,9 +63,9 @@ function updateVisitors(dt){
   const imp=w==='storm'?3:w==='rain'?1.5:1;
   for(let i=Q.length-1;i>=0;i--){
     const v=Q[i];v.w+=dt*imp;
-    if(v.w>v.pat){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3);continue;}
+    if(v.w>v.pat){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3,0,'quit');continue;}
     if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière d'entrée : seul passage vers la file
-      if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v.x,v.z),v.ci,null,3);continue;}
+      if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v),v.ci,null,3,0,'turn');continue;}
       if(ENTRY_GATE.t>.02)continue;
       if(!room(SEG_IN))continue; // patiente devant la barrière le temps que la file avance
       v.mode='q';v.e=SEG_IN;v.r=SEG_IN.len;SEG_IN.list.push(v);
