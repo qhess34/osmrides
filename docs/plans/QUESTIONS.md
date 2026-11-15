@@ -75,7 +75,7 @@ Les numéros 1 à 17 ci-dessous renvoient à `oziris-trace-complete.png` ; « re
 
 18. **Trains.** Combien de trains en service : 3 (Wikipédia / RCDB) ou 2 (CoasterBuzz) ? Combien au plus sur le parcours en même temps ? Couleurs des trains et de la voie ?
 19. **Freins.** Y a-t-il un frein de bloc en cours de parcours ? Le nôtre (rouge, au 11, s ≈ 520 m) est supposé. Le frein final va-t-il bien du 16 au pont (17), puis zone d'attente jusqu'à la gare (1) ?
-20. **Inversions.** Nos cinq bosses (vers 6, 7–8, 10–11, 13, 14–15) sont estimées : où sont les inversions (« dive loop au 6 », etc.) ?
+20. **Inversions.** *(Répondu en partie via l'affiche, voir 27 : dive loop s ≈ 165–205, looping vertical 240–290, Immelmann 295–345, zéro-G 475–510 et 680–740.)* Nos cinq bosses sont désormais posées d'après l'affiche ; hauteurs estimées.
 21. **Pont transbordeur.** *(Répondu, 2026-11-15 : un seul rail — « c'est la voie du parcours qui vient chercher les trains au garage » ; fait, `docs/plans/oziris-garage.jpg`.)* ~~Le pont porte-t-il deux rails côte à côte ou un seul rail ?~~ Reste : longueur du rail et vitesse du chariot (estimées).
 22. **Voies de garage.** Les trois voies (violet, 1 à 3) sont en amont du pont, à côté du frein final : le train y entre-t-il bien **en marche arrière** et en ressort-il en marche avant ? Un train par voie ?
 23. **Moteurs.** Gare, frein final, pont, voies : freins seuls ou freins + pneus ?
@@ -99,3 +99,5 @@ Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tabl
 35. **Quais.** *(Répondu : portillons à l'ouest, fait.)* Profondeur des quais ? Où est la porte de sortie côté est (nous : F6) ?
 36. **File.** OSM ne cartographie pas la file : nous avons pris la promenade ouest (F2) puis un raccord vers le quai ouest (F3), qui passe sous le retour. Où est la vraie file (entrée, boucles, barrières) ?
 37. **Sortie.** Nous faisons sortir les visiteurs par une porte du mur est (F6), vers l'allée et le pont de bois (F7, F8) : où est la vraie sortie ?
+27. **OzIris — plan des figures.** *(Répondu, 2026-11-15 : affiche fournie, `docs/sources/oziris-plan-figures-affiche.png`, noms lisibles : Dive Loop, Vertical Loop, Immelmann, Zero-G Roll ×2 ; placement sur le tracé OSM dans `docs/oziris-notes.md`.)* Reste : l'affiche est stylisée, les emplacements exacts (± 10 m) et les hauteurs des inversions sont estimés ; l'ordre dive loop, looping, Immelmann, zéro-G, zéro-G se déduit de la forme : à confirmer (vidéo embarquée ou photo de la chute).
+28. **OzIris — trains.** *(Répondu, 2026-11-15 : 3 trains, tous bleus ; l'article sur un 4e train est dépassé.)* Reste : teinte exacte du bleu et des lapbars (supposée d'après les photos).

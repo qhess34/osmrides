@@ -14,6 +14,7 @@ Le fichier de spécification (JSON) décrit :
   keep          [[s0, s1], ...] zones non lissées (droites)
   paths, polys  {nom: identifiant OSM} chemins et polygones exportés à part (file, sortie, gare…)
   drop_ways     identifiants à ne pas mettre dans le décor
+  (tunnels)     calculés : tronçons du circuit tagués tunnel=yes (ou covered=yes et layer<0) -> OSM.tunnels=[[s0,s1],…]
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
 OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
 """
@@ -53,6 +54,23 @@ assert len(used) == len(track), 'tronçons non reliés : %s' % [m for m in track
 assert chain[0] == chain[-1], 'le circuit ne se referme pas'
 raw = [xy(i) for i in chain[:-1]]
 L0 = sum(dist(raw[i], raw[(i + 1) % len(raw)]) for i in range(len(raw)))
+# tronçons du circuit en tunnel (OSM tunnel=yes, ou covered=yes avec layer<0) : intervalles [s0, s1] le long de la voie
+def is_tunnel(t):
+    try: lay = float(t.get('layer', 0))
+    except ValueError: lay = 0
+    return t.get('tunnel') in ('yes', 'building_passage') or (t.get('covered') == 'yes' and lay < 0)
+tun_edges = set()
+for m in track:
+    if is_tunnel(tags(WAY[m])):
+        nn = nds(WAY[m]); tun_edges |= {frozenset(e) for e in zip(nn, nn[1:])}
+cumr = [0.0]
+for i in range(len(raw)): cumr.append(cumr[-1] + dist(raw[i], raw[(i + 1) % len(raw)]))
+tunnels = []
+for i in range(len(raw)):
+    if frozenset((chain[i], chain[i + 1])) in tun_edges:
+        if tunnels and abs(tunnels[-1][1] - cumr[i]) < 1e-6: tunnels[-1][1] = cumr[i + 1]
+        else: tunnels.append([cumr[i], cumr[i + 1]])
+tunnels_ground = tunnels
 
 def resample(pts, step):
     P = pts + [pts[0]]; cum = [0]
@@ -116,6 +134,23 @@ for i in range(0, n, step):
         if k in tagi: row.append(tagi[k])
     cps.append(row)
 
+# tunnels : conversion de s (au sol) en abscisse du moteur (longueur 3D le long de la spline Catmull-Rom des points de contrôle, comme engine/core.js)
+def engine_s(sg):
+    m = len(cps); SUB = 24; dense = [0.0]; prev = None; fi = sg * n / L0 / step
+    def pt(i, t):
+        P = [cps[(i + d) % m] for d in (-1, 0, 1, 2)]; t2 = t * t; t3 = t2 * t
+        return [.5 * ((2 * P[1][k]) + (-P[0][k] + P[2][k]) * t + (2 * P[0][k] - 5 * P[1][k] + 4 * P[2][k] - P[3][k]) * t2 + (-P[0][k] + 3 * P[1][k] - 3 * P[2][k] + P[3][k]) * t3) for k in range(3)]
+    i0 = int(fi); out = None; acc = 0.0; prev = None
+    for i in range(i0 + 1):
+        for j in range(SUB):
+            q = pt(i, j / SUB)
+            if prev: acc += math.dist(q, prev)
+            prev = q
+            if i == i0 and j == int(round((fi - i0) * SUB)) % SUB: return acc
+    return acc
+tunnels = [[round(engine_s(a), 1), round(engine_s(b), 1)] for a, b in tunnels_ground]
+print('tunnels : s au sol', tunnels_ground, '-> s moteur', tunnels)
+
 # ── décor
 X0, X1, Z0, Z1 = spec['bbox']; inb = lambda p: X0 <= p[0] <= X1 and Z0 <= p[1] <= Z1
 drop = set(track) | {str(i) for i in spec.get('drop_ways', [])} | {str(i) for i in spec.get('paths', {}).values()}
@@ -153,7 +188,7 @@ for r in root.iter('relation'):
             if m.get('type') == 'way' and m.get('role') == 'outer' and m.get('ref') in WAY:
                 n_ = nds(WAY[m.get('ref')])
                 if n_: add(t, [list(xy(i, 1)) for i in n_], n_[0] == n_[-1], holes)
-res = {'cps': cps, 'feats': feats, 'others': others,
+res = {'cps': cps, **({'tunnels': tunnels} if tunnels else {}), 'feats': feats, 'others': others,
        'paths': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('paths', {}).items()},
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
        'trees': [list(xy(i, 1)) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))],

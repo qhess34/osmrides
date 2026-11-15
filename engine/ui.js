@@ -22,7 +22,7 @@ const lamp=(id,st)=>{$(id).className='lamp'+(st===2?' err':st===1?' occ':'');};
 function ui(){
   $('hDay').textContent=G.day;$('hTime').textContent=fmtTime(G.time);
   $('hWx').textContent={clear:'Beau temps',rain:'Pluie',warn:'Orage en approche',storm:'ORAGE'}[G.wx.type];
-  $('hMoney').textContent=Math.round(G.money).toLocaleString('fr-FR')+' €';
+  $('hMoneyBox').style.display=G.sandbox?'none':'';$('hMode').style.display=G.sandbox?'':'none';$('hMoney').textContent=Math.round(G.money).toLocaleString('fr-FR')+' €';
   $('hSat').textContent=Math.round(G.sat)+' %';
   const active=trains.filter(t=>t.st!=='garage').length;
   $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);

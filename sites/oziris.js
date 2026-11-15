@@ -16,17 +16,20 @@ const SITE=(()=>{
     id:'oziris',title:'OzIris',kind:'inverted',trackName:'Poutre caisson',goal:900,lap:140,
     // 3 trains de 8 wagons, 4 places côte à côte par wagon (Wikipedia, d'après RCDB) ; longueur (1,55 m) et largeur (2,6 m) d'un wagon ESTIMÉES.
     car:{len:1.55,n:8,seats:4,abreast:4,w:2.6},
-    // Couleurs des trains et de la voie SUPPOSÉES (non vérifiées sur photo) : teintes sourdes.
-    trains:[{name:'Train 1',col:'#2f5873',col2:'#c2a050',wear:26},{name:'Train 2',col:'#2f5873',col2:'#c2a050',wear:42,lane:1},
-      {name:'Train 3',col:'#2f5873',col2:'#c2a050',wear:34,lane:2}],
+    // 3 trains, tous BLEUS (propriétaire, 2026-11-15 ; l'article sur un 4e train est dépassé). Bleu sourd d'après les photos (voie et poutre bleues) ;
+    // col2 = gris clair (lapbars, bandes, nez) pour ressortir sur la poutre bleue : teintes exactes SUPPOSÉES.
+    trains:[{name:'Train 1',col:'#2c4f8c',col2:'#cfd3da',wear:26},{name:'Train 2',col:'#2c4f8c',col2:'#cfd3da',wear:42,lane:1},
+      {name:'Train 3',col:'#2c4f8c',col2:'#cfd3da',wear:34,lane:2}],
     track:{spine:'#3e5a74',rail:'#262d36',support:'#a89a7c'},
     stopBack:.5,holdBack:46.9,dropAfter:50,loadSide:-1,   // arrêt au frein final : train entier sur le pont transbordeur (OSM : s ≈ 798…812) ; embarquement côté est (ESTIMÉ)
-    phys:{roll:.06,drag:.0009,vmin:3},
+    phys:{roll:.06,drag:.0011,vmin:3},
     // Pont transbordeur à rail unique (single) : zone RB « Rail du pont » = zone de freinage du circuit (AUTO) en P, zone porteuse face à une voie.
     // ESTIMÉS : longueur du rail (un train + 0,6 m de chaque côté, pre/post ; OSM : pont ≈ 14 m), jeu rail/voies (laneGap 0,8 m),
     // vitesse du chariot (0,5 m/s, 4 s au moins), vitesse de manœuvre des trains (1,5 m/s), sens d'entrée (marche arrière, d'après la position des voies).
     yard:{at:'brake',device:'traverser',single:true,railName:'Rail du pont',rev:true,side:-1,pre:.6,post:.6,laneGap:.8,move:{v:1.5,vc:.5,t:4},
       devName:'Pont transbordeur',devLabel:'le pont transbordeur',lanes:[lane(1,3.0),lane(2,7.0),lane(3,11.0)]},
+    // Tunnel (OSM way 421460641, tunnel=yes layer=-1) : le propriétaire dit qu'il passe SOUS L'EAU (bassin) ; profondeur ESTIMÉE (≈ -3 m, profil de la spec).
+    tunnels:[{under:'water'}],
     stationPoly:OSM.polys.station,stationAt:[-7,-8,9],stationRoofCol:'#b9a27a',
     fade:[[-7,-8,9],[-24,-24,12],[-35,-25,8]],   // toits qui s'effacent : gare, halle du frein final et du pont, garage
     // Quais : embarquement côté est (file), débarquement côté ouest ; profondeurs ESTIMÉES d'après le bâtiment OSM 420016980.
@@ -50,9 +53,12 @@ const SITE=(()=>{
     jobsites:{liftFix:[-45,40],chainRev:[-45,40],trackRev:[20,40],brakeFix:[-30,-8],brakeRev:[-30,-8],trainRev:[-36,-26],rearm:[-4,-8]},
     view:{x:-12,z:5,w:230,h:200,bounds:[-120,120,-110,110]},
     cams:{gare:{label:'Gare',x:-8,z:-9,s:17},file:{label:'File',x:-15,z:45,s:7},lift:{label:'Lift',x:-42,z:30,s:7},
-      inversions:{label:'Inversions',x:38,z:40,s:5.5},frein:{label:'Frein final',x:-26,z:-20,s:11},garage:{label:'Garage',x:-27,z:-27,s:13}},
+      dive:{label:'Dive loop',x:-14,z:68,s:8},looping:{label:'Looping',x:24,z:38,s:9},imm:{label:'Immelmann',x:46,z:45,s:8},
+      tunnel:{label:'Tunnel',x:18.5,z:2.5,s:15},zg1:{label:'Zéro-G 1',x:30,z:-66,s:8},zg2:{label:'Zéro-G 2',x:-20,z:34,s:8},frein:{label:'Frein final',x:-26,z:-20,s:11},garage:{label:'Garage',x:-27,z:-27,s:13}},
     labels:()=>[['Gare',-22,-18],['Lift — 40 m',-58,40],['Frein final',-44,-12],['Garage',-45,-30],['Pont transbordeur',-20,-46],
-      ["File d'attente",-30,57],['Entrée',38,36],['Tunnel',24,4],['Boutique',6,-12]],
+      ["File d'attente",-30,57],['Entrée',38,36],['Tunnel sous l\'eau',28,3],['Boutique',6,-12],
+      // Inversions : plan des figures fourni par le propriétaire (affiche, stylisée) rapproché du tracé OSM par la forme ; emplacements ± 10 m, hauteurs ESTIMÉES.
+      ['Dive loop',-8,92],['Looping vertical',36,22],['Immelmann',66,57],['Roulis zéro-G',2,-70],['Roulis zéro-G',8,63]],
     strike:{area:[-90,90,-90,90]},
     text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur OzIris !'},
     // Commande par zones : frein de bloc B1 (ESTIMÉ, emplacement supposé en haut de la grande courbe nord) = freins seuls ;

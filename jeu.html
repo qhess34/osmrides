@@ -181,7 +181,8 @@ body.dm .row button{min-height:44px}
   <div class="hud">
     <div class="stat">Jour <b id="hDay">1</b> · <b id="hTime">10:00</b></div>
     <div class="stat">Météo <b id="hWx">☀️</b></div>
-    <div class="stat">Budget <b id="hMoney">0 €</b></div>
+    <div class="stat" id="hMode" style="display:none">Bac à sable</div>
+    <div class="stat" id="hMoneyBox">Budget <b id="hMoney">0 €</b></div>
     <div class="stat">Satisfaction <b id="hSat">75 %</b></div>
     <div class="stat">File <b id="hQueue">0</b> · attente <b id="hWait">0 min</b></div>
     <div class="stat">Quai <b id="hPlat">0/28</b></div>
@@ -301,6 +302,12 @@ body.dm .row button{min-height:44px}
   </ul>
   <p>Chaque passager rapporte 5 €. Les salaires coûtent 350 € par jour.</p>
   <button class="go" data-act="closeHelp">C'est parti !</button>
+  <button id="bNew" style="float:right;font-size:12px;padding:3px 8px">Nouvelle partie</button>
+</div></div>
+<div class="modal hidden" id="mNew"><div>
+  <h2>Nouvelle partie</h2>
+  <p>La sauvegarde de cette attraction, dans le mode choisi, sera effacée. <b>Carrière</b> : budget, météo, pannes et usure. <b>Bac à sable</b> : ni budget, ni météo, ni pannes. Les sauvegardes des deux modes sont séparées.</p>
+  <button id="bNewCareer">Carrière</button> <button id="bNewSandbox">Bac à sable</button> <button id="bNewCancel">Annuler</button>
 </div></div>
 <div class="modal hidden" id="mDay"><div>
   <h2 id="dTitle"></h2>
@@ -316,7 +323,7 @@ body.dm .row button{min-height:44px}
   const load=(src,next)=>{const s=document.createElement('script');s.src=src;s.onload=next;
     s.onerror=()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">Attraction inconnue : '+site+'. <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
     document.body.appendChild(s);};
-  const ENGINE=['core','garage','state','queue','sim','ui','render'].map(n=>'engine/'+n+'.js');
+  const ENGINE=['core','garage','state','queue','sim','ui','render','save'].map(n=>'engine/'+n+'.js');
   const chain=i=>i<ENGINE.length?load(ENGINE[i],()=>chain(i+1)):0;
   load('sites/'+site+'.data.js',()=>load('sites/'+site+'.js',()=>chain(0)));
 })();

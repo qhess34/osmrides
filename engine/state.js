@@ -2,7 +2,9 @@
 /* ══════════ ÉTAT DU JEU ══════════ */
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
-const G={day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
+/* Mode de jeu : carrière (budget, météo, pannes) ou bac à sable (?mode=sandbox, ou choix mémorisé t2z.mode) : ni budget, ni météo, ni pannes. */
+const MODE=(()=>{const m=/[?&]mode=([a-z]+)/.exec(location.search);if(m)return m[1]==='sandbox'?'sandbox':'career';try{return localStorage.getItem('t2z.mode')==='sandbox'?'sandbox':'career';}catch(e){return 'career';}})();
+const G={sandbox:MODE==='sandbox',day:1,time:600,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
   queue:[],walkers:[],plat:new Array(SEATS).fill(null),platT:0,gatesOpen:false,gate:0,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,crowd:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
   stats:null,over:false,dayDone:false,closedMsg:false};
@@ -23,7 +25,7 @@ function log(msg,cls){
   const d=document.createElement('div');if(cls)d.className=cls;d.innerHTML='<span>'+fmtTime(G.time)+'</span>'+msg;
   const el=$('log');el.prepend(d);while(el.children.length>60)el.lastChild.remove();
 }
-function pay(n,fine){G.money-=n;G.stats.costs+=n;if(fine)G.stats.fines+=n;}
+function pay(n,fine){if(G.sandbox)return;G.money-=n;G.stats.costs+=n;if(fine)G.stats.fines+=n;}
 
 /* ══════════ SON (synthétisé) ══════════ */
 const sfx=(()=>{

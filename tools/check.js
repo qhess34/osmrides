@@ -18,6 +18,7 @@ const root = path.resolve(__dirname, '..');
   const errors = [];
   page.on('pageerror', e => errors.push(String(e.message || e)));
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  await page.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} }); // départ propre : pas de partie sauvegardée
   await page.goto(url);
   await page.waitForSelector('[data-act=closeHelp]', { timeout: 10000 });
   await page.click('[data-act=closeHelp]');

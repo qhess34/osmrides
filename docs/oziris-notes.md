@@ -12,12 +12,12 @@ Coaster inversé Bolliger & Mabillard, Parc Astérix (zone Égypte), ouvert le 7
 | Vitesse | 90 km/h | Wikipédia, annonce du parc |
 | Inversions | 5 | Wikipédia, annonce du parc, thrillzing |
 | Durée | ≈ 2 min 15 | Wikipédia, coaster.cloud |
-| Trains | **3** trains de 8 wagons, 4 places côte à côte (32 par train) | Wikipédia (d'après RCDB) |
+| Trains | **3** trains de 8 wagons, 4 places côte à côte (32 par train), **tous bleus** | Wikipédia (d'après RCDB) ; confirmé par le propriétaire (2026-11-15) |
 | Capacité | 1 600 pers./h | coaster.cloud |
 | Taille minimale | 1,30 m | OSM (nœud 1732704742) |
 | Éléments | grande boucle plongeante (« dive loop », 30 m) après la chute (Wikipédia) ; looping vertical, Immelmann, vrille (thrillzing) ; roulis zéro-G cité ailleurs, non confirmé | Wikipédia, thrillzing |
 
-Contradictions : CoasterBuzz donne **2** trains (Wikipédia/RCDB : 3) ; la liste des éléments diffère selon les sources (dive loop / Immelmann, zéro-G non confirmé). On a retenu 3 trains.
+Contradictions : CoasterBuzz donne **2** trains (Wikipédia/RCDB : 3) ; la liste des éléments diffère selon les sources (dive loop / Immelmann, zéro-G non confirmé). On a retenu 3 trains (confirmé par le propriétaire, 2026-11-15 ; l'article annonçant un 4e train est dépassé).
 Accès : rcdb.com, wikipedia.org (WebFetch) et Coasterpedia n'étaient pas joignables depuis la session (réseau) ; chiffres pris des extraits de recherche web (RCDB 9675 cité par Wikipédia). À revérifier sur rcdb.com/9675.htm.
 
 Sources : https://en.wikipedia.org/wiki/OzIris · https://coasterbuzz.com/RollerCoasters/oziris · https://coaster.cloud/en/attractions/b9362601-oziris · https://thrillzing.com/roller-coasters/oziris-parc-asterix/ · https://www.newsparcs.com/en/article/00005665-oziris_la_nouvelle_creation_a_sensations_fortes_du_parc_asterix
@@ -31,11 +31,32 @@ Sources : https://en.wikipedia.org/wiki/OzIris · https://coasterbuzz.com/Roller
 
 ## Ce qui est estimé
 
-- Profil en hauteur (lift 40 m, chute 35 m, cinq bosses pour les inversions à s ≈ 240, 340, 470–540, 610, 700) ; vitesse calculée max 26 m/s (93 km/h) ; croisements ≥ 4,4 m sauf s 493 × 558 (5,0 m).
+- Profil en hauteur : lift 40 m et chute 35 m (sources), hauteurs des inversions ESTIMÉES (voir « Inversions »), colline s ≈ 610 (16 m, non sourcée) ; vitesse calculée max 25,7 m/s (92 km/h) ; croisements ≥ 3,4 m (s 667 × 729).
 - Frein de bloc B1 (s ≈ 520, haut de la grande courbe nord) : supposé (3 trains imposent au moins 4 cantons).
 - Quais : embarquement à l'est (côté file), débarquement à l'ouest, sortie par un escalier et un passage sous la gare surélevée vers la boutique. Profondeurs de quai, poste de conduite.
 - Pont : longueur du rail (un train + 2 × 0,6 m), jeu rail / voies (0,8 m), vitesse du chariot (0,5 m/s) et des manœuvres (1,5 m/s) ; entrée dans les voies en marche arrière (déduit de la position des voies).
-- Longueur (1,55 m) et largeur (2,6 m) d'un wagon ; couleurs des trains et de la voie (non vérifiées).
+- Longueur (1,55 m) et largeur (2,6 m) d'un wagon ; teinte exacte du bleu des trains (`#2c4f8c`, lapbars gris clair) et de la voie (non vérifiées ; les trains sont bleus, confirmé).
+
+## Tunnel (propriétaire : « sous l'eau », 2026-11-15)
+
+OSM way 421460641 (`tunnel=yes`, `layer=-1`, `covered=yes`, 13 m au sol, de (15,7 ; 8,4) à (21,1 ; −3,2)) : section du circuit qui passe **sous le bassin** (le propriétaire confirme : sous l'eau). Exporté en `OSM.tunnels=[[491,503.8]]` (s du moteur) par `tools/make_site.py` ; `SITE.tunnels:[{under:'water'}]`. Rendu : dalle d'eau (TEX.water) sur la voie et les trains, deux portails en béton aux deux bouts, toits retirés = vue translucide du tunnel. **Profondeur ESTIMÉE** : fond à ≈ −3 m (rails sous le niveau de l'eau) ; pentes d'accès ≈ 20 %, vitesse maxi inchangée (92 km/h), croisements ≥ 3,4 m conservés. Le `man_made=tunnel` 1353118256 est à (505 ; 427), c'est-à-dire hors OzIris : ignoré.
+
+## Inversions — affiche du propriétaire (2026-11-15)
+
+Source : `docs/sources/oziris-plan-figures-affiche.png` (affiche stylisée du plan : Dive Loop, Vertical Loop, Immelmann, Zero-G Roll ×2 ; hauteur 131,2 ft = 40 m, chute 114,8 ft = 35 m, vitesse 56 mph = 90 km/h, 5 inversions). C'est un dessin d'artiste : formes lissées, tournées d'environ 180° par rapport à la carte (nord en bas), recadrées à gauche (le bout de l'Immelmann sort de l'image). Rapprochée du tracé OSM **par la forme** : lift en diagonale le long de la gare, bec pointu du dive loop, zigzag du looping, longue pointe de l'Immelmann, boucle du haut, goutte près de la gare, rectangles = zone garage / pont. Confiance : bonne pour l'ordre et les cinq zones, moyenne pour les emplacements exacts (± 10 m) ; les flèches de légende des deux roulis zéro-G sont imprécises (placés sur les deux boucles croisées du tracé).
+
+Ordre de marche (s = abscisse de la spec, 3 × l'indice du point de contrôle) :
+
+| Ordre | Élément | s (m) | Repère OSM / forme | Hauteur ESTIMÉE |
+|---|---|---|---|---|
+| 0 | Lift, sommet puis chute 35 m | 30–96, chute 118–162 | épingle en haut du lift (s 105–114), droite vers l'est | 40 m puis 5 m |
+| 1 | Dive loop | 165–205 | bec pointu s 180 (−9 ; 80) | 30 m au bec |
+| 2 | Looping vertical | 240–290 | zigzag s 255–279 (22 ; 38) | 29 m vers s 267 |
+| 3 | Immelmann | 295–345 | longue pointe s 315–324 (64 ; 45) | 28 m vers s 318 |
+| 4 | Roulis zéro-G 1 | 475–510 | boucle du nord, croisement s 493 × 558 (25 ; −60) | 20 m |
+| 5 | Roulis zéro-G 2 | 680–740 | goutte près du lift, bec s 684–708, croisement s 667 × 729 | 15 m vers s 706 |
+
+Reste ESTIMÉ : hauteurs des sommets (rien d'autre que 40 m, 35 m, ≈ 30 m pour le dive loop n'est sourcé), emplacements exacts, forme des raccords. Ambiguïté : le tracé OSM ne distingue pas la chute et le dive loop ; on a mis la chute de la crête (s 118) au bas (s 162), le dive loop au bec qui suit. Les inversions ne portent pas de dévers dans les données (le moteur lit `cps[3]` mais en vue de dessus un dévers de 180° n'apporte rien) ; frein de bloc B1 (s 520) conservé, supposé.
 
 ## Garage — réponse du propriétaire (2026-11-15)
 
@@ -48,6 +69,6 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 ## Documents fournis par le propriétaire (2026-11-15)
 
 - Page de recherche d'images enregistrée : seules des **miniatures** (≈ 590 × 330 px) y figurent.
-- `docs/sources/oziris-plan-figures-miniature.jpg` : panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Demander au propriétaire l'image en grand (capture plein écran du panneau) pour placer les inversions.
-- Une miniature d'article titre « Un quatrième train fera son arrivée sur le parcours d'OzIris » : **4 trains** possibles aujourd'hui (contre 3 dans la configuration). À confirmer par le propriétaire.
+- `docs/sources/oziris-plan-figures-miniature.jpg` : panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Remplacée par l'affiche en grand, voir « Inversions ».
+- Une miniature d'article titre « Un quatrième train fera son arrivée sur le parcours d'OzIris » : dépassée, le propriétaire confirme **3 trains bleus**.
 - Photos : voie et poutre **bleues**, supports **crème / sable**, sièges suspendus ; décor égyptien (gare à colonnes, bassins).
