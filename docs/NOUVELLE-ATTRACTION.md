@@ -76,6 +76,8 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/manoeuvres
 
 ## 5. Étapes
 
+0. **Préparer OSM** avec `docs/OSM-GUIDE.md` (§6 : liste de préparation).
+
 1. **Notes** : créer `docs/<id>-notes.md` (caractéristiques, sources, repères OSM, questions ouvertes).
 2. **Données** : extrait OSM (`https://api.openstreetmap.org/api/0.6/map?bbox=…`), spec `tools/specs/<id>.json` (`track_ways`, `osm_brakes` si les zones sont étiquetées, `paths` en listes de tronçons pour la file et la sortie), puis `python3 tools/make_site.py extrait.osm tools/specs/<id>.json sites/<id>.data.js apercu.png` : relire les zones OSM et repères imprimés. Croisements ≥ 3,2 m d'écart, vitesse plausible. Plan du parc : `python3 tools/make_park.py extrait.osm parc/parc.data.js` (tronçons des circuits lus dans les specs). Plan « tracé complet » : `python3 tools/make_plan.py <id> docs/plans/<id>-trace-complete.png "Titre"`.
 3. **Configuration** : `sites/<id>.js` en partant de `sites/zeus.js` (référence) ; garage dans `SITE.yard`, places par wagon dans `car.seats`. Ne jamais éditer `sites/<id>.data.js` à la main.

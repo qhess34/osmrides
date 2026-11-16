@@ -43,6 +43,7 @@ Règles complètes : `docs/NOUVELLE-ATTRACTION.md` — à tenir à jour à chaqu
 | `tools/build.py` | fichier HTML unique autonome |
 | `manifest.webmanifest`, `icons/`, `sw.js` | application installable (PWA) : manifeste, icônes PNG (générées par `python3 tools/make_icons.py icons`), service worker hors ligne. Les pages l'enregistrent seulement en http(s) (rien sous `file://`). |
 | `tools/make_sw.py` | à la publication, `python3 tools/make_sw.py _site` écrit dans `_site/sw.js` la liste de TOUS les fichiers du site et une version (empreinte) : **une nouvelle attraction n'exige rien de plus**, tant que ses fichiers sont copiés dans `_site` par `.github/workflows/pages.yml` (ajouter là tout nouveau dossier ou type de fichier à la racine : `*.html *.css *.webmanifest sw.js engine sites parc icons img`). Sans injection, `sw.js` met en cache à la volée. |
+| `docs/OSM-GUIDE.md` | éléments OSM lus ou utiles au jeu, et liste de préparation OSM avant d'importer une attraction (à tenir à jour quand `make_site.py` lit un nouveau tag) |
 | `docs/` | notes de conception (relevés, choix, points ouverts) |
 
 Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier (`file://`). Pas de `fetch`, pas de modules ES.
