@@ -12,19 +12,23 @@ tag = {}
 for i, r in enumerate(cps):
     for t in r[4:]: tag[t] = i
 step = lambda i, j: math.hypot(cps[j % n][0] - cps[i][0], cps[j % n][2] - cps[i][2])
-S = [3.0 * i for i in range(n + 1)]  # abscisse au sol : un point de contrôle tous les 3 m (make_site, cp_step)
+S = [0.0]  # abscisse au sol (vue de dessus), cumulée le long des points de contrôle
+for i in range(n): S.append(S[-1] + step(i, i + 1))
 L = S[-1]
 sidx = lambda t: tag[t]
 def zone(i):
     if i < sidx('st1'): return 'gare'
     if i < sidx('lift0'): return 'avant lift'
     if i < sidx('lift1'): return 'lift'
-    if 'blk1' in tag and -4 < i - tag['blk1'] < 1: return 'frein'
+    for t in tag:  # freins de bloc (bzN → blkN, sinon ≈ 9 m avant l'arrêt), frein final, rail de transfert, frein avant gare (repères OSM, tools/make_site.py)
+        if t.startswith('blk') and t[3:].isdigit() and (tag.get('bz' + t[3:], tag[t] - 3) <= i <= tag[t]): return 'frein'
     if i >= sidx('brk'): return 'frein'
     return 'parcours'
 COL = {'gare': (40, 110, 200), 'avant lift': (110, 110, 120), 'lift': (230, 140, 30), 'frein': (200, 40, 40), 'parcours': (105, 105, 115)}
 xs = [r[0] for r in cps]; zs = [r[2] for r in cps]
-sc = 6.2; W, H = 1450, 1100; ox, oz = 560, 60; x0, z0 = min(xs + [q[0] for o in D['others'] + ([D['paths']['garage']] if 'garage' in D.get('paths', {}) else []) for q in o]) - 4, min(zs) - 4
+W, H = 1450, 1100; ox, oz = 560, 60; GAR = [D['paths']['garage']] if 'garage' in D.get('paths', {}) else []  # voie de garage OSM (les autres voies OSM du voisinage ne sont pas dessinées)
+x0, z0 = min(xs + [q[0] for o in GAR for q in o]) - 4, min(zs) - 4
+sc = min((W - ox - 40) / (max(xs) + 4 - x0), (H - oz - 40) / (max(zs) + 4 - z0))
 mx = lambda x: ox + (x - x0) * sc; mz = lambda z: oz + (z - z0) * sc
 im = Image.new('RGB', (W, H), (242, 239, 230)); d = ImageDraw.Draw(im)
 try: F = lambda s: ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', s); FB = lambda s: ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', s)
@@ -35,7 +39,7 @@ for f in D['feats']:
 for f in D['feats']:  # trous (îlots) du lac : on les repeint
     if f['k'] == 'natural=water':
         for h in f.get('h', []): d.polygon([(mx(p[0]), mz(p[1])) for p in h], fill=(242, 239, 230))
-for o in D['others'] + ([D['paths']['garage']] if 'garage' in D.get('paths', {}) else []): d.line([(mx(p[0]), mz(p[1])) for p in o], fill=(122, 60, 150), width=9)
+for o in GAR: d.line([(mx(p[0]), mz(p[1])) for p in o], fill=(122, 60, 150), width=9)
 for i in range(n): d.line([(mx(cps[i][0]), mz(cps[i][2])), (mx(cps[(i + 1) % n][0]), mz(cps[(i + 1) % n][2]))], fill=COL[zone(i)], width=9)
 for i in range(0, n, 3):  # flèches de sens : un point blanc plus loin
     pass
@@ -71,15 +75,15 @@ if FIGS:  # plan des figures : étiquettes, pas de tableau
     im.save(out); print('écrit', out, '(plan des figures)'); sys.exit(0)
 d.rectangle([10, 10, 520, H - 10], fill='white', outline='black', width=3)
 d.text((30, 28), title, fill='black', font=FB(40))
-d.text((30, 90), 'Tracé complet (OSM), sens de marche : gare puis lift droit au sud.', fill='black', font=F(20))
+d.text((30, 90), 'Tracé complet (OSM), ronds dans le sens de marche.', fill='black', font=F(20))
 d.text((30, 118), 'Ronds : tous les 50 m le long de la voie.', fill='black', font=F(20))
 y = 160
-for nm, c in (('Gare (quai estimé)', COL['gare']), ('Lift (ligne droite après la gare)', COL['lift']), ('Freins (estimés)', COL['frein']), ('Parcours', COL['parcours']), ('Voie de garage (OSM)', (122, 60, 150))):
+for nm, c in (('Gare', COL['gare']), ('Lift', COL['lift']), ('Zones de freinage', COL['frein']), ('Parcours', COL['parcours']), ('Voie de garage (OSM)', (122, 60, 150))):
     d.rectangle([30, y, 70, y + 18], fill=c); d.text((82, y - 2), nm, fill='black', font=F(20)); y += 30
 y += 14; d.text((30, y), 'Rond  distance  hauteur  zone', fill='black', font=FB(20)); y += 32
 for r in rows: d.text((30, y), '%2d   s=%4d m   %4.1f m   %s' % (r[0], r[1], r[2], r[3]), fill='black', font=F(19)); y += 27
 y += 12
-for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Lift 36 m, chute 32,9 m (RCDB / Wikipédia).', 'Sept inversions : emplacements estimés.', 'Deux zones de freinage (propriétaire) : 1 avant la portion droite sous le lift, 2 parallèle à la gare ; position estimée.', 'Répondez avec les numéros : « inversion au 9 ».'):
+for t in ('Hauteurs ESTIMÉES (OSM ne les donne pas).', 'Gare, lift, zones de freinage : lus dans OSM', '(roller_coaster:track) quand ils y sont,', 'sinon estimés.', 'Répondez avec les numéros : « frein au 9 ».'):
     d.text((30, y), t, fill=(110, 40, 40), font=F(19)); y += 26
 d.text((W - 60, 40), 'N', fill='black', font=FB(40)); d.polygon([(W - 48, 4), (W - 68, 36), (W - 28, 36)], fill='black')
 d.rectangle([W - 330, H - 70, W - 330 + 50 * sc, H - 60], fill='black'); d.text((W - 330, H - 100), '50 m', fill='black', font=F(22))

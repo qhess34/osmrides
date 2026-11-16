@@ -8,10 +8,11 @@ const SRC = () => {
   const dseg = (px, pz, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l = dx * dx + dz * dz || 1e-9; let t = ((px - a[0]) * dx + (pz - a[1]) * dz) / l; t = t < 0 ? 0 : t > 1 ? 1 : t; return Math.hypot(a[0] + dx * t - px, a[1] + dz * t - pz); };
   const dpoly = (px, pz, P) => { let m = 1e9; for (let i = 1; i < P.length; i++) { if (!P[i] || !P[i - 1]) continue; const d = dseg(px, pz, P[i - 1], P[i]); if (d < m) m = d; } return m; };
   const inPoly = (px, pz, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > pz) !== (P[j][1] > pz) && px < (P[j][0] - P[i][0]) * (pz - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
-  const lines = [], areas = [], blds = [];
+  const lines = [], areas = [], blds = [], cov = []; // cov : chemins couverts OSM (f.cv : tunnel, layer<0…) — passage sous la voie ou la gare
   const add = (P, hw, q) => { if (P && P.length > 1) lines.push([P, hw, q]); };
   for (const f of OSM.feats) {
-    if (/^highway=(footway|steps|pedestrian)$/.test(f.k)) { if (f.c && f.p.length > 3) areas.push(f.p); else add(f.p, HW.foot); }
+    if (f.cv) cov.push(f.p);
+    if (/^highway=(footway|steps|pedestrian)$/.test(f.k)) { if (f.c && f.p.length > 3) areas.push(f); else add(f.p, HW.foot); } // zones piétonnes (avec trous) : praticables partout
     else if (/^highway=(service|unclassified|track)$/.test(f.k)) add(f.p, HW.road);
     else if (/^building=/.test(f.k) && f.k !== 'building=roof') blds.push(f.p);
   }
@@ -35,12 +36,13 @@ const SRC = () => {
   const kb = (x, z) => BAYS[Math.max(0, Math.min(NCARS - 1, Math.round(-((x - b.x) * b.tx + (z - b.z) * b.tz) / CAR)))];
   const lat = (x, z) => { const c = kb(x, z); return (x - c.x) * c.rx + (z - c.z) * c.rz; };
   const nearQ = (x, z) => { for (const [Pl, hw, q] of lines) if (q && dpoly(x, z, Pl) <= hw) return true; return false; };
-  const near = (x, z) => { for (const [Pl, hw] of lines) if (dpoly(x, z, Pl) <= hw) return true; for (const A of areas) if (inPoly(x, z, A)) return true; return false; };
+  const near = (x, z) => { for (const [Pl, hw] of lines) if (dpoly(x, z, Pl) <= hw) return true; for (const A of areas) if (inPoly(x, z, A.p) && !(A.h || []).some(H => inPoly(x, z, H))) return true; return false; };
   const test = (x, z, kind) => {
     const dt = dpoly(x, z, T);
     const rail = dt < 1.05, inSt = inStation(x, z), pl = onPlat(x, z), l = lat(x, z), bay = alongBay(x, z);
     const loadSide = l > 0 && SITE.loadSide !== undefined ? 1 : 1; // (rx,rz) pointe vers le quai d'embarquement
     if ((kind === 'board' || kind === 'alight') && bay && Math.abs(l) < 1.4) return null; // monte / descend du train
+    if (cov.some(C => dpoly(x, z, C) <= 1.2)) return null; // dans un passage couvert, sous la voie (autre niveau)
     if (rail) return 'voie';
     if (inSt && !pl && !rail && !nearQ(x, z)) return 'gare';
     if (bay && l > 1.3 && l < 2.65 && kind === 'wait') return 'portillon';

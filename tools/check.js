@@ -156,7 +156,7 @@ const root = path.resolve(__dirname, '..');
       await click('#bStop'); ok('dev2b', await until('devOn(1)', 4000));
       await click('#zL2_b'); ok('onCar2b', await until('trains[2].lane<0&&!trains[2].mv', 8000));
       await click('#yP'); ok('back2b', await until("trains[2].st==='run'&&circIn()&&atAnchor(trains[2])", 4000)); await shot('7-retour-en-P');
-      ok('stored2', await until('false', 200) || await page.evaluate(() => atAnchor(trains[2]) && trains.some(t => t.st === 'station')));
+      ok('stored2', await until('false', 200) || await page.evaluate(() => (atAnchor(trains[2]) || onPsb(trains[2])) && trains.some(t => t.st === 'station'))); // stocké au frein final / rail du pont, ou sur la zone d'attente avant gare (Pre)
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus (aiguillage dans le prolongement de la gare) ; Goudurix : aiguillage en amont (yard.back), entrée au garage en marche arrière
       const lbk = await page.evaluate(() => LBK), PUSH = lbk ? '#zSt_b' : '#zSt_f', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones
@@ -222,7 +222,7 @@ const root = path.resolve(__dirname, '..');
       run(() => false, 600); o.push(B.st === 'run' && B.v === 0 && B.s < S_LIFT0 && B.s > S_LIFT0 - 3 ? 'footHold' : 'footHold:FAIL');
       G.liftOff = false; run(() => A.s > S_REL + 1, 4000); run(() => B.s > S_LIFT0 + 5, 2000); o.push(B.s > S_LIFT0 + 1 ? 'footGo' : 'footGo:FAIL');
       // train retenu en haut : un autre train occupe la zone suivante (A arrêté sur la zone de freinage, freins serrés au pupitre)
-      A.st = 'run'; A.s = BLK.length ? BLK[0] - 3 : S_HOLD; A.v = 0; A.blk = true; A.hold = 0; G.zm.Fin = true; G.zk.Fin = true; if (BLK.length) { G.zm.B1 = true; G.zk.B1 = true; }
+      A.st = 'run'; A.s = BLK.length ? BLK[0] - 3 : S_HOLD; A.v = 0; A.blk = true; A.hold = 0; G.zm.Fin = true; G.zk.Fin = true; if (BLK.length) { G.zm.B1 = true; G.zk.B1 = true; } if (PSB) { G.zm.Pre = true; G.zk.Pre = true; } if (TRAV) { G.zm[ZR] = true; G.zk[ZR] = true; } // A ne doit pas quitter la zone (frein avant gare, rail du pont)
       run(() => B.wait && B.v === 0, 6000); o.push(B.wait && B.s > S_LIFT1 - 6 && B.s < S_REL ? 'topHold' : 'topHold:FAIL'); return o.join(' '); });
     man += ' | lift: ' + lf;
     await p2.close(); const p3 = await browser.newPage({ viewport: { width: 1280, height: 800 } });

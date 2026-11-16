@@ -8,8 +8,8 @@ Projection identique à make_site.py : mètres, x vers l'est, z vers le sud, ori
 (lat 49.13554, lon 2.56816). Aucun fichier de spécification n'existe pour Zeus : son emplacement est le centroïde
 de ses tronçons roller_coaster=track (relation « site » Tonnerre 2 Zeus), exprimé dans cette même origine.
 Coordonnées arrondies à 0,1 m, lignes simplifiées (Douglas-Peucker, 0,5 m).
-Sortie : const PARK={water,lawn,forest,bld,paths,roads,tracks:[{name,pts}],pois:[{name,x,z}],attr:[{id,name,x,z,site}]}
-  water, lawn, forest, bld : liste d'entités, chacune = liste d'anneaux [x,z,x,z…] (trous inclus, à tracer en evenodd)
+Sortie : const PARK={plaza,water,lawn,forest,bld,paths,roads,tracks:[{name,pts}],pois:[{name,x,z}],attr:[{id,name,x,z,site}]}
+  plaza (zones piétonnes : highway=pedestrian + area, area:highway, place=square, multipolygones), water, lawn, forest, bld : liste d'entités, chacune = liste d'anneaux [x,z,x,z…] (trous inclus, à tracer en evenodd)
   paths, roads, tracks.pts : polylignes [x,z,x,z…]
 """
 import sys, json, math, collections, xml.etree.ElementTree as ET
@@ -50,15 +50,17 @@ def ring(P):
     return flat(P) if len(P) >= 3 else None
 def centroid(P): return (sum(p[0] for p in P) / len(P), sum(p[1] for p in P) / len(P))
 
+isped = lambda t: (t.get('highway') == 'pedestrian' and (t.get('area') == 'yes' or t.get('type') == 'multipolygon')) or 'area:highway' in t or t.get('place') == 'square'
 def classify(t):
+    if isped(t): return 'plaza'  # zone piétonne : surface praticable, dessinée sous les chemins ; les chemins qu'elle contient sont fondus dedans
     if t.get('natural') in ('water', 'wetland') or t.get('landuse') == 'reservoir' or t.get('waterway') in ('canal', 'stream', 'riverbank'): return 'water'
     if t.get('landuse') in ('forest',) or t.get('natural') in ('wood', 'scrub'): return 'forest'
     if t.get('landuse') in ('grass', 'meadow', 'flowerbed') or t.get('leisure') in ('park', 'garden', 'playground'): return 'lawn'
     if 'building' in t and t['building'] != 'no': return 'bld'
     return None
 
-L = {k: [] for k in ('water', 'lawn', 'forest', 'bld')}
-paths, roads = [], []
+L = {k: [] for k in ('water', 'lawn', 'forest', 'bld', 'plaza')}
+paths, roads, paths_raw = [], [], []
 used_in_rel = set()
 
 # ── multipolygones : anneaux assemblés à partir des membres
@@ -94,8 +96,8 @@ for i, w in WAY.items():
     P = pts_of(ids); closed = ids[0] == ids[-1]
     if t.get('roller_coaster') == 'track': continue
     h = t.get('highway')
-    if h:
-        if h in ('footway', 'pedestrian', 'path', 'steps', 'track', 'cycleway'): paths.append(line(P))
+    if h and not isped(t):
+        if h in ('footway', 'pedestrian', 'path', 'steps', 'track', 'cycleway'): paths_raw.append(P)
         elif h in ('service', 'unclassified', 'tertiary', 'secondary', 'primary', 'residential', 'motorway', 'motorway_link', 'trunk', 'trunk_link'): roads.append(line(P))
         continue
     k = classify(t)
@@ -105,6 +107,20 @@ for i, w in WAY.items():
     if k and closed and i not in used_in_rel:
         r_ = ring(P)
         if r_: L[k].append([r_])
+# chemins à l'intérieur d'une zone piétonne (≥ 80 % des points, hors trous) : fondus dans la zone, non dessinés
+def inside(p, R):
+    c = False; n = len(R) // 2; j = n - 1
+    for i in range(n):
+        xi, zi, xj, zj = R[2 * i], R[2 * i + 1], R[2 * j], R[2 * j + 1]
+        if (zi > p[1]) != (zj > p[1]) and p[0] < (xj - xi) * (p[1] - zi) / (zj - zi) + xi: c = not c
+        j = i
+    return c
+def in_plaza(p): return any(sum(inside(p, r) for r in f) % 2 == 1 for f in L['plaza'])  # evenodd : dans l'anneau extérieur et hors des trous
+nfused = 0
+for P in paths_raw:
+    if sum(in_plaza(q) for q in P) >= .8 * len(P): nfused += 1
+    else: paths.append(line(P))
+print('zones piétonnes %d, chemins fondus dedans %d' % (len(L['plaza']), nfused))
 # les canaux linéaires sont marqués ('L', pts) : on les convertit en {"l": pts}
 L['water'] = [([{'l': x[1]} for x in f] if isinstance(f[0], tuple) else f) for f in L['water']]
 
@@ -114,9 +130,12 @@ for r in root.iter('relation'):
     t = tg(r)
     if t.get('type') == 'site' and 'Zeus' in t.get('name', ''):
         zeus_ways |= {m.get('ref') for m in r.findall('member') if m.get('type') == 'way'}
+import glob, os
+SPEC_WAYS = {os.path.basename(f)[:-5]: {str(i) for i in json.load(open(f))['track_ways']} for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'specs', '*.json'))}  # tronçons des circuits : tools/specs/<site>.json
 oziris_ways = {'937048122', '541161843', '937048120', '541161845', '541161844', '421460641', '541161850', '1102773847', '541161849', '1101623925', '541161848', '541161847', '937048121', '1330192627'}  # tools/specs/oziris.json
 goudurix_ways = {'937067647', '541092977', '541092979', '541092993', '541092992', '541092990', '541092991', '541092989', '541092988', '541092987', '1181620312', '541092986', '1181620311', '541092985', '1181620310', '1181620309', '541092984', '541092983', '541092982', '937067646'}  # tools/specs/goudurix.json
 hourra_ways = {'1231613335', '937061488', '1182632576', '541427605', '1182632575', '541427599', '1182419818', '541427592'}
+oziris_ways = SPEC_WAYS.get('oziris', oziris_ways); goudurix_ways = SPEC_WAYS.get('goudurix', goudurix_ways); hourra_ways = SPEC_WAYS.get('hourra', hourra_ways)
 
 # ── attractions nommées
 attr = []
@@ -188,7 +207,7 @@ for n in root.iter('node'):
     if 'name' in t and not (t.get('tourism') == 'attraction' or 'attraction' in t) and any(k in t for k in ('amenity', 'shop', 'tourism')) and t.get('tourism') != 'artwork':
         x, z = NODE[n.get('id')]; pois.append({'name': t['name'], 'x': round(x, 1), 'z': round(z, 1), 'k': t.get('amenity') or t.get('shop') or t.get('tourism')})
 
-PARK = {'origin': [lat0, lon0], 'water': L['water'], 'lawn': L['lawn'], 'forest': L['forest'], 'bld': L['bld'], 'paths': paths, 'roads': roads, 'tracks': tracks, 'pois': pois, 'attr': final}
+PARK = {'origin': [lat0, lon0], 'plaza': L['plaza'], 'water': L['water'], 'lawn': L['lawn'], 'forest': L['forest'], 'bld': L['bld'], 'paths': paths, 'roads': roads, 'tracks': tracks, 'pois': pois, 'attr': final}
 js = '/* Données © contributeurs OpenStreetMap (ODbL) — carte du Parc Astérix. Généré par tools/make_park.py, ne pas éditer. Origine : Trace du Hourra. */\nconst PARK=' + json.dumps(PARK, ensure_ascii=False, separators=(',', ':')) + ';\n'
 open(out, 'w', encoding='utf-8').write(js)
 print('écrit %s : %d Ko ; eau %d, pelouse %d, forêt %d, bât. %d, chemins %d, routes %d, tracés %d, poi %d, attractions %d' % (
