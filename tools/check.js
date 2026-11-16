@@ -276,6 +276,19 @@ const root = path.resolve(__dirname, '..');
     }
     man += ' | dep: ' + ds.join(' '); await p5.close();
   }
+  // gatesMove : chaque barrière de file dessinée appartient à une fourche et change d'angle quand on la bascule ; aucune main courante fixe près d'un poteau de barrière (propriétaire, lot 5)
+  const gm = await page.evaluate(() => {
+    const end = (g, t) => { const ta = Math.atan2(g.a[1] - g.h[1], g.a[0] - g.h[0]), tb = Math.atan2(g.b[1] - g.h[1], g.b[0] - g.h[0]); let d = ta - tb; d = Math.atan2(Math.sin(d), Math.cos(d)); return tb + d * t; };
+    const bad = [];
+    LOOPS.forEach((l, i) => {
+      const a0 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
+      const a1 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
+      a0.forEach((v, j) => { if (Math.abs(Math.atan2(Math.sin(v - a1[j]), Math.cos(v - a1[j]))) < .3) bad.push(l.name + '#' + j); });
+      for (const g of l.gs) if (QRAILP.some(q => Math.hypot(q[0] - g.h[0], q[1] - g.h[1]) < 2)) bad.push(l.name + ':rail');
+    });
+    return bad;
+  });
+  man += ' | gatesMove=' + (gm.length ? 'FAIL ' + gm.join(',') : 'ok');
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
     act('speed', 0); G.wx.next = 1e6; __opStroll();
@@ -304,15 +317,15 @@ const root = path.resolve(__dirname, '..');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.dayDone, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
+    return { done: G.dayDone, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
   });
   await page.evaluate(() => { document.getElementById('mDay').classList.add('hidden'); cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
-  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2;
+  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0;
   console.log(`site ${site}${build ? ' (build)' : ''}: day done=${r.done} after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
-  console.log(`offpath=${r.off} (sur ${r.offN} positions)` + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
+  console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ}` + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);
   console.log(`page errors=${errors.length}` + (errors.length ? ' -> ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(ok ? 'PASS' : 'FAIL');

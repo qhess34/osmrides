@@ -60,7 +60,8 @@ const INSTALL = `(()=>{const S=(${SRC.toString()})();window.__op={S,n:0,bad:0,by
  window.__opSample=()=>{for(const k of G.walkers)__opPt(k.x,k.z,k.kind||'walk',k.kind||'walk');
    for(const v of G.queue)__opPt(v.x,v.z,'queue','queue-'+v.mode);
    G.plat.forEach((r,i)=>{if(r&&r.on){const p=slotPos(i);__opPt(p[0],p[2],'wait','slot');}});};
- window.__opStroll=()=>{for(const p of strollers){}; const f=new Set();let n=0;for(const q of strollers){if(f.has(q.f))continue;f.add(q.f);const P=q.f.P,C=q.f.C,o={x:0,y:0,z:0};
-   for(let d=0;d<=q.f.len;d+=1)for(const sd of [-1.1,1.1]){pathPos(P,C,d,o,sd);__opPt(o.x,o.z,'stroll','stroller');}}};
+ // strollQ : promeneurs sur un chemin de la file (réservé aux visiteurs de la file, propriétaire, lot 5) : doit rester à 0
+ window.__opStroll=()=>{const QA=SEGS.map(g=>g.P);__op.strollQ=0;const f=new Set();for(const q of strollers){if(f.has(q.f))continue;f.add(q.f);const P=q.f.P,C=q.f.C,o={x:0,y:0,z:0};
+   for(let d=0;d<=q.f.len;d+=1)for(const sd of [-1.1,0,1.1]){pathPos(P,C,d,o,sd);if(sd)__opPt(o.x,o.z,'stroll','stroller');else if(QA.some(A=>dPl(o.x,o.z,A)<.6))__op.strollQ++;}}};
 })()`;
 module.exports = { INSTALL };

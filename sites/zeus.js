@@ -30,9 +30,11 @@ const SITE=(()=>{
     queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],gate:{h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28]},
       parts:[
         {pts:[ENTRY0].concat(W.slice(0,JB+1))},
-        {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]],gates:[{h:[-27.46,26.93],a:[-25.57,25.81],b:[-28.91,25.28]},{on:'short',end:true,pair:false}]},
+        // Raccourcis (propriétaire, 2026-11-16, lot 5) : deux barrières PARALLÈLES par raccourci, comme la boucle de la Trace du Hourra (engine/queue.js forkGate, pivot 'edge') :
+        // poteaux-pivots sur la bordure du raccourci, à l'entrée et à la sortie ; route de la file inchangée (validée). Emplacements ESTIMÉS.
+        {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]],gates:[{on:'fork'}]},
         {pts:W.slice(JA,J2+1)},
-        {name:'raccourci est',loop:W.slice(J2,J1+1),short:[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]],gates:[{h:[-10.9,27.35],a:[-13.1,26.9],b:[-11.19,29.53]},{on:'short',end:true,pair:false}]},
+        {name:'raccourci est',loop:W.slice(J2,J1+1),short:[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]],gates:[{on:'fork'}]},
         {pts:W.slice(J1)}]},
     approach:[{w:.6,pts:PROM_W.concat([[-29.2,-9]])},{w:.4,pts:PROM_N.concat([[-29.2,-9]])}],
     noStroll:[[-27.5,-1.5]],

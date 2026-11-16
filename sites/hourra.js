@@ -55,7 +55,7 @@ const SITE=(()=>{
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
         // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières PARALLÈLES qui bougent ensemble (propriétaire, 2026-11-16, lot 4) :
         // barrières de fourche pivotantes, l'une à l'entrée de la boucle, l'autre à sa sortie (jumelle posée par le moteur) ; boucle ouverte : toutes deux en travers du raccourci ;
-        // boucle fermée : l'une barre l'entrée, l'autre la sortie de la boucle. Poteaux dans la pointe de chaque fourche (emplacement exact ESTIMÉ).
+        // boucle fermée : l'une barre l'entrée, l'autre la sortie de la boucle. Poteaux-pivots sur la BORDURE du raccourci côté boucle, juste après la pointe (lot 5 ; emplacement exact ESTIMÉ).
         {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[{on:'fork'}]},
         {pts:B.slice(7).concat(UP.slice(1))}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],

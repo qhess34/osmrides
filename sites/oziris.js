@@ -48,11 +48,11 @@ const SITE=(()=>{
         // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
         // à la fourche (deux barrières liées, à l'entrée et à la sortie de la boucle : ouvertes = boucle en service, fermées = passage direct) ;
         // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite : UNE barrière de fourche PIVOTANTE (propriétaire, 2026-11-16, lot 4),
-        // poteau dans la pointe de la fourche, qui ferme soit le raccourci (lacets en service), soit les lacets ; pas de jumelle. Emplacements des barrières ESTIMÉS.
+        // poteau au SOMMET de l'angle entre les deux chemins (lot 5), qui ferme soit le raccourci (lacets en service), soit les lacets ; pas de jumelle. Emplacements ESTIMÉS.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
         {name:'boucle ouest',loop:OSM.paths.qloopW,short:[Q[F1],Q[F1]],gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
         {pts:Q.slice(F1,F2+1)},
-        {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS,gates:[{on:'fork',half:.9,pair:false}]},
+        {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS,gates:[{on:'fork',pivot:'tip',pair:false}]},
         // fin de la file (OSM 2026-11-16) : chemin 1580105930, passage SOUS la gare (1580105922, tunnel=yes layer=-1 : dessiné sous le toit, qui s'efface au zoom),
         // escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée du quai ouest (passerelle 1580105933)
         {pts:Q.slice(F3).concat(QIN.slice(1,-1))}]},
