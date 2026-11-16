@@ -312,7 +312,15 @@ function updatePlatform(dt){
 }
 function updateTrains(dt){
   for(const t of trains){
-    for(let k=0;k<NCARS;k++){const o=t.st==='station'&&(G.resOpen||(t.rcT>>k&1));t.rc[k]=clamp(t.rc[k]+(o?dt:-dt)/RES_T,0,1);} // sécurités : ouverture / fermeture animées
+    // sécurités : ouverture / fermeture animées. Ouverture : relâchement d'air (son), les barres ne bougent que 0,5 s plus tard (RES_AIR) ;
+    // fermeture : crémaillère (son), wagon par wagon. t.rcO : sens courant par wagon (bits), t.rcW : attente avant ouverture.
+    if(!t.rcW)t.rcW=new Array(NCARS).fill(0),t.rcO=0;let air=false;
+    for(let k=0;k<NCARS;k++){const o=t.st==='station'&&(G.resOpen||(t.rcT>>k&1)),was=t.rcO>>k&1;
+      if(o&&!was){t.rcO|=1<<k;if(t.rc[k]<.98){t.rcW[k]=RES_AIR;air=true;}}
+      else if(!o&&was){t.rcO&=~(1<<k);t.rcW[k]=0;if(t.rc[k]>.05&&t.st==='station')sfx.resClose(BAYS[k].x,BAYS[k].z);}
+      if(o&&t.rcW[k]>0){t.rcW[k]=Math.max(0,t.rcW[k]-dt);continue;}
+      t.rc[k]=clamp(t.rc[k]+(o?dt:-dt)/RES_T,0,1);}
+    if(air){const m=BAYS[NCARS>>1];sfx.resAir(m.x,m.z);}
     if(t.st==='station')updateStation(t,dt);
     else if(t.st==='run')updateRun(t,dt);
     else if(t.st==='garage')updateYard(t,dt);
@@ -383,7 +391,7 @@ function act(a,arg){
   if(a==='speed')G.speed=+arg;
   else if(a==='help')$('mHelp').classList.remove('hidden');
   else if(a==='closeHelp'){$('mHelp').classList.add('hidden');sfx.init();}
-  else if(a==='mute')$('bMute').textContent=sfx.toggle()?'Son coupé':'Son';
+  else if(a==='mute'){const m=sfx.toggle();$('bMute').classList.toggle('on',!m);$('bMute').title=m?'Son coupé : cliquer pour l\'activer':'Son activé : cliquer pour le couper';}
   else if(a==='cam')setCam(arg);
   else if(a==='fs')setFs(!fsOn);
   else if(a==='fsdesk')document.body.classList.toggle('fsdesk');
@@ -398,6 +406,7 @@ function act(a,arg){
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
   else if(a==='syn')toggleSyn();
   else if(a==='roof'){G.roofOff=!G.roofOff;}
+  else if(a==='hidest'){G.hideSt=!G.hideSt;} // « Masquer la gare » : bâtiment de gare, toits effaçables et couvertures (tunnels, rochers) masqués, couloirs couverts visibles
   else if(a==='auto'){G.auto=!G.auto;log('Départs en mode '+(G.auto?'automatique.':'manuel.'));}
   else if(a==='gates'){ // portillons : seulement sur ordre du pupitre, en auto comme en manuel
     if(G.gatesOpen){G.gatesOpen=false;log('Portillons fermés.');}

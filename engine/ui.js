@@ -78,6 +78,7 @@ function ui(){
     $('bDesk').classList.toggle('on',document.body.classList.contains('fsdesk'));}
   for(const b of document.querySelectorAll('#cams button[data-act=cam]'))b.classList.toggle('on',b.dataset.arg===cam.key);
   $('bRoof').classList.toggle('on',!!G.roofOff);$('bRoof').textContent=G.roofOff?'Toits retirés':'Toits en place';
+  $('bHideSt').classList.toggle('on',!!G.hideSt);$('bHideSt').textContent=G.hideSt?'Gare masquée':'Masquer la gare';
 }
 
 /* ══════════ MOBILE ET PLEIN ÉCRAN : onglets Carte / Pupitre / Journal, mode « dm » (téléphone, tablette étroite) ══════════ */

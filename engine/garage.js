@@ -119,6 +119,18 @@ const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&
   :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering)||(DEV_HOLD>=0&&o.s>BLK[DEV_HOLD]+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
+// Toit de gare trop petit pour ses quais (bâtiment OSM qui ne couvre que la voie) : si, au milieu du train, un quai (plat.load / plat.exit) sort de plus de 0,8 m de
+// SITE.stationPoly, le bâtiment de gare est agrandi à l'enveloppe convexe du polygone et des quais (+0,3 m) : sol, toit, effacement et contrôle offpath suivent. ESTIMÉ.
+const STATION_GROW=(()=>{const P=SITE.stationPoly;if(!P||P.length<3)return null;const Q=Object.assign({load:7.9,exit:0},SITE.plat),a=BAYS[NCARS-1],b=BAYS[0],m=BAYS[NCARS>>1],h=CAR/2,C=[],M=[];
+  for(const l of [Q.load+.3,-(Q.exit?Q.exit+.3:1.6)]){C.push([a.x-a.tx*h+a.rx*l,a.z-a.tz*h+a.rz*l],[b.x+b.tx*h+b.rx*l,b.z+b.tz*h+b.rz*l]);M.push([m.x+m.rx*l,m.z+m.rz*l]);} // quais sur la longueur du train ; test au milieu (débord latéral seulement)
+  const pin=(x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
+  const dE=(x,z)=>{let m=1e9;for(let i=0,j=P.length-1;i<P.length;j=i++){const A=P[j],B=P[i],dx=B[0]-A[0],dz=B[1]-A[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-A[0])*dx+(z-A[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(A[0]+dx*t-x,A[1]+dz*t-z));}return m;};
+  if(!M.some(c=>!pin(c[0],c[1])&&dE(c[0],c[1])>.8))return null;
+  const pts=P.concat(C).sort((p,q)=>p[0]-q[0]||p[1]-q[1]),cr=(o,p,q)=>(p[0]-o[0])*(q[1]-o[1])-(p[1]-o[1])*(q[0]-o[0]),lo=[],hi=[];
+  for(const p of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
+  for(const p of pts.slice().reverse()){while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
+  const H=lo.slice(0,-1).concat(hi.slice(0,-1)).map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);return H.concat([H[0]]);})();
+if(STATION_GROW)SITE.stationPoly=STATION_GROW;
 const slotPos=i=>{const b=BAYS[Math.floor(i/CSEATS)],d=3.45+(i%CSEATS)*.8;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // une place d'attente par siège, en file derrière le portillon
 // Couloirs des visiteurs sur les quais (jamais en ligne droite à travers la gare, la voie ou les portillons) :
 //  embarquement : file → SITE.board.via → couloir d'attente (SITE.board.walk m de la voie, derrière les portillons) → place d'attente de la travée → (portillon ouvert seulement) → siège ;

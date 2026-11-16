@@ -14,13 +14,20 @@ function stepK(x,z){for(const o of STEPS){if(x<o.x0||x>o.x1||z<o.z0||z>o.z1)cont
   return 1;}
 // Réseau de la file, décrit de l'entrée vers la gare par SITE.queue.parts : tronçons simples et fourches.
 // À chaque fourche, un vantail pivote autour d'un poteau en bordure (gate.h) pour fermer soit le raccourci (gate.a), soit la boucle (gate.b) ; on = boucle en service.
-// Variante à deux barrières (gates:[{h,a,b,loop:true},{h,a,b}]) : une en travers de l'entrée de la boucle, une en travers du raccourci, liées (l'une s'ouvre quand
+// Variante à plusieurs barrières (gates:[{h,a,b,loop:true},{h,a,b}], ou posées par le moteur : {on:'loop'|'short', at, end}, voir gateAt) : une en travers de l'entrée de la boucle, une en travers du raccourci, liées (l'une s'ouvre quand
 // l'autre se ferme) ; a = position fermée (en travers), b = ouverte (le long de la bordure) ; chacune se clique sur la carte.
 const mkSeg=pts=>{const C=[0];for(let j=1;j<pts.length;j++)C.push(C[j-1]+Math.hypot(pts[j][0]-pts[j-1][0],pts[j][1]-pts[j-1][1]));return {P:pts,C,len:C[C.length-1],list:[]};};
+// Barrière posée par le moteur : {on:'loop'|'short', at:d, end:true?, loop:bool} = en travers du chemin (boucle ou raccourci) à d m de son début (de sa fin si end),
+// poteau en bordure (h), fermée en travers (a), ouverte le long de la bordure (b) ; half : demi-largeur couverte (défaut 1,1 m).
+function gateAt(P,d,end,half){P=end?P.slice().reverse():P;const hw=half||1.1;let i=1,acc=0;
+  while(i<P.length-1&&acc+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])<d){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);i++;}
+  const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k];
+  return {h:[c[0]-tz*hw,c[1]+tx*hw],a:[c[0]+tz*hw,c[1]-tx*hw],b:[c[0]-tz*hw+tx*2*hw,c[1]+tx*hw+tz*2*hw]};}
+const resolveGate=(g,p)=>g.h?g:Object.assign(gateAt(g.on==='short'?p.short:p.loop,g.at||1.6,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}
-  else{const l={name:p.name,on:true,t:1,g:(p.gates||[p.gate])[0],gs:p.gates||[p.gate],loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
+  else{const gs=(p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
 });
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;
