@@ -6,7 +6,7 @@
    Un champ ajouté à G ou à un train est sauvegardé tout seul (copie générique des valeurs simples). */
 (function(){
   const VER=1,KEY='t2z.save.'+SITE.id+'.'+MODE;
-  const sig=[L.toFixed(1),trains.length,LANES.length,ZONES.map(z=>z.id).join(','),SEATS,SEGS.length,LOOPS.length,BLK.length,NCARS].join('|');
+  const sig=[L.toFixed(1),trains.length,LANES.length,ZONES.map(z=>z.id).join(','),SEATS,SEGS.length,LOOPS.length,BLK.length,NCARS,Math.round(SEGS.reduce((n,s)=>n+s.len,0)),S_HOLD.toFixed(1)].join('|'); // géométrie (circuit, garage, zones, file, arrêt au frein final) : une sauvegarde d'une autre géométrie est ignorée
   const rd=()=>{try{return localStorage.getItem(KEY);}catch(e){return null;}};
   const del=()=>{try{localStorage.removeItem(KEY);return true;}catch(e){return false;}};
   const R=(v,d)=>{const k=Math.pow(10,d);return Math.round(v*k)/k;};
