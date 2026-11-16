@@ -19,6 +19,7 @@ const SRC = () => {
   for (const k in (OSM.paths || {})) add(OSM.paths[k], HW.foot);
   for (const p of SITE.paths || []) add(p, HW.foot);
   for (const s of SEGS) add(s.P, HW.queue, 1);
+  for (const Lp of (typeof LANDS !== 'undefined' ? LANDS : [])) areas.push({ p: Lp, q: 1 }); // paliers rectangulaires au sommet des escaliers en applique (engine/render.js)
   for (const a of SITE.approach) add(a.pts, HW.app);
   add(SITE.exit.path, HW.exit, 1); for (const t of SITE.exit.tails) add(t, HW.exit);
   add(SITE.board.via, HW.exit, 1); for (const w of (typeof WALKS !== "undefined" ? WALKS : [])) add(w, 1.1, 1);
@@ -44,7 +45,7 @@ const SRC = () => {
     if ((kind === 'board' || kind === 'alight') && bay && Math.abs(l) < 1.4) return null; // monte / descend du train
     if (cov.some(C => dpoly(x, z, C) <= 1.2)) return null; // dans un passage couvert, sous la voie (autre niveau)
     if (rail) return 'voie';
-    if (inSt && !pl && !rail && !nearQ(x, z)) return 'gare';
+    if (inSt && !pl && !rail && !nearQ(x, z) && !areas.some(A => A.q && inPoly(x, z, A.p))) return 'gare';
     if (bay && l > 1.3 && l < 2.65 && kind === 'wait') return 'portillon';
     if (bay && l < 2.65 && kind === 'board' && G.gate < .85 && Math.abs(l) > 1.3) return 'portillon';
     if (pl || near(x, z)) return null;

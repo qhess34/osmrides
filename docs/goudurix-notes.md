@@ -102,3 +102,10 @@ Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique 
 - **Loop** : 26 m = hauteur du **sommet** au-dessus du sol. Spec : base remise à 4 m (ESTIMÉE, comme les points voisins s 382 et 480) et boucle de 22 m : sommet 26,0 m (vérifié dans `OSM.cps`) ; circuit 893 m en 3D, 91 km/h au plus, croisements ≥ 3,3 m.
 - **Barrières** : la boucle 1580112207 a deux barrières liées, à son entrée et à sa sortie (1,6 m des bouts, ESTIMÉ ; règle générale du propriétaire, jumelle posée par le moteur).
 - **Escaliers** : le chemin de sortie (`exit.path`, dessiné à 3,2 m) recouvrait l'escalier 1580112211 : les allées sont maintenant coupées là où elles se confondent avec un escalier ; l'escalier de la file 1580112204, dans l'emprise de la gare agrandie à ses quais (ESTIMÉE), était caché par le plancher : il est dessiné par-dessus. Largeurs : 2 m (file) et 1,6 m (sortie), pas de width dans OSM.
+
+### Lot 4 (propriétaire, 2026-11-16, fin de journée)
+
+- **Loop** : base 4 m, boucle 22 m : confirmé.
+- **Escalier de la file** 1580112204 : en applique à l'OUEST de la gare, collé au mur, hors du quai (propriétaire). Quai ouest ramené de 7,0 à 6,2 m (ESTIMÉ ; assez pour les 4 places d'attente par portillon) ; le moteur décale l'escalier hors de la gare agrandie, contre son mur (2,3 m à l'ouest de sa position OSM, ESTIMÉ), avec la file qui y monte ; **palier carré** de sa largeur à son sommet, au plancher de la gare, qui rejoint le quai. Largeur : celle de la file (≈ 1,8 m).
+- **Escalier de sortie** 1580112211 : largeur de l'allée de sortie (3,2 m).
+

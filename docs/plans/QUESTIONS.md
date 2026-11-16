@@ -1,17 +1,28 @@
 # Questions pour le propriétaire — plans à annoter
 
-## À répondre en priorité (2026-11-16, lot 3)
+## À répondre en priorité (2026-11-16, lot 4)
 
-Image : `lot-3.jpg` (rocher dessus / dessous, passerelle et ses escaliers, barrières d'entrée et de sortie des boucles, escaliers de Goudurix et d'OzIris).
+Image : `lot-4.jpg` (rocher et ses deux voies, passerelle et escaliers OSM, barrières de la boucle ouverte / fermée, barrière pivotante d'OzIris, escalier en applique et palier de Goudurix, jonctions).
 
-1. **Trace du Hourra — rocher, OSM à corriger ?** Le tag `tunnel=true` est sur le tronçon 1580139650, c'est-à-dire la voie qui vient de l'ouest (celle qui passe **au-dessus** d'après vous). Nous l'ignorons et posons le tunnel sur la voie basse, après la boucle à 270° (s sol 612,5–618, sous le bras nord-ouest du rocher). Pouvez-vous déplacer le tag dans OSM (couper la voie basse sous le rocher et la taguer `tunnel=yes`) ? Hauteur du rocher : ≈ 6,6 m (voie haute 7,6 m − 0,9 m), voie basse abaissée à 4,0 m : juste ?
-2. **Trace du Hourra — escaliers de la passerelle** : OSM n'en a pas ; nous en ajoutons deux, le long de la file, sur 1,65 m par mètre de hauteur (≈ 11 m chacun pour 6,8 m), largeur 1 m (width OSM de la passerelle). Longueur et forme justes (volée droite le long du chemin, ou volées tournantes plus courtes) ? Pouvez-vous les dessiner dans OSM (`highway=steps`) ?
-3. **Trace du Hourra — raccourci** : plus de barrière dessus. Quand la boucle est ouverte, qu'est-ce qui empêche les visiteurs de prendre le raccourci (rien, un agent, une chaîne) ?
-4. **Tonnerre 2 Zeus — règle des barrières** : nous avons ajouté une barrière à la **sortie** de chaque raccourci (ouest 2,5 m, est 19,4 m), fermée avec celle de la fourche. Juste, ou Zeus n'est pas concerné ?
-5. **OzIris — raccourci des lacets sud** (1580173580, 1,4 m) : ses deux barrières (entrée et sortie) sont à 0,3 m de chaque bout : est-ce bien deux barrières sur un passage aussi court ?
-6. **Goudurix — loop** : sommet à 26 m au-dessus du sol ; nous mettons la base à 4 m (ESTIMÉE) et une boucle de 22 m de haut : juste ?
-7. **Goudurix — escalier de la file** (1580112204) : il est dans l'emprise de la gare agrandie à ses quais (ESTIMÉE) ; nous le dessinons sur le plancher. Le quai d'embarquement est-il plus étroit (l'escalier serait alors à côté de la gare) ?
-8. **Escaliers — largeurs** : Trace du Hourra 1 m (width OSM), Goudurix 2 m (file) et 1,6 m (sortie), OzIris 0,9 m (deux escaliers parallèles collés) et 1,6 m (sortie) ; seuls ceux de la Trace du Hourra ont une largeur dans OSM. Justes ? Les passerelles d'OzIris (sans width) restent à 2,4 m et recouvrent en partie ses escaliers d'entrée.
+1. **Trace du Hourra — hauteur de la passerelle** : vos escaliers OSM font 3,0 m et 2,2 m de long (≈ 11 et 8 marches, soit ≈ 1,9 m et 1,4 m de montée), mais la passerelle franchit la voie, estimée là à 3,9 m (passerelle estimée à 6,8 m). Quelle est la vraie hauteur de la passerelle, ou de la voie dessous ?
+2. **Trace du Hourra — rocher** : les deux voies passent dedans (voie haute 7,6 m, voie basse 4,0 m, ESTIMÉES) ; rocher estimé à ≈ 9,8 m (voie haute + 2,2 m). Juste ?
+3. **Trace du Hourra — barrières de la boucle** : poteau de chaque barrière dans la pointe de la fourche (entrée et sortie de la boucle), là où boucle et raccourci s'écartent : bon emplacement ?
+4. **Goudurix — escalier en applique** : pour le coller au mur ouest hors du quai, il est dessiné 2,3 m à l'ouest de sa position OSM (quai ouest ESTIMÉ à 6,2 m de la voie). Le quai est-il plus étroit (le bâtiment OSM ne fait que 6,8 m de large en tout) ?
+5. **Largeur des files** : la file est dessinée jusqu'à 2,2 m de large (largeur adaptée) alors qu'OSM indique `width=1` à la Trace du Hourra ; escaliers et passerelle suivent maintenant la largeur dessinée. Garder la largeur adaptée, ou dessiner la file à la largeur OSM ?
+6. **Escaliers de sortie** : rattachés à une allée (dessinée 3,2 m), ils font maintenant 3,2 m (Goudurix, OzIris, Trace du Hourra). Juste, ou les allées de sortie sont-elles plus étroites ?
+7. **OzIris — barrière pivotante** : le raccourci des lacets (1,4 m) traverse la main courante entre deux allées ; la barrière pivote dans la pointe de la fourche. Bon emplacement ?
+8. **Tonnerre 2 Zeus — raccourcis** : barrière de fourche + barrière de sortie gardées. Faut-il aussi deux barrières parallèles (comme la Trace du Hourra) ou une seule barrière pivotante (comme OzIris) ?
+
+### Répondu le 2026-11-16 (lot 4 : questions prioritaires 1–8 du lot 3, 3e mise à jour OSM : changesets 192040289 / 192040396)
+
+1. ~~**Trace du Hourra — rocher**~~ : les **deux** niveaux de voie passent dans le tunnel du rocher ; tag OSM juste. Fait : `tunnels_ignore` / `tunnels_extra` retirés, voie basse étiquetée par le propriétaire (1580221724), tunnels prolongés jusqu'aux bords du rocher, plus de voie posée sur le rocher ; portails sombres taillés dans la roche, plus de rectangles blancs (nouvelle question 2).
+2. ~~**Trace du Hourra — escaliers de la passerelle**~~ : dessinés dans OSM (1580224119, 1580224122) : utilisés ; escaliers estimés du moteur retirés pour cette passerelle (mécanisme gardé quand OSM n'en a pas) (nouvelle question 1).
+3. ~~**Trace du Hourra — raccourci**~~ : deux barrières parallèles qui bougent ensemble : boucle ouverte, toutes deux en travers du raccourci ; boucle fermée, elles barrent l'entrée et la sortie de la boucle. Fait (barrières de fourche pivotantes, nouvelle question 3).
+4. ~~**Zeus — barrières de sortie**~~ : gardées (nouvelle question 8).
+5. ~~**OzIris — raccourci des lacets**~~ : UNE barrière pivotante qui ferme un chemin ou l'autre. Fait (nouvelle question 7).
+6. ~~**Goudurix — loop**~~ : base 4 m, boucle 22 m : confirmé.
+7. ~~**Goudurix — escalier de la file**~~ : en applique à l'ouest de la gare, collé au mur, hors du quai. Fait : décalé contre le mur (quai ouest ramené à 6,2 m) (nouvelle question 4).
+8. ~~**Escaliers — largeurs**~~ : même largeur que les chemins qu'ils prolongent ; palier rectangulaire dans le prolongement de la gare en haut de l'escalier de Goudurix. Fait (nouvelles questions 5–6). En plus : jonctions couloir couvert / allée / escalier / zone piétonne sans trait noir (même sol, bordures sur les côtés seulement).
 
 ### Répondu le 2026-11-16 (lot 3 : questions prioritaires 1–8 de la 2e mise à jour OSM)
 

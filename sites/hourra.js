@@ -3,10 +3,11 @@
    Tracé, gare, file, sortie et bâtiment du garage : sites/hourra.data.js (OpenStreetMap). Ce qui est estimé est signalé « estimé ». */
 const SITE=(()=>{
   const Q=OSM.paths.queue,LOOP=OSM.paths.queueLoop,PROM=OSM.paths.prom,ENTRY0=[59.2,16.15];
-  // Rocher 1580139648 (propriétaire, 2026-11-16) : la voie qui vient de l'ouest passe AU-DESSUS (poteaux sur le rocher), la voie basse après la boucle à 270° passe DESSOUS
-  // en tunnel (tools/specs/hourra.json : tunnels_ignore / tunnels_extra) ; hauteur du rocher ESTIMÉE par le moteur (voie haute − 0,9 m ≈ 6,6 m).
-  // File (OSM, mises à jour du propriétaire 2026-11-16) : 1580139651, passage SOUS le rocher 1580139648 (1580139652, tunnel=yes), 1580137178, passerelle 1580137179
-  // (bridge=yes layer=2, AU-DESSUS du circuit ; escaliers à ses deux bouts ajoutés par le moteur, absents d'OSM, ESTIMÉS), 1032354546 jusqu'au bord est de la gare (4,8 ; -1,7), passage SOUS la gare (1580086194, tunnel=yes layer=-1 :
+  // Rocher 1580139648 (propriétaire, 2026-11-16, lot 4) : les DEUX niveaux de voie passent DANS le rocher, en tunnel (OSM : 1580139650 voie haute, 1580221724 voie basse ;
+  // le moteur prolonge chaque tunnel jusqu'aux bords du rocher) ; hauteur du rocher ESTIMÉE par le moteur (voie haute + 2,2 m ≈ 9,8 m).
+  // File (OSM, mises à jour du propriétaire 2026-11-16) : 1580139651, passage SOUS le rocher 1580139648 (1580139652, tunnel=yes), 1580137178, escalier 1580224119 (montée),
+  // 1580224120, passerelle 1580137179 (bridge=yes layer=2, AU-DESSUS du circuit), 1580224121, escalier 1580224122 (descente) : escaliers OSM (lot 4), plus d'escaliers ajoutés
+  // par le moteur ; 1032354546 jusqu'au bord est de la gare (4,8 ; -1,7), passage SOUS la gare (1580086194, tunnel=yes layer=-1 :
   // dessiné sous le toit, qui s'efface au zoom), chemin 1580149150 vers le nord, fourche en (0,6 ; -10,9) : raccourci ou boucle 1032685208, escalier 1032685209
   // puis escalier 1580086195 qui monte au quai (entrée OSM entrance=main (1,0 ; -1,3)).
   const TUN=OSM.paths.qtun,B=OSM.paths.queueB,UP=OSM.paths.qup,XD=OSM.paths.xdown;
@@ -52,10 +53,10 @@ const SITE=(()=>{
     queue:{entry0:ENTRY0,link:[[61.1,16.8]],gate:{h:[58.35,14.71],a:[57.65,16.79],b:[56.27,14.0]},
       parts:[
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
-        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières liées sur la BOUCLE (propriétaire, 2026-11-16, 3e série) : à son
-        // entrée et à sa sortie (la jumelle de sortie est posée par le moteur, règle générale) ; fermées = raccourci en service. Pas de barrière sur le raccourci (posée par erreur
-        // au lot précédent). À 1,6 m des deux bouts de la boucle (emplacement exact ESTIMÉ).
-        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[{on:'loop',at:1.6}]},
+        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières PARALLÈLES qui bougent ensemble (propriétaire, 2026-11-16, lot 4) :
+        // barrières de fourche pivotantes, l'une à l'entrée de la boucle, l'autre à sa sortie (jumelle posée par le moteur) ; boucle ouverte : toutes deux en travers du raccourci ;
+        // boucle fermée : l'une barre l'entrée, l'autre la sortie de la boucle. Poteaux dans la pointe de chaque fourche (emplacement exact ESTIMÉ).
+        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[{on:'fork'}]},
         {pts:B.slice(7).concat(UP.slice(1))}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     // allée d'accès PROM : dans la zone piétonne OSM (dessinée comme une surface, praticable partout), plus dessinée comme chemin

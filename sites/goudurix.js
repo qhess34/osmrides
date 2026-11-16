@@ -37,8 +37,10 @@ const SITE=(()=>{
     yard:{at:'station',device:'switch',back:true,rotary:true,s:true,a:45.4,b:51.6,slide:1,side:-1,len:5.6,devName:'Aiguillage',devLabel:'l\'aiguillage',lanes:[{name:'Garage',pts:lanePts,cap:2}],move:{v:2.4,t:4}},
     stationPoly:OSM.polys.station,stationAt:[.4,0,12],stationRoofCol:'#9b8f7d',
     fade:[[.4,0,12]],   // toits qui s'effacent : gare
-    // Quais ESTIMÉS (le bâtiment OSM, 6,8 m de large, ne couvre que la voie et ses abords) : embarquement à l'ouest (portillons), débarquement à l'est.
-    plat:{load:7.0,exit:3.5,back:.6,front:1.6},
+    // Quais ESTIMÉS (le bâtiment OSM, 6,8 m de large, ne couvre que la voie et ses abords) : embarquement à l'ouest (portillons), débarquement à l'est. Quai ouest ramené à 6,2 m
+    // (propriétaire, 2026-11-16, lot 4 : l'escalier de la file 1580112204 est EN APPLIQUE à l'ouest de la gare, collé au mur, hors du quai ; le moteur le décale contre le mur et
+    // dessine un palier rectangulaire à son sommet) : juste assez pour les 4 places d'attente par portillon.
+    plat:{load:6.2,exit:3.5,back:.6,front:1.6},
     booth:[6.4,-11.8,0],boothLabel:[9.5,-14.5],beacon:[5.6,-10.6],
     queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
       parts:[{pts:[ENTRY0].concat(Q.slice(1,F0+1))},

@@ -198,4 +198,4 @@ Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=
 
 ## Hors périmètre
 
-Barrières de la file (commande à la carte, barrière d'entrée et de sortie liées sur chaque chemin fermable), escaliers, passerelles et rochers : `docs/NOUVELLE-ATTRACTION.md` §2 ; ce ne sont pas des manœuvres de train et aucune commande par train ne s'y ajoute.
+Barrières de la file (commande à la carte, barrière d'entrée et de sortie liées sur chaque chemin fermable ; barrière de fourche pivotante `{on:'fork'}` qui ferme la boucle OU le raccourci, deux barrières parallèles liées à la Trace du Hourra, une seule au raccourci des lacets d'OzIris), escaliers (largeur du chemin, en applique, palier rectangulaire), passerelles et rochers (tunnel prolongé jusqu'aux bords) : `docs/NOUVELLE-ATTRACTION.md` §2–§3 ; ce ne sont pas des manœuvres de train et aucune commande par train ne s'y ajoute : une barrière se commande à la carte, par fourche (zone de la file), jamais par train.

@@ -21,7 +21,11 @@ const STAIRS=(OSM.stairs||OSM.feats.filter(f=>f.k==='highway=steps'&&!f.c).map(f
   const lines=Object.values(OSM.paths||{}).concat(SITE.paths||[],OSM.feats.filter(f=>f.k.startsWith('highway=')&&f.k!=='highway=steps'&&!f.c&&!f.br).map(f=>f.p));
   const ends=P=>[P[0],P[P.length-1]],at=(q,E,r)=>Math.hypot(q[0]-E[0],q[1]-E[1])<r;
   for(const b of BRIDGE_DEF){if(b.h<1||!(b.ty>=0&&b.h>b.ty))continue; // seulement une passerelle qui franchit la voie
-    if(ends(b.P).some(E=>STAIRS.some(o=>ends(o.p).some(q=>at(q,E,1.2)))||BRIDGE_DEF.some(c=>c!==b&&ends(c.P).some(q=>at(q,E,1.2)))))continue; // escalier OSM ou autre passerelle à un bout : ouvrage déjà décrit par OSM
+    // escalier OSM à un bout (directement, ou au bout d'un court palier de moins de 5 m de chemin : propriétaire, Trace du Hourra, 2026-11-16, lot 4) ou autre passerelle :
+    // ouvrage déjà décrit par OSM, rien n'est ajouté (le mécanisme ne sert que si OSM n'a aucun escalier)
+    const nearSt=E=>{if(STAIRS.some(o=>ends(o.p).some(q=>at(q,E,1.2))))return true;
+      for(const P of lines)for(let j=0;j<P.length;j++){if(!at(P[j],E,.6))continue;for(const dir of [1,-1]){let acc=0;for(let k=j+dir;k>=0&&k<P.length;k+=dir){acc+=Math.hypot(P[k][0]-P[k-dir][0],P[k][1]-P[k-dir][1]);if(acc>5)break;if(STAIRS.some(o=>ends(o.p).some(q=>at(q,P[k],.6))))return true;}}}return false;};
+    if(ends(b.P).some(E=>nearSt(E)||BRIDGE_DEF.some(c=>c!==b&&ends(c.P).some(q=>at(q,E,1.2)))))continue;
     for(const E of ends(b.P)){const F=at(E,b.P[0],.01)?b.P[b.P.length-1]:b.P[0];
       let best=null;
       for(const P of lines)for(let j=0;j<P.length;j++){if(Math.hypot(P[j][0]-E[0],P[j][1]-E[1])>.6)continue;const thr=P.some(q=>at(q,F,.6))?1000:0; // de préférence le chemin qui passe par la passerelle (file)
@@ -52,7 +56,37 @@ function gateAt(P,d,end,half){P=end?P.slice().reverse():P;const hw=half||1.1;let
 // ({end} inversé), sauf si la configuration la donne déjà ou si pair:false.
 const pairGates=gs=>gs.concat(gs.filter(g=>g.on&&g.pair!==false&&!gs.some(o=>o!==g&&o.on===g.on&&!!o.end!==!!g.end)).map(g=>Object.assign({},g,{end:!g.end})));
 const plen=P=>P.reduce((n,q,i)=>i?n+Math.hypot(q[0]-P[i-1][0],q[1]-P[i-1][1]):0,0); // chemin court (moins de 2·at + 0,8 m) : barrières à 20 % de sa longueur de chaque bout
-const resolveGate=(g,p)=>{if(g.h)return g;const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});};
+// Barrière de fourche pivotante {on:'fork', end, half} (propriétaire, 2026-11-16, lot 4 : OzIris, raccourci des lacets ; Trace du Hourra, boucle) : UN vantail, poteau
+// dans la pointe de la fourche (entre la boucle et le raccourci, là où ils s'écartent de 1,6 m), qui ferme SOIT le raccourci (a : boucle en service), SOIT la boucle (b).
+// end:true : même barrière à l'autre bout (là où la boucle rejoint le raccourci). Avec pairGates, deux barrières parallèles qui bougent ensemble : boucle ouverte, les deux
+// en travers du raccourci ; boucle fermée, l'une en travers de l'entrée de la boucle, l'autre de sa sortie.
+const ptAt=(P,d)=>{let acc=0;for(let i=1;i<P.length;i++){const l=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(acc+l>=d){const k=(d-acc)/(l||1);return [P[i-1][0]+(P[i][0]-P[i-1][0])*k,P[i-1][1]+(P[i][1]-P[i-1][1])*k];}acc+=l;}return P[P.length-1];};
+function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PL=rv(p.loop),PS=rv(p.short),hw=g.half||1.1,mx=Math.min(6,plen(PL)*.45,plen(PS)*.45);
+  let d=.3,A,B;for(;d<=mx;d+=.1){A=ptAt(PL,d);B=ptAt(PS,d);if(Math.hypot(A[0]-B[0],A[1]-B[1])>=1.6)break;}A=ptAt(PL,Math.min(d,mx));B=ptAt(PS,Math.min(d,mx));
+  const h=[(A[0]+B[0])/2,(A[1]+B[1])/2],ext=(Q)=>{const dx=Q[0]-h[0],dz=Q[1]-h[1],l=Math.hypot(dx,dz)||1;return [Q[0]+dx/l*hw,Q[1]+dz/l*hw];};
+  return {h,a:ext(B),b:ext(A),loop:false,fork:1};}
+const resolveGate=(g,p)=>{if(g.h)return g;if(g.on==='fork')return forkGate(g,p);const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});};
+// Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise de la gare (agrandie à ses quais, STATION_GROW),
+// qui la longe (parallèle à la voie de gare) et dont le sommet est à moins de 4 m d'une porte OSM (entrance=*) est dessiné À L'EXTÉRIEUR, collé au mur : décalé perpendiculairement à la voie, côté extérieur, jusqu'à ce que son bord
+// intérieur (largeur APPW) touche le mur. Les points de la file, de la sortie et des allées posés sur lui sont décalés d'autant (visiteurs sur l'escalier). o.app={nx,nz,top}
+// sert au palier rectangulaire dessiné à son sommet (engine/render.js). Décalage = ESTIMÉ (il dépend de la largeur estimée des quais).
+const APPW=2;
+(function stairsOutside(){const SPo=SITE.stationPoly;if(!SPo||SPo.length<3||!BAYS.length)return;const pin=(x,z)=>{let c=false;for(let i=0,j=SPo.length-1;i<SPo.length;j=i++)if((SPo[i][1]>z)!==(SPo[j][1]>z)&&x<(SPo[j][0]-SPo[i][0])*(z-SPo[i][1])/(SPo[j][1]-SPo[i][1])+SPo[i][0])c=!c;return c;};
+  const tx=BAYS[0].tx,tz=BAYS[0].tz,cx=BAYS.reduce((n,b)=>n+b.x,0)/BAYS.length,cz=BAYS.reduce((n,b)=>n+b.z,0)/BAYS.length,moves=[];
+  for(const o of STAIRS){if(o.gen)continue;const P=o.p,A=P[0],B=P[P.length-1],l=Math.hypot(B[0]-A[0],B[1]-A[1])||1,ux=(B[0]-A[0])/l,uz=(B[1]-A[1])/l;
+    if(Math.abs(ux*tx+uz*tz)<.8)continue; // pas parallèle à la gare
+    const smp=[];for(let i=1;i<P.length;i++)for(let k=0;k<=4;k++)smp.push([P[i-1][0]+(P[i][0]-P[i-1][0])*k/4,P[i-1][1]+(P[i][1]-P[i-1][1])*k/4]);
+    if(!smp.some(q=>pin(q[0],q[1])))continue;
+    {const T=o.up<0?A:B;if(!(OSM.doors||[]).some(d=>Math.hypot(d[0]-T[0],d[1]-T[1])<4))continue;} // sommet à moins de 4 m d'une porte de la gare : escalier qui monte au niveau de la gare
+    let nx=-tz,nz=tx;const mx=(A[0]+B[0])/2,mz=(A[1]+B[1])/2;if((mx-cx)*nx+(mz-cz)*nz<0){nx=-nx;nz=-nz;} // vers l'extérieur de la gare
+    let d=0;while(d<12&&smp.some(q=>pin(q[0]+nx*(d-APPW/2),q[1]+nz*(d-APPW/2))))d+=.05;d+=.05;
+    const top=o.up<0?A:B;moves.push([P.map(q=>q.slice()),nx*d,nz*d]);o.p=P.map(q=>[q[0]+nx*d,q[1]+nz*d]);o.app={nx,nz,top:[top[0]+nx*d,top[1]+nz*d],ux:o.up<0?-ux:ux,uz:o.up<0?-uz:uz};
+    o.x0+=Math.min(0,nx*d);o.x1+=Math.max(0,nx*d);o.z0+=Math.min(0,nz*d);o.z1+=Math.max(0,nz*d);}
+  if(!moves.length)return;
+  const done=new WeakSet,fix=L=>{if(!L)return;for(const q of L){if(!Array.isArray(q)||typeof q[0]!=='number'||done.has(q))continue;done.add(q);for(const [P,dx,dz] of moves)if(P.some(r=>Math.hypot(r[0]-q[0],r[1]-q[1])<.3)){q[0]+=dx;q[1]+=dz;break;}}};
+  const seen=new Set,fixOnce=L=>{if(L&&!seen.has(L)){seen.add(L);fix(L);}};
+  for(const p of QS.parts){fixOnce(p.pts);fixOnce(p.loop);fixOnce(p.short);}fixOnce(SITE.exit&&SITE.exit.path);for(const p of SITE.paths||[])fixOnce(p);
+})();
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}

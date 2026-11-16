@@ -12,6 +12,8 @@
  ],
  "track_ways": [
   541427592,
+  1580221723,
+  1580221724,
   1580086193,
   1580086192,
   1580086185,
@@ -149,7 +151,11 @@
    1580139651,
    1580139652,
    1580137178,
+   1580224119,
+   1580224120,
    1580137179,
+   1580224121,
+   1580224122,
    1032354546
   ],
   "queueB": [
@@ -175,14 +181,5 @@
   "tr",
   "pre"
  ],
- "note_osm": "Repères lus dans OSM (2026-11-16) : lift 937061488 (lift_hill), zones 'waiting' : 1580086188 en haut du lift = frein de bloc B1 (propriétaire, 2026-11-16 : frein de bloc après le lift), freins de bloc 1580086189 (B2) et 1580086191 (B3), frein final 1580086193, rail de transfert du pont 1580086185 (tr), frein avant gare 1580086183 (pre). Gare 1231613335 étiquetée station par le propriétaire (changeset 192038616) : st0/st1 lus dans OSM (quai 17,4 m). Changesets du propriétaire du 2026-11-16 après-midi : 192026103 (passerelle de file 1580137179 au-dessus du circuit), 192026350 (rocher 1580139648, voie en tunnel 1580139650, file en tunnel 1580139652), 192026807 (forêt 1580149149, eau 1580149148, file 1580149150). Rocher (propriétaire, 2026-11-16, 3e série) : la voie qui vient de l'ouest (1580139650, s sol ≈ 560–568) passe AU-DESSUS du rocher, la voie basse après la boucle à 270° passe DESSOUS en tunnel : le tag tunnel=true de 1580139650 est ignoré (tunnels_ignore) et le tunnel est posé sur la voie basse (tunnels_extra s sol 612,5–618, ESTIMÉ) ; voie basse abaissée à 4,0 m au croisement (écart 3,6 m).",
- "tunnels_ignore": [
-  1580139650
- ],
- "tunnels_extra": [
-  [
-   612.5,
-   618
-  ]
- ]
+ "note_osm": "Repères lus dans OSM (2026-11-16) : lift 937061488 (lift_hill), zones 'waiting' : 1580086188 en haut du lift = frein de bloc B1 (propriétaire, 2026-11-16 : frein de bloc après le lift), freins de bloc 1580086189 (B2) et 1580086191 (B3), frein final 1580086193, rail de transfert du pont 1580086185 (tr), frein avant gare 1580086183 (pre). Gare 1231613335 étiquetée station par le propriétaire (changeset 192038616) : st0/st1 lus dans OSM (quai 17,4 m). Changesets du propriétaire du 2026-11-16 après-midi : 192026103 (passerelle de file 1580137179 au-dessus du circuit), 192026350 (rocher 1580139648, voie en tunnel 1580139650, file en tunnel 1580139652), 192026807 (forêt 1580149149, eau 1580149148, file 1580149150). Rocher (propriétaire, 2026-11-16, lot 4) : les DEUX niveaux de voie passent dans le tunnel du rocher : tunnels OSM 1580139650 (voie haute) et 1580221724 (voie basse, changeset 192040289 qui découpe 541427592 en 1580221723 / 1580221724 / 541427592) ; plus de tunnels_ignore ni de tunnels_extra. Escaliers de la passerelle dessinés dans OSM (changeset 192040396) : 1580224119 (montée), 1580224120, passerelle 1580137179, 1580224121, 1580224122 (descente)."
 }

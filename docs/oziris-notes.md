@@ -89,3 +89,9 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 
 - Règle générale des barrières (entrée ET sortie de chaque chemin de file fermable, liées) : le raccourci des lacets sud 1580173580 (1,4 m) reçoit une barrière de sortie, posée par le moteur ; sur un chemin aussi court, les deux barrières sont à 20 % de sa longueur de chaque bout. Barrières à tester par le propriétaire.
 - Escaliers d'entrée 1580105924 / 1580105926 : parallèles et collés, ramenés à 0,9 m chacun (pas de chevauchement) ; escalier de sortie 1580105929 : 1,6 m.
+
+### Lot 4 (propriétaire, 2026-11-16, fin de journée)
+
+- **Raccourci des lacets sud** 1580173580 (1,4 m) : UNE barrière de fourche pivotante (`{on:'fork', pair:false}`), poteau dans la pointe de la fourche (ESTIMÉ), qui ferme soit le raccourci (lacets en service), soit les lacets ; plus de barrière de sortie.
+- **Escaliers** : largeur du chemin dessiné qu'ils prolongent (escaliers d'entrée : largeur de la file, sans chevauchement ; escalier de sortie 1580105929 : allée, 3,2 m).
+
