@@ -22,7 +22,7 @@ Le fichier de spécification (JSON) décrit :
   inversions    … {type:'loop', osm:true, s0, s1, h} : looping dessiné dans OSM (aller, retour au sommet, aller), hauteur seule estimée
   (décor)       zones piétonnes (aires et multipolygones, anneaux assemblés, trous) -> feats highway=pedestrian fermés ; chemins à l'intérieur : f.in=1 ;
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
-                passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, w}]
+                passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; chemins à width OSM -> OSM.widths=[[w, pts]…] ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, w}]
                 (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone : feats (moteur)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
 OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
@@ -424,7 +424,15 @@ for wid, w in WAY.items():
     wd = wnum(t) or min([wnum(tags(o)) for i in (n_[0], n_[-1]) for o in NODE_WAYS[i] if o is not w and wnum(tags(o))] or [0]) or None  # largeur : escalier, sinon chemin raccordé
     steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'w': wd} if wd else {})})
 print('escaliers : %d ; passerelles : %d ; rochers : %d' % (len(steps), sum(1 for f in feats if f.get('br')), sum(1 for f in feats if f['k'] in ('natural=rock', 'natural=stone') and f['c'])))
-res = {'cps': cps, **({'stairs': steps} if steps else {}), **({'doors': doors} if doors else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
+# chemins à largeur OSM (highway non fermé avec width=*) : [w, [[x,z]…]] — le moteur dessine la file à cette largeur là où elle les suit (engine/render.js QWP)
+widths = []
+for wid, w in WAY.items():
+    t = tags(w); n_ = nds(w)
+    if t.get('highway') and wnum(t) and len(n_) > 1 and n_[0] != n_[-1]:
+        p = [list(xy(i, 1)) for i in n_]
+        if any(inb(q) for q in p): widths.append([wnum(t), p])
+print('chemins à largeur OSM : %d' % len(widths))
+res = {'cps': cps, **({'widths': widths} if widths else {}), **({'stairs': steps} if steps else {}), **({'doors': doors} if doors else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
        'paths': {k: chain_pts(v) for k, v in spec.get('paths', {}).items()},
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
        'trees': [list(xy(i, 1)) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))],
