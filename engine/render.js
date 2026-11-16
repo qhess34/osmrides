@@ -38,7 +38,7 @@ $('cams').innerHTML='<button data-act="fs" id="bFs" title="Afficher la carte en 
 (function controls(){
   const ptrs=new Map();let pinch=0,moved=0,multi=false;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
   const gateAt=e=>{const r=cv.getBoundingClientRect(),wx=cam.x+(e.clientX-r.left-VW/2)/cam.s,wz=cam.z+(e.clientY-r.top-VH/2)/cam.s;let best=-1,bd=Math.max(2.2,(COARSE?26:14)/cam.s);
-    LOOPS.forEach((l,i)=>{const g=l.g;for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});
+    LOOPS.forEach((l,i)=>{for(const g of l.gs)for(const q of [g.h,[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2],[(g.h[0]+g.b[0])/2,(g.h[1]+g.b[1])/2]]){const d=Math.hypot(q[0]-wx,q[1]-wz);if(d<bd){bd=d;best=i;}}});
     {const g=ENTRY_GATE,d=Math.min(Math.hypot(g.h[0]-wx,g.h[1]-wz),Math.hypot((g.h[0]+g.a[0])/2-wx,(g.h[1]+g.a[1])/2-wz),Math.hypot((g.h[0]+g.b[0])/2-wx,(g.h[1]+g.b[1])/2-wz));if(d<bd)best=-2;}
     return best;};
   const inSyn=e=>{const b=SYN.box;if(!synOn||!b)return false;const r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;return x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3];};
@@ -73,6 +73,7 @@ const TEX={
   dirt:texture(256,'150,126,92',12,[['rgba(110,92,66,.25)',60,4,20],['rgba(176,154,118,.25)',40,4,16]]),
   asph:texture(256,'128,130,134',7,[['rgba(100,102,108,.25)',50,4,16]]),
   stone:texture(256,'196,192,182',7,[['rgba(160,156,146,.25)',50,3,12]]),
+  rock:texture(256,'132,124,110',16,[['rgba(92,86,76,.35)',70,3,14],['rgba(176,168,150,.3)',60,2,10],['rgba(70,64,56,.25)',30,1,4]]),
   water:texture(256,'62,104,126',6,[['rgba(84,130,150,.3)',50,6,24],['rgba(44,82,104,.3)',40,6,22]])};
 TEX.rows=(()=>{const c=document.createElement('canvas');c.width=c.height=2;const x=c.getContext('2d');x.fillStyle='rgba(0,0,0,.4)';x.fillRect(0,0,2,1);const p=ctx.createPattern(c,'repeat');p.setTransform(new DOMMatrix().scale(.25));return p;})();
 const SHX=.55,SHZ=.42;
@@ -161,6 +162,9 @@ const mkPath=(pts,close)=>{const p=new Path2D;pts.forEach((q,i)=>i?p.lineTo(q[0]
 const cen=pts=>{let x=0,z=0;for(const p of pts){x+=p[0];z+=p[1];}return [x/pts.length,z/pts.length];};
 const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).map(p=>mkPath(p));
 let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVP=new Path2D; // COV/COVP : chemins couverts OSM (passages sous la gare…), redessinés quand le toit s'efface
+// Rochers OSM (natural=rock|stone fermé) : massif dessiné en relief au-dessus de la voie et des chemins qui le traversent en tunnel (voir ROCKS plus bas)
+const ROCKP=OSM.feats.filter(f=>f.c&&f.p.length>3&&/^natural=(rock|stone)$/.test(f.k)).map(f=>f.p);
+const pipXZ=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])c=!c;return c;};
 (function scenery(){
   const ROOFS=['#a9553f','#b0694a','#9d6350','#8a8f96','#b9ab93','#7f8a8f','#a35f47'],seen=new Set();
   const SPOLY=SITE.stationPoly||[],inSt=(x,z)=>{let c=false;for(let i=0,j=SPOLY.length-1;i<SPOLY.length;j=i++)if((SPOLY[i][1]>z)!==(SPOLY[j][1]>z)&&x<(SPOLY[j][0]-SPOLY[i][0])*(z-SPOLY[i][1])/(SPOLY[j][1]-SPOLY[i][1])+SPOLY[i][0])c=!c;return c;};
@@ -184,7 +188,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVP=new Path2D; // COV
     else if(k==='amenity=parking'){if(c)LY.asph.push(p);}
     else if(k==='man_made=pier')LY.pier.push(p);
     else if(k==='highway=footway'||k==='highway=pedestrian'||k==='highway=steps'){
-      if(k==='highway=pedestrian'&&c)LY.footA.push(p);else if(!f.in)LY.foot.push(p); // f.in : chemin fondu dans une zone piétonne (non dessiné, les promeneurs le suivent encore)
+      if(k==='highway=pedestrian'&&c)LY.footA.push(p);else if(!f.in&&k!=='highway=steps'&&!f.br)LY.foot.push(p); // escaliers (drawSteps) et passerelles (drawBridge) dessinés à part // f.in : chemin fondu dans une zone piétonne (non dessiné, les promeneurs le suivent encore)
       if(k==='highway=footway'&&!c&&!(SITE.noStroll||[]).some(q=>Math.hypot(f.p[0][0]-q[0],f.p[0][1]-q[1])<1.5))stroll(f.p);}
     else if(k==='highway=service'||k==='highway=unclassified'||k==='highway=track')LY.road.push(p);
     else if(k==='barrier=hedge'||k==='natural=tree_row')LY.hedge.push(p);
@@ -197,12 +201,16 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVP=new Path2D; // COV
   ctx.setTransform(1,0,0,1,0,0);
   const col=()=>({c:`rgb(${rnd(34,56)|0},${rnd(80,110)|0},${rnd(36,56)|0})`,c2:`rgba(${rnd(88,124)|0},${rnd(142,170)|0},${rnd(64,92)|0},.8)`,l:[0,1,2,3,4].map(i=>i?[rnd(-.5,.5),rnd(-.5,.5),rnd(.48,.72)]:[0,0,.8])});
   const nearTrack=(x,z,r)=>{for(let i=0;i<N;i+=6){const p=TR[i].p;if((p.x-x)**2+(p.z-z)**2<r*r)return true;}for(const ln of LANES)for(let i=0;i<ln.path.length;i+=4){const p=ln.path[i];if((p.x-x)**2+(p.z-z)**2<(r+1.5)**2)return true;}return Math.hypot(x-SW0.x-SW0.tx*4.5,z-SW0.z-SW0.tz*4.5)<10+r;};
+  // pas d'arbre de bois sur les chemins, la file, les escaliers ni dans un rocher (grille de 1 m le long des chemins)
+  const PC=new Set,mark=P=>{for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.5);for(let k=0;k<=n;k++)PC.add(Math.round(a[0]+(b[0]-a[0])*k/n)+','+Math.round(a[1]+(b[1]-a[1])*k/n));}};
+  for(const f of OSM.feats)if(f.k.startsWith('highway=')&&!f.c)mark(f.p);for(const k in OSM.paths)mark(OSM.paths[k]);for(const g of SEGS)mark(g.P);for(const o of STAIRS)mark(o.p);
+  const onPath=(x,z,r)=>{const R=Math.ceil(r);for(let i=-R;i<=R;i++)for(let j=-R;j<=R;j++)if(i*i+j*j<=r*r&&PC.has(Math.round(x+i)+','+Math.round(z+j)))return true;return false;};
   for(const f of LY.forest){
     let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of f.pts){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}
     x0=Math.max(x0,VIEW.bounds[0]-30);x1=Math.min(x1,VIEW.bounds[1]+30);z0=Math.max(z0,VIEW.bounds[2]-30);z1=Math.min(z1,VIEW.bounds[3]+30);
     const n=Math.min(900,(x1-x0)*(z1-z0)/30);
     for(let i=0;i<n;i++){const x=rnd(x0,x1),z=rnd(z0,z1),r=rnd(2.4,4.8);
-      if(!ctx.isPointInPath(f.p,x,z)||nearTrack(x,z,r+4.5)||LY.bld.some(b=>ctx.isPointInPath(b.p,x,z)))continue;
+      if(!ctx.isPointInPath(f.p,x,z)||nearTrack(x,z,r+4.5)||LY.bld.some(b=>ctx.isPointInPath(b.p,x,z))||onPath(x,z,r*.7+.8)||ROCKP.some(P=>pipXZ(P,x,z))||WATERPTS.some(P=>pipXZ(P,x,z)))continue;
       trees.push(Object.assign({x,z,r},col()));}
   }
   for(const q of OSM.trees)if(!nearTrack(q[0],q[1],6))trees.push(Object.assign({x:q[0],z:q[1],r:rnd(3,4.5)},col()));
@@ -231,7 +239,7 @@ const TUN=(function(){
   const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s); // SITE.tunnels : réglages des tunnels OSM dans l'ordre, puis tunnels ESTIMÉS absents d'OSM ({s:[s0,s1], under, w})
   return (OSM.tunnels||[]).map((r,ti)=>[r,cfO[ti]||{}]).concat(CF.filter(c=>c.s).map(c=>[c.s,c])).map(([r,cf])=>{
     const i0=Math.round(r[0]/DS),i1=Math.round(r[1]/DS),w=cf.w||2.1,m=fr(Math.round((i0+i1)/2));
-    const e0=fr(i0),e1=fr(i1),under=cf.under||r[2]||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':'ground'); // r[2]='roof' : galerie couverte au-dessus du sol (OSM layer>0) // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
+    const e0=fr(i0),e1=fr(i1),under=cf.under||(ROCKP.some(P=>pipXZ(P,m.x,m.z))?'rock':0)||r[2]||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':'ground'); // r[2]='roof' : galerie couverte au-dessus du sol (OSM layer>0) // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
     const band=(a,b,hw)=>{const P=new Path2D,L1=[],R1=[];for(let i=a;i<=b;i++){const f=fr(i);L1.push([f.x+f.nx*hw,f.z+f.nz*hw]);R1.push([f.x-f.nx*hw,f.z-f.nz*hw]);}
       L1.forEach((q,i)=>i?P.lineTo(q[0],q[1]):P.moveTo(q[0],q[1]));R1.reverse().forEach(q=>P.lineTo(q[0],q[1]));P.closePath();return P;};
     const walls=new Path2D,heads=new Path2D,mouth=[],RAMP=Math.round(6/DS);
@@ -253,16 +261,66 @@ function drawTunnel(t){
   if(wa){ctx.globalAlpha=.42+.5*ra;ctx.fillStyle=TEX.water;ctx.fill(t.cover);ctx.globalAlpha=ra*.5;ctx.strokeStyle='rgba(190,215,225,.55)';lw(.12,.5);ctx.stroke(t.cover);} // dalle de couverture sous l'eau
   else if(t.under==='roof'){ctx.globalAlpha=.25+.75*ra;ctx.fillStyle='#77746c';ctx.fill(t.cover);ctx.fillStyle=TEX.rows;ctx.globalAlpha*=.3;ctx.fill(t.cover);ctx.globalAlpha=.25+.75*ra; // galerie couverte : toit de béton sombre, faîtage
     ctx.strokeStyle='rgba(20,20,18,.5)';lw(.12,.6);ctx.stroke(t.cover);ctx.strokeStyle='rgba(255,255,255,.18)';lw(.15,.5);ctx.stroke(t.ridge);}
+  else if(t.under==='rock'){} // sous un rocher OSM : couverture = le rocher lui-même (drawRock), seuls les portails sont dessinés ici
   else{ctx.globalAlpha=.3+.7*ra;ctx.fillStyle=TEX.dirt;ctx.fill(t.cover);ctx.fillStyle=TEX.lawn;ctx.fill(t.core);ctx.fillStyle='rgba(20,40,16,.18)';ctx.fill(t.core);}
   ctx.globalAlpha=1;
-  ctx.strokeStyle='rgba(30,30,28,.35)';lw(.5,1);ctx.translate(.18,.14);ctx.stroke(t.walls);ctx.translate(-.18,-.14); // murs de la rampe et têtes de portail
-  ctx.strokeStyle=TEX.stone;lw(.34,.8);ctx.stroke(t.walls);ctx.fillStyle=TEX.stone;ctx.fill(t.heads);ctx.strokeStyle='#8a867a';lw(.1,.6);ctx.stroke(t.heads);
+  if(t.under!=='rock'){ctx.strokeStyle='rgba(30,30,28,.35)';lw(.5,1);ctx.translate(.18,.14);ctx.stroke(t.walls);ctx.translate(-.18,-.14); // murs de la rampe (pas sous un rocher : voie en hauteur) et têtes de portail
+  ctx.strokeStyle=TEX.stone;lw(.34,.8);ctx.stroke(t.walls);}ctx.fillStyle=TEX.stone;ctx.fill(t.heads);ctx.strokeStyle='#8a867a';lw(.1,.6);ctx.stroke(t.heads);
   for(const m of t.mouth){const x0=m.x,z0=m.z,x1=m.x+m.ox*2.4,z1=m.z+m.oz*2.4,g=ctx.createLinearGradient(x0,z0,x1,z1); // ombre de l'ouverture sur la rampe
     g.addColorStop(0,'rgba(8,9,12,.9)');g.addColorStop(1,'rgba(8,9,12,0)');ctx.fillStyle=g;const hw=t.w-.15;
     ctx.beginPath();ctx.moveTo(x0+m.nx*hw,z0+m.nz*hw);ctx.lineTo(x1+m.nx*hw,z1+m.nz*hw);ctx.lineTo(x1-m.nx*hw,z1-m.nz*hw);ctx.lineTo(x0-m.nx*hw,z0-m.nz*hw);ctx.closePath();ctx.fill();}
   ctx.restore();
 }
 const lw=(w,minPx)=>{ctx.lineWidth=Math.max(w,(minPx||0)/cam.s);};
+/* ══ Ouvrages piétons et rochers (génériques, pilotés par OSM) ══
+   Passerelles (f.br : highway + bridge=*, tools/make_site.py) : tablier, garde-corps, ombre ; au-dessus de la voie si elle la franchit (hauteur = voie + 2,9 m, ESTIMÉE ;
+   voie haute de plus de 7 m : la passerelle passe dessous), les visiteurs qui l'empruntent sont redessinés dessus. SITE.bridges[k]={h} force la hauteur (k = rang OSM).
+   Rochers (natural=rock|stone fermés) : massif en relief, ombre portée, hauteur ESTIMÉE (voie la plus haute dessous + 2,2 m, sinon 3 m ; SITE.rocks[k]={h}) ;
+   voie (OSM.tunnels, under 'rock') et chemins couverts (f.cv) qui le traversent passent dessous : le rocher s'efface au zoom et toits retirés, portails aux extrémités.
+   Escaliers (OSM.stairs, ou à défaut highway=steps du décor : STAIRS, engine/queue.js) : marches transversales, garde-corps, marches éclairées vers le haut (incline). */
+const offL=(P,d)=>P.map((q,i)=>{const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;return [q[0]-dz/l*d,q[1]+dx/l*d];});
+const dPoly=(x,z,P)=>{let m=1e9;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(a[0]+dx*t-x,a[1]+dz*t-z));}return m;};
+const BRIDGES=OSM.feats.filter(f=>f.br).map((f,k)=>{const P=f.p,w=2.4;let ty=-1;for(let i=0;i<N;i+=2){const q=TR[i].p;if(dPoly(q.x,q.z,P)<w/2+2)ty=Math.max(ty,q.y);}
+  const cf=(SITE.bridges||[])[k]||{},h=cf.h!=null?cf.h:ty<0?.3:ty<7?ty+2.9:2.4;
+  return {P,w,h,deck:mkPath(P),rl:mkPath(offL(P,w/2)),rr:mkPath(offL(P,-w/2)),over:ty>=0&&h>ty};});
+const COVF=OSM.feats.filter(f=>f.cv).map(f=>f.p);
+const ROCKS=ROCKP.map((P,k)=>{const m=cen(P);let ty=-1;for(let i=0;i<N;i+=2){const q=TR[i].p;if(pipXZ(P,q.x,q.z))ty=Math.max(ty,q.y);}
+  const cf=(SITE.rocks||[])[k]||{},h=cf.h!=null?cf.h:ty>=0?ty+2.2:3,pa=mkPath(P,true),inset=mkPath(P.map(q=>[m[0]+(q[0]-m[0])*.55,m[1]+(q[1]-m[1])*.55]),true);
+  const cov=ty>=0||COVF.some(C=>C.some(q=>pipXZ(P,q[0],q[1])||dPoly(q[0],q[1],P)<1.2)),ports=[];
+  for(const C of COVF)for(const [e,f] of [[C[0],C[1]],[C[C.length-1],C[C.length-2]]])if(pipXZ(P,e[0],e[1])||dPoly(e[0],e[1],P.concat([P[0]]))<1.2){const dx=e[0]-f[0],dz=e[1]-f[1],l=Math.hypot(dx,dz)||1;ports.push({x:e[0],z:e[1],ox:dx/l,oz:dz/l});}
+  const ridges=new Path2D;P.forEach((q,i)=>{if(i%2)return;ridges.moveTo(q[0],q[1]);ridges.lineTo(m[0]+(q[0]-m[0])*.55,m[1]+(q[1]-m[1])*.55);});
+  return {P,m,h,pa,inset,ridges,cov,ports};});
+function drawRock(r){
+  const a=r.cov?.16+.84*roofA:1;ctx.save();ctx.globalAlpha=a;
+  ctx.fillStyle=TEX.rock;ctx.fill(r.pa);ctx.save();ctx.clip(r.pa);
+  {const R=Math.max(...r.P.map(q=>Math.hypot(q[0]-r.m[0],q[1]-r.m[1]))),g=ctx.createRadialGradient(r.m[0]-R*.25,r.m[1]-R*.2,R*.05,r.m[0],r.m[1],R*1.05); // modelé : sommet éclairé, pied sombre
+    g.addColorStop(0,'rgba(240,232,214,.22)');g.addColorStop(.55,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(18,14,10,.38)');ctx.fillStyle=g;ctx.fill(r.pa);}
+  ctx.strokeStyle='rgba(255,246,226,.16)';ctx.lineWidth=1.6;ctx.translate(-.5,-.4);ctx.stroke(r.pa);ctx.translate(.5,.4); // arêtes éclairées (soleil au nord-ouest)
+  ctx.strokeStyle='rgba(20,16,12,.3)';ctx.lineWidth=2.2;ctx.translate(.7,.55);ctx.stroke(r.pa);ctx.translate(-.7,-.55); // flancs à l'ombre
+  ctx.fillStyle='rgba(235,226,206,.1)';ctx.fill(r.inset);ctx.strokeStyle='rgba(30,26,20,.22)';lw(.12,.5);ctx.stroke(r.ridges);ctx.restore();
+  ctx.strokeStyle='rgba(44,38,30,.75)';lw(.14,.8);ctx.stroke(r.pa);ctx.restore();
+  for(const p of r.ports){const x0=p.x,z0=p.z,nx=-p.oz,nz=p.ox,hw=.8,g=ctx.createLinearGradient(x0-p.ox*1.2,z0-p.oz*1.2,x0+p.ox*.6,z0+p.oz*.6); // portail du chemin couvert
+    g.addColorStop(0,'rgba(8,9,12,0)');g.addColorStop(.6,'rgba(8,9,12,.85)');g.addColorStop(1,'rgba(8,9,12,.2)');ctx.fillStyle=g;ctx.beginPath();
+    ctx.moveTo(x0+nx*hw-p.ox*1.2,z0+nz*hw-p.oz*1.2);ctx.lineTo(x0+nx*hw+p.ox*.6,z0+nz*hw+p.oz*.6);ctx.lineTo(x0-nx*hw+p.ox*.6,z0-nz*hw+p.oz*.6);ctx.lineTo(x0-nx*hw-p.ox*1.2,z0-nz*hw-p.oz*1.2);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#6e675c';lw(.22,.8);ctx.beginPath();ctx.moveTo(x0+nx*(hw+.2),z0+nz*(hw+.2));ctx.lineTo(x0-nx*(hw+.2),z0-nz*(hw+.2));ctx.stroke();}
+}
+function drawBridge(b){
+  ctx.strokeStyle='#57534b';ctx.lineWidth=b.w+.35;ctx.stroke(b.deck);ctx.strokeStyle=TEX.stone;ctx.lineWidth=b.w;ctx.stroke(b.deck); // tablier béton
+  ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=b.w*.5;ctx.stroke(b.deck);
+  ctx.strokeStyle='#3d4148';lw(.12,.7);ctx.stroke(b.rl);ctx.stroke(b.rr); // garde-corps
+  ctx.strokeStyle='rgba(220,224,228,.45)';lw(.05,.4);ctx.stroke(b.rl);ctx.stroke(b.rr);
+  if(b.over){for(const v of G.queue)if(dPoly(v.x,v.z,b.P)<b.w/2+.2)person(v.x,v.z,v.ci,v.ph,v.mv); // visiteurs sur la passerelle, au-dessus de la voie
+    for(const k of G.walkers)if(dPoly(k.x,k.z,b.P)<b.w/2+.2)person(k.x,k.z,k.ci,k.ph,true);}
+}
+const STEPD=STAIRS.map(o=>{const P=o.p,w=1.5,tr=[];let acc=0,tot=0;for(let i=1;i<P.length;i++)tot+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);
+  for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1,nx=-dz/l,nz=dx/l;
+    for(let d=(.3-acc%.3)%.3;d<=l;d+=.3){const x=a[0]+dx/l*d,z=a[1]+dz/l*d,u=(acc+d)/(tot||1);tr.push([x+nx*w/2,z+nz*w/2,x-nx*w/2,z-nz*w/2,o.up>0?u:o.up<0?1-u:.5]);}acc+=l;}
+  return {base:mkPath(P),rl:mkPath(offL(P,w/2)),rr:mkPath(offL(P,-w/2)),tr,w};});
+function drawSteps(){
+  for(const o of STEPD){ctx.strokeStyle='#8f897c';ctx.lineWidth=o.w+.3;ctx.stroke(o.base);ctx.strokeStyle='#b4ad9e';ctx.lineWidth=o.w;ctx.stroke(o.base);
+    if(cam.s>3){lw(.07,.4);for(const t of o.tr){const c=Math.round(110+70*t[4]);ctx.strokeStyle=`rgb(${c},${c-4},${c-12})`;ctx.beginPath();ctx.moveTo(t[0],t[1]);ctx.lineTo(t[2],t[3]);ctx.stroke();}} // nez de marche, plus clairs vers le haut
+    ctx.strokeStyle='#3f434a';lw(.1,.6);ctx.stroke(o.rl);ctx.stroke(o.rr);}
+}
 function person(x,z,ci,ph,mv,helmet){
   if(cam.s<4.2){ctx.fillStyle=PAL[ci];const k=Math.max(.45,1.2/cam.s);ctx.fillRect(x-k/2,z-k/2,k,k);return;}
   const a=ph+(mv?Math.sin(clock*7+ph)*.3:0);
@@ -481,15 +539,16 @@ function drawWorld(dt){
   // file d'attente (allée réelle, barrières des deux côtés)
   ctx.strokeStyle='#4a3a28';ctx.lineWidth=2.5;ctx.stroke(queueAllP);ctx.strokeStyle=TEX.stone;ctx.lineWidth=2.2;ctx.stroke(queueAllP);
   // barrières de la file : vantail métallique pivotant sur un poteau en bordure de chemin
-  for(const l of LOOPS)leaf(l.g,l.t);
-  leaf(ENTRY_GATE,ENTRY_GATE.t);
   ctx.lineCap='butt';
+  drawSteps();
   // ombres portées
   if(dry>.25){
     ctx.fillStyle=`rgba(12,28,14,${.3*dry})`;
     for(const t of trees)if(vis(t.x-t.r,t.x+t.r*3,t.z-t.r,t.z+t.r*3)){ctx.beginPath();ctx.ellipse(t.x+t.r*1.25,t.z+t.r*.95,t.r*1.05,t.r*.9,.6,0,7);ctx.fill();}
     for(const b of LY.bld){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);if(b.fade)ctx.globalAlpha=roofA;ctx.fill(b.p);ctx.restore();}
     if(tunnelP){ctx.save();ctx.translate(2.2,1.7);ctx.fill(tunnelP);ctx.restore();}
+    for(const r of ROCKS){ctx.save();ctx.translate(r.h*SHX*.6,r.h*SHZ*.6);ctx.globalAlpha=r.cov?.2+.8*roofA:1;ctx.fill(r.pa);ctx.restore();} // ombre du rocher (relief arrondi : ombre plus courte)
+    for(const b of BRIDGES){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);ctx.strokeStyle=`rgba(12,28,14,${.3*dry})`;ctx.lineWidth=b.w;ctx.stroke(b.deck);ctx.restore();}
     ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;
     for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swPush(o);ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:STL?.3:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
     for(const t of trains)for(let k=0;k<NCARS;k++)if(!inTun(((t.s-(k+.5)*CAR)%L+L)%L))drawCar(t,k,true);
@@ -518,9 +577,12 @@ function drawWorld(dt){
         h=inTun(((sc%L)+L)%L)?-99:INV&&!up?Math.min(...hs)-1.5:Math.max(...hs)+.05;}
       items.push({h,t,k});}}
   for(const u of TUN)items.push({h:u.h,tun:u});
+  for(const r of ROCKS)items.push({h:r.h,rock:r});for(const b of BRIDGES)items.push({h:b.h,br:b});
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
     if(o.tun){drawTunnel(o.tun);continue;}
+    if(o.rock){drawRock(o.rock);continue;}
+    if(o.br){drawBridge(o.br);continue;}
     if(o.t){drawCar(o.t,o.k);continue;}
     const k=swPush(o);
     if(BOB){ // gouttière en acier : bords sombres, fond clair, reflet au centre
@@ -556,6 +618,9 @@ function drawWorld(dt){
   {const vt=trees.filter(t=>vis(t.x-t.r*1.3,t.x+t.r*1.3,t.z-t.r*1.3,t.z+t.r*1.3)),lobes=(k,off)=>{ctx.beginPath();for(const t of vt)for(const l of t.l){const r=l[2]*t.r*k,x=t.x+l[0]*t.r+off*l[2]*t.r,z=t.z+l[1]*t.r+off*l[2]*t.r;ctx.moveTo(x+r,z);ctx.arc(x,z,r,0,7);}ctx.fill();};
     ctx.fillStyle=TEX.canopy;lobes(1,0);ctx.fillStyle='rgba(8,22,10,.3)';lobes(.62,.3);ctx.fillStyle='rgba(120,140,84,.3)';lobes(.6,-.32);
     if(s>5){ctx.fillStyle='rgba(160,176,110,.2)';lobes(.26,-.45);}}
+  // barrières de la file (dessinées au-dessus des arbres : elles se cliquent sur la carte)
+  for(const l of LOOPS)for(const g of l.gs)leaf(g,g.loop?1-l.t:l.t); // deux barrières liées : celle de la boucle est fermée quand la boucle est hors service
+  leaf(ENTRY_GATE,ENTRY_GATE.t);ctx.lineCap='butt';
   // toitures (la gare et le garage s'effacent en zoomant)
   roofA=lerp(roofA,G.roofOff?0:s>9.5?.08:1,Math.min(1,dt*5));if(roofA<.004)roofA=0;
   for(const b of LY.bld){

@@ -10,7 +10,7 @@ de ses tronçons roller_coaster=track (relation « site » Tonnerre 2 Zeus), exp
 Coordonnées arrondies à 0,1 m, lignes simplifiées (Douglas-Peucker, 0,5 m).
 Sortie : const PARK={plaza,water,lawn,forest,bld,paths,roads,tracks:[{name,pts}],pois:[{name,x,z}],attr:[{id,name,x,z,site}]}
   plaza (zones piétonnes : highway=pedestrian + area, area:highway, place=square, multipolygones), water, lawn, forest, bld : liste d'entités, chacune = liste d'anneaux [x,z,x,z…] (trous inclus, à tracer en evenodd)
-  paths, roads, tracks.pts : polylignes [x,z,x,z…]
+  paths, steps (escaliers highway=steps), roads, tracks.pts : polylignes [x,z,x,z…] ; rock (natural=rock|stone|bare_rock) : anneaux
 """
 import sys, json, math, collections, xml.etree.ElementTree as ET
 
@@ -57,10 +57,11 @@ def classify(t):
     if t.get('landuse') in ('forest',) or t.get('natural') in ('wood', 'scrub'): return 'forest'
     if t.get('landuse') in ('grass', 'meadow', 'flowerbed') or t.get('leisure') in ('park', 'garden', 'playground'): return 'lawn'
     if 'building' in t and t['building'] != 'no': return 'bld'
+    if t.get('natural') in ('rock', 'stone', 'bare_rock'): return 'rock'  # rochers (relief) et affleurements
     return None
 
-L = {k: [] for k in ('water', 'lawn', 'forest', 'bld', 'plaza')}
-paths, roads, paths_raw = [], [], []
+L = {k: [] for k in ('water', 'lawn', 'forest', 'bld', 'plaza', 'rock')}
+paths, roads, paths_raw, steps = [], [], [], []
 used_in_rel = set()
 
 # ── multipolygones : anneaux assemblés à partir des membres
@@ -97,7 +98,8 @@ for i, w in WAY.items():
     if t.get('roller_coaster') == 'track': continue
     h = t.get('highway')
     if h and not isped(t):
-        if h in ('footway', 'pedestrian', 'path', 'steps', 'track', 'cycleway'): paths_raw.append(P)
+        if h == 'steps': steps.append(line(P))  # escaliers : dessinés à part (marches), jamais fondus dans une zone piétonne
+        elif h in ('footway', 'pedestrian', 'path', 'track', 'cycleway'): paths_raw.append(P)
         elif h in ('service', 'unclassified', 'tertiary', 'secondary', 'primary', 'residential', 'motorway', 'motorway_link', 'trunk', 'trunk_link'): roads.append(line(P))
         continue
     k = classify(t)
@@ -207,7 +209,7 @@ for n in root.iter('node'):
     if 'name' in t and not (t.get('tourism') == 'attraction' or 'attraction' in t) and any(k in t for k in ('amenity', 'shop', 'tourism')) and t.get('tourism') != 'artwork':
         x, z = NODE[n.get('id')]; pois.append({'name': t['name'], 'x': round(x, 1), 'z': round(z, 1), 'k': t.get('amenity') or t.get('shop') or t.get('tourism')})
 
-PARK = {'origin': [lat0, lon0], 'plaza': L['plaza'], 'water': L['water'], 'lawn': L['lawn'], 'forest': L['forest'], 'bld': L['bld'], 'paths': paths, 'roads': roads, 'tracks': tracks, 'pois': pois, 'attr': final}
+PARK = {'origin': [lat0, lon0], 'plaza': L['plaza'], 'water': L['water'], 'lawn': L['lawn'], 'forest': L['forest'], 'bld': L['bld'], 'paths': paths, 'steps': steps, 'rock': L['rock'], 'roads': roads, 'tracks': tracks, 'pois': pois, 'attr': final}
 js = '/* Données © contributeurs OpenStreetMap (ODbL) — carte du Parc Astérix. Généré par tools/make_park.py, ne pas éditer. Origine : Trace du Hourra. */\nconst PARK=' + json.dumps(PARK, ensure_ascii=False, separators=(',', ':')) + ';\n'
 open(out, 'w', encoding='utf-8').write(js)
 print('écrit %s : %d Ko ; eau %d, pelouse %d, forêt %d, bât. %d, chemins %d, routes %d, tracés %d, poi %d, attractions %d' % (

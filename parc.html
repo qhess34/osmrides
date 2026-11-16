@@ -68,7 +68,9 @@ const P={};
 for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ringPath);
 P.plaza=(PARK.plaza||[]).map(ringPath); // zones piétonnes (surfaces praticables)
 P.canal=linePath(PARK.water.flatMap(f=>f.filter(r=>r.l).map(r=>r.l)));
-P.paths=linePath(PARK.paths);P.roads=linePath(PARK.roads);
+P.paths=linePath(PARK.paths);P.roads=linePath(PARK.roads);P.steps=linePath(PARK.steps||[]);P.rock=(PARK.rock||[]).map(ringPath);
+// marches d'escalier : traits en travers tous les 0,6 m (générés une fois)
+P.treads=(()=>{const p=new Path2D();for(const r of PARK.steps||[])for(let i=2;i<r.length;i+=2){const ax=r[i-2],az=r[i-1],bx=r[i],bz=r[i+1],l=Math.hypot(bx-ax,bz-az)||1,nx=-(bz-az)/l*.8,nz=(bx-ax)/l*.8;for(let d=0;d<=l;d+=.6){const x=ax+(bx-ax)*d/l,z=az+(bz-az)*d/l;p.moveTo(x+nx,z+nz);p.lineTo(x-nx,z-nz);}}return p;})();
 const SIMN=new Set(PARK.attr.filter(a=>a.site).map(a=>a.name.toLowerCase())); // tracés des attractions avec simulateur, en doré (générique)
 const TRK=PARK.tracks.map(t=>({name:t.name,p:linePath([t.pts]),hl:SIMN.has(t.name.toLowerCase())}));
 const ATT=PARK.attr;
@@ -98,6 +100,9 @@ function render(){
   ctx.strokeStyle=COL.road;ctx.lineWidth=Math.max(4.6,1.8/s);ctx.stroke(P.roads);
   ctx.strokeStyle=COL.pathEdge;ctx.lineWidth=Math.max(2.8,1.5/s);ctx.stroke(P.paths);
   ctx.strokeStyle=COL.path;ctx.lineWidth=Math.max(2,1.0/s);ctx.stroke(P.paths);
+  ctx.strokeStyle=COL.pathEdge;ctx.lineWidth=Math.max(3,1.8/s);ctx.stroke(P.steps);ctx.strokeStyle='#b4ad9e';ctx.lineWidth=Math.max(2.2,1.5/s);ctx.stroke(P.steps); // escaliers
+  if(s>3){ctx.lineCap='butt';ctx.strokeStyle='#857d6c';ctx.lineWidth=.08;ctx.stroke(P.treads);ctx.lineCap='round';}
+  for(const p of P.rock){ctx.fillStyle='#8a8274';ctx.fill(p,'evenodd');ctx.strokeStyle='#5d564b';ctx.lineWidth=.8/s;ctx.stroke(p)} // rochers
   ctx.fillStyle=COL.bldFill;ctx.strokeStyle=COL.bldEdge;ctx.lineWidth=.8/s;
   for(const p of P.bld){ctx.fill(p);ctx.stroke(p)}
   for(const t of TRK){ctx.strokeStyle=t.hl?COL.hl:COL.track;ctx.lineWidth=t.hl?Math.max(1.2,3/s):Math.max(.8,1.5/s);ctx.stroke(t.p)}

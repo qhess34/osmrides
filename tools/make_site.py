@@ -21,6 +21,7 @@ Le fichier de spécification (JSON) décrit :
   inversions    … {type:'loop', osm:true, s0, s1, h} : looping dessiné dans OSM (aller, retour au sommet, aller), hauteur seule estimée
   (décor)       zones piétonnes (aires et multipolygones, anneaux assemblés, trous) -> feats highway=pedestrian fermés ; chemins à l'intérieur : f.in=1 ;
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
+                passerelles (highway + bridge=*) : f.br=layer ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv}] ; rochers natural=rock|stone : feats (moteur)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
 OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
 """
@@ -61,10 +62,11 @@ assert chain[0] == chain[-1], 'le circuit ne se referme pas'
 raw = [xy(i) for i in chain[:-1]]
 L0 = sum(dist(raw[i], raw[(i + 1) % len(raw)]) for i in range(len(raw)))
 # tronçons du circuit en tunnel (OSM tunnel=yes, ou covered=yes avec layer<0) : intervalles [s0, s1] le long de la voie
+TUNV = ('yes', 'true', '1', 'building_passage', 'culvert')  # tunnel=true existe dans OSM (ex. voie sous un rocher)
 def is_tunnel(t):
     try: lay = float(t.get('layer', 0))
     except ValueError: lay = 0
-    return t.get('tunnel') in ('yes', 'building_passage') or (t.get('covered') == 'yes' and lay < 0)
+    return t.get('tunnel') in TUNV or (t.get('covered') == 'yes' and lay < 0)
 tun_edges = {}  # arête → 'roof' si le tunnel est au-dessus du sol (layer > 0 : galerie couverte), sinon ''
 for m in track:
     if is_tunnel(tags(WAY[m])):
@@ -347,12 +349,13 @@ def lay(t):
     try: return float(t.get('layer', 0))
     except ValueError: return 0
 # chemin couvert (sous un bâtiment, un auvent, en souterrain) : dessiné sous le toit, qui s'efface au zoom (moteur)
-iscov = lambda t: t.get('tunnel') in ('yes', 'building_passage') or t.get('covered') == 'yes' or t.get('indoor') in ('yes', 'corridor') or lay(t) < 0
+iscov = lambda t: t.get('tunnel') in TUNV or t.get('covered') == 'yes' or t.get('indoor') in ('yes', 'corridor') or lay(t) < 0
 def add(t, p, closed, holes=None):
     kind = 'highway=pedestrian' if isped(t) else next((k + '=' + t[k] for k in KEYS if k in t), None)
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
         if kind.startswith('highway=') and not closed and iscov(t): f['cv'] = 1
+        if kind.startswith('highway=') and not closed and t.get('bridge') not in (None, 'no') and not iscov(t): f['br'] = max(1, int(lay(t)))  # passerelle piétonne : dessinée au-dessus de la voie si elle la franchit (moteur)
         if closed and holes:  # anneaux intérieurs (multipolygone) : lac dans une place, îlot…, orientés à l'opposé de l'anneau extérieur (remplissage « nonzero » du canevas)
             h = [q if area(q) * area(p) < 0 else q[::-1] for q in holes if len(q) > 3 and inside(q[0], p)]
             if h: f['h'] = h
@@ -364,7 +367,7 @@ for wid, w in WAY.items():
     if t.get('roller_coaster'):
         if wid not in track and wid not in drop and any(inb(q) for q in p): others.append(p)  # drop_ways / paths : tronçons exportés à part (ex. voie de garage), pas dessinés comme voie voisine
         continue
-    if wid in drop and not (wid in SPATHS and t.get('highway') and iscov(t)): continue  # chemin de la spec couvert : gardé dans le décor (f.cv) pour effacer le toit qui le recouvre
+    if wid in drop and not (wid in SPATHS and t.get('highway') and (iscov(t) or t.get('bridge') not in (None, 'no'))): continue  # chemin de la spec couvert ou en passerelle : gardé dans le décor (f.cv, f.br)  # chemin de la spec couvert : gardé dans le décor (f.cv) pour effacer le toit qui le recouvre
     add(t, p, n_[0] == n_[-1])
 def rings_of(ids):  # anneaux fermés assemblés à partir des tronçons d'un multipolygone
     segs = [nds(WAY[m]) for m in ids if m in WAY and len(nds(WAY[m])) > 1]; out = []
@@ -399,7 +402,17 @@ for f in feats:
     if f['k'] in ('highway=footway', 'highway=path', 'highway=steps') and not f['c'] and not f.get('cv') and sum(in_ped(q) for q in f['p']) >= .8 * len(f['p']): f['in'] = 1; nin += 1
 print('zones piétonnes : %d ; chemins fondus dedans : %d ; chemins couverts : %d' % (len(PED), nin, sum(1 for f in feats if f.get('cv'))))
 doors = [[*xy(i, 1), t['entrance'], t.get('name')] for i, t in NTAG.items() if 'entrance' in t and inb(xy(i))]
-res = {'cps': cps, **({'doors': doors} if doors else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
+# escaliers (highway=steps), y compris ceux de la file et de la sortie : [[x,z]…], sens de montée (incline up = dans le sens du tronçon : 1, down : -1, inconnu : 0), couvert
+steps = []
+for wid, w in WAY.items():
+    t = tags(w); n_ = nds(w)
+    if t.get('highway') != 'steps' or len(n_) < 2: continue
+    p = [list(xy(i, 1)) for i in n_]
+    if not any(inb(q) for q in p): continue
+    inc = t.get('incline', ''); up = 1 if inc in ('up', 'yes') or inc.endswith('%') and not inc.startswith('-') else -1 if inc in ('down',) or inc.startswith('-') else 0
+    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {})})
+print('escaliers : %d ; passerelles : %d ; rochers : %d' % (len(steps), sum(1 for f in feats if f.get('br')), sum(1 for f in feats if f['k'] in ('natural=rock', 'natural=stone') and f['c'])))
+res = {'cps': cps, **({'stairs': steps} if steps else {}), **({'doors': doors} if doors else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
        'paths': {k: chain_pts(v) for k, v in spec.get('paths', {}).items()},
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
        'trees': [list(xy(i, 1)) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))],
