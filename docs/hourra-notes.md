@@ -103,3 +103,12 @@ Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours
 - **Sortie** : `entrance=exit` (-0,5 ; 3,8) sur le quai sud-ouest, escalier 1580086196 qui descend, puis 1032354545.
 - **Zone piétonne** : multipolygone 8427077 (surface praticable autour de l'attraction) ; les allées parallèles redondantes qu'elle contient (1220633159, 1220633160…) ne sont plus dessinées.
 - **Passagers** : `car.pitch:.78` — 0,78 m d'axe à axe entre les deux places (avant : 0,70 m avec des corps trop larges), épaules dessinées sur 0,36 m : les corps ne se touchent plus ; lapbar commune en travers devant le passager avant. Le bob garde 1,55 m (pas besoin de l'allonger).
+
+### 2e mise à jour OSM du propriétaire (2026-11-16, après-midi) et réponses
+
+Filtrage par changesets du jour (`/api/0.6/changesets?bbox=…&time=…`, auteur des ways cités) : 192026103 (passerelle), 192026350 (rocher), 192026807 (forêt, eau, file) ; liste exacte des objets par `/api/0.6/changeset/<id>/download`.
+- **Freins** (propriétaire) : la zone « waiting » de 11,7 m en haut du lift (1580086188, s 118–130) est un **frein de bloc** : B1 ; B2 s 302–322, B3 s 509–527 confirmés. Le lift retient le train tant que B1 est occupé (`LIFT_NEXT`).
+- **File** : 1580139651, **passage sous le rocher** 1580139652 (`tunnel=yes`, `layer=-1`), 1580137178, **passerelle** 1580137179 (`bridge=yes`, `layer=2`) qui franchit le circuit (hauteur ESTIMÉE 6,9 m : voie à 3,9 m + 2,9 m), 1032354546, passage sous la gare, 1580149150 (fourche), boucle 1032685208 ou raccourci, escaliers 1032685209 et 1580086195.
+- **Barrières** (propriétaire) : deux barrières liées à la fourche (0,6 ; -10,9), l'une sur la boucle 1032685208, l'autre sur le raccourci ; emplacement exact ESTIMÉ (1,6 m de la fourche). Le propriétaire a cité 1580112207 pour la 2e : c'est la boucle de Goudurix (question posée).
+- **Rocher** 1580139648 (`natural=rock`) : la voie le traverse en tunnel (1580139650, `tunnel=true`, s ≈ 559–563 m du moteur, à 7,6 m) et la file dessous ; hauteur du rocher ESTIMÉE ≈ 9,8 m.
+- **Décor** : forêt 1580149149 et eau 1580149148 (autour du rocher) régénérées ; les arbres de bois ne sont plus semés sur les chemins, la file, les escaliers, l'eau ni les rochers.

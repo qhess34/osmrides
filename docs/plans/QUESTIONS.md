@@ -1,15 +1,28 @@
 # Questions pour le propriétaire — plans à annoter
 
-## À répondre en priorité (2026-11-16, après la mise à jour OSM)
+## À répondre en priorité (2026-11-16, après la 2e mise à jour OSM)
 
-1. **Zeus — 2e tunnel** : où est-il ? Nous l'avons placé (estimé) sur la diagonale qui suit le virage à gauche du bout est, s ≈ 846–871 m (`maj-osm.jpg`, « tunnel 2 à effets »).
-2. **OzIris — galerie** : le tronçon OSM 1580105918 (`tunnel=yes`, `layer=2`, s ≈ 337–350 m) est-il un tunnel décoré au-dessus du sol ? (dessiné en galerie couverte)
-3. **OzIris — freins** : OSM n'a aucun frein de bloc en parcours (frein final, rail du pont, attente avant gare seulement) : confirmez-vous ? (notre ancien B1 estimé est retiré)
-4. **Trace du Hourra — sommet du lift** : la zone « waiting » OSM de 11,7 m en haut du lift est-elle l'arrêt en haut du lift (notre choix) ou un frein de bloc ?
-5. **Trace du Hourra — freins de bloc** : OSM en donne 2 en parcours (s ≈ 302–322 et 509–527 m) au lieu de nos 3 estimés : juste ?
-6. **Goudurix — arrêt au frein final** : le train attend-il au bout du frein final OSM, ≈ 34 m avant la gare, juste avant l'aiguillage (notre choix) ?
-7. **Goudurix — loop** : son tracé vient maintenant d'OSM (recul de 10,5 m au sommet) ; hauteur réelle ? (nous : 21 m, sommet ≈ 26 m)
-8. **Barrières des boucles de file** : Hourra au carrefour (0,6 ; -10,9), Goudurix en (5,3 ; 50,5), OzIris en (-17 ; 57) : existent-elles, et où exactement ?
+Image : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escaliers, tunnel 2 de Zeus, loop de Goudurix, file d'OzIris).
+
+1. **Trace du Hourra — 2e barrière** : vous avez cité le chemin OSM 1580112207, qui est en fait la **boucle de file de Goudurix** (près du lac). Nous avons mis la 2e barrière sur le **raccourci** de la Trace du Hourra (partie de 1580149150 entre les deux bouts de la boucle 1032685208), liée à la première, et gardé la barrière de Goudurix sur 1580112207 : juste ?
+2. **Trace du Hourra — rocher** : hauteur (nous : ≈ 9,8 m, la voie le traverse à 7,6 m) ? La voie basse (s ≈ 614 m, 4,3 m) traverse aussi la pointe nord-ouest du rocher sans `tunnel` OSM : passe-t-elle dessous ?
+3. **Trace du Hourra — passerelle** 1580137179 : hauteur (nous : voie à 3,9 m + 2,9 m = 6,9 m) ; y a-t-il des marches ou des rampes à ses extrémités (OSM n'en a pas) ?
+4. **Goudurix — loop** : 26 m est-il la hauteur de la boucle (notre choix : base abaissée à 1,5 m, sommet ≈ 27,5 m au-dessus du sol, 91 km/h au plus) ou la hauteur du sommet au-dessus du sol ?
+5. **Zeus — tunnel 2** : nous le faisons couvrir toute la diagonale 18 → 19 (s 850–900 m, 50 m, galerie couverte) : longueur et aspect justes ?
+6. **Goudurix — barrière de file** (5,3 ; 50,5), sur la boucle 1580112207 : existe-t-elle (voir question 1) ?
+7. **Trace du Hourra — gare** : le tronçon 1231613335 n'a pas `roller_coaster:track=station` : nous gardons 16 m de quai. Faut-il l'étiqueter ?
+8. **Zones « waiting »** : nous lisons `waiting` comme une zone de freinage (frein de bloc ou attente) et `moving` comme du parcours ; faut-il distinguer `block_brake` ?
+
+### Répondu le 2026-11-16 (questions prioritaires 1–8 de la mise à jour OSM)
+
+1. ~~**Zeus — 2e tunnel**~~ : **entre les repères 18 et 19** de `zeus-trace-complete.png` (rond n = s moteur (n−1)×50 m, vérifié : 18 = s 850, 19 = s 900) ; fait : `SITE.tunnels` s 850–900.
+2. ~~**OzIris — galerie**~~ : **oui**, 1580105918 est une galerie au-dessus du sol (déjà dessinée en toit de béton, `'roof'`).
+3. ~~**OzIris — freins**~~ : **confirmé**, aucun frein de bloc en parcours.
+4. ~~**Trace du Hourra — sommet du lift**~~ : la zone de 11,7 m est un **frein de bloc après le lift** (zone de freinage AUTO/MANU) ; fait : B1 (s 118–130), le lift retient le train tant que B1 est occupé ; freins de bloc B2 et B3 ensuite.
+5. ~~**Trace du Hourra — freins de bloc**~~ : **oui**, s 302–322 et 509–527 (B2, B3).
+6. ~~**Goudurix — arrêt au frein final**~~ : **oui**, le train attend au bout du frein final ≈ 34 m avant la gare, juste avant l'aiguillage.
+7. ~~**Goudurix — loop**~~ : **26 m** ; fait (voir nouvelle question 4).
+8. ~~**Barrières des boucles de file**~~ : Trace du Hourra **oui** (deux barrières liées : boucle 1032685208 / raccourci) ; OzIris **non** (file unique, fourche et barrière supprimées) ; Goudurix non précisé (barrière gardée, nouvelle question 6).
 
 Images par attraction (Trace du Hourra, Tonnerre 2 Zeus, OzIris). `<id>-trace-complete.png` montre le **tracé complet** seul, sur fond clair, avec un rond numéroté **tous les 50 m** (tableau : distance, hauteur estimée, zone), un point tous les 10 m et le sens de marche ; c'est la meilleure base pour placer freins et moteurs. Les deux autres images montrent la vue aérienne et la gare / le garage. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
 
@@ -123,8 +136,8 @@ Images : `goudurix-trace-complete.png` (tracé complet, rond tous les 50 m, tabl
 
 Images : `maj-osm.jpg` (rendu du jeu après la mise à jour), `<id>-trace-complete.png` (zones lues dans OSM en rouge).
 
-43. **Zeus — 2e tunnel.** RCDB liste deux tunnels ; OSM n'en a qu'un (polygone 1353118256, bas de la première descente). Le 2e (tunnel sombre à effets, « après un virage à gauche », d'après Wikipédia) est placé à s ≈ 846–871 m : position et longueur ?
-44. **OzIris — galerie couverte.** Tronçon 1580105918 `tunnel=yes` + `layer=2` : galerie au-dessus du sol (dessinée en toit de béton) ou tunnel enterré ?
+43. *(Répondu, 2026-11-16 : entre les repères 18 et 19, s 850–900.)* **Zeus — 2e tunnel.** RCDB liste deux tunnels ; OSM n'en a qu'un (polygone 1353118256, bas de la première descente). Le 2e (tunnel sombre à effets, « après un virage à gauche », d'après Wikipédia) est placé à s ≈ 846–871 m : position et longueur ?
+44. *(Répondu, 2026-11-16 : galerie au-dessus du sol.)* **OzIris — galerie couverte.** Tronçon 1580105918 `tunnel=yes` + `layer=2` : galerie au-dessus du sol (dessinée en toit de béton) ou tunnel enterré ?
 45. **OzIris — gare.** La voie OSM de la gare fait 21,2 m (avant : 18 m) : le train s'arrête maintenant 3 m plus loin. Juste ?
 46. **Trace du Hourra — gare.** Le tronçon de gare 1231613335 n'a pas `roller_coaster:track=station` : nous gardons 16 m de quai. Faut-il l'étiqueter ?
 47. **Goudurix — cuvette.** Le lift OSM commence à 31 m (avant : 44 m) : la cuvette avant le lift (vous) est ramenée à s 20–31 m. Juste ?
