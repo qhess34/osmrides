@@ -29,7 +29,9 @@
   541427599,
   1182419818,
   1580086191,
-  1580086190
+  1580086190,
+  1580139650,
+  1580139649
  ],
  "start_way": 1231613335,
  "profile": [
@@ -147,8 +149,17 @@
   "drag": 0.0016
  },
  "paths": {
-  "queue": 1032354546,
-  "queueB": 1032685209,
+  "queue": [
+   1580139651,
+   1580139652,
+   1580137178,
+   1580137179,
+   1032354546
+  ],
+  "queueB": [
+   1580149150,
+   1032685209
+  ],
   "queueLoop": 1032685208,
   "exit": 1032354545,
   "prom": 1220633159,
@@ -161,12 +172,12 @@
  },
  "png_scale": 5,
  "osm_brakes": [
-  "skip",
   "blk1",
   "blk2",
+  "blk3",
   "brk",
   "tr",
   "pre"
  ],
- "note_osm": "Repères lus dans OSM (2026-11-16) : lift 937061488 (lift_hill), zones 'waiting' : sommet du lift 1580086188 (skip = arrêt en haut du lift du moteur), freins de bloc 1580086189 et 1580086191, frein final 1580086193, rail de transfert du pont 1580086185 (tr), frein avant gare 1580086183 (pre). Gare 1231613335 non étiquetée : st0/st1 forcés."
+ "note_osm": "Repères lus dans OSM (2026-11-16) : lift 937061488 (lift_hill), zones 'waiting' : 1580086188 en haut du lift = frein de bloc B1 (propriétaire, 2026-11-16 : frein de bloc après le lift), freins de bloc 1580086189 (B2) et 1580086191 (B3), frein final 1580086193, rail de transfert du pont 1580086185 (tr), frein avant gare 1580086183 (pre). Gare 1231613335 non étiquetée : st0/st1 forcés. Changesets du propriétaire du 2026-11-16 après-midi : 192026103 (passerelle de file 1580137179 au-dessus du circuit), 192026350 (rocher 1580139648, voie en tunnel 1580139650, file en tunnel 1580139652), 192026807 (forêt 1580149149, eau 1580149148, file 1580149150)."
 }

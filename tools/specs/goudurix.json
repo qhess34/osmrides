@@ -145,19 +145,19 @@
   ],
   [
    382.0,
-   5
+   4
   ],
   [
    400.0,
-   5
+   1.5
   ],
   [
    460.4,
-   5
+   1.5
   ],
   [
    480.4,
-   5
+   4
   ],
   [
    540.4,
@@ -250,8 +250,8 @@
    "osm": true,
    "s0": 392,
    "s1": 468,
-   "h": 21,
-   "note": "Loop dessiné dans OSM par le propriétaire (2026-11-16, way 541092988 : aller, retour de 10,5 m au sommet, aller) : tracé au sol d'OSM, hauteur 21 m ESTIMÉE (sommet ≈ 26 m). Remplace la boucle insérée ×4."
+   "h": 26,
+   "note": "Loop dessiné dans OSM par le propriétaire (2026-11-16, way 541092988 : aller, retour de 10,5 m au sommet, aller) : tracé au sol d'OSM ; hauteur du loop 26 m (propriétaire, 2026-11-16). Base abaissée à 1,5 m (ESTIMÉE) pour que le train passe le sommet (≈ 27,5 m) à une vitesse plausible."
   },
   {
    "type": "corkscrew",

@@ -3,14 +3,19 @@
    Tracé, gare, file, sortie et bâtiment du garage : sites/hourra.data.js (OpenStreetMap). Ce qui est estimé est signalé « estimé ». */
 const SITE=(()=>{
   const Q=OSM.paths.queue,LOOP=OSM.paths.queueLoop,PROM=OSM.paths.prom,ENTRY0=[59.2,16.15];
-  // File (OSM, mise à jour du propriétaire 2026-11-16) : chemin 1032354546 jusqu'au bord est de la gare (4,8 ; -1,7), passage SOUS la gare (1580086194, tunnel=yes layer=-1 :
-  // dessiné sous le toit, qui s'efface au zoom), chemin 1032685209 vers le nord, fourche en (0,6 ; -10,9) : raccourci direct ou boucle 1032685208, retour par 1032685209
-  // jusqu'à l'escalier 1580086195 qui monte au quai (entrée OSM entrance=main (1,0 ; -1,3)).
+  // File (OSM, mises à jour du propriétaire 2026-11-16) : 1580139651, passage SOUS le rocher 1580139648 (1580139652, tunnel=yes), 1580137178, passerelle 1580137179
+  // (bridge=yes layer=2, AU-DESSUS du circuit), 1032354546 jusqu'au bord est de la gare (4,8 ; -1,7), passage SOUS la gare (1580086194, tunnel=yes layer=-1 :
+  // dessiné sous le toit, qui s'efface au zoom), chemin 1580149150 vers le nord, fourche en (0,6 ; -10,9) : raccourci ou boucle 1032685208, escalier 1032685209
+  // puis escalier 1580086195 qui monte au quai (entrée OSM entrance=main (1,0 ; -1,3)).
   const TUN=OSM.paths.qtun,B=OSM.paths.queueB,UP=OSM.paths.qup,XD=OSM.paths.xdown;
   // Garage : 6 voies droites, parallèles au frein final, côte à côte à l'ouest du circuit, dans le bâtiment OSM 148160581
   // (son grand côté est parallèle à la ligne droite du frein final). d = distance (m) entre l'axe du circuit et l'axe de la voie.
   // Côté ouest, écartement 3,2 m, distance de la première voie (8 m), longueur (un train + 1,4 m) : ESTIMÉS (non relevés).
   const lane=(n,d)=>({name:'Voie '+n,d,cap:1});
+  // barrière pivotante en travers du chemin P, à d m de son début : poteau en bordure (h), fermée en travers (a), ouverte le long de la bordure (b)
+  const gateOn=(P,d,loop)=>{let i=1,acc=0;while(i<P.length-1&&acc+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])<d){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);i++;}
+    const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k],r=v=>Math.round(v*100)/100;
+    return {h:[r(c[0]-tz*1.1),r(c[1]+tx*1.1)],a:[r(c[0]+tz*1.1),r(c[1]-tx*1.1)],b:[r(c[0]-tz*1.1+tx*2.2),r(c[1]+tx*1.1+tz*2.2)],loop:!!loop};};
   return {
     id:'hourra',title:'La Trace du Hourra',kind:'bob',trackName:'Gouttière',goal:900,lap:110,
     // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées. pitch : 0,78 m d'axe à axe entre les deux passagers
@@ -24,8 +29,8 @@ const SITE=(()=>{
       {name:'Train 3',col:'#d8a92a',col2:'#2a2a2c',wear:36,lane:2},{name:'Train 4',col:'#d8a92a',col2:'#2a2a2c',wear:52,lane:3},
       {name:'Train 5',col:'#d8a92a',col2:'#2a2a2c',wear:20,lane:4},{name:'Train 6',col:'#d8a92a',col2:'#2a2a2c',wear:60,lane:5}],
     maxRun:5,   // au plus 5 trains sur le parcours (propriétaire) : la sortie d'un 6e est refusée
-    // Repères lus dans OSM (tools/specs/hourra.json) : lift, freins de bloc B1 et B2, frein final, rail de transfert du pont (arrêt du train au bout du rail : pas de holdBack),
-    // frein avant gare. La zone « waiting » OSM du sommet du lift est l'arrêt en haut du lift du moteur.
+    // Repères lus dans OSM (tools/specs/hourra.json) : lift, freins de bloc B1 (zone « waiting » de 11,7 m en haut du lift : frein de bloc après le lift, propriétaire
+    // 2026-11-16 ; le lift retient le train tant que B1 est occupé), B2 et B3, frein final, rail de transfert du pont (arrêt au bout du rail : pas de holdBack), frein avant gare.
     stopBack:.5,dropAfter:12,loadSide:-1,
     phys:{roll:.13,drag:.0016,vmin:3},
     // Garage sur le frein final : pont transbordeur DROIT (propriétaire) — deux éléments mobiles indépendants, droits, d'un train de long :
@@ -49,8 +54,9 @@ const SITE=(()=>{
     queue:{entry0:ENTRY0,link:[[61.1,16.8]],gate:{h:[58.35,14.71],a:[57.65,16.79],b:[56.27,14.0]},
       parts:[
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
-        // fourche (0,6 ; -10,9) : raccourci par 1032685209 ou boucle nord 1032685208 (barrière ESTIMÉE au carrefour)
-        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gate:{h:[0.4,-12.3],a:[2.2,-11.0],b:[-1.2,-11.2]}},
+        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières liées (propriétaire, 2026-11-16) : une ouvre / ferme la boucle,
+        // l'autre ferme / ouvre le raccourci ; posées à 1,6 m de la fourche sur chaque chemin (emplacement exact ESTIMÉ)
+        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[gateOn(LOOP,1.6,true),gateOn(B.slice(5,8),1.6)]},
         {pts:B.slice(7).concat(UP.slice(1))}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     // allée d'accès PROM : dans la zone piétonne OSM (dessinée comme une surface, praticable partout), plus dessinée comme chemin
@@ -62,8 +68,9 @@ const SITE=(()=>{
     jobsites:{liftFix:[24,-6],chainRev:[24,-6],trackRev:[40,22],brakeFix:[-31,-38],brakeRev:[-31,-38],trainRev:[-30,-9],rearm:[1.5,-1.5]},
     view:{x:40,z:-28,w:190,h:150,bounds:[-130,200,-150,110]},
     cams:{gare:{label:'Gare',x:1.5,z:1,s:19},file:{label:'File',x:38,z:14,s:8},lift:{label:'Lift',x:38,z:-40,s:7},
-      frein:{label:'Frein final',x:-26,z:-30,s:12},garage:{label:'Garage',x:-31,z:-18,s:11}},
-    labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Entrée',67,23]],
+      frein:{label:'Frein final',x:-26,z:-30,s:12},garage:{label:'Garage',x:-31,z:-18,s:11},
+      rocher:{label:'Rocher',x:42,z:25,s:10},passerelle:{label:'Passerelle',x:35.5,z:-4.4,s:12}},
+    labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Rocher',45,35],['Entrée',67,23]],
     text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur la Trace du Hourra !'},
     // Commande par zones : freins de bloc B1…B3 = freins seuls ; frein final, rail mobile du parcours, rail du chariot, voies = freins + moteurs (défauts du moteur, ESTIMÉ,
     // à confirmer par le propriétaire). Exemple pour changer : zones:{B:{drive:true}, RA:{drive:false}}.
