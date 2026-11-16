@@ -72,3 +72,11 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 - `docs/sources/oziris-plan-figures-miniature.jpg` : panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Remplacée par l'affiche en grand, voir « Inversions ».
 - Une miniature d'article titre « Un quatrième train fera son arrivée sur le parcours d'OzIris » : dépassée, le propriétaire confirme **3 trains bleus**.
 - Photos : voie et poutre **bleues**, supports **crème / sable**, sièges suspendus ; décor égyptien (gare à colonnes, bassins).
+
+## Mise à jour OpenStreetMap du propriétaire (2026-11-16)
+
+- **Repères lus dans OSM** (`tools/specs/oziris.json`, `osm_brakes`) : gare 937048122 (`station`, 21,2 m : le train s'arrête 3 m plus loin qu'avant), lift 541161843 (s 30 → 100 m), zones `waiting` : **frein final** 1580105919 (s 768–791), **rail du pont transbordeur** 541161847 (s 798–812, repères `tr0`/`tr1`), **zone d'attente avant gare** 1330192627 (s 842–858) → nouvelle zone de freinage `Pre` (« Attente avant gare »). **Aucun frein de bloc en parcours** : l'ancien B1 (estimé) est retiré (question prioritaire 3). Rail unique du pont (propriétaire) : cohérent avec OSM (un seul tronçon `waiting` sur le pont).
+- **Deuxième tunnel** : 1580105918 (`tunnel=yes`, `layer=2`, s moteur 337–350, sortie du looping vertical) : dessiné en **galerie couverte** (toit de béton, portails) puisque `layer` > 0 (question prioritaire 2). Le tunnel sous l'eau (421460641) est inchangé.
+- **Embarquement à l'ouest** (réponse à la question 24 par OSM) : `entrance=main` (-12,6 ; -9,0) à l'ouest de la voie, `entrance=exit` (-7,5 ; -9,5) à l'est. `loadSide` passe à 1 ; poste de conduite déplacé côté ouest (ESTIMÉ).
+- **File** : fin de 1073325805 refaite (zigzag ouest), chemin 1580105930, **passage sous la gare** (1580105922, `tunnel=yes`, `layer=-1`), escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée ; dessinés quand le toit s'efface.
+- **Sortie** : passerelle 1580105927 (`layer=2`), escalier 1580105929, allée 1580105928 vers l'est (remplace l'escalier et le passage sous la gare estimés).

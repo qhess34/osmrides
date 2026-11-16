@@ -94,3 +94,12 @@ Toutes ces coordonnées sont calculées sur plan, pas vérifiées à l'écran.
 ## Pupitre par zones (T7) — estimé
 
 Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), frein avant gare, voies de garage (Reculer seulement) ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
+
+## Mise à jour OpenStreetMap du propriétaire (2026-11-16)
+
+- **Circuit découpé et étiqueté** (`roller_coaster:track`) : lift 937061488 (s 37 → 118 m), zones `waiting` : sommet du lift 1580086188 (s 118–130, traitée comme l'arrêt en haut du lift du moteur, question prioritaire 4), **freins de bloc** 1580086189 (B1, s 302–322) et 1580086191 (B2, s 509–527), **frein final** 1580086193 (s 689–708), **rail mobile du parcours** 1580086185 (s 740–756, 15,4 m : le rail A du pont droit, repères `tr0`/`tr1`), **frein avant gare** 1580086183 (s 763–778, repères `pre0`/`pre1`). Les repères viennent maintenant d'OSM (`tools/specs/hourra.json` : `osm_brakes`) ; seuls `st0`/`st1` restent forcés (gare 1231613335 non étiquetée). Trois freins de bloc estimés → deux freins OSM. Profil : sommet du lift recalé à s 118 (31 m, ESTIMÉ), plateau jusqu'à 135.
+- Tout ce que le propriétaire avait dit est confirmé par OSM : frein final, rail mobile du parcours (zone de stockage), frein avant gare. Aucun conflit.
+- **File** : le chemin 1032354546 arrive au bord est de la gare puis **passe sous la gare** (1580086194, `tunnel=yes`, `layer=-1`), remonte vers le nord (1032685209), fourche en (0,6 ; -10,9) : raccourci ou boucle 1032685208 (barrière ESTIMÉE), retour par 1032685209 et escalier 1580086195 jusqu'à l'entrée `entrance=main` (1,0 ; -1,3). L'ancien raccord inventé (11,5 ; -9) → (5,6 ; -9,4) est supprimé. Le passage couvert est dessiné quand le toit de la gare s'efface.
+- **Sortie** : `entrance=exit` (-0,5 ; 3,8) sur le quai sud-ouest, escalier 1580086196 qui descend, puis 1032354545.
+- **Zone piétonne** : multipolygone 8427077 (surface praticable autour de l'attraction) ; les allées parallèles redondantes qu'elle contient (1220633159, 1220633160…) ne sont plus dessinées.
+- **Passagers** : `car.pitch:.78` — 0,78 m d'axe à axe entre les deux places (avant : 0,70 m avec des corps trop larges), épaules dessinées sur 0,36 m : les corps ne se touchent plus ; lapbar commune en travers devant le passager avant. Le bob garde 1,55 m (pas besoin de l'allonger).
