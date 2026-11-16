@@ -42,7 +42,8 @@ const SITE=(()=>{
     booth:[6.4,-11.8,0],boothLabel:[9.5,-14.5],beacon:[5.6,-10.6],
     queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
       parts:[{pts:[ENTRY0].concat(Q.slice(1,F0+1))},
-        {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gate:{h:[4.2,51.8],a:[3.4,49.7],b:[6.3,52.4]}},   // barrière ESTIMÉE à la fourche OSM (5,3 ; 50,5)
+        // boucle 1580112207 (propriétaire, 2026-11-16) : barrières liées à son ENTRÉE et à sa SORTIE (jumelle de sortie posée par le moteur), à 1,6 m des bouts (ESTIMÉ)
+        {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gates:[{on:'loop',at:1.6}]},
         {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},
     // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.
     approach:[{w:.5,pts:BRIDGE.slice().reverse().concat([[34,7.5],[29.9,7.7],[18,4.2]],EAST.slice(0,3))},{w:.5,pts:EAST.slice(2).reverse()}],

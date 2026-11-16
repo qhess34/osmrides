@@ -112,3 +112,12 @@ Filtrage par changesets du jour (`/api/0.6/changesets?bbox=…&time=…`, auteur
 - **Barrières** (propriétaire) : deux barrières liées à la fourche (0,6 ; -10,9), l'une sur la boucle 1032685208, l'autre sur le raccourci ; emplacement exact ESTIMÉ (1,6 m de la fourche). Le propriétaire a cité 1580112207 pour la 2e : c'est la boucle de Goudurix (question posée).
 - **Rocher** 1580139648 (`natural=rock`) : la voie le traverse en tunnel (1580139650, `tunnel=true`, s ≈ 559–563 m du moteur, à 7,6 m) et la file dessous ; hauteur du rocher ESTIMÉE ≈ 9,8 m.
 - **Décor** : forêt 1580149149 et eau 1580149148 (autour du rocher) régénérées ; les arbres de bois ne sont plus semés sur les chemins, la file, les escaliers, l'eau ni les rochers.
+
+### Lot 3 (propriétaire, 2026-11-16, soir) — gare, barrières, rocher, passerelle
+
+Extrait OSM frais (`/tmp/osm4`) ; changesets du propriétaire depuis le lot 2 : 192031122 / 192031244 (file d'OzIris, déjà intégrés) et **192038616** (gare 1231613335 étiquetée `roller_coaster:track=station`). Le changeset 192031701 (1 167 modifications) est d'un autre contributeur : non concerné.
+- **Gare** : `st0`/`st1` lus dans OSM (quai 17,4 m ; plus de `tags` forcés dans la spec).
+- **Barrières** : deux barrières liées sur la boucle 1032685208, à son **entrée** et à sa **sortie** (1,6 m de chaque bout, ESTIMÉ ; jumelle posée par le moteur) ; plus de barrière sur le raccourci 1580149150 (posée par erreur au lot 2).
+- **Rocher** 1580139648 : la voie qui vient de l'ouest (s moteur ≈ 547–565, 7,6 m) passe **au-dessus** (poteaux posés sur le rocher), la voie basse après la boucle à 270° (s moteur 606,4–611,9) passe **dessous** en tunnel. OSM porte `tunnel=true` sur la voie haute (1580139650) : ignoré (`tunnels_ignore` de la spec), tunnel ESTIMÉ sur la voie basse (`tunnels_extra` s sol 612,5–618) ; question posée pour corriger OSM. Voie basse abaissée à 4,0 m au croisement (écart 3,6 m). Hauteur du rocher ESTIMÉE ≈ 6,6 m (voie haute − 0,9 m).
+- **Passerelle** 1580137179 (width 1 m) : deux escaliers ajoutés par le moteur (absents d'OSM), le long de la file, ≈ 11 m chacun pour 6,8 m de hauteur (ESTIMÉ), 1 m de large ; visiteurs ralentis dessus. Tablier dessiné à 1,3 m (width + garde-corps).
+- **Escaliers** 1032685209 et 1580086195 : 1 m (width OSM).

@@ -6,12 +6,36 @@ function pathPos(P,C,d,o,side){
   const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1),dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
   o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;return o;
 }
+// Distance d'un point à une polyligne [[x,z]…].
+const dPl=(x,z,P)=>{let m=1e9;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(a[0]+dx*t-x,a[1]+dz*t-z));}return m;};
+// Passerelles OSM (f.br, tools/make_site.py) : largeur (width OSM + garde-corps, sinon 2,4 m), hauteur ESTIMÉE (voie franchie + 2,9 m ; voie à plus de 7 m : la passerelle passe
+// dessous, 2,4 m ; sans voie : 0,3 m ; SITE.bridges[k]={h} force la hauteur, k = rang OSM). Dessin : engine/render.js (drawBridge).
+const BRIDGE_DEF=OSM.feats.filter(f=>f.br).map((f,k)=>{const P=f.p,w=f.w?Math.max(1,f.w)+.3:2.4;let ty=-1;for(let i=0;i<N;i+=2){const q=TR[i].p;if(dPl(q.x,q.z,P)<w/2+2)ty=Math.max(ty,q.y);}
+  const cf=(SITE.bridges||[])[k]||{},h=cf.h!=null?cf.h:ty<0?.3:ty<7?ty+2.9:2.4;return {P,f,w,h,ty};});
 // Escaliers OSM (OSM.stairs, highway=steps, tools/make_site.py) : praticables, les visiteurs y marchent plus lentement (STEP_K).
-const STAIRS=OSM.stairs||OSM.feats.filter(f=>f.k==='highway=steps'&&!f.c).map(f=>({p:f.p,up:0})); // données anciennes (sans OSM.stairs) : escaliers du décor, sens inconnu
-const STEPS=STAIRS.map(o=>{let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of o.p){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}return Object.assign({x0:x0-1,x1:x1+1,z0:z0-1,z1:z1+1},o);}),STEP_K=.6;
-function stepK(x,z){for(const o of STEPS){if(x<o.x0||x>o.x1||z<o.z0||z>o.z1)continue;const P=o.p;
-  for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l,0,1);if(Math.hypot(a[0]+dx*t-x,a[1]+dz*t-z)<.9)return STEP_K;}}
-  return 1;}
+// Escaliers d'une passerelle (propriétaire, 2026-11-16) : à chaque extrémité d'une passerelle surélevée (h > 1 m) sans escalier OSM, un escalier est ajouté le long du
+// chemin raccordé (file, sortie ou allée), sur 1,65 m par mètre de hauteur (marches de 17 x 28 cm) ; o.gen = 1 (ESTIMÉ). Largeur o.w : finalisée par engine/render.js
+// (width OSM de l'escalier ou du chemin raccordé, sinon largeur de la file à cet endroit, 1,2 à 2 m ; jamais plus large que la file ; pas de chevauchement entre escaliers voisins).
+const STAIRS=(OSM.stairs||OSM.feats.filter(f=>f.k==='highway=steps'&&!f.c).map(f=>({p:f.p,up:0}))).map(o=>Object.assign({},o)); // données anciennes (sans OSM.stairs) : escaliers du décor, sens inconnu
+(function bridgeStairs(){
+  const lines=Object.values(OSM.paths||{}).concat(SITE.paths||[],OSM.feats.filter(f=>f.k.startsWith('highway=')&&f.k!=='highway=steps'&&!f.c&&!f.br).map(f=>f.p));
+  const ends=P=>[P[0],P[P.length-1]],at=(q,E,r)=>Math.hypot(q[0]-E[0],q[1]-E[1])<r;
+  for(const b of BRIDGE_DEF){if(b.h<1||!(b.ty>=0&&b.h>b.ty))continue; // seulement une passerelle qui franchit la voie
+    if(ends(b.P).some(E=>STAIRS.some(o=>ends(o.p).some(q=>at(q,E,1.2)))||BRIDGE_DEF.some(c=>c!==b&&ends(c.P).some(q=>at(q,E,1.2)))))continue; // escalier OSM ou autre passerelle à un bout : ouvrage déjà décrit par OSM
+    for(const E of ends(b.P)){const F=at(E,b.P[0],.01)?b.P[b.P.length-1]:b.P[0];
+      let best=null;
+      for(const P of lines)for(let j=0;j<P.length;j++){if(Math.hypot(P[j][0]-E[0],P[j][1]-E[1])>.6)continue;const thr=P.some(q=>at(q,F,.6))?1000:0; // de préférence le chemin qui passe par la passerelle (file)
+        for(const dir of [1,-1]){const R=[E];let k=j+dir,acc=0;
+          if(k<0||k>=P.length||dPl(P[k][0],P[k][1],b.P)<.5)continue; // direction qui repart le long de la passerelle : non
+          const need=b.h*1.65;
+          for(;k>=0&&k<P.length&&acc<need;k+=dir){const a=R[R.length-1],l=Math.hypot(P[k][0]-a[0],P[k][1]-a[1]);
+            if(acc+l>=need){const t=(need-acc)/(l||1);R.push([a[0]+(P[k][0]-a[0])*t,a[1]+(P[k][1]-a[1])*t]);acc=need;break;}R.push(P[k]);acc+=l;}
+          if(!best||acc+thr>best.sc)best={R,acc,sc:acc+thr};}}
+      if(best&&best.acc>1)STAIRS.push({p:best.R.slice().reverse(),up:1,gen:1,w:b.f.w||0,h:b.h});}}
+})();
+for(const o of STAIRS){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of o.p){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}Object.assign(o,{x0:x0-1.5,x1:x1+1.5,z0:z0-1.5,z1:z1+1.5});}
+const STEPS=STAIRS,STEP_K=.6;
+function stepK(x,z){for(const o of STEPS){if(x<o.x0||x>o.x1||z<o.z0||z>o.z1)continue;if(dPl(x,z,o.p)<(o.w||1.5)/2+.3)return STEP_K;}return 1;}
 // Réseau de la file, décrit de l'entrée vers la gare par SITE.queue.parts : tronçons simples et fourches.
 // À chaque fourche, un vantail pivote autour d'un poteau en bordure (gate.h) pour fermer soit le raccourci (gate.a), soit la boucle (gate.b) ; on = boucle en service.
 // Variante à plusieurs barrières (gates:[{h,a,b,loop:true},{h,a,b}], ou posées par le moteur : {on:'loop'|'short', at, end}, voir gateAt) : une en travers de l'entrée de la boucle, une en travers du raccourci, liées (l'une s'ouvre quand
@@ -23,11 +47,16 @@ function gateAt(P,d,end,half){P=end?P.slice().reverse():P;const hw=half||1.1;let
   while(i<P.length-1&&acc+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])<d){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);i++;}
   const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k];
   return {h:[c[0]-tz*hw,c[1]+tx*hw],a:[c[0]+tz*hw,c[1]-tx*hw],b:[c[0]-tz*hw+tx*2*hw,c[1]+tx*hw+tz*2*hw]};}
-const resolveGate=(g,p)=>g.h?g:Object.assign(gateAt(g.on==='short'?p.short:p.loop,g.at||1.6,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});
+// Règle des barrières (propriétaire, 2026-11-16, toutes les attractions) : un chemin de file fermable a une barrière à son ENTRÉE et une à sa SORTIE (celle-ci empêche
+// de remonter le chemin fermé par l'autre bout), qui bougent ensemble. Toute barrière posée par le moteur ({on, at}) reçoit donc sa jumelle à l'autre bout du même chemin
+// ({end} inversé), sauf si la configuration la donne déjà ou si pair:false.
+const pairGates=gs=>gs.concat(gs.filter(g=>g.on&&g.pair!==false&&!gs.some(o=>o!==g&&o.on===g.on&&!!o.end!==!!g.end)).map(g=>Object.assign({},g,{end:!g.end})));
+const plen=P=>P.reduce((n,q,i)=>i?n+Math.hypot(q[0]-P[i-1][0],q[1]-P[i-1][1]):0,0); // chemin court (moins de 2·at + 0,8 m) : barrières à 20 % de sa longueur de chaque bout
+const resolveGate=(g,p)=>{if(g.h)return g;const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});};
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}
-  else{const gs=(p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
+  else{const gs=pairGates(p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
 });
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;

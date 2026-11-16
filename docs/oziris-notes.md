@@ -84,3 +84,8 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 - **File, 2e correction du propriétaire (2026-11-16, changesets 192031122 / 192031244)** : OzIris **a** des barrières. 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) ; boucle ouest 1580173578 + 1580173579 qui revient à la fourche, deux barrières liées (entrée et sortie de la boucle) ; 1073325805 vers la gare, lacets sud évités par le raccourci 1580173580 (une barrière sur le raccourci). Emplacements exacts des barrières ESTIMÉS (1,6 m et 0,6 m des fourches).
 - **Pupitre** (propriétaire : « au sud-est, il dépasse de la gare ») : poste de conduite déplacé côté est, en tête de quai, juste derrière le quai de débarquement, dans le bâtiment OSM ; emplacement exact ESTIMÉ.
 
+
+### Lot 3 (propriétaire, 2026-11-16, soir)
+
+- Règle générale des barrières (entrée ET sortie de chaque chemin de file fermable, liées) : le raccourci des lacets sud 1580173580 (1,4 m) reçoit une barrière de sortie, posée par le moteur ; sur un chemin aussi court, les deux barrières sont à 20 % de sa longueur de chaque bout. Barrières à tester par le propriétaire.
+- Escaliers d'entrée 1580105924 / 1580105926 : parallèles et collés, ramenés à 0,9 m chacun (pas de chevauchement) ; escalier de sortie 1580105929 : 1,6 m.

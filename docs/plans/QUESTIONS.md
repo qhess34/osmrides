@@ -1,19 +1,30 @@
 # Questions pour le propriétaire — plans à annoter
 
-## À répondre en priorité (2026-11-16, après la 2e mise à jour OSM)
+## À répondre en priorité (2026-11-16, lot 3)
 
-Images : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escaliers, tunnel 2 de Zeus, loop de Goudurix) et `lot-2.jpg` (gare de Goudurix, pupitre d'OzIris, « Masquer la gare », barrières et lacets d'OzIris, largeur des files).
+Image : `lot-3.jpg` (rocher dessus / dessous, passerelle et ses escaliers, barrières d'entrée et de sortie des boucles, escaliers de Goudurix et d'OzIris).
 
-1. **Trace du Hourra — 2e barrière** : vous avez cité le chemin OSM 1580112207, qui est en fait la **boucle de file de Goudurix** (près du lac). Nous avons mis la 2e barrière sur le **raccourci** de la Trace du Hourra (partie de 1580149150 entre les deux bouts de la boucle 1032685208), liée à la première, et gardé la barrière de Goudurix sur 1580112207 : juste ?
-2. **Trace du Hourra — rocher** : hauteur (nous : ≈ 9,8 m, la voie le traverse à 7,6 m) ? La voie basse (s ≈ 614 m, 4,3 m) traverse aussi la pointe nord-ouest du rocher sans `tunnel` OSM : passe-t-elle dessous ?
-3. **Trace du Hourra — passerelle** 1580137179 : hauteur (nous : voie à 3,9 m + 2,9 m = 6,9 m) ; y a-t-il des marches ou des rampes à ses extrémités (OSM n'en a pas) ?
-4. **Goudurix — loop** : 26 m est-il la hauteur de la boucle (notre choix : base abaissée à 1,5 m, sommet ≈ 27,5 m au-dessus du sol, 91 km/h au plus) ou la hauteur du sommet au-dessus du sol ?
-5. **Zeus — tunnel 2** : nous le faisons couvrir toute la diagonale 18 → 19 (s 850–900 m, 50 m, galerie couverte) : longueur et aspect justes ?
-6. **Goudurix — barrière de file** (5,3 ; 50,5), sur la boucle 1580112207 : existe-t-elle (voir question 1) ?
-7. **Trace du Hourra — gare** : le tronçon 1231613335 n'a pas `roller_coaster:track=station` : nous gardons 16 m de quai. Faut-il l'étiqueter ?
-8. **OzIris — barrières de file** : la boucle ouest a deux barrières liées (à l'entrée et à la sortie de la boucle, à 1,6 m de la fourche) et le raccourci des lacets sud une barrière : bons emplacements ? Goudurix : la gare est agrandie à ses quais (le bâtiment OSM ne couvre que la voie) : juste ?
+1. **Trace du Hourra — rocher, OSM à corriger ?** Le tag `tunnel=true` est sur le tronçon 1580139650, c'est-à-dire la voie qui vient de l'ouest (celle qui passe **au-dessus** d'après vous). Nous l'ignorons et posons le tunnel sur la voie basse, après la boucle à 270° (s sol 612,5–618, sous le bras nord-ouest du rocher). Pouvez-vous déplacer le tag dans OSM (couper la voie basse sous le rocher et la taguer `tunnel=yes`) ? Hauteur du rocher : ≈ 6,6 m (voie haute 7,6 m − 0,9 m), voie basse abaissée à 4,0 m : juste ?
+2. **Trace du Hourra — escaliers de la passerelle** : OSM n'en a pas ; nous en ajoutons deux, le long de la file, sur 1,65 m par mètre de hauteur (≈ 11 m chacun pour 6,8 m), largeur 1 m (width OSM de la passerelle). Longueur et forme justes (volée droite le long du chemin, ou volées tournantes plus courtes) ? Pouvez-vous les dessiner dans OSM (`highway=steps`) ?
+3. **Trace du Hourra — raccourci** : plus de barrière dessus. Quand la boucle est ouverte, qu'est-ce qui empêche les visiteurs de prendre le raccourci (rien, un agent, une chaîne) ?
+4. **Tonnerre 2 Zeus — règle des barrières** : nous avons ajouté une barrière à la **sortie** de chaque raccourci (ouest 2,5 m, est 19,4 m), fermée avec celle de la fourche. Juste, ou Zeus n'est pas concerné ?
+5. **OzIris — raccourci des lacets sud** (1580173580, 1,4 m) : ses deux barrières (entrée et sortie) sont à 0,3 m de chaque bout : est-ce bien deux barrières sur un passage aussi court ?
+6. **Goudurix — loop** : sommet à 26 m au-dessus du sol ; nous mettons la base à 4 m (ESTIMÉE) et une boucle de 22 m de haut : juste ?
+7. **Goudurix — escalier de la file** (1580112204) : il est dans l'emprise de la gare agrandie à ses quais (ESTIMÉE) ; nous le dessinons sur le plancher. Le quai d'embarquement est-il plus étroit (l'escalier serait alors à côté de la gare) ?
+8. **Escaliers — largeurs** : Trace du Hourra 1 m (width OSM), Goudurix 2 m (file) et 1,6 m (sortie), OzIris 0,9 m (deux escaliers parallèles collés) et 1,6 m (sortie) ; seuls ceux de la Trace du Hourra ont une largeur dans OSM. Justes ? Les passerelles d'OzIris (sans width) restent à 2,4 m et recouvrent en partie ses escaliers d'entrée.
 
-### Répondu le 2026-11-16 (questions prioritaires 1–8 de la mise à jour OSM)
+### Répondu le 2026-11-16 (lot 3 : questions prioritaires 1–8 de la 2e mise à jour OSM)
+
+1. ~~**Trace du Hourra — 2e barrière**~~ : c'était aussi la boucle 1032685208 : barrières à l'**entrée** et à la **sortie** de la boucle, liées ; barrière du raccourci retirée (fait, nouvelle question 3).
+2. ~~**Trace du Hourra — rocher**~~ : hauteur inconnue (estimation gardée) ; la voie qui vient de l'ouest passe **au-dessus**, la voie basse après la boucle à 270° passe **dessous** (tunnel) : fait (voie haute dessinée sur le rocher avec ses poteaux, tunnel sur la voie basse, écart 3,6 m ; nouvelle question 1).
+3. ~~**Trace du Hourra — passerelle**~~ : hauteur inconnue (estimation gardée) ; escaliers à chaque extrémité, absents d'OSM : ajoutés par le moteur au bout de toute passerelle surélevée sans escalier, sur la file (fait, nouvelle question 2).
+4. ~~**Goudurix — loop**~~ : 26 m = hauteur du **sommet** au-dessus du sol : profil corrigé (sommet 26,0 m au lieu de 27,5 m ; nouvelle question 6).
+5. ~~**Zeus — tunnel 2**~~ : bien placé, rien à changer.
+6. ~~**Goudurix — barrière de file**~~ : la boucle 1580112207 a des barrières à l'entrée **et** à la sortie. **Règle générale** (toutes les attractions) : chaque chemin de file fermable a une barrière à son entrée et à sa sortie, qui bougent ensemble : fait dans le moteur (jumelle posée automatiquement), appliqué à la Trace du Hourra, Goudurix, OzIris, et Zeus (nouvelle question 4).
+7. ~~**Trace du Hourra — gare**~~ : étiquetée `station` dans OSM par le propriétaire (changeset 192038616) : repères lus dans OSM, quai de 17,4 m (au lieu de 16 m forcés).
+8. ~~**OzIris — barrières**~~ : à tester par le propriétaire (seule la règle 6 appliquée : barrière de sortie ajoutée au raccourci des lacets sud). Goudurix : escalier de sortie dégagé (le chemin de sortie ne le recouvre plus), escalier de la file dessiné sur le quai ; **escaliers** : largeur = width OSM, sinon celle du chemin raccordé (1,2–2 m), jamais plus large que la file, pas de chevauchement entre voisins (fait, nouvelle question 8).
+
+### Répondu le 2026-11-16 (questions prioritaires 1–8 de la 1re mise à jour OSM)
 
 1. ~~**Zeus — 2e tunnel**~~ : **entre les repères 18 et 19** de `zeus-trace-complete.png` (rond n = s moteur (n−1)×50 m, vérifié : 18 = s 850, 19 = s 900) ; fait : `SITE.tunnels` s 850–900.
 2. ~~**OzIris — galerie**~~ : **oui**, 1580105918 est une galerie au-dessus du sol (déjà dessinée en toit de béton, `'roof'`).

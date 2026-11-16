@@ -96,3 +96,9 @@ Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique 
 - **Réponses du 2026-11-16** : le train attend au bout du frein final ≈ 34 m avant la gare, juste avant l'aiguillage (confirmé) ; **loop de 26 m** (spec `inversions` h 26) : base abaissée à 1,5 m (ESTIMÉE) pour garder une vitesse plausible au sommet (≈ 27,5 m) ; vitesse maxi 91 km/h, croisements ≥ 3,3 m. Barrière de file sur la boucle 1580112207 gardée (non précisé : question).
 - **Gare (bug du propriétaire, 2026-11-16 : portillons hors du quai)** : le sol des quais s'arrêtait au milieu du dernier wagon (corrigé dans le moteur) ; le train (7 wagons, 17,9 m) s'arrête maintenant au bout de la gare OSM (s 18,0) ; le bâtiment OSM 148159470 (6,8 m de large) ne couvrait que la voie : la gare est agrandie à ses quais (ESTIMÉ).
 
+
+### Lot 3 (propriétaire, 2026-11-16, soir)
+
+- **Loop** : 26 m = hauteur du **sommet** au-dessus du sol. Spec : base remise à 4 m (ESTIMÉE, comme les points voisins s 382 et 480) et boucle de 22 m : sommet 26,0 m (vérifié dans `OSM.cps`) ; circuit 893 m en 3D, 91 km/h au plus, croisements ≥ 3,3 m.
+- **Barrières** : la boucle 1580112207 a deux barrières liées, à son entrée et à sa sortie (1,6 m des bouts, ESTIMÉ ; règle générale du propriétaire, jumelle posée par le moteur).
+- **Escaliers** : le chemin de sortie (`exit.path`, dessiné à 3,2 m) recouvrait l'escalier 1580112211 : les allées sont maintenant coupées là où elles se confondent avec un escalier ; l'escalier de la file 1580112204, dans l'emprise de la gare agrandie à ses quais (ESTIMÉE), était caché par le plancher : il est dessiné par-dessus. Largeurs : 2 m (file) et 1,6 m (sortie), pas de width dans OSM.

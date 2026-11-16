@@ -195,3 +195,7 @@ Elles sont estimées ; le dire en commentaire dans `sites/<site>.js` et au propr
 ## Frein de bloc en haut du lift (Trace du Hourra, propriétaire 2026-11-16)
 
 Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=waiting` au sommet) est un **frein de bloc** comme les autres (`B1`, AUTO/MANU au pupitre, `osm_brakes` de la spec : `blk1`). Cantonnement : `LIFT_NEXT` = ce frein ; la chaîne retient le train en haut tant que B1 est occupé, et B1 ne libère son train que si le canton suivant (jusqu'à B2) est libre. Rien de propre à l'attraction dans le moteur.
+
+## Hors périmètre
+
+Barrières de la file (commande à la carte, barrière d'entrée et de sortie liées sur chaque chemin fermable), escaliers, passerelles et rochers : `docs/NOUVELLE-ATTRACTION.md` §2 ; ce ne sont pas des manœuvres de train et aucune commande par train ne s'y ajoute.

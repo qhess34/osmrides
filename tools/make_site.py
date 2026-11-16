@@ -17,11 +17,13 @@ Le fichier de spécification (JSON) décrit :
   inversions    [{type:'corkscrew', s0, s1, n, r} | {type:'loop', s0, s1, len, h, w, e, at, side}] : vrilles (dévers) et loopings insérés (linéaire ESTIMÉ) -> OSM.inversions (s moteur)
   (tunnels)     calculés : tronçons du circuit tagués tunnel=yes (ou covered=yes et layer<0) -> OSM.tunnels=[[s0,s1(,'roof')],…] (plusieurs possibles ; 'roof' = galerie couverte au-dessus du sol, layer>0)
   tunnels_extra [[s0, s1], …] tunnels absents d'OSM (s au sol, ESTIMÉS), ajoutés à OSM.tunnels
+  tunnels_ignore [way, …] tronçons du circuit dont le tag tunnel OSM est ignoré (réponse du propriétaire qui contredit OSM : le dire, poser la question)
   roles, osm_brakes  repères lus dans OSM (roller_coaster:track) : voir « repères lus dans OSM » plus bas ; « tags » force un repère (null le retire)
   inversions    … {type:'loop', osm:true, s0, s1, h} : looping dessiné dans OSM (aller, retour au sommet, aller), hauteur seule estimée
   (décor)       zones piétonnes (aires et multipolygones, anneaux assemblés, trous) -> feats highway=pedestrian fermés ; chemins à l'intérieur : f.in=1 ;
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
-                passerelles (highway + bridge=*) : f.br=layer ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv}] ; rochers natural=rock|stone : feats (moteur)
+                passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, w}]
+                (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone : feats (moteur)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
 OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
 """
@@ -68,8 +70,9 @@ def is_tunnel(t):
     except ValueError: lay = 0
     return t.get('tunnel') in TUNV or (t.get('covered') == 'yes' and lay < 0)
 tun_edges = {}  # arête → 'roof' si le tunnel est au-dessus du sol (layer > 0 : galerie couverte), sinon ''
+TUN_IGN = {str(m) for m in spec.get('tunnels_ignore', [])}
 for m in track:
-    if is_tunnel(tags(WAY[m])):
+    if m not in TUN_IGN and is_tunnel(tags(WAY[m])):
         nn = nds(WAY[m]); lay_ = tags(WAY[m]).get('layer', '0')
         k = 'roof' if lay_.lstrip('-').replace('.', '').isdigit() and float(lay_) > 0 else ''
         for e in zip(nn, nn[1:]): tun_edges[frozenset(e)] = k
@@ -348,6 +351,9 @@ isped = lambda t: (t.get('highway') == 'pedestrian' and (t.get('area') == 'yes' 
 def lay(t):
     try: return float(t.get('layer', 0))
     except ValueError: return 0
+def wnum(t):  # largeur OSM (width) en m, None si absente ou illisible
+    try: v = float(t.get('width', '').replace(',', '.').replace('m', '').strip()); return v if 0.3 < v < 20 else None
+    except ValueError: return None
 # chemin couvert (sous un bâtiment, un auvent, en souterrain) : dessiné sous le toit, qui s'efface au zoom (moteur)
 iscov = lambda t: t.get('tunnel') in TUNV or t.get('covered') == 'yes' or t.get('indoor') in ('yes', 'corridor') or lay(t) < 0
 def add(t, p, closed, holes=None):
@@ -355,7 +361,7 @@ def add(t, p, closed, holes=None):
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
         if kind.startswith('highway=') and not closed and iscov(t): f['cv'] = 1
-        if kind.startswith('highway=') and not closed and t.get('bridge') not in (None, 'no') and not iscov(t): f['br'] = max(1, int(lay(t)))  # passerelle piétonne : dessinée au-dessus de la voie si elle la franchit (moteur)
+        if kind.startswith('highway=') and not closed and t.get('bridge') not in (None, 'no') and not iscov(t): f['br'] = max(1, int(lay(t))); f.update({'w': wnum(t)} if wnum(t) else {})  # passerelle piétonne : dessinée au-dessus de la voie si elle la franchit (moteur)
         if closed and holes:  # anneaux intérieurs (multipolygone) : lac dans une place, îlot…, orientés à l'opposé de l'anneau extérieur (remplissage « nonzero » du canevas)
             h = [q if area(q) * area(p) < 0 else q[::-1] for q in holes if len(q) > 3 and inside(q[0], p)]
             if h: f['h'] = h
@@ -404,13 +410,19 @@ print('zones piétonnes : %d ; chemins fondus dedans : %d ; chemins couverts : %
 doors = [[*xy(i, 1), t['entrance'], t.get('name')] for i, t in NTAG.items() if 'entrance' in t and inb(xy(i))]
 # escaliers (highway=steps), y compris ceux de la file et de la sortie : [[x,z]…], sens de montée (incline up = dans le sens du tronçon : 1, down : -1, inconnu : 0), couvert
 steps = []
+NODE_WAYS = collections.defaultdict(list)
+for wid, w in WAY.items():
+    if tags(w).get('highway') and w is not None:
+        for i in (nds(w)[:1] + nds(w)[-1:]): NODE_WAYS[i].append(w)
+        for i in nds(w)[1:-1]: NODE_WAYS[i].append(w)
 for wid, w in WAY.items():
     t = tags(w); n_ = nds(w)
     if t.get('highway') != 'steps' or len(n_) < 2: continue
     p = [list(xy(i, 1)) for i in n_]
     if not any(inb(q) for q in p): continue
     inc = t.get('incline', ''); up = 1 if inc in ('up', 'yes') or inc.endswith('%') and not inc.startswith('-') else -1 if inc in ('down',) or inc.startswith('-') else 0
-    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {})})
+    wd = wnum(t) or min([wnum(tags(o)) for i in (n_[0], n_[-1]) for o in NODE_WAYS[i] if o is not w and wnum(tags(o))] or [0]) or None  # largeur : escalier, sinon chemin raccordé
+    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'w': wd} if wd else {})})
 print('escaliers : %d ; passerelles : %d ; rochers : %d' % (len(steps), sum(1 for f in feats if f.get('br')), sum(1 for f in feats if f['k'] in ('natural=rock', 'natural=stone') and f['c'])))
 res = {'cps': cps, **({'stairs': steps} if steps else {}), **({'doors': doors} if doors else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
        'paths': {k: chain_pts(v) for k, v in spec.get('paths', {}).items()},

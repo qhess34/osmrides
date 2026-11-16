@@ -47,7 +47,8 @@ const SITE=(()=>{
       parts:[
         // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
         // à la fourche (deux barrières liées, à l'entrée et à la sortie de la boucle : ouvertes = boucle en service, fermées = passage direct) ;
-        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 évite (une barrière sur le raccourci). Emplacements des barrières ESTIMÉS.
+        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 évite (barrières à l'entrée et à la sortie du raccourci, la jumelle de sortie posée
+        // par le moteur : règle générale du propriétaire, 2026-11-16). Emplacements des barrières ESTIMÉS.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
         {name:'boucle ouest',loop:OSM.paths.qloopW,short:[Q[F1],Q[F1]],gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
         {pts:Q.slice(F1,F2+1)},
