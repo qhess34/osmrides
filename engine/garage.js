@@ -120,9 +120,12 @@ const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 // Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
-// (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m), ou demi-largeur de la gouttière d'un bob (1,15 m), + 8 cm de jeu ; SITE.plat.edge pour forcer.
+// (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m) ou rebord de la gouttière de gare d'un bob (BOB_RIM), + 8 cm de jeu ; SITE.plat.edge pour forcer.
 // Les portillons sont rapprochés du bord : PGATE = PEDGE + SITE.plat.gateGap (défaut .8 m, ESTIMÉ : couloir des opérateurs, qui y marchent à POPL) ; places d'attente derrière.
-const PEDGE=(SITE.plat&&SITE.plat.edge)||+(Math.max((SITE.car.w||1.24)/2+(SITE.kind==='wood'?.2:SITE.kind==='steel'?.12:0),SITE.kind==='bob'?1.15:0)+.08).toFixed(2);
+// Bob (propriétaire, issue #6) : dans la gare la gouttière est rétrécie au gabarit du wagon (engine/render.js TRF), demi-largeur = SITE.car.w/2 + BOB_RIM ;
+// le quai suit : PEDGE = demi-largeur du wagon + rebord + 8 cm. BOB_RIM = 0,10 m, ESTIMÉ (épaisseur du rebord de la gouttière de gare, non mesurée).
+const BOB_RIM=.1;
+const PEDGE=(SITE.plat&&SITE.plat.edge)||+((SITE.car.w||1.24)/2+(SITE.kind==='wood'?.2:SITE.kind==='steel'?.12:SITE.kind==='bob'?BOB_RIM:0)+.08).toFixed(2);
 const PGATE=+(PEDGE+((SITE.plat&&SITE.plat.gateGap)||.8)).toFixed(2),POPL=(PEDGE+PGATE)/2;
 // Portillons : un par wagon (défaut) ou un par rangée de places (SITE.plat.gatesPer:'row', Goudurix, propriétaire, lot 6) ; deux visiteurs par portillon pour des rangées de 2.
 // GUNITS[u] = {k : wagon, w : rangée, c : centre le long du wagon (m, vers l'avant), h : demi-longueur} ; seatUnit(i) = {u : portillon, j : rang dans sa file d'attente}.

@@ -96,6 +96,16 @@ const rockExt=t=>{const at=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return R
   const inR=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return pipXZ(R,q.x,q.z);};let a=t[0],b=t[1];while(a>t[0]-40&&inR(a-DS))a-=DS;while(b<t[1]+40&&inR(b+DS))b+=DS;return [a,b];};
 const TUNS=(OSM.tunnels||[]).map(t=>rockExt(t)).concat((SITE.tunnels||[]).filter(c=>c.s).map(c=>rockExt(c.s))),inTunS=s=>TUNS.some(t=>s>=t[0]-1&&s<=t[1]+1);
 const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;
+// Gouttière étroite d'un bob (propriétaire, issue #6, générique kind:'bob') : là où la voie n'est pas inclinée — gare (st0 → st1 et toute la longueur des quais), lift (lift0 → lift1),
+// zones de freinage (freins de bloc : patins BZ0 → point d'arrêt et train arrêté derrière ; frein final S_BRK → S_HOLD ; frein avant gare ; rail du pont droit R0 → R1)
+// et voies de garage — la gouttière est rétrécie au gabarit du wagon (demi-largeur SITE.car.w/2 + BOB_RIM, engine/garage.js, ESTIMÉ) : le train touche le quai.
+// Raccord progressif (courbe en S) sur TRN m à chaque extrémité. TRF(s) = facteur de largeur (1 = gouttière inclinée du parcours, demi-largeur 1,15 m). TRN = 3 m, ESTIMÉ.
+const TRN=3,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DECKW/2)):1,TRF=(()=>{if(!BOB)return ()=>1;const Q=Object.assign({back:1.5,front:1.6},SITE.plat),fn=TRFN,
+  R=[[Math.min(TAG.st0||0,S_ST-TLEN-Q.back),Math.max(TAG.st1!=null?TAG.st1:S_ST,S_ST+Q.front)]];
+  R.push([S_LIFT0,S_LIFT1]);BLK.forEach((b,i)=>R.push([Math.min(BZ0[i],b-TLEN),b+.5]));
+  if(TAG.brk!=null)R.push([S_BRK,Math.max(S_HOLD,TRAV?R1:S_HOLD)+.5]);if(TRAV)R.push([R0-.5,R1+.5]);if(PSB)R.push([Math.min(PSB_A,S_PSB-TLEN),S_PSB+.5]);
+  const M=R.map(r=>[(r[0]+r[1])/2,(r[1]-r[0])/2]);
+  return s=>{let d=1e9;for(const m of M){const e=Math.abs(((s-m[0])%L+L*1.5)%L-L/2)-m[1];if(e<d)d=e;}if(d<=0)return fn;if(d>=TRN)return 1;const k=d/TRN;return fn+(1-fn)*k*k*(3-2*k);};})();
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,spine:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,rp:null,ch:null,bu:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(q.y)*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
@@ -115,11 +125,16 @@ function strip(sm){
         o.hand.moveTo(q.x-q.nx*sp*.7,q.z-q.nz*sp*.7);o.hand.lineTo(q.x+q.nx*sp*.7,q.z+q.nz*sp*.7);}}
     if(STL){}else if(INV){if(i<n-1&&q.i%13===0&&q.y>ST_Y+1.5){const e=(q.i/13)%2?1:-1,w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
       o.str.moveTo(bx,bz);o.str.lineTo(q.x-q.nx*.6*e,q.z-q.nz*.6*e);o.hand.moveTo(bx-tx*.35,bz-tz*.35);o.hand.lineTo(bx+tx*.35,bz+tz*.35);o.shb.moveTo(bx,bz);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
-    else if(i<n-1&&q.i%(BOB?12:6)===0){const w=wid(q.y);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
+    else if(i<n-1&&q.i%(BOB?12:6)===0){const w=wid(q.y)*(BOB?sm.trk?TRF(q.i*DS):TRFN:1);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
       if(!BOB&&q.y>7.5&&i+6<n){const b=sm[i+6],w2=wid(b.y),e=(q.i/6)%2?1:-1;o.str.moveTo(q.x-q.nx*w*e,q.z-q.nz*w*e);o.str.lineTo(b.x+b.nx*w2*e,b.z+b.nz*w2*e);}
       for(const sg of (BOB?[0]:[-1.25,1.25])){const bx=q.x+q.nx*sg,bz=q.z+q.nz*sg;o.shb.moveTo(bx,bz);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
   });
-  if(BOB){side(o.rail,-1.02);side(o.rail,1.02);} // bords de la gouttière
+  if(BOB){const f=sm.map(q=>sm.trk?TRF(q.i*DS):TRFN); // voies de garage (hors circuit) : étroites
+    if(f.some(v=>v<.999)){ // tronçon de gare, de freinage, de garage (ou de raccord) : gouttière en polygones de largeur variable (TRF), dessinée par remplissage
+      const poly=W=>{const p=new Path2D;sm.forEach((q,i)=>{const k=W*f[i];i?p.lineTo(q.x-q.nx*k,q.z-q.nz*k):p.moveTo(q.x-q.nx*k,q.z-q.nz*k);});
+        for(let i=n-1;i>=0;i--){const q=sm[i],k=W*f[i];p.lineTo(q.x+q.nx*k,q.z+q.nz*k);}p.closePath();return p;};
+      o.lay=[poly(DECKW/2),poly(1),poly(.45)];for(const e of [-1,1])sm.forEach((q,i)=>{const k=1.02*e*f[i],x=q.x+q.nx*k,z=q.z+q.nz*k;i?o.rail.lineTo(x,z):o.rail.moveTo(x,z);});}
+    else{side(o.rail,-1.02);side(o.rail,1.02);}} // bords de la gouttière
   else if(INV){side(o.rail,-.5);side(o.rail,.5);} // rails de roulement de part et d'autre de la poutre caisson
   else if(STL){side(o.rail,-.62);side(o.rail,.62);} // deux rails tubulaires
   else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);}
@@ -606,7 +621,7 @@ function drawStationFloor(s){
 }
 // Bord de quai par-dessus le tablier d'une voie plus large que le gabarit des wagons (voie en bois) : bande de quai de PEDGE au bord du tablier, redessinée après la voie
 // et avant les wagons (élément de tri à la hauteur de la gare), avec la ligne de sécurité : le quai touche le gabarit des wagons (propriétaire, lot 6).
-const LIP=!INV&&DECKW/2>PEDGE+.02?DECKW/2+.06:0;
+const LIP=!INV&&!BOB&&DECKW/2>PEDGE+.02?DECKW/2+.06:0; // bob : la gouttière de gare est déjà rétrécie au gabarit (TRF)
 function drawLip(){const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2;
   const quad=(l0,l1)=>{ctx.beginPath();ctx.moveTo(a.x-a.tx*bk+a.rx*l0,a.z-a.tz*bk+a.rz*l0);ctx.lineTo(b.x+b.tx*P.front+b.rx*l0,b.z+b.tz*P.front+b.rz*l0);
     ctx.lineTo(b.x+b.tx*P.front+b.rx*l1,b.z+b.tz*P.front+b.rz*l1);ctx.lineTo(a.x-a.tx*bk+a.rx*l1,a.z-a.tz*bk+a.rz*l1);ctx.closePath();ctx.fill();};
@@ -739,8 +754,9 @@ function drawWorld(dt){
     if(o.rp){ctx.fillStyle='rgba(0,0,0,.3)';ctx.save();ctx.translate(.25,.2);ctx.fill(o.rp);ctx.restore();ctx.fillStyle=BOB?TRO.edge:TKC.support||'#5b544a';ctx.fill(o.rp);} // poteaux sur le rocher
     if(BOB){ // gouttière en acier : bords sombres, fond clair, reflet au centre
       ctx.strokeStyle=TRO.edge;lw(.22,.7);ctx.stroke(o.str);
-      ctx.strokeStyle=TRO.deck;ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);
-      ctx.strokeStyle=TRO.shine;ctx.lineWidth=.9;ctx.stroke(o.deck);
+      if(o.lay){ctx.fillStyle=TRO.deck;ctx.fill(o.lay[0]);ctx.fillStyle=o.col;ctx.fill(o.lay[1]);ctx.fillStyle=TRO.shine;ctx.fill(o.lay[2]);} // gouttière de gare, rétrécie (TRF)
+      else{ctx.strokeStyle=TRO.deck;ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);
+      ctx.strokeStyle=TRO.shine;ctx.lineWidth=.9;ctx.stroke(o.deck);}
       ctx.strokeStyle=TRO.rim;lw(.1,.5);ctx.stroke(o.rail);
     }else if(INV){ // poutre caisson, rails, puis portiques et poteaux par-dessus
       ctx.strokeStyle='rgba(20,24,30,.55)';ctx.lineWidth=DECKW+.25;ctx.stroke(o.deck);ctx.strokeStyle=TKC.spine;ctx.lineWidth=DECKW;ctx.stroke(o.deck);
