@@ -197,6 +197,10 @@ Elles sont estimées ; le dire en commentaire dans `sites/<site>.js` et au propr
 
 Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=waiting` au sommet) est un **frein de bloc** comme les autres (`B1`, AUTO/MANU au pupitre, `osm_brakes` de la spec : `blk1`). Cantonnement : `LIFT_NEXT` = ce frein ; la chaîne retient le train en haut tant que B1 est occupé, et B1 ne libère son train que si le canton suivant (jusqu'à B2) est libre. Rien de propre à l'attraction dans le moteur.
 
+## Passerelles de service et évacuation (issue #7, 2026-11-16)
+
+Lift et zones de freinage surélevées ont une passerelle de service et un escalier jusqu'au sol (`SITE.catwalks`, voir `docs/NOUVELLE-ATTRACTION.md` §3). Pour l'instant **décor seulement** : l'équipe technique reste dessinée à `SITE.jobsites` et il n'existe pas d'évacuation d'un train arrêté en parcours. Suite possible : faire marcher les techniciens et les passagers évacués par ces passerelles (itinéraire déjà calculé : `CATW.walks[].segs`, `CATW.towers`).
+
 ## Hors périmètre
 
 Barrières de la file (commande à la carte, barrière d'entrée et de sortie liées sur chaque chemin fermable ; barrière de fourche `{on:'fork'}` qui ferme la boucle OU le raccourci : deux barrières parallèles liées, poteau-pivot sur la bordure du raccourci (Trace du Hourra, Tonnerre 2 Zeus), ou une seule barrière pivotante au sommet de l'angle des deux chemins (raccourci des lacets d'OzIris)), file à la width OSM, escaliers (largeur du chemin, sortie 2 m, en applique, palier rectangulaire, raccord régulier), quais en béton clair et personnes du quai dessinées au-dessus de la voie et des portillons, passerelles et rochers (tunnel prolongé jusqu'aux bords) : `docs/NOUVELLE-ATTRACTION.md` §2–§3 ; ce ne sont pas des manœuvres de train et aucune commande par train ne s'y ajoute : une barrière se commande à la carte, par fourche (zone de la file), jamais par train.

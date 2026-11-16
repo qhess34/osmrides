@@ -41,6 +41,7 @@ const SITE=(()=>{
     board:{via:[[-3.9,7.9],[-4,6.9]],walk:5.25},   // couloir d'attente derrière les places (lot 6 : portillons rapprochés du bord du quai, engine/garage.js PGATE)
     exit:{door:[-.7,-3],path:[[-.7,-3],[-.7,-4.1],[-11.1,-4.1],[-11,-7.3],[-8.8,-8.8],[-6.2,-8.8],[-4.6,-9.7],[-4.4,-11.3],[.3,-15.5],[1.9,-19.4],[-3.2,-20.1],[-8.6,-25]], // sortie par la boutique
       tails:[[[-.2,-32.2],[3.6,-42.4],[4.8,-56.4]],[[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]].concat(PROM_W.slice().reverse())]},
+    catwalks:false,                        // passerelles de service et escaliers du lift et des freins (issue #7) : aucun sur Zeus (demande du propriétaire)
     jobsites:{liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]},
     view:{x:38,z:52,w:222,h:162,bounds:[-170,210,-130,230]},
     cams:{gare:{label:'Gare',x:5,z:2,s:19},file:{label:'File',x:-20,z:19,s:14},lift:{label:'Lift',x:35,z:40,s:8.5},descente:{label:'Descente',x:8,z:98,s:9},tunnel2:{label:'Tunnel à effets',x:66,z:56,s:7},croisement:{label:'Croisement',x:52,z:70,s:9},zeus:{label:'Zeus',x:-29,z:-1,s:19}},

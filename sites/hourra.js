@@ -65,6 +65,7 @@ const SITE=(()=>{
     // Sortie OSM : entrance=exit (-0,5 ; 3,8) dans le quai sud-ouest, escalier 1580086196 qui descend, puis le chemin de sortie 1032354545
     exit:{door:XD[0],path:XD.concat(OSM.paths.exit.slice(1)),
       tails:[[[25.8,38.3],[27.7,40.2],[42.8,43.4],[50.5,45.3],[52.9,52.8]],[[25.8,38.3],[24,40.4],[13.8,41.6],[5,46],[-1.4,49.1]]]},   // vers la zone piétonne OSM
+    catwalks:{side:{Lift:1}},  // passerelle-escalier du lift À DROITE du sens de marche : information du propriétaire (2026-11-16), pas une estimation ; freins : côté choisi par le moteur
     jobsites:{liftFix:[24,-6],chainRev:[24,-6],trackRev:[40,22],brakeFix:[-31,-38],brakeRev:[-31,-38],trainRev:[-30,-9],rearm:[1.5,-1.5]},
     view:{x:40,z:-28,w:190,h:150,bounds:[-130,200,-150,110]},
     cams:{gare:{label:'Gare',x:1.5,z:1,s:19},file:{label:'File',x:38,z:14,s:8},lift:{label:'Lift',x:38,z:-40,s:7},

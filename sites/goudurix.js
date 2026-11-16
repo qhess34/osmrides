@@ -57,6 +57,7 @@ const SITE=(()=>{
     // Sortie (OSM 2026-11-16) : porte entrance=exit (3,5 ; 5,5) du mur est, chemin 1580112210, escalier 1580112211, chemin 1580112209 ; raccord ESTIMÉ vers l'allée est et le pont de bois.
     exit:{door:XO[0],path:XO,
       tails:[[XO[XO.length-1],[16.5,11.6],[18,4.2],[29.9,7.7],[34,7.5]].concat(BRIDGE),[XO[XO.length-1],[16.5,11.6]].concat(EAST.slice(1))]},
+    catwalks:{side:{Lift:1}},  // passerelle-escalier du lift À DROITE du sens de marche : information du propriétaire (2026-11-16), pas une estimation ; freins : côté choisi par le moteur
     jobsites:{liftFix:[8,70],chainRev:[8,70],trackRev:[42,60],brakeFix:[-10,30],brakeRev:[-10,30],trainRev:[-10,12],rearm:[5,-3]},
     view:{x:25,z:52,w:200,h:190,bounds:[-90,120,-60,170]},
     // Figures (affiche du plan des figures, docs/sources/goudurix-plan-figures-affiche.png, recalée sur le tracé OSM par la forme ; positions ESTIMÉES) : après la grande descente,

@@ -63,6 +63,7 @@ const SITE=(()=>{
     // Sortie (OSM 2026-11-16) : porte entrance=exit (-7,5 ; -9,5) du quai est, passerelle 1580105927 (layer 2), escalier 1580105929 qui descend, allée 1580105928 vers l'est.
     exit:{door:XO[0],path:XO,
       tails:[[[10.4,-.7],[10.6,-4.3],[11.1,-12.1],[14.8,-27.4],[39.5,-8.3],[50.7,-1.1]],[[10.4,-.7],[-1.3,9.0],[-5.3,19.5]]]},
+    catwalks:{side:{Lift:1}},  // passerelle-escalier du lift À DROITE du sens de marche : information du propriétaire (2026-11-16), pas une estimation ; freins : côté choisi par le moteur
     jobsites:{liftFix:[-45,40],chainRev:[-45,40],trackRev:[20,40],brakeFix:[-30,-8],brakeRev:[-30,-8],trainRev:[-36,-26],rearm:[-4,-8]},
     view:{x:-12,z:5,w:230,h:200,bounds:[-120,120,-110,110]},
     cams:{gare:{label:'Gare',x:-8,z:-9,s:17},file:{label:'File',x:-15,z:45,s:7},lift:{label:'Lift',x:-42,z:30,s:7},
