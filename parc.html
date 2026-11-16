@@ -60,12 +60,13 @@ header{padding-top:max(8px,env(safe-area-inset-top));padding-left:max(14px,env(s
 const cv=document.getElementById('c'),ctx=cv.getContext('2d'),view=document.getElementById('view'),info=document.getElementById('info');
 // couleurs sourdes, vue aérienne
 const COL={ground:'#7b8561',lawn:'#8a9a66',forest:'#4d6340',water:'#5f7f8c',waterEdge:'#4a6874',bldFill:'#b3aa9d',bldEdge:'#7d766b',
-  path:'#cbbf9f',pathEdge:'#9b9078',road:'#8c8c88',roadEdge:'#6b6b68',track:'#4a4540',hl:'#f2c14e',text:'#1c2230'};
+  plaza:'#b9ae8e',path:'#cbbf9f',pathEdge:'#9b9078',road:'#8c8c88',roadEdge:'#6b6b68',track:'#4a4540',hl:'#f2c14e',text:'#1c2230'};
 // Path2D pré-calculés (anneaux evenodd, canaux en lignes)
 function ringPath(f){const p=new Path2D();for(const r of f){if(r.l)continue;p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);p.closePath();}return p}
 function linePath(arr){const p=new Path2D();for(const r of arr){p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);}return p}
 const P={};
 for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ringPath);
+P.plaza=(PARK.plaza||[]).map(ringPath); // zones piétonnes (surfaces praticables)
 P.canal=linePath(PARK.water.flatMap(f=>f.filter(r=>r.l).map(r=>r.l)));
 P.paths=linePath(PARK.paths);P.roads=linePath(PARK.roads);
 const SIMN=new Set(PARK.attr.filter(a=>a.site).map(a=>a.name.toLowerCase())); // tracés des attractions avec simulateur, en doré (générique)
@@ -86,6 +87,7 @@ function render(){
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=COL.ground;ctx.fillRect(0,0,W,H);
   ctx.save();ctx.translate(W/2-cam.x*s,H/2-cam.z*s);ctx.scale(s,s);
   ctx.lineJoin='round';ctx.lineCap='round';
+  for(const p of P.plaza){ctx.fillStyle=COL.plaza;ctx.fill(p,'evenodd')}
   for(const p of P.lawn){ctx.fillStyle=COL.lawn;ctx.fill(p,'evenodd')}
   for(const p of P.forest){ctx.fillStyle=COL.forest;ctx.fill(p,'evenodd')}
   ctx.fillStyle=COL.water;ctx.strokeStyle=COL.waterEdge;ctx.lineWidth=1/s;

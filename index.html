@@ -102,10 +102,10 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
 /* ───────── fond animé : plan du parc en lent travelling, assombri ───────── */
 (function(){
   const cv=document.getElementById('bg'),ctx=cv.getContext('2d');
-  const COL={ground:'#7b8561',lawn:'#8a9a66',forest:'#4d6340',water:'#5f7f8c',waterEdge:'#4a6874',bldFill:'#b3aa9d',bldEdge:'#7d766b',path:'#cbbf9f',pathEdge:'#9b9078',road:'#8c8c88',roadEdge:'#6b6b68',track:'#4a4540',hl:'#f2c14e'};
+  const COL={ground:'#7b8561',lawn:'#8a9a66',forest:'#4d6340',water:'#5f7f8c',waterEdge:'#4a6874',bldFill:'#b3aa9d',bldEdge:'#7d766b',plaza:'#b9ae8e',path:'#cbbf9f',pathEdge:'#9b9078',road:'#8c8c88',roadEdge:'#6b6b68',track:'#4a4540',hl:'#f2c14e'};
   const ring=f=>{const p=new Path2D();for(const r of f){if(r.l)continue;p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);p.closePath();}return p;};
   const line=a=>{const p=new Path2D();for(const r of a){p.moveTo(r[0],r[1]);for(let i=2;i<r.length;i+=2)p.lineTo(r[i],r[i+1]);}return p;};
-  const P={};for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ring);
+  const P={};for(const k of ['water','lawn','forest','bld'])P[k]=PARK[k].map(ring);P.plaza=(PARK.plaza||[]).map(ring);
   P.canal=line(PARK.water.flatMap(f=>f.filter(r=>r.l).map(r=>r.l)));P.paths=line(PARK.paths);P.roads=line(PARK.roads);
   const sim=new Set(PARK.attr.filter(a=>a.site).map(a=>a.name.toLowerCase()));
   const TRK=PARK.tracks.map(t=>({p:line([t.pts]),hl:sim.has(t.name.toLowerCase())}));
@@ -119,6 +119,7 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
     const s=Math.max(1.5,Math.min(3.4,Math.min(W,H)/190))*(1+.06*Math.sin(sec*.07));
     ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle=COL.ground;ctx.fillRect(0,0,W,H);
     ctx.save();ctx.translate(W/2-x*s,H/2-z*s);ctx.scale(s,s);ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.fillStyle=COL.plaza;for(const p of P.plaza)ctx.fill(p,'evenodd');
     ctx.fillStyle=COL.lawn;for(const p of P.lawn)ctx.fill(p,'evenodd');
     ctx.fillStyle=COL.forest;for(const p of P.forest)ctx.fill(p,'evenodd');
     ctx.fillStyle=COL.water;ctx.strokeStyle=COL.waterEdge;ctx.lineWidth=1/s;for(const p of P.water){ctx.fill(p,'evenodd');ctx.stroke(p);}

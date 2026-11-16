@@ -18,6 +18,10 @@ const SITE=(()=>{
     // Garage dans le prolongement de la gare (SITE.yard, voir docs/manoeuvres.md) : aiguillage = tronçon en S coulissant, une voie où les trains se rangent en file.
     // Voie de garage = voie de maintenance réelle (OSM) ; position et course du chariot (a, b, slide) déduites de la carte ; vitesse de manœuvre et durée de déplacement estimées.
     yard:{at:'station',device:'switch',a:.8,b:6.4,slide:3.4,side:-1,len:8.6,lanes:[{name:'Garage',pts:[onGarage(21.5),onGarage(53.6)]}],move:{v:2.4,t:3}},
+    // Second tunnel (propriétaire, 2026-11-16 : « il en existe un de plus » ; RCDB : Tunnel, Tunnel) : absent d'OSM. Galerie sombre à effets (fumée, stroboscopes) après le virage
+    // à gauche du bout est (description Wikipédia) : placée sur la diagonale qui suit ce virage, s ≈ 846–871 m du moteur. Emplacement et longueur ESTIMÉS, à confirmer.
+    // Le premier tunnel (bas de la première descente) reste le polygone OSM man_made=tunnel 1353118256.
+    tunnels:[{s:[846,871],under:'roof',w:2.3}],
     stationPoly:OSM.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
     fade:[[0,2.5,9],[7.3,-3.7,1.5],[49,-3,8],[-4,11.4,4]],   // toits qui s'effacent : gare, poste de conduite, garage, escalier
     plat:{load:7.9,exit:3,back:.1,front:1.6},   // exit : quai de débarquement côté nord jusqu'au mur (ESTIMÉ d'après le bâtiment OSM) ; couloir de descente au milieu
@@ -36,8 +40,8 @@ const SITE=(()=>{
       tails:[[[-.2,-32.2],[3.6,-42.4],[4.8,-56.4]],[[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]].concat(PROM_W.slice().reverse())]},
     jobsites:{liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]},
     view:{x:38,z:52,w:222,h:162,bounds:[-170,210,-130,230]},
-    cams:{gare:{label:'Gare',x:5,z:2,s:19},file:{label:'File',x:-20,z:19,s:14},lift:{label:'Lift',x:35,z:40,s:8.5},descente:{label:'Descente',x:8,z:98,s:9},croisement:{label:'Croisement',x:52,z:70,s:9},zeus:{label:'Zeus',x:-29,z:-1,s:19}},
-    labels:o=>[['Gare',-4,-6.5],['Lift — 30 m',43,36],['Tunnel',o.tunnel[0]-2,o.tunnel[1]+8],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-23.6,-3.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]],
+    cams:{gare:{label:'Gare',x:5,z:2,s:19},file:{label:'File',x:-20,z:19,s:14},lift:{label:'Lift',x:35,z:40,s:8.5},descente:{label:'Descente',x:8,z:98,s:9},tunnel2:{label:'Tunnel à effets',x:76,z:56,s:9},croisement:{label:'Croisement',x:52,z:70,s:9},zeus:{label:'Zeus',x:-29,z:-1,s:19}},
+    labels:o=>[['Gare',-4,-6.5],['Lift — 30 m',43,36],['Tunnel',o.tunnel[0]-2,o.tunnel[1]+8],['Tunnel à effets',84,52],['Freins',-33,30],["File d'attente",-34,20],['Zeus',-37,-5],['Entrée',-23.6,-3.6],['Garage',49,-12.5],['Aiguillage',17,-9.5]],
     hideNames:['Zeus'],strike:{spot:[-31,-1],area:[-60,140,-20,125]},
     text:{storm:'Zeus est en colère : orage sur l\'attraction ! Aucun train ne doit partir.',great:'Excellente journée, Zeus est fier de vous !'},
     // Moteurs (pneus) par zone : gare, frein final, voie de garage = freins + moteurs (défaut du moteur, ESTIMÉ, à confirmer par le propriétaire) ; SITE.zones pour changer.

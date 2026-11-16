@@ -6,8 +6,10 @@ const SITE=(()=>{
   const PROM=OSM.paths.prom,PROM2=OSM.paths.prom2,QL=OSM.paths.qlink;
   // Embarquement à l'OUEST de la gare, portillons à l'ouest (propriétaire, 2026-11-15). OSM ne cartographie pas la file : on prend la promenade « Gouduriiiix Promenade »
   // (132709980) de l'entrée sud (23,8 ; 87,7) jusqu'à (-28 ; -2), puis un raccord ESTIMÉ vers le quai ouest. Le chemin 1102233771 (côté est, nord-sud) sert d'arrivée et de sortie.
-  const QP=PROM.slice(0,8),ENTRY0=[QP[0][0]-.7,QP[0][1]+.9];
-  const EAST=OSM.paths.queue; // 1102233771 : de (16,5 ; 11,6) vers l'entrée sud (23,8 ; 87,7)
+  // File (OSM, mise à jour du propriétaire 2026-11-16) : départ de la promenade 1102233771 en (22,3 ; 25,0), chemin 1580112206 vers le sud-ouest, fourche en (5,3 ; 50,5) :
+  // raccourci ou boucle 1580112207, puis le long de la voie de retour jusqu'à l'escalier 1580112204 qui monte à l'entrée du quai ouest (entrance=main (-3,0 ; -0,4)).
+  const Q=OSM.paths.q,QLOOP=OSM.paths.qloop,QIN=OSM.paths.qin,XO=OSM.paths.xout,ENTRY0=[21.4,26.1],F0=6,F1=8;
+  const EAST=OSM.paths.queue; // 1102233771 : de (16,5 ; 11,6) vers l'entrée sud (23,8 ; 87,7), passe par le départ de la file (22,3 ; 25,0) = EAST[2]
   // Sens de marche (propriétaire, 2026-11-15 : « le lift est la montée après la gare ») : gare vers le sud, lift droit sur l'axe nord-sud (s 44 → 136, OSM
   // « brake_run » + début de 541092982), puis les figures dans le lac, retour par la diagonale ouest (OSM « lift_hill », ici zone de freinage) et la courbe nord (OSM « launch_straight »).
   // Garage (OSM) : voie de maintenance 1221386549 (45 m, butoir au sud) qui se raccorde à ce retour, au nœud railway=switch (-15,2 ; -4,5), à 30 m avant la gare.
@@ -16,7 +18,8 @@ const SITE=(()=>{
   // yard.s, le tronçon mobile a deux faces (HYPOTHÈSE : une face droite = circuit, une face en S = voie de garage), le S est une courbe qui part du circuit au nœud OSM railway=switch
   // (bord de l'appareil côté gare, à 44,4 m en amont de l'arrêt de la tête du train) et rejoint la voie de maintenance OSM (3,4 m plus loin latéralement, ≈ 6 m en amont). Longueur
   // du S et durée de rotation (4 s) : ESTIMÉES.
-  const lanePts=OSM.paths.garage.slice().reverse().slice(2),BRIDGE=[[42.3,9.7],[87.8,21.7],[89.9,26.6]]; // pont de bois OSM 161214279 (layer 1)
+  // Voie de garage : S OSM 1580112201 (du nœud railway=switch vers le sud) puis voie de maintenance 1221386549 ; le tronçon mobile en S va du nœud switch au 3e point du S (≈ 6 m).
+  const lanePts=OSM.paths.gS.slice().reverse().slice(2).concat(OSM.paths.garage.slice().reverse().slice(1)),BRIDGE=[[42.3,9.7],[87.8,21.7],[89.9,26.6]]; // pont de bois OSM 161214279 (layer 1)
   return {
     id:'goudurix',title:'Goudurix',kind:'steel',trackName:'Voie tubulaire',goal:500,lap:120,
     // 2 trains de 7 wagons, 28 places = 4 par wagon en 2 rangées de 2 (RCDB, Wikipédia). Longueur (2,55 m) et largeur (1,5 m) d'un wagon ESTIMÉES.
@@ -26,25 +29,29 @@ const SITE=(()=>{
     track:{spine:'#c4a32e',rail:'#b9532f',support:'#8e3b2c'}, // poutre et traverses jaunes, rails tubulaires orange-rouge, supports rouille (photo du propriétaire, 2026-11-15),
     // (propriétaire) un seul train sur le lift ; le lift retient le train en haut si la zone de freinage suivante est occupée : comportement par défaut du moteur
     // Deux zones de freinage (propriétaire) : frein de bloc B1 (repère blk1) juste avant la portion droite sous le lift, frein final (brk) sur la voie parallèle à la gare. Position d'après le propriétaire, emplacement exact ESTIMÉ.
-    stopBack:.5,holdBack:5,dropAfter:35,loadSide:1,   // frein final : tête du train 5 m avant la gare (ESTIMÉ) ; le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire)
+    // Repères lus dans OSM (2026-11-16) : lift 541092982, B1 = zone « waiting » 1580112200, frein final = zone « waiting » 1580112203 (voie parallèle à la gare, propriétaire).
+    // holdBack 34 : le train s'arrête au bout du frein final OSM (qui finit 31 m avant la gare), 0,6 m avant le tronçon mobile de l'aiguillage (ESTIMÉ à ± 1 m).
+    stopBack:.5,holdBack:34,dropAfter:35,loadSide:1,   // le train roule vers le sud : loadSide 1 = embarquement à l'OUEST (portillons à l'ouest, propriétaire ; entrée OSM à l'ouest)
     phys:{roll:.02,drag:.0004,vmin:3},
     // Garage : une seule voie (la voie de maintenance OSM), 2 trains au plus. Durée de rotation (4 s) et vitesse de manœuvre ESTIMÉES.
-    yard:{at:'station',device:'switch',back:true,rotary:true,s:true,a:44.4,b:50.4,slide:1,side:-1,len:5.6,devName:'Aiguillage',devLabel:'l\'aiguillage',lanes:[{name:'Garage',pts:lanePts,cap:2}],move:{v:2.4,t:4}},
+    yard:{at:'station',device:'switch',back:true,rotary:true,s:true,a:45.4,b:51.6,slide:1,side:-1,len:5.6,devName:'Aiguillage',devLabel:'l\'aiguillage',lanes:[{name:'Garage',pts:lanePts,cap:2}],move:{v:2.4,t:4}},
     stationPoly:OSM.polys.station,stationAt:[.4,0,12],stationRoofCol:'#9b8f7d',
     fade:[[.4,0,12]],   // toits qui s'effacent : gare
     // Quais ESTIMÉS (le bâtiment OSM, 6,8 m de large, ne couvre que la voie et ses abords) : embarquement à l'ouest (portillons), débarquement à l'est.
     plat:{load:7.0,exit:3.5,back:.6,front:1.6},
     booth:[6.4,-11.8,0],boothLabel:[9.5,-14.5],beacon:[5.6,-10.6],
-    queue:{entry0:ENTRY0,link:[],gate:{h:[QP[0][0]+1.7,QP[0][1]+.6],a:[QP[0][0]-1.7,QP[0][1]+.6],b:[QP[0][0]+1.9,QP[0][1]-2]},
-      parts:[{pts:[ENTRY0].concat(QP,[[-20.5,2.8],[-13.5,5.2]])}]},   // raccord (-28 ; -2) → quai ouest ESTIMÉ
-    // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), puis le chemin 1102233771 vers l'entrée sud.
-    approach:[{w:1,pts:BRIDGE.slice().reverse().concat([[34,7.5],[29.9,7.7],[18,4.2]],EAST)}],
-    paths:[PROM,PROM2,QL,EAST],
-    // Couloir d'attente à 6,4 m de la voie, côté ouest, entrée par le sud
-    board:{via:[[-11,6.2],[-8.4,7.9],[-6.4,6.9]],walk:6.4},
-    // Sortie (ESTIMÉE) : porte dans le mur est de la gare, allée OSM 161214274 vers l'est puis le pont de bois ; tail inverse : chemin nord-sud (1102233771).
-    exit:{door:[4.4,.6],path:[[4.4,.6],[10,2.4],[18,4.2]],
-      tails:[[[18,4.2],[29.9,7.7],[34,7.5]].concat(BRIDGE)]},
+    queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
+      parts:[{pts:[ENTRY0].concat(Q.slice(1,F0+1))},
+        {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gate:{h:[4.2,51.8],a:[3.4,49.7],b:[6.3,52.4]}},   // barrière ESTIMÉE à la fourche OSM (5,3 ; 50,5)
+        {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},
+    // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.
+    approach:[{w:.5,pts:BRIDGE.slice().reverse().concat([[34,7.5],[29.9,7.7],[18,4.2]],EAST.slice(0,3))},{w:.5,pts:EAST.slice(2).reverse()}],
+    paths:[PROM,PROM2,QL,EAST,XO],
+    // Entrée du quai ouest (OSM entrance=main, mur ouest de la gare) ; couloir d'attente à 3,8 m de la voie (ESTIMÉ)
+    board:{via:[[-3.8,-0.4]],walk:3.8},
+    // Sortie (OSM 2026-11-16) : porte entrance=exit (3,5 ; 5,5) du mur est, chemin 1580112210, escalier 1580112211, chemin 1580112209 ; raccord ESTIMÉ vers l'allée est et le pont de bois.
+    exit:{door:XO[0],path:XO,
+      tails:[[XO[XO.length-1],[16.5,11.6],[18,4.2],[29.9,7.7],[34,7.5]].concat(BRIDGE),[XO[XO.length-1],[16.5,11.6]].concat(EAST.slice(1))]},
     jobsites:{liftFix:[8,70],chainRev:[8,70],trackRev:[42,60],brakeFix:[-10,30],brakeRev:[-10,30],trainRev:[-10,12],rearm:[5,-3]},
     view:{x:25,z:52,w:200,h:190,bounds:[-90,120,-60,170]},
     // Figures (affiche du plan des figures, docs/sources/goudurix-plan-figures-affiche.png, recalée sur le tracé OSM par la forme ; positions ESTIMÉES) : après la grande descente,
@@ -52,16 +59,16 @@ const SITE=(()=>{
     // Inversions dessinées (propriétaire, 2026-11-15 ; tools/specs/goudurix.json « inversions », générique) : Loop agrandi ×4 le long de la voie (boucle ESTIMÉE insérée entre s 388 et 455 au sol :
     // 200 m de voie au lieu de 52 m, hauteur 21 m, vue de dessus une ellipse de ≈ 67 x 7,5 m, x 48–56, z 28–95 ; le linéaire ajouté n'est pas dans OSM) ; Double Corkscrew = deux vrilles de 360°
     // (dévers 0 → 720°, déport hélicoïdal 3 m ESTIMÉ, s 538–592 au sol). Train tête en bas dessiné par le moteur (dessous de caisse, voie par-dessus).
-    cams:{gare:{label:'Gare',x:3,z:0,s:17},file:{label:'File',x:22,z:50,s:7},lift:{label:'Lift',x:6,z:78,s:6.5},descente:{label:'Grande descente',x:29,z:96,s:8},
+    cams:{gare:{label:'Gare',x:3,z:0,s:17},file:{label:'File',x:0,z:40,s:7},lift:{label:'Lift',x:6,z:78,s:6.5},descente:{label:'Grande descente',x:29,z:96,s:8},
       butterfly:{label:'Butterfly',x:38,z:70,s:11},loop:{label:'Loop',x:54,z:62,s:6.5},batwing:{label:'Batwing',x:55,z:28,s:11},corkscrew:{label:'Double Corkscrew',x:19,z:92,s:9},
       frein:{label:'Frein final',x:-6,z:30,s:8},garage:{label:'Garage',x:-14,z:10,s:11}},
     labels:()=>[['Gare',6,-4],['Lift — 36 m',12,78],['Grande descente',38,100],['Virage à 180°',14,128],['Butterfly',27,70],['Loop',66,62],['Batwing',60,22],['Double Corkscrew',3,92],
-      ['Poste aiguillage',-10.5,-7.4],['Frein final',-32,35],['Garage',-32,12],['Entrée',32,88],["File d'attente",-42,52],['Sortie',14,-3]],
+      ['Poste aiguillage',-12.5,-7.4],['Frein final',-32,35],['Garage',-32,12],['Entrée',27,22],["File d'attente",-14,36],['Sortie',9,15]],
     strike:{area:[-60,100,-40,150]},
     // Le premier frein du parcours (B1) RALENTIT nettement le train (propriétaire) : vitesse ramenée à 8 m/s (≈ 29 km/h, ESTIMÉ) en passage normal ; arrêt seulement si le canton suivant est occupé.
     zones:{B1:{trim:{v:8}}},
     text:{storm:'Orage sur Goudurix : aucun train ne doit partir.',great:'Excellente journée sur Goudurix !'},
-    helpGarage:'<b>Garage</b> : une voie de maintenance, en amont de la gare (≈ 44 m avant l\'arrêt du train). L\'aiguillage est un rail rotatif : il tourne sur lui-même autour du tube de rail, pour présenter le circuit (P) ou la voie (1). '
+    helpGarage:'<b>Garage</b> : une voie de maintenance, en amont de la gare (≈ 45 m avant l\'arrêt du train). L\'aiguillage est un rail rotatif : il tourne sur lui-même autour du tube de rail, pour présenter le circuit (P) ou la voie (1). '
       +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Gare AR : le train recule de la gare jusqu\'au fond de la voie. Remettez l\'aiguillage sur P. '
       +'Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Garage AV : il avance jusqu\'en gare ; aiguillage sur P. '
       +'L\'aiguillage ne tourne pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit.',
@@ -71,7 +78,7 @@ const SITE=(()=>{
       // du côté EST du retour (opposé à la voie de garage, à l'ouest, comme sur la photo), entre le nœud railway=switch (-14,9 ; 1,6) et la courbe nord, dans le coin libre entre le retour,
       // le quai et le raccord de la file (z > 1 : file). Dimensions (3,6 x 5 m, hauteur ≈ 2,4 m, passerelle 0,8 m de large, escalier 1,2 m) ESTIMÉES. L'escalier descend vers
       // l'extrémité du raccord de la file (-13,5 ; 5,2), seul chemin voisin (le chemin de service n'est pas cartographié).
-      const D={x0:-13.1,x1:-9.5,z0:-5.6,z1:-.6,h:2.4},ST={x0:-12.7,x1:-11.5,z1:4.4},PG={x0:-13.95,x1:-13.15,z0:-4.4,z1:1.3},OP=[-11.2,-3.4],BOX=[-10.2,-4.6];
+      const D={x0:-13.6,x1:-11.5,z0:-5.6,z1:-.6,h:2.4},ST={x0:-12.9,x1:-11.9,z1:2.6},PG={x0:-14.25,x1:-13.6,z0:-4.4,z1:1.3},OP=[-12.6,-3.4],BOX=[-12,-4.6]; // resserré (2026-11-16) : la file OSM passe à x ≈ -10,5
       const rot=()=>typeof G!=='undefined'&&G.dev&&G.dev.pos!==G.dev.to; // aiguillage en rotation
       const rail=(ctx,lw,pts,col)=>{ctx.strokeStyle=col;lw(.07,.8);ctx.beginPath();pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.stroke();};
       return {
