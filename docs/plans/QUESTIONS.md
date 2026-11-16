@@ -1,17 +1,29 @@
 # Questions pour le propriétaire — plans à annoter
 
-## À répondre en priorité (2026-11-16, lot 4)
+## À répondre en priorité (2026-11-16, lot 5)
 
-Image : `lot-4.jpg` (rocher et ses deux voies, passerelle et escaliers OSM, barrières de la boucle ouverte / fermée, barrière pivotante d'OzIris, escalier en applique et palier de Goudurix, jonctions).
+Image : `lot-5.jpg` (barrières parallèles de la Trace du Hourra et de Zeus, barrière pivotante d'OzIris, chemin d'entrée de Goudurix, quais éclaircis, embarquement de Zeus, files couvertes masquées, escaliers au bord du quai, file délimitée d'OzIris, raccord du 2e raccourci de Zeus avant / après).
 
-1. **Trace du Hourra — hauteur de la passerelle** : vos escaliers OSM font 3,0 m et 2,2 m de long (≈ 11 et 8 marches, soit ≈ 1,9 m et 1,4 m de montée), mais la passerelle franchit la voie, estimée là à 3,9 m (passerelle estimée à 6,8 m). Quelle est la vraie hauteur de la passerelle, ou de la voie dessous ?
-2. **Trace du Hourra — rocher** : les deux voies passent dedans (voie haute 7,6 m, voie basse 4,0 m, ESTIMÉES) ; rocher estimé à ≈ 9,8 m (voie haute + 2,2 m). Juste ?
-3. **Trace du Hourra — barrières de la boucle** : poteau de chaque barrière dans la pointe de la fourche (entrée et sortie de la boucle), là où boucle et raccourci s'écartent : bon emplacement ?
-4. **Goudurix — escalier en applique** : pour le coller au mur ouest hors du quai, il est dessiné 2,3 m à l'ouest de sa position OSM (quai ouest ESTIMÉ à 6,2 m de la voie). Le quai est-il plus étroit (le bâtiment OSM ne fait que 6,8 m de large en tout) ?
-5. **Largeur des files** : la file est dessinée jusqu'à 2,2 m de large (largeur adaptée) alors qu'OSM indique `width=1` à la Trace du Hourra ; escaliers et passerelle suivent maintenant la largeur dessinée. Garder la largeur adaptée, ou dessiner la file à la largeur OSM ?
-6. **Escaliers de sortie** : rattachés à une allée (dessinée 3,2 m), ils font maintenant 3,2 m (Goudurix, OzIris, Trace du Hourra). Juste, ou les allées de sortie sont-elles plus étroites ?
-7. **OzIris — barrière pivotante** : le raccourci des lacets (1,4 m) traverse la main courante entre deux allées ; la barrière pivote dans la pointe de la fourche. Bon emplacement ?
-8. **Tonnerre 2 Zeus — raccourcis** : barrière de fourche + barrière de sortie gardées. Faut-il aussi deux barrières parallèles (comme la Trace du Hourra) ou une seule barrière pivotante (comme OzIris) ?
+1. **Barrières parallèles** (Trace du Hourra, Zeus) : poteau-pivot sur la bordure du raccourci côté boucle, juste après la pointe ; boucle ouverte, vantaux en travers du raccourci ; boucle fermée, en travers de l'entrée et de la sortie de la boucle. Est-ce le bon côté du raccourci ?
+2. **OzIris — barrière pivotante** : poteau au sommet de l'angle (là où les bordures des deux chemins se rejoignent), sous la voie : lisible ainsi ?
+3. **Largeur de la file sans width OSM** : la boucle 1032685208 de la Trace du Hourra n'a pas de width ; elle prend 1 m comme le reste de la file. Faut-il faire de même ailleurs, ou ajouter les width dans OSM (OzIris, Goudurix, Zeus restent en largeur adaptée, jusqu'à 2,2 m) ?
+4. **File le long des quais et dans les zones piétonnes** : 1 m (ESTIMÉ) avec barrières des deux côtés (entrées d'OzIris, de la Trace du Hourra, de Goudurix ; traversée du quai de la Trace du Hourra). Largeur réelle du couloir ?
+5. **Trace du Hourra — escaliers d'accès** : l'escalier 1580086195 (entièrement sur le quai) n'est plus dessiné, l'escalier qui y mène s'arrête au bord du quai ; l'escalier de sortie s'arrête aussi au bord du quai de débarquement. Juste ?
+6. **Quais** : béton clair mat (#d6d1c6) pour les quatre attractions : bonne teinte, ou trop clair ?
+7. **Files couvertes** : visibles seulement avec « Masquer la gare ». Faut-il aussi un repère (pointillé) de leur tracé quand la gare est affichée ?
+8. **Goudurix — chemin d'entrée** : demi-tour régulier au pied de l'escalier en applique (2,5 m entre les deux allées, main courante entre elles) : conforme ?
+
+### Répondu le 2026-11-16 (lot 5 : questions prioritaires 1–8 du lot 4 et demandes 9–16)
+
+1. ~~**Passerelle de la Trace du Hourra**~~ : hauteur inconnue, rendu jugé bien : gardé.
+2. ~~**Rocher**~~ : rendu bien : gardé.
+3. ~~**Barrières de la boucle**~~ : pas dans la pointe : poteau-pivot sur la bordure des chemins, le vantail balaie le chemin (règle des barrières parallèles) : fait (nouvelle question 1).
+4. ~~**Quai ouest de Goudurix (6,2 m)**~~ : bien.
+5. ~~**Largeur de la file**~~ : width OSM (1 m) quand elle existe ; adaptation seulement sans width : fait (`OSM.widths`, nouvelle question 3).
+6. ~~**Escaliers de sortie**~~ : 2 m : fait.
+7. ~~**OzIris — barrière pivotante**~~ : pivot au sommet de l'angle entre les deux chemins : fait (nouvelle question 2).
+8. ~~**Zeus — raccourcis**~~ : deux barrières parallèles, route de la file inchangée : fait.
+9. Goudurix, chemin d'entrée refait (raccord régulier à l'escalier en applique) : fait (nouvelle question 8). 10. Quais éclaircis : fait (nouvelle question 6). 11. Ordre de dessin du quai (opérateurs, visiteurs entre portillons et train) : fait, vérifié sur les 4 attractions. 12. Files couvertes masquées sauf « Masquer la gare » : fait (nouvelle question 7). 13. Escaliers de la Trace du Hourra arrêtés au bord du quai : fait (nouvelle question 5). 14. OzIris, file 1 m délimitée des deux côtés (quais, zones piétonnes) : fait (nouvelle question 4). 15. Zeus, 2e raccourci : la « barrière qui ne bouge pas » était un bout de main courante isolé, supprimé ; raccord sans rétrécissement ; contrôle `gatesMove`. 16. Promeneurs exclus des chemins de file ; contrôle `strollQ=0`.
 
 ### Répondu le 2026-11-16 (lot 4 : questions prioritaires 1–8 du lot 3, 3e mise à jour OSM : changesets 192040289 / 192040396)
 

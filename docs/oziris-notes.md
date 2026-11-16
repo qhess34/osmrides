@@ -95,3 +95,4 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 - **Raccourci des lacets sud** 1580173580 (1,4 m) : UNE barrière de fourche pivotante (`{on:'fork', pair:false}`), poteau dans la pointe de la fourche (ESTIMÉ), qui ferme soit le raccourci (lacets en service), soit les lacets ; plus de barrière de sortie.
 - **Escaliers** : largeur du chemin dessiné qu'ils prolongent (escaliers d'entrée : largeur de la file, sans chevauchement ; escalier de sortie 1580105929 : allée, 3,2 m).
 
+- **Lot 5 (2026-11-16)** : barrière pivotante des lacets sud : poteau au **sommet de l'angle** entre raccourci et lacets ; file 1 m (ESTIMÉ) **délimitée de barrières** des deux côtés dans la zone piétonne de l'entrée et le long des quais ; couloirs sous la gare visibles seulement avec « Masquer la gare » ; escalier de sortie 1580105929 : 2 m ; promeneurs exclus des chemins de la file.

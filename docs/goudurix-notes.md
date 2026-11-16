@@ -109,3 +109,4 @@ Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique 
 - **Escalier de la file** 1580112204 : en applique à l'OUEST de la gare, collé au mur, hors du quai (propriétaire). Quai ouest ramené de 7,0 à 6,2 m (ESTIMÉ ; assez pour les 4 places d'attente par portillon) ; le moteur décale l'escalier hors de la gare agrandie, contre son mur (2,3 m à l'ouest de sa position OSM, ESTIMÉ), avec la file qui y monte ; **palier carré** de sa largeur à son sommet, au plancher de la gare, qui rejoint le quai. Largeur : celle de la file (≈ 1,8 m).
 - **Escalier de sortie** 1580112211 : largeur de l'allée de sortie (3,2 m).
 
+- **Lot 5 (2026-11-16)** : chemin d'entrée refait : les points OSM qui menaient au pied de l'escalier à sa position d'origine sont retirés, demi-tour régulier (deux allées à 2,5 m, main courante entre elles) puis montée droite dans l'escalier en applique ; escalier de sortie 1580112211 : 2 m.
