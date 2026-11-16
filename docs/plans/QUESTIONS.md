@@ -2,7 +2,7 @@
 
 ## À répondre en priorité (2026-11-16, après la 2e mise à jour OSM)
 
-Image : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escaliers, tunnel 2 de Zeus, loop de Goudurix, file d'OzIris).
+Images : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escaliers, tunnel 2 de Zeus, loop de Goudurix) et `lot-2.jpg` (gare de Goudurix, pupitre d'OzIris, « Masquer la gare », barrières et lacets d'OzIris, largeur des files).
 
 1. **Trace du Hourra — 2e barrière** : vous avez cité le chemin OSM 1580112207, qui est en fait la **boucle de file de Goudurix** (près du lac). Nous avons mis la 2e barrière sur le **raccourci** de la Trace du Hourra (partie de 1580149150 entre les deux bouts de la boucle 1032685208), liée à la première, et gardé la barrière de Goudurix sur 1580112207 : juste ?
 2. **Trace du Hourra — rocher** : hauteur (nous : ≈ 9,8 m, la voie le traverse à 7,6 m) ? La voie basse (s ≈ 614 m, 4,3 m) traverse aussi la pointe nord-ouest du rocher sans `tunnel` OSM : passe-t-elle dessous ?
@@ -11,7 +11,7 @@ Image : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escalier
 5. **Zeus — tunnel 2** : nous le faisons couvrir toute la diagonale 18 → 19 (s 850–900 m, 50 m, galerie couverte) : longueur et aspect justes ?
 6. **Goudurix — barrière de file** (5,3 ; 50,5), sur la boucle 1580112207 : existe-t-elle (voir question 1) ?
 7. **Trace du Hourra — gare** : le tronçon 1231613335 n'a pas `roller_coaster:track=station` : nous gardons 16 m de quai. Faut-il l'étiqueter ?
-8. **Zones « waiting »** : nous lisons `waiting` comme une zone de freinage (frein de bloc ou attente) et `moving` comme du parcours ; faut-il distinguer `block_brake` ?
+8. **OzIris — barrières de file** : la boucle ouest a deux barrières liées (à l'entrée et à la sortie de la boucle, à 1,6 m de la fourche) et le raccourci des lacets sud une barrière : bons emplacements ? Goudurix : la gare est agrandie à ses quais (le bâtiment OSM ne couvre que la voie) : juste ?
 
 ### Répondu le 2026-11-16 (questions prioritaires 1–8 de la mise à jour OSM)
 
@@ -22,7 +22,7 @@ Image : `maj-osm-2.jpg` (passerelle, rocher, forêt et eau, barrières, escalier
 5. ~~**Trace du Hourra — freins de bloc**~~ : **oui**, s 302–322 et 509–527 (B2, B3).
 6. ~~**Goudurix — arrêt au frein final**~~ : **oui**, le train attend au bout du frein final ≈ 34 m avant la gare, juste avant l'aiguillage.
 7. ~~**Goudurix — loop**~~ : **26 m** ; fait (voir nouvelle question 4).
-8. ~~**Barrières des boucles de file**~~ : Trace du Hourra **oui** (deux barrières liées : boucle 1032685208 / raccourci) ; OzIris **non** (file unique, fourche et barrière supprimées) ; Goudurix non précisé (barrière gardée, nouvelle question 6).
+8. ~~**Barrières des boucles de file**~~ : Trace du Hourra **oui** (deux barrières liées : boucle 1032685208 / raccourci) ; OzIris : d'abord « non », puis **corrigé par le propriétaire : oui** — une barrière pour le raccourci 1580173580, deux liées pour la boucle 1580173578 / 1580173579 (fait) ; Goudurix non précisé (barrière gardée, nouvelle question 6).
 
 Images par attraction (Trace du Hourra, Tonnerre 2 Zeus, OzIris). `<id>-trace-complete.png` montre le **tracé complet** seul, sur fond clair, avec un rond numéroté **tous les 50 m** (tableau : distance, hauteur estimée, zone), un point tous les 10 m et le sens de marche ; c'est la meilleure base pour placer freins et moteurs. Les deux autres images montrent la vue aérienne et la gare / le garage. Les repères sont des **ronds numérotés** : rouge = zone du circuit (position estimée par nous), gris = repère tous les 100 m de voie (« s = 300 m » veut dire 300 m après le début du quai), bleu = bout de voie de garage, violet = garage. Chaque repère porte un point d'interrogation : « à confirmer ».
 
