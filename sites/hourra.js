@@ -12,10 +12,6 @@ const SITE=(()=>{
   // (son grand côté est parallèle à la ligne droite du frein final). d = distance (m) entre l'axe du circuit et l'axe de la voie.
   // Côté ouest, écartement 3,2 m, distance de la première voie (8 m), longueur (un train + 1,4 m) : ESTIMÉS (non relevés).
   const lane=(n,d)=>({name:'Voie '+n,d,cap:1});
-  // barrière pivotante en travers du chemin P, à d m de son début : poteau en bordure (h), fermée en travers (a), ouverte le long de la bordure (b)
-  const gateOn=(P,d,loop)=>{let i=1,acc=0;while(i<P.length-1&&acc+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])<d){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);i++;}
-    const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k],r=v=>Math.round(v*100)/100;
-    return {h:[r(c[0]-tz*1.1),r(c[1]+tx*1.1)],a:[r(c[0]+tz*1.1),r(c[1]-tx*1.1)],b:[r(c[0]-tz*1.1+tx*2.2),r(c[1]+tx*1.1+tz*2.2)],loop:!!loop};};
   return {
     id:'hourra',title:'La Trace du Hourra',kind:'bob',trackName:'Gouttière',goal:900,lap:110,
     // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées. pitch : 0,78 m d'axe à axe entre les deux passagers
@@ -56,7 +52,7 @@ const SITE=(()=>{
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
         // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières liées (propriétaire, 2026-11-16) : une ouvre / ferme la boucle,
         // l'autre ferme / ouvre le raccourci ; posées à 1,6 m de la fourche sur chaque chemin (emplacement exact ESTIMÉ)
-        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[gateOn(LOOP,1.6,true),gateOn(B.slice(5,8),1.6)]},
+        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[{on:'loop',at:1.6},{on:'short',at:1.6}]},
         {pts:B.slice(7).concat(UP.slice(1))}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     // allée d'accès PROM : dans la zone piétonne OSM (dessinée comme une surface, praticable partout), plus dessinée comme chemin

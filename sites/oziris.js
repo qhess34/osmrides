@@ -4,8 +4,8 @@
    maintenance) : sites/oziris.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/oziris-notes.md. */
 const SITE=(()=>{
   const Q=OSM.paths.queue,PROM=OSM.paths.prom,QL=OSM.paths.qlink,QIN=OSM.paths.qin,XO=OSM.paths.xout;
-  // File (OSM 1073325805) : le chemin repasse par le même nœud (-17, 57.3) ; file unique, sans barrière ni raccourci (propriétaire, 2026-11-16).
-  const ENTRY0=[35.4,31.0];
+  // File (OSM 1580173577 + 1073325805) : fourche de la boucle ouest au nœud (-15,5 ; 57,4) = Q[10] ; lacets sud de 1073325805 entre Q[27] (-21,7 ; 24,5) et Q[31] (-21,2 ; 23,2).
+  const ENTRY0=[35.4,31.0],F1=10,F2=27,F3=31;
   // Garage (OSM) : pont transbordeur (railway=traverser 1330192631) sur la fin du frein final, 3 voies de maintenance (1330192628…30)
   // parallèles au frein final, en AMONT du pont, côté nord-ouest, à 3,0 / 7,0 / 11,0 m de l'axe du circuit (relevé OSM, ±0,5 m), longues de 13,3 m.
   // Le train entre donc dans sa voie en marche arrière (yard.rev). Pont à RAIL UNIQUE (propriétaire, 2026-11-15 : « c'est la voie du parcours
@@ -40,14 +40,21 @@ const SITE=(()=>{
     fade:[[-7,-8,9],[-24,-24,12],[-35,-25,8]],   // toits qui s'effacent : gare, halle du frein final et du pont, garage
     // Quais : embarquement côté ouest (entrée OSM), débarquement côté est (sortie OSM) ; profondeurs ESTIMÉES d'après le bâtiment OSM 420016980.
     plat:{load:7.0,exit:3.5,back:.6,front:1.6},
-    // Poste de conduite : côté embarquement (ouest), en tête de quai (ESTIMÉ), vitre tournée vers la voie.
-    booth:[-17.1,-2.7,2.008],boothLabel:[-21.8,-4.6],beacon:[-17.3,-4.2],
+    // Poste de conduite (propriétaire, 2026-11-16 : « au sud-est ») : côté est (débarquement), en tête de quai, juste derrière le quai de sortie, entièrement dans
+    // le bâtiment de gare OSM 420016980, vitre tournée vers la voie ; emplacement exact ESTIMÉ.
+    booth:[-9.7,0.29,2.007],boothLabel:[-5.6,1.6],beacon:[-8.6,-1.6],
     queue:{entry0:ENTRY0,link:[[37.4,27.8]],gate:{h:[36.3,31.8],a:[34.5,30.2],b:[34.7,33.6]},
       parts:[
-        // file unique (propriétaire, 2026-11-16 : pas de barrière ni de raccourci) : chemin OSM de la file en entier, puis fin de la file (OSM 2026-11-16) : zigzag ouest,
-        // chemin 1580105930, passage SOUS la gare (1580105922, tunnel=yes layer=-1 : dessiné sous le toit, qui s'efface au zoom),
+        // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
+        // à la fourche (deux barrières liées, à l'entrée et à la sortie de la boucle : ouvertes = boucle en service, fermées = passage direct) ;
+        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 évite (une barrière sur le raccourci). Emplacements des barrières ESTIMÉS.
+        {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
+        {name:'boucle ouest',loop:OSM.paths.qloopW,short:[Q[F1],Q[F1]],gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
+        {pts:Q.slice(F1,F2+1)},
+        {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS,gates:[{on:'short',at:.6,half:.9}]},
+        // fin de la file (OSM 2026-11-16) : chemin 1580105930, passage SOUS la gare (1580105922, tunnel=yes layer=-1 : dessiné sous le toit, qui s'efface au zoom),
         // escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée du quai ouest (passerelle 1580105933)
-        {pts:[ENTRY0].concat(Q,QIN.slice(1,-1))}]},
+        {pts:Q.slice(F3).concat(QIN.slice(1,-1))}]},
     approach:[{w:.5,pts:[[57.4,-2.3],[50.4,21.4],[38.1,26.5]]},{w:.5,pts:[[-5.3,19.5],[34.4,27.3],[38.1,26.5]]}],
     paths:[PROM,QL,XO],
     // Entrée de la gare (OSM entrance=main, (-7.4, 4.3)) puis couloir d'attente côté est

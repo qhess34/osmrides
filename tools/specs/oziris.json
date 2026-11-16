@@ -189,7 +189,10 @@
   "drag": 0.0011
  },
  "paths": {
-  "queue": 1073325805,
+  "queue": [
+   1580173577,
+   1073325805
+  ],
   "prom": 421508668,
   "qlink": 1220633163,
   "qin": [
@@ -211,7 +214,12 @@
    1580105927,
    1580105929,
    1580105928
-  ]
+  ],
+  "qloopW": [
+   1580173578,
+   1580173579
+  ],
+  "qshortS": 1580173580
  },
  "polys": {
   "station": 420016980,
@@ -224,5 +232,6 @@
   "tr",
   "pre"
  ],
- "note_osm": "Repères lus dans OSM (2026-11-16) : gare 937048122 (station, 21,2 m), lift 541161843 (lift_hill), zones 'waiting' : frein final 1580105919, rail du pont transbordeur 541161847 (tr), zone d'attente avant gare 1330192627 (pre). Aucun frein de bloc en parcours dans OSM : B1 estimé retiré. Tunnels : 1580105918 (layer 2, galerie couverte) et 421460641 (sous l'eau)."
+ "note_osm": "Repères lus dans OSM (2026-11-16) : gare 937048122 (station, 21,2 m), lift 541161843 (lift_hill), zones 'waiting' : frein final 1580105919, rail du pont transbordeur 541161847 (tr), zone d'attente avant gare 1330192627 (pre). Aucun frein de bloc en parcours dans OSM : B1 estimé retiré. Tunnels : 1580105918 (layer 2, galerie couverte) et 421460641 (sous l'eau).",
+ "note_file": "File (propriétaire, changesets 192031122 / 192031244 du 2026-11-16) : 1580173577 depuis l'entrée jusqu'à la fourche (-15,5 ; 57,4), boucle ouest 1580173578 + 1580173579 (retour à la fourche), 1073325805 vers la gare avec ses lacets sud, raccourci 1580173580."
 }
