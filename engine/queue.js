@@ -38,6 +38,19 @@ const STAIRS=(OSM.stairs||OSM.feats.filter(f=>f.k==='highway=steps'&&!f.c).map(f
       if(best&&best.acc>1)STAIRS.push({p:best.R.slice().reverse(),up:1,gen:1,w:b.f.w||0,h:b.h});}}
 })();
 for(const o of STAIRS){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of o.p){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}Object.assign(o,{x0:x0-1.5,x1:x1+1.5,z0:z0-1.5,z1:z1+1.5});}
+// Haut de chaque escalier (propriétaire, 2026-11-16, lot 6 : « un palier pour TOUS les hauts d'escalier ; analyser le sens montant / descendant ») : o.top = 1 (dernier
+// point) ou 0 (premier point), -1 si inconnu. Sens OSM d'abord (incline=up/down et sens du way, tools/make_site.py → o.up = +1 : le way monte, -1 : il descend) ;
+// sinon d'après le profil : l'extrémité dans l'emprise de la gare (quai, plancher) ou à moins de 4 m d'une porte de la gare, puis celle au bout d'une passerelle
+// surélevée, est le haut. Le palier rectangulaire est dessiné au haut (engine/render.js, STEPD) ; aucun palier en bas. LANDC : emprise des paliers hors de la gare
+// (allées coupées dessous, engine/render.js cutStairs).
+const LANDC=[];
+(function stairTops(){const SPo=SITE.stationPoly||[],pin=q=>{let c=false;for(let i=0,j=SPo.length-1;i<SPo.length;j=i++)if((SPo[i][1]>q[1])!==(SPo[j][1]>q[1])&&q[0]<(SPo[j][0]-SPo[i][0])*(q[1]-SPo[i][1])/(SPo[j][1]-SPo[i][1])+SPo[i][0])c=!c;return c;};
+  const sc=q=>(SPo.length>2&&pin(q))||(OSM.doors||[]).some(d=>Math.hypot(d[0]-q[0],d[1]-q[1])<4)?2:BRIDGE_DEF.some(b=>b.h>1&&[b.P[0],b.P[b.P.length-1]].some(e=>Math.hypot(e[0]-q[0],e[1]-q[1])<1.5))?1:0;
+  for(const o of STAIRS){if(o.up>0)o.top=1;else if(o.up<0)o.top=0;else{const a=sc(o.p[0]),b=sc(o.p[o.p.length-1]);o.top=a>b?0:b>a?1:-1;}}
+})();
+function landCut(){LANDC.length=0;const SPo=SITE.stationPoly||[];for(const o of STAIRS){if(!(o.top>=0)||o.app||o.p.length<2)continue;const P=o.p,T=P[o.top?P.length-1:0],q=P[o.top?P.length-2:1];
+  if(SPo.length>2&&pipXZ(SPo,T[0],T[1]))continue; // sommet sur le quai / le plancher de la gare : le quai sert de palier
+  const l=Math.hypot(T[0]-q[0],T[1]-q[1])||1,ux=(T[0]-q[0])/l,uz=(T[1]-q[1])/l;LANDC.push({o,x:T[0],z:T[1],ux,uz,nx:-uz,nz:ux,h:(o.w||o.ow||2)/2});}}
 const STEPS=STAIRS,STEP_K=.6;
 function stepK(x,z){for(const o of STEPS){if(x<o.x0||x>o.x1||z<o.z0||z>o.z1)continue;if(dPl(x,z,o.p)<(o.w||1.5)/2+.3)return STEP_K;}return 1;}
 // Réseau de la file, décrit de l'entrée vers la gare par SITE.queue.parts : tronçons simples et fourches.
@@ -96,10 +109,10 @@ const APPW=2;
     if(Math.abs(ux*tx+uz*tz)<.8)continue; // pas parallèle à la gare
     const smp=[];for(let i=1;i<P.length;i++)for(let k=0;k<=4;k++)smp.push([P[i-1][0]+(P[i][0]-P[i-1][0])*k/4,P[i-1][1]+(P[i][1]-P[i-1][1])*k/4]);
     if(!smp.some(q=>pin(q[0],q[1])))continue;
-    {const T=o.up<0?A:B;if(!(OSM.doors||[]).some(d=>Math.hypot(d[0]-T[0],d[1]-T[1])<4))continue;} // sommet à moins de 4 m d'une porte de la gare : escalier qui monte au niveau de la gare
+    {const T=o.top===0?A:B;if(!(OSM.doors||[]).some(d=>Math.hypot(d[0]-T[0],d[1]-T[1])<4))continue;} // sommet à moins de 4 m d'une porte de la gare : escalier qui monte au niveau de la gare
     let nx=-tz,nz=tx;const mx=(A[0]+B[0])/2,mz=(A[1]+B[1])/2;if((mx-cx)*nx+(mz-cz)*nz<0){nx=-nx;nz=-nz;} // vers l'extérieur de la gare
     let d=0;while(d<12&&smp.some(q=>pin(q[0]+nx*(d-APPW/2),q[1]+nz*(d-APPW/2))))d+=.05;d+=.05;
-    const top=o.up<0?A:B;moves.push([P.map(q=>q.slice()),nx*d,nz*d,o]);o.p=P.map(q=>[q[0]+nx*d,q[1]+nz*d]);o.app={nx,nz,top:[top[0]+nx*d,top[1]+nz*d],ux:o.up<0?-ux:ux,uz:o.up<0?-uz:uz};
+    const top=o.top===0?A:B;moves.push([P.map(q=>q.slice()),nx*d,nz*d,o]);o.p=P.map(q=>[q[0]+nx*d,q[1]+nz*d]);o.app={nx,nz,top:[top[0]+nx*d,top[1]+nz*d],ux:o.top===0?-ux:ux,uz:o.top===0?-uz:uz};
     o.x0+=Math.min(0,nx*d);o.x1+=Math.max(0,nx*d);o.z0+=Math.min(0,nz*d);o.z1+=Math.max(0,nz*d);}
   if(!moves.length)return;
   const done=new WeakSet,fix=L=>{if(!L)return;for(const q of L){if(!Array.isArray(q)||typeof q[0]!=='number'||done.has(q))continue;done.add(q);for(const [P,dx,dz] of moves)if(P.some(r=>Math.hypot(r[0]-q[0],r[1]-q[1])<.3)){q[0]+=dx;q[1]+=dz;break;}}};
@@ -108,9 +121,9 @@ const APPW=2;
   // Raccord régulier au pied de l'escalier (propriétaire, Goudurix, 2026-11-16, lot 5 : chemin d'entrée trop étroit et difforme) : les points du chemin qui menaient au pied
   // de l'escalier à sa position OSM (à moins de 2,5 m de son ancien axe, en contrebas) sont retirés ; le chemin rejoint l'axe décalé à angle droit, puis monte tout droit
   // dans l'escalier (largeur : celle de la file, engine/render.js).
-  const reg=new Set,regular=L=>{if(!L||reg.has(L))return;reg.add(L);for(const [P0,dx,dz,o] of moves){const a=o.app,Bm=o.up<0?o.p[o.p.length-1]:o.p[0],Bo=[Bm[0]-dx,Bm[1]-dz];
+  const reg=new Set,regular=L=>{if(!L||reg.has(L))return;reg.add(L);for(const [P0,dx,dz,o] of moves){const a=o.app,Bm=o.top===0?o.p[o.p.length-1]:o.p[0],Bo=[Bm[0]-dx,Bm[1]-dz];
     const j=L.findIndex(q=>Math.hypot(q[0]-Bm[0],q[1]-Bm[1])<.05);if(j<0)continue;
-    const T=o.up<0?o.p[0]:o.p[o.p.length-1],dir=(L[j+1]&&Math.hypot(L[j+1][0]-T[0],L[j+1][1]-T[1])<.3)?-1:(L[j-1]&&Math.hypot(L[j-1][0]-T[0],L[j-1][1]-T[1])<.3)?1:0;if(!dir)continue;
+    const T=o.top===0?o.p[0]:o.p[o.p.length-1],dir=(L[j+1]&&Math.hypot(L[j+1][0]-T[0],L[j+1][1]-T[1])<.3)?-1:(L[j-1]&&Math.hypot(L[j-1][0]-T[0],L[j-1][1]-T[1])<.3)?1:0;if(!dir)continue;
     const far=q=>{const v=[q[0]-Bo[0],q[1]-Bo[1]],al=v[0]*a.ux+v[1]*a.uz,la=Math.abs(-v[0]*a.uz+v[1]*a.ux);return al>.3||la>2.5;};
     let k=j+dir;while(k>=0&&k<L.length&&!far(L[k]))k+=dir;if(k<0||k>=L.length)continue;
     const K=L[k],al=(K[0]-Bm[0])*a.ux+(K[1]-Bm[1])*a.uz,F=[Bm[0]+a.ux*Math.min(-.6,al),Bm[1]+a.uz*Math.min(-.6,al)];
@@ -120,7 +133,7 @@ const APPW=2;
 // Escaliers arrêtés au bord du quai (propriétaire, Trace du Hourra, 2026-11-16, lot 5, générique) : la partie d'un escalier OSM posée sur un quai (embarquement ou
 // débarquement, PLT) d'un escalier OSM qui mène à une porte (accès au quai) est retirée — l'escalier s'arrête au bord du quai, sans empiéter sur la zone d'embarquement ; un escalier entièrement sur le quai devient du plancher.
 (function stairsOffPlatform(){if(!BAYS.length)return;const b0=BAYS[0];
-  const onQuai=(x,z)=>{const u=(x-b0.x)*b0.tx+(z-b0.z)*b0.tz;if(u>PLT.front||u<-(NCARS-.5)*CAR-PLT.back)return false;const b=BAYS[clamp(Math.round(-u/CAR),0,NCARS-1)],l=(x-b.x)*b.rx+(z-b.z)*b.rz;return (l>1.3&&l<PLT.load)||(PLT.exit&&l<-1.3&&l>-PLT.exit);};
+  const onQuai=(x,z)=>{const u=(x-b0.x)*b0.tx+(z-b0.z)*b0.tz;if(u>PLT.front||u<-(NCARS-.5)*CAR-PLT.back)return false;const b=BAYS[clamp(Math.round(-u/CAR),0,NCARS-1)],l=(x-b.x)*b.rx+(z-b.z)*b.rz;return (l>PEDGE&&l<PLT.load)||(PLT.exit&&l<-PEDGE&&l>-PLT.exit);};
   for(let i=STAIRS.length-1;i>=0;i--){const o=STAIRS[i];if(o.gen||o.app)continue;const P=o.p,smp=[];
     if(!(OSM.doors||[]).some(d=>[P[0],P[P.length-1]].some(q=>Math.hypot(d[0]-q[0],d[1]-q[1])<.6)))continue; // escalier qui mène à une porte de la gare (accès au quai)
     for(let j=1;j<P.length;j++){const a=P[j-1],c=P[j],n=Math.max(1,Math.ceil(Math.hypot(c[0]-a[0],c[1]-a[1])/.1));for(let k=j>1?1:0;k<=n;k++){const q=[a[0]+(c[0]-a[0])*k/n,a[1]+(c[1]-a[1])*k/n];q.on=onQuai(q[0],q[1]);q.v=k===n||k===0;smp.push(q);}}
@@ -129,6 +142,20 @@ const APPW=2;
     if(!best||best.length<6){STAIRS.splice(i,1);continue;}
     const R=[best[0]].concat(best.slice(1,-1).filter(q=>q.v),[best[best.length-1]]).map(q=>[q[0],q[1]]);
     o.p=R;let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of R){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}Object.assign(o,{x0:x0-1.5,x1:x1+1.5,z0:z0-1.5,z1:z1+1.5});}
+})();
+// Entrée de la file sur une zone piétonne (propriétaire, 2026-11-16, lot 6, d'après OzIris, générique) : là où la file débouche sur une zone piétonne OSM, elle est
+// prolongée DANS la zone, dans l'axe de son premier tronçon, jusqu'à QMOUTH m de file dans la zone (SITE.queue.mouth, défaut 5 m, ESTIMÉ d'après OzIris) ; ce couloir
+// est délimité par des barrières des deux côtés (engine/render.js, QSIDE). Le raccord QS.link commence à la bouche du couloir et les accès (SITE.approach) y mènent.
+const QMOUTH=QS.mouth!=null?QS.mouth:5;
+(function queueMouth(){const PED=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3).map(f=>f.p);if(!PED.length||!QMOUTH)return;
+  const pin=(P,q)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>q[1])!==(P[j][1]>q[1])&&q[0]<(P[j][0]-P[i][0])*(q[1]-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
+  const p0=QS.parts[0]&&QS.parts[0].pts||[],C=(QS.link||[]).concat([ENTRY0],p0.filter((q,i)=>i||Math.hypot(q[0]-ENTRY0[0],q[1]-ENTRY0[1])>.05)),Z=PED.find(P=>pin(P,C[0]));if(!Z||C.length<2)return;
+  let inL=0;for(let i=1;i<C.length;i++){const l=Math.hypot(C[i][0]-C[i-1][0],C[i][1]-C[i-1][1]);if(!pin(Z,C[i])){let lo=0,hi=1;for(let k=0;k<12;k++){const m=(lo+hi)/2;if(pin(Z,[C[i-1][0]+(C[i][0]-C[i-1][0])*m,C[i-1][1]+(C[i][1]-C[i-1][1])*m]))lo=m;else hi=m;}inL+=l*lo;break;}inL+=l;}
+  if(inL>=QMOUTH-.3)return;
+  let j=1;while(j<C.length-1&&Math.hypot(C[j][0]-C[0][0],C[j][1]-C[0][1])<.5)j++;const l=Math.hypot(C[j][0]-C[0][0],C[j][1]-C[0][1])||1,ux=(C[0][0]-C[j][0])/l,uz=(C[0][1]-C[j][1])/l;
+  let d=QMOUTH-inL;while(d>.3&&!pin(Z,[C[0][0]+ux*(d+.8),C[0][1]+uz*(d+.8)]))d-=.2; // reste dans la zone (0,8 m de marge)
+  if(d<=.3)return;const M=[+(C[0][0]+ux*d).toFixed(2),+(C[0][1]+uz*d).toFixed(2)];QS.link=[M].concat(QS.link||[]);QS.mouthAt=M;
+  for(const A of SITE.approach){const P=A.pts=A.pts.slice();while(P.length>1&&dPl(P[P.length-1][0],P[P.length-1][1],[M,C[0]])<1.6)P.pop();P.push(M.slice());} // accès jusqu'à la bouche du couloir
 })();
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{

@@ -61,7 +61,7 @@ const SITE=(()=>{
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     // allée d'accès PROM : dans la zone piétonne OSM (dessinée comme une surface, praticable partout), plus dessinée comme chemin
     paths:[OSM.paths.exit,XD],
-    board:{via:[[1.4,-.9]],walk:3.6},   // entrée OSM entrance=main (1,0 ; -1,3) en haut de l'escalier ; couloir d'attente à 3,6 m de la voie (ESTIMÉ)
+    board:{via:[[1.4,-.9]],walk:2.9},   // entrée OSM entrance=main (1,0 ; -1,3) en haut de l'escalier ; couloir d'attente à 2,9 m de la voie (ESTIMÉ ; lot 6 : portillons rapprochés du bord)
     // Sortie OSM : entrance=exit (-0,5 ; 3,8) dans le quai sud-ouest, escalier 1580086196 qui descend, puis le chemin de sortie 1032354545
     exit:{door:XD[0],path:XD.concat(OSM.paths.exit.slice(1)),
       tails:[[[25.8,38.3],[27.7,40.2],[42.8,43.4],[50.5,45.3],[52.9,52.8]],[[25.8,38.3],[24,40.4],[13.8,41.6],[5,46],[-1.4,49.1]]]},   // vers la zone piétonne OSM

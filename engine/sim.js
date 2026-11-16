@@ -303,7 +303,7 @@ function updatePlatform(dt){
     let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
     const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let i=-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r]){i=kb*CSEATS+r;break;}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
-      const b=BAYS[Math.floor(i/CSEATS)],W=SITE.board.walk,j=rnd(-.2,.2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2,0,'wait');}
+      const g=GUNITS[seatUnit(i).u],b=BAYS[g.k],W=SITE.board.walk,j=g.c+rnd(-.2,.2)*g.h/(CAR/2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2,0,'wait');}
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.depReq); // portillons : ouverts et fermés seulement au pupitre
   G.gate=clamp(G.gate+(G.gatesOpen||G.walkers.some(k=>k.kind==='board')?dt:-dt)/.7,0,1); // un portillon ne se referme pas sur un visiteur qui le franchit

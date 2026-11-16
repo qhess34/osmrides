@@ -59,7 +59,7 @@ const SITE=(()=>{
     approach:[{w:.5,pts:[[57.4,-2.3],[50.4,21.4],[38.1,26.5]]},{w:.5,pts:[[-5.3,19.5],[34.4,27.3],[38.1,26.5]]}],
     paths:[PROM,QL,XO],
     // Entrée de la gare (OSM entrance=main, (-7.4, 4.3)) puis couloir d'attente côté est
-    board:{via:[[-14.4,-9.9]],walk:5.0},   // dernière passerelle vers l'entrée OSM (-12,6 ; -9,0) ; couloir d'attente à 5 m de la voie (ESTIMÉ)
+    board:{via:[[-14.4,-9.9]],walk:4.45},   // dernière passerelle vers l'entrée OSM (-12,6 ; -9,0) ; couloir d'attente à 4,45 m de la voie (ESTIMÉ ; lot 6 : portillons rapprochés du bord)
     // Sortie (OSM 2026-11-16) : porte entrance=exit (-7,5 ; -9,5) du quai est, passerelle 1580105927 (layer 2), escalier 1580105929 qui descend, allée 1580105928 vers l'est.
     exit:{door:XO[0],path:XO,
       tails:[[[10.4,-.7],[10.6,-4.3],[11.1,-12.1],[14.8,-27.4],[39.5,-8.3],[50.7,-1.1]],[[10.4,-.7],[-1.3,9.0],[-5.3,19.5]]]},

@@ -38,7 +38,7 @@ const SITE=(()=>{
         {pts:W.slice(J1)}]},
     approach:[{w:.6,pts:PROM_W.concat([[-29.2,-9]])},{w:.4,pts:PROM_N.concat([[-29.2,-9]])}],
     noStroll:[[-27.5,-1.5]],
-    board:{via:[[-3.9,7.9],[-4,6.9]],walk:6.3},
+    board:{via:[[-3.9,7.9],[-4,6.9]],walk:5.25},   // couloir d'attente derrière les places (lot 6 : portillons rapprochés du bord du quai, engine/garage.js PGATE)
     exit:{door:[-.7,-3],path:[[-.7,-3],[-.7,-4.1],[-11.1,-4.1],[-11,-7.3],[-8.8,-8.8],[-6.2,-8.8],[-4.6,-9.7],[-4.4,-11.3],[.3,-15.5],[1.9,-19.4],[-3.2,-20.1],[-8.6,-25]], // sortie par la boutique
       tails:[[[-.2,-32.2],[3.6,-42.4],[4.8,-56.4]],[[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]].concat(PROM_W.slice().reverse())]},
     jobsites:{liftFix:[37.8,39],chainRev:[37.8,39],trackRev:[-2,106.5],brakeFix:[-26,33],brakeRev:[-26,33],trainRev:[46,-4.6],rearm:[4,2.6]},

@@ -119,23 +119,35 @@ const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&
   :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering)||(DEV_HOLD>=0&&o.s>BLK[DEV_HOLD]+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
+// Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
+// (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m), ou demi-largeur de la gouttière d'un bob (1,15 m), + 8 cm de jeu ; SITE.plat.edge pour forcer.
+// Les portillons sont rapprochés du bord : PGATE = PEDGE + SITE.plat.gateGap (défaut .8 m, ESTIMÉ : couloir des opérateurs, qui y marchent à POPL) ; places d'attente derrière.
+const PEDGE=(SITE.plat&&SITE.plat.edge)||+(Math.max((SITE.car.w||1.24)/2+(SITE.kind==='wood'?.2:SITE.kind==='steel'?.12:0),SITE.kind==='bob'?1.15:0)+.08).toFixed(2);
+const PGATE=+(PEDGE+((SITE.plat&&SITE.plat.gateGap)||.8)).toFixed(2),POPL=(PEDGE+PGATE)/2;
+// Portillons : un par wagon (défaut) ou un par rangée de places (SITE.plat.gatesPer:'row', Goudurix, propriétaire, lot 6) ; deux visiteurs par portillon pour des rangées de 2.
+// GUNITS[u] = {k : wagon, w : rangée, c : centre le long du wagon (m, vers l'avant), h : demi-longueur} ; seatUnit(i) = {u : portillon, j : rang dans sa file d'attente}.
+const GPR=SITE.plat&&SITE.plat.gatesPer==='row'?S_ROWS:1,NGATES=NCARS*GPR,GUNITS=[];
+for(let k=0;k<NCARS;k++)for(let w=0;w<GPR;w++)GUNITS.push({k,w,c:CAR/2-(w+.5)*CAR/GPR,h:CAR/GPR/2});
+const seatUnit=i=>{const k=Math.floor(i/CSEATS),r=i%CSEATS;return GPR>1?{u:k*GPR+Math.floor(r/S_COLS),j:r%S_COLS}:{u:k,j:r};};
+const unitAt=(u,lat)=>{const g=GUNITS[u],b=BAYS[g.k];return [b.x+b.tx*g.c+b.rx*lat,b.z+b.tz*g.c+b.rz*lat];};
 // Toit de gare trop petit pour ses quais (bâtiment OSM qui ne couvre que la voie) : si, au milieu du train, un quai (plat.load / plat.exit) sort de plus de 0,8 m de
 // SITE.stationPoly, le bâtiment de gare est agrandi à l'enveloppe convexe du polygone et des quais (+0,3 m) : sol, toit, effacement et contrôle offpath suivent. ESTIMÉ.
-const STATION_GROW=(()=>{const P=SITE.stationPoly;if(!P||P.length<3)return null;const Q=Object.assign({load:7.9,exit:0},SITE.plat),a=BAYS[NCARS-1],b=BAYS[0],m=BAYS[NCARS>>1],h=CAR/2,C=[],M=[];
-  for(const l of [Q.load+.3,-(Q.exit?Q.exit+.3:1.6)]){C.push([a.x-a.tx*h+a.rx*l,a.z-a.tz*h+a.rz*l],[b.x+b.tx*h+b.rx*l,b.z+b.tz*h+b.rz*l]);M.push([m.x+m.rx*l,m.z+m.rz*l]);} // quais sur la longueur du train ; test au milieu (débord latéral seulement)
+const STATION_GROW=(()=>{const P=SITE.stationPoly;if(!P||P.length<3)return null;const Q=Object.assign({load:7.9,exit:0,back:.1,front:1.6},SITE.plat),a=BAYS[NCARS-1],b=BAYS[0],m=BAYS[NCARS>>1],h=CAR/2,C=[],M=[];
+  // quais sur toute leur longueur (arrière du dernier wagon + plat.back, avant du premier + plat.front) : le toit couvre TOUT le quai (propriétaire, Tonnerre 2 Zeus, lot 6)
+  for(const l of [Q.load+.3,-(Q.exit?Q.exit+.3:1.6)]){C.push([a.x-a.tx*(h+Q.back)+a.rx*l,a.z-a.tz*(h+Q.back)+a.rz*l],[b.x+b.tx*Math.max(h,Q.front)+b.rx*l,b.z+b.tz*Math.max(h,Q.front)+b.rz*l]);M.push([m.x+m.rx*l,m.z+m.rz*l]);}
   const pin=(x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
   const dE=(x,z)=>{let m=1e9;for(let i=0,j=P.length-1;i<P.length;j=i++){const A=P[j],B=P[i],dx=B[0]-A[0],dz=B[1]-A[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-A[0])*dx+(z-A[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(A[0]+dx*t-x,A[1]+dz*t-z));}return m;};
-  if(!M.some(c=>!pin(c[0],c[1])&&dE(c[0],c[1])>.8))return null;
+  if(!M.concat(C).some(c=>!pin(c[0],c[1])&&dE(c[0],c[1])>.8))return null; // débord latéral (milieu) ou en bout de quai
   const pts=P.concat(C).sort((p,q)=>p[0]-q[0]||p[1]-q[1]),cr=(o,p,q)=>(p[0]-o[0])*(q[1]-o[1])-(p[1]-o[1])*(q[0]-o[0]),lo=[],hi=[];
   for(const p of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
   for(const p of pts.slice().reverse()){while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
   const H=lo.slice(0,-1).concat(hi.slice(0,-1)).map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);return H.concat([H[0]]);})();
 if(STATION_GROW)SITE.stationPoly=STATION_GROW;
-const slotPos=i=>{const b=BAYS[Math.floor(i/CSEATS)],d=3.45+(i%CSEATS)*.8;return [b.x+b.rx*d,0,b.z+b.rz*d];}; // une place d'attente par siège, en file derrière le portillon
+const slotPos=i=>{const s=seatUnit(i),q=unitAt(s.u,PGATE+.7+s.j*.8);return [q[0],0,q[1]];}; // une place d'attente par siège, en file derrière son portillon
 // Couloirs des visiteurs sur les quais (jamais en ligne droite à travers la gare, la voie ou les portillons) :
 //  embarquement : file → SITE.board.via → couloir d'attente (SITE.board.walk m de la voie, derrière les portillons) → place d'attente de la travée → (portillon ouvert seulement) → siège ;
 //  débarquement : siège → quai de débarquement, côté opposé aux portillons (couloir à SITE.plat.walkU m de la voie, par défaut au milieu du quai) → travée de la porte → SITE.exit.door → SITE.exit.path.
-const PLT=Object.assign({load:7.9,exit:0,back:.1,front:1.6},SITE.plat),ULAT=-(PLT.walkU||(PLT.exit?(1.3+PLT.exit)/2:1.8));
+const PLT=Object.assign({load:7.9,exit:0,back:.1,front:1.6},SITE.plat),ULAT=-(PLT.walkU||(PLT.exit?(PEDGE+PLT.exit)/2:1.8));
 const bayAt=(k,lat,du)=>{const b=BAYS[k];return [b.x+b.rx*lat+b.tx*(du||0),0,b.z+b.rz*lat+b.tz*(du||0)];};
 const DOOR=SITE.exit.door,DOORK=DOOR?BAYS.reduce((m,b,k)=>Math.hypot(b.x-DOOR[0],b.z-DOOR[1])<Math.hypot(BAYS[m].x-DOOR[0],BAYS[m].z-DOOR[1])?k:m,0):0;
 function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des travées jusqu'à la porte
@@ -144,19 +156,19 @@ function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des t
 }
 const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,SITE.board.walk),bayAt(NCARS-1,SITE.board.walk)]]; // couloirs de quai (contrôle offpath)
 // Deux opérateurs de quai (moitié avant, moitié arrière) ferment les sécurités wagon par wagon après le verrouillage au pupitre, les vérifient, puis valident chacun sur un bouton
-const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*1.95,b.z+b.tz*e*1.7+b.rz*1.95];};
+const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*POPL,b.z+b.tz*e*1.7+b.rz*POPL];}; // dans le couloir entre le bord du quai et les portillons
 const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});
-function startCheck(t){t.phase='check';for(const o of OPS){o.ok=false;o.st='go';o.k=o.i?NCARS-1:0;o.w=0;}}
+function startCheck(t){t.phase='check';for(const o of OPS){o.ok=false;o.st='go';o.k=o.i?NGATES-1:0;o.w=0;}} // o.k : portillon (wagon, ou rangée avec gatesPer:'row') vérifié
 function resetOps(){for(const o of OPS){o.ok=false;if(o.st!=='idle')o.st='back';}}
 function stepOps(dt){
   for(const o of OPS){
     o.mv=false;if(o.st==='idle')continue;
     if(o.st==='press'){o.w-=dt;if(o.w<=0){o.ok=true;o.st='idle';}continue;}
-    const b=BAYS[clamp(o.k,0,NCARS-1)],tg=o.st==='go'?[b.x+b.rx*1.95,b.z+b.rz*1.95]:opHome(o.i),dx=tg[0]-o.x,dz=tg[1]-o.z,d=Math.hypot(dx,dz),sp=3*dt;
+    const u=clamp(o.k,0,NGATES-1),ck=GUNITS[u].k,tg=o.st==='go'?unitAt(u,POPL):opHome(o.i),dx=tg[0]-o.x,dz=tg[1]-o.z,d=Math.hypot(dx,dz),sp=3*dt;
     if(d>sp){o.x+=dx/d*sp;o.z+=dz/d*sp;o.mv=true;continue;}
     o.x=tg[0];o.z=tg[1];
-    if(o.st==='go'){const T=trains.find(x=>x.st==='station'&&x.phase==='check');if(T){T.rcT&=~(1<<o.k);if(T.rc[o.k]>.05)continue;} // l'opérateur ferme les sécurités du wagon devant lui, puis le contrôle
-      o.w+=dt;if(o.w>=.3){o.w=0;o.k+=o.i?-1:1;if(o.i?o.k<NCARS/2:o.k>=NCARS/2)o.st='ret';}}
+    if(o.st==='go'){const T=trains.find(x=>x.st==='station'&&x.phase==='check');if(T){T.rcT&=~(1<<ck);if(T.rc[ck]>.05)continue;} // l'opérateur ferme les sécurités du wagon devant lui, puis le contrôle
+      o.w+=dt;if(o.w>=.3){o.w=0;o.k+=o.i?-1:1;if(o.i?o.k<NGATES/2:o.k>=NGATES/2)o.st='ret';}}
     else if(o.st==='ret'){o.st='press';o.w=.45;}
     else o.st='idle';
   }

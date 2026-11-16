@@ -132,6 +132,7 @@ Bouton **Sécurités** du pupitre (`#bRes`, `act('res')`, voyant `#lRes` : vert 
 - À l'arrivée en gare, les sécurités restent **verrouillées** (rappel au journal) ; le débarquement ne commence qu'une fois ouvertes.
 - **Ouvrir** : immédiat (`G.resOpen`), toutes les places s'ouvrent (~1,5 s). L'embarquement se fait sécurités ouvertes (un visiteur ne monte que si les sécurités de son wagon sont ouvertes).
 - **Verrouiller** (portillons fermés, sinon refus au journal) : verrouille le système et **lance la vérification** (propriétaire : « le verrouillage des harnais lance la vérification des opérateurs, qui ferment les harnais ») : Op. 1 (avant) et Op. 2 (arrière) passent wagon par wagon, ferment chaque harnais ou lapbar resté ouvert (`t.rcT`, `t.rc[k]` : animation de fermeture au passage) puis valident ; les deux validés → départ possible. By-pass : barres fermées sans contrôle.
+- Portillons par rangée (`SITE.plat.gatesPer:'row'`, Goudurix, lot 6) : les opérateurs passent portillon par portillon (chaque rangée), ferment les sécurités du wagon au premier portillon et vérifient chaque rangée ; deux visiteurs par portillon. Bord de quai et portillons : `PEDGE`, `PGATE` (`engine/garage.js`).
 - Départ refusé tant que les sécurités sont ouvertes (journal, raison) ; manœuvre de garage depuis la gare (Gare AV / AR) aussi. Ouvrir les portillons ou les sécurités pendant la vérification la reprend à zéro.
 - Un train vide jamais déverrouillé (sorti du garage) part sans vérification. État sauvegardé (`engine/save.js`).
 

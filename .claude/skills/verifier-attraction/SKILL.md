@@ -9,4 +9,4 @@ Prérequis : `NODE_PATH=$(npm root -g)`. Lancer en arrière-plan (certains tests
 - Pages d'accueil / tutoriels modifiées : 0 erreur de page et pas de défilement horizontal à 360, 390 (iPhone 13) et 1280 ; liens et ancres valides ; test hors ligne HTTP (copie `_site` comme `.github/workflows/pages.yml`, `python3 tools/make_sw.py _site`, `python3 -m http.server`, Playwright hors ligne).
 - En cas d'échec : relancer seul le test qui échoue, lire la ligne du journal en cause, ne jamais désactiver un test.
 
-Toujours regarder au moins une capture. Ne pas affirmer ce qui n'est pas testable ici : souris réelle, son, appareil tactile réel, installation PWA.
+Pas de capture pour un changement de logique (tests seulement) ; pour un point visuel, une seule petite capture (≈ 600×450, JPEG ≈ 70), regardée une fois (règle du propriétaire, lot 6, skill `captures-jeu`). Ne pas affirmer ce qui n'est pas testable ici : souris réelle, son, appareil tactile réel, installation PWA.

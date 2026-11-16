@@ -43,7 +43,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 |---|---|---|---|
 | Chemins de file | `highway=footway` (+ `footway=*` ou un `name`) | Lu | Tracé de la file. La spec dit quels tronçons forment la file. |
 | Largeur | `width=*` en mètres | Lu | Largeur exacte du chemin dessiné. Sans ce tag : 1 m pour la file, 2 m pour un escalier de sortie. |
-| Escaliers | `highway=steps` (+ `incline=up/down`, `width=*`) | Lu | Marches, garde-corps, visiteurs ralentis ; largeur du chemin qu'ils prolongent. |
+| Escaliers | `highway=steps` (+ `incline=up/down`, `width=*`) | Lu | Marches, garde-corps, visiteurs ralentis ; largeur du chemin qu'ils prolongent. **`incline` (avec le sens du way) place le palier en HAUT de l'escalier** ; sans lui, le haut est deviné (côté gare / porte, puis passerelle), sinon pas de palier. |
 | Passerelle | `bridge=yes` + `layer=*` | Lu | Chemin dessiné par-dessus la voie, visiteurs dessus. |
 | Chemin couvert, souterrain | `tunnel=yes`, `covered=yes`, `indoor=yes` ou `layer` négatif | Lu | Couloir caché, visible avec « Masquer la gare ». |
 | Barrière | nœud `barrier=swing_gate` (+ `swing_gate:hinge=left/right`, `ref=*`) | Prévu | Position exacte des barrières de file (voir §5). |

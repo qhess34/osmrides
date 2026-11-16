@@ -40,8 +40,10 @@ const SITE=(()=>{
     // Quais ESTIMÉS (le bâtiment OSM, 6,8 m de large, ne couvre que la voie et ses abords) : embarquement à l'ouest (portillons), débarquement à l'est. Quai ouest ramené à 6,2 m
     // (propriétaire, 2026-11-16, lot 4 : l'escalier de la file 1580112204 est EN APPLIQUE à l'ouest de la gare, collé au mur, hors du quai ; le moteur le décale contre le mur et
     // dessine un palier rectangulaire à son sommet) : juste assez pour les 4 places d'attente par portillon.
-    plat:{load:6.2,exit:3.5,back:.6,front:1.6},
-    booth:[6.4,-11.8,0],boothLabel:[9.5,-14.5],beacon:[5.6,-10.6],
+    // Deux portillons par wagon, un par rangée de 2 places (propriétaire, 2026-11-16, lot 6) : 14 portillons, deux visiteurs par portillon, les opérateurs vérifient chaque rangée.
+    plat:{load:6.2,exit:3.5,back:.6,front:1.6,gatesPer:'row'},
+    // Poste de contrôle au SUD-EST de la gare, dans son emprise, vitre tournée vers la voie (propriétaire, lot 6) ; pupitre réduit (échelle .55 : 2,1 x 0,9 m, ESTIMÉ).
+    booth:[2.25,8.6,Math.PI/2,.55],boothLabel:[7,12],beacon:[2.55,7.75],
     queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
       parts:[{pts:[ENTRY0].concat(Q.slice(1,F0+1))},
         // boucle 1580112207 (propriétaire, 2026-11-16) : barrières liées à son ENTRÉE et à sa SORTIE (jumelle de sortie posée par le moteur), à 1,6 m des bouts (ESTIMÉ)
@@ -50,8 +52,8 @@ const SITE=(()=>{
     // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.
     approach:[{w:.5,pts:BRIDGE.slice().reverse().concat([[34,7.5],[29.9,7.7],[18,4.2]],EAST.slice(0,3))},{w:.5,pts:EAST.slice(2).reverse()}],
     paths:[PROM,PROM2,QL,EAST,XO],
-    // Entrée du quai ouest (OSM entrance=main, mur ouest de la gare) ; couloir d'attente à 3,8 m de la voie (ESTIMÉ)
-    board:{via:[[-3.8,-0.4]],walk:3.8},
+    // Entrée du quai ouest (OSM entrance=main, mur ouest de la gare) ; couloir d'attente à 2,8 m de la voie, entre les deux places de chaque portillon (ESTIMÉ ; lot 6 : portillons rapprochés du bord du quai)
+    board:{via:[[-3.8,-0.4]],walk:2.8},
     // Sortie (OSM 2026-11-16) : porte entrance=exit (3,5 ; 5,5) du mur est, chemin 1580112210, escalier 1580112211, chemin 1580112209 ; raccord ESTIMÉ vers l'allée est et le pont de bois.
     exit:{door:XO[0],path:XO,
       tails:[[XO[XO.length-1],[16.5,11.6],[18,4.2],[29.9,7.7],[34,7.5]].concat(BRIDGE),[XO[XO.length-1],[16.5,11.6]].concat(EAST.slice(1))]},

@@ -1,17 +1,30 @@
 # Questions pour le propriétaire — plans à annoter
 
-## À répondre en priorité (2026-11-16, lot 5)
+## À répondre en priorité (2026-11-16, lot 6)
 
-Image : `lot-5.jpg` (barrières parallèles de la Trace du Hourra et de Zeus, barrière pivotante d'OzIris, chemin d'entrée de Goudurix, quais éclaircis, embarquement de Zeus, files couvertes masquées, escaliers au bord du quai, file délimitée d'OzIris, raccord du 2e raccourci de Zeus avant / après).
+Image : `lot-6.jpg` (quais au gabarit et portillons rapprochés des 4 attractions, toit de Zeus, 14 portillons et poste de Goudurix, entrée de file prolongée, paliers en haut des escaliers, pointillé des files couvertes).
 
-1. **Barrières parallèles** (Trace du Hourra, Zeus) : poteau-pivot sur la bordure du raccourci côté boucle, juste après la pointe ; boucle ouverte, vantaux en travers du raccourci ; boucle fermée, en travers de l'entrée et de la sortie de la boucle. Est-ce le bon côté du raccourci ?
-2. **OzIris — barrière pivotante** : poteau au sommet de l'angle (là où les bordures des deux chemins se rejoignent), sous la voie : lisible ainsi ?
-3. **Largeur de la file sans width OSM** : la boucle 1032685208 de la Trace du Hourra n'a pas de width ; elle prend 1 m comme le reste de la file. Faut-il faire de même ailleurs, ou ajouter les width dans OSM (OzIris, Goudurix, Zeus restent en largeur adaptée, jusqu'à 2,2 m) ?
-4. **File le long des quais et dans les zones piétonnes** : 1 m (ESTIMÉ) avec barrières des deux côtés (entrées d'OzIris, de la Trace du Hourra, de Goudurix ; traversée du quai de la Trace du Hourra). Largeur réelle du couloir ?
-5. **Trace du Hourra — escaliers d'accès** : l'escalier 1580086195 (entièrement sur le quai) n'est plus dessiné, l'escalier qui y mène s'arrête au bord du quai ; l'escalier de sortie s'arrête aussi au bord du quai de débarquement. Juste ?
-6. **Quais** : béton clair mat (#d6d1c6) pour les quatre attractions : bonne teinte, ou trop clair ?
-7. **Files couvertes** : visibles seulement avec « Masquer la gare ». Faut-il aussi un repère (pointillé) de leur tracé quand la gare est affichée ?
-8. **Goudurix — chemin d'entrée** : demi-tour régulier au pied de l'escalier en applique (2,5 m entre les deux allées, main courante entre elles) : conforme ?
+1. **Zeus — toit** : le bâtiment OSM de la gare s'arrête vers x = 9,2 m alors que le quai va jusqu'à 13,6 m (avant du train + 1,6 m) ; le toit est agrandi par le moteur (ESTIMÉ). Le bâtiment OSM est-il trop court (à corriger dans OSM) ou le tronçon `station` trop long ?
+2. **Bord de quai** : 8 cm entre le gabarit des wagons et le bord ; portillons à 0,8 m du bord (couloir des opérateurs). Bonnes distances ?
+3. **Goudurix — poste de contrôle** : pupitre réduit (≈ 2,1 × 0,9 m, ESTIMÉ) sur le quai est, devant le premier wagon, au coin sud-est de la gare, vitre vers la voie : bon emplacement, bonne taille ?
+4. **Goudurix — 14 portillons** : un par rangée, deux visiteurs par portillon, les opérateurs vérifient rangée par rangée : conforme ?
+5. **Entrée de file sur une zone piétonne** : couloir prolongé à 5 m dans la zone (Goudurix ; Trace du Hourra 6,5 m et OzIris 7 m l'avaient déjà) : bonne longueur ?
+6. **Paliers** : carré de la largeur de l'escalier, en haut seulement (sens OSM `incline`, sinon côté gare / porte / passerelle). Escaliers d'OzIris près de la dernière passerelle : sens inconnu, pas de palier tant qu'`incline` manque dans OSM. Bon rendu ?
+7. **Files couvertes** : pointillé fin, tirets clairs et sombres alternés, gare affichée : assez discret et lisible ?
+8. **En attente de votre mise à jour OSM** (barrières, escaliers, largeurs) : questions 1 à 5 du lot 5 ci-dessous, gardées.
+
+### En attente (lot 5, barrières / escaliers / largeurs OSM)
+
+1. **Barrières parallèles** (Trace du Hourra, Zeus) : poteau-pivot sur la bordure du raccourci côté boucle : bon côté ?
+2. **OzIris — barrière pivotante** au sommet de l'angle, sous la voie : lisible ?
+3. **Largeur de la file sans width OSM** (boucle 1032685208, OzIris, Goudurix, Zeus) : width à ajouter dans OSM ?
+4. **File le long des quais et dans les zones piétonnes** : 1 m ESTIMÉ ; largeur réelle ?
+5. **Trace du Hourra — escaliers d'accès** arrêtés au bord du quai : juste ?
+
+### Répondu le 2026-11-16 (lot 6 : questions prioritaires du lot 5 et demandes)
+
+6. ~~**Quais**~~ : teinte claire validée (« parfait »). 7. ~~**Files couvertes**~~ : repère en pointillé très discret quand la gare est affichée : fait (nouvelle question 7). 8. ~~**Goudurix — demi-tour**~~ : validé.
+Demandes faites : file prolongée avec barrières des deux côtés là où elle entre sur une zone piétonne (générique) ; toit de Zeus sur tout le quai ; quais au gabarit, portillons, places d'attente et embarquement recalés (4 attractions) ; palier en HAUT de chaque escalier (escalier de sortie de Goudurix : palier en haut, l'ancienne tache de chemin retirée) ; poste de Goudurix au sud-est ; 14 portillons de Goudurix (`plat.gatesPer:'row'`).
 
 ### Répondu le 2026-11-16 (lot 5 : questions prioritaires 1–8 du lot 4 et demandes 9–16)
 

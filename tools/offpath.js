@@ -27,7 +27,7 @@ const SRC = () => {
   const SP = SITE.plat || {}, P = Object.assign({ load: 7.9, exit: 0, back: .1, front: 1.6 }, SP), poly = SITE.stationPoly || [];
   const a = BAYS[NCARS - 1], b = BAYS[0];
   const quad = (l0, l1) => [[a.x - a.tx * (P.back + CAR / 2) + a.rx * l0, a.z - a.tz * (P.back + CAR / 2) + a.rz * l0], [b.x + b.tx * P.front + b.rx * l0, b.z + b.tz * P.front + b.rz * l0], [b.x + b.tx * P.front + b.rx * l1, b.z + b.tz * P.front + b.rz * l1], [a.x - a.tx * (P.back + CAR / 2) + a.rx * l1, a.z - a.tz * (P.back + CAR / 2) + a.rz * l1]];
-  const quads = [quad(1.3, P.load)]; if (P.exit) quads.push(quad(-1.3, -P.exit));
+  const quads = [quad(PEDGE, P.load)]; if (P.exit) quads.push(quad(-PEDGE, -P.exit)); // bord de quai : PEDGE (engine/garage.js)
   // axe de la voie (seulement dans et autour de la gare : ailleurs la voie est en hauteur au-dessus des chemins)
   const T = []; { const f = mkF(); for (let s = 0; s < L; s += 1) { frameAt(s, f); if (poly.length && (inPoly(f.p.x, f.p.z, poly) || dpoly(f.p.x, f.p.z, poly) < 2.5)) T.push([f.p.x, f.p.z]); else T.push(null); } }
   const doors = (SITE.exit.door ? [SITE.exit.door] : []).concat(SITE.board.door ? [SITE.board.door] : []);
@@ -42,12 +42,12 @@ const SRC = () => {
     const dt = dpoly(x, z, T);
     const rail = dt < 1.05, inSt = inStation(x, z), pl = onPlat(x, z), l = lat(x, z), bay = alongBay(x, z);
     const loadSide = l > 0 && SITE.loadSide !== undefined ? 1 : 1; // (rx,rz) pointe vers le quai d'embarquement
-    if ((kind === 'board' || kind === 'alight') && bay && Math.abs(l) < 1.4) return null; // monte / descend du train
+    if ((kind === 'board' || kind === 'alight') && bay && Math.abs(l) < Math.max(1.4, PEDGE + .1)) return null; // monte / descend du train
     if (cov.some(C => dpoly(x, z, C) <= 1.2)) return null; // dans un passage couvert, sous la voie (autre niveau)
     if (rail) return 'voie';
     if (inSt && !pl && !rail && !nearQ(x, z) && !areas.some(A => A.q && inPoly(x, z, A.p))) return 'gare';
-    if (bay && l > 1.3 && l < 2.65 && kind === 'wait') return 'portillon';
-    if (bay && l < 2.65 && kind === 'board' && G.gate < .85 && Math.abs(l) > 1.3) return 'portillon';
+    if (bay && l > PEDGE && l < PGATE - .1 && kind === 'wait') return 'portillon';
+    if (bay && l < PGATE - .1 && kind === 'board' && G.gate < .85 && Math.abs(l) > PEDGE) return 'portillon';
     if (pl || near(x, z)) return null;
     if (doors.some(d => Math.hypot(x - d[0], z - d[1]) < 1.8)) return null;
     for (const B of blds) if (inPoly(x, z, B) && !inStation(x, z)) return 'bâtiment';
