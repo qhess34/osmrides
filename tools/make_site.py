@@ -373,6 +373,12 @@ isped = lambda t: (t.get('highway') == 'pedestrian' and (t.get('area') == 'yes' 
 def lay(t):
     try: return float(t.get('layer', 0))
     except ValueError: return 0
+def bheight(t):  # hauteur d'un bâtiment en m : height OSM, sinon building:levels × 3 m ; None si absente (moteur : 7 m ESTIMÉ)
+    for k, m in (('height', 1), ('building:levels', 3)):
+        try: v = float(t.get(k, '').replace(',', '.').replace('m', '').strip()) * m
+        except ValueError: continue
+        if 0 < v < 200: return round(v, 2)
+    return None
 def wnum(t):  # largeur OSM (width) en m, None si absente ou illisible
     try: v = float(t.get('width', '').replace(',', '.').replace('m', '').strip()); return v if 0.3 < v < 20 else None
     except ValueError: return None
@@ -383,6 +389,7 @@ def add(t, p, closed, holes=None):
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
         if kind.startswith('highway=') and not closed and iscov(t): f['cv'] = 1
+        if kind.startswith('building') and bheight(t): f['bh'] = bheight(t)  # hauteur du bâtiment (voie qui le survole : bâtiment dessiné sous la voie, moteur)
         if kind.startswith('highway=') and not closed and t.get('bridge') not in (None, 'no') and not iscov(t): f['br'] = max(1, int(lay(t))); f.update({'w': wnum(t)} if wnum(t) else {})  # passerelle piétonne : dessinée au-dessus de la voie si elle la franchit (moteur)
         if closed and holes:  # anneaux intérieurs (multipolygone) : lac dans une place, îlot…, orientés à l'opposé de l'anneau extérieur (remplissage « nonzero » du canevas)
             h = [q if area(q) * area(p) < 0 else q[::-1] for q in holes if len(q) > 3 and inside(q[0], p)]

@@ -59,7 +59,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Arbres | nœud `natural=tree` | Lu | Arbres isolés. |
 | Rochers | `natural=rock` / `stone` (way fermé ou relation multipolygone) | Lu | Massif en relief, tunnels de voie et de file dessous. Un rocher en relation est assemblé à partir de ses tronçons. |
 | Bâtiments | `building=*` | Lu | Toits, avec `name` affiché. |
-| Hauteur des bâtiments | `height=*`, `building:levels=*` | Utile | Ombres et ordre de dessin plus justes. |
+| Hauteur des bâtiments | `height=*`, sinon `building:levels=*` (× 3 m) | Lu | Longueur de l'ombre ; un bâtiment que la voie survole plus haut que lui est dessiné sous la voie (sans hauteur : 7 m estimé). |
 
 ## 5. Barrières de file : comment les dessiner
 
