@@ -32,7 +32,7 @@ const SITE=(()=>{
     queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],mouthMax:.45,gateAtMouth:true,
       parts:[
         {pts:[ENTRY0].concat(W.slice(0,JB+1))},
-        // Raccourcis : barrières = nœuds OSM barrier=* (règle du propriétaire, issue #12, engine/queue.js osmGates) ; boucle sans nœud OSM : barrière posée par le jeu à son entrée (ESTIMÉE).
+        // Raccourcis : barrières = nœuds OSM barrier=* (règle du propriétaire, issue #12, engine/queue.js osmGates) ; une barrière pivotante par pointe (issue #17).
         {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]]},
         {pts:W.slice(JA,J2+1)},
         {name:'raccourci est',loop:W.slice(J2,J1+1),short:SHORT_E||[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]]},

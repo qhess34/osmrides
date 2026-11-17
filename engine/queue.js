@@ -7,14 +7,15 @@ const SP=.42,QS=SITE.queue;
 //  - longueur    = largeur du chemin, d'une bordure à l'autre : width=* OSM si présent, sinon largeur par défaut du chemin dessiné, ESTIMÉE (g.wEst, reGates) ;
 //  - poteau      = côté swing_gate:hinge (left / right vu dans le sens OSM du chemin) si donné, sinon à droite du sens de la file ; ouverte = rabattue le long de sa bordure ;
 //  - un nœud OSM REMPLACE toute barrière posée par le moteur ou donnée par SITE : aucune barrière posée à la main par site (SITE.queue.osmGates:false pour s'en passer) ;
-//  - boucle de fourche sans nœud OSM : le jeu pose une barrière à l'ENTRÉE de la boucle (g.est = 1, ESTIMÉ) ; de même à l'entrée du raccourci s'il n'en a aucune ;
+//  - FOURCHE (issue #17, croquis docs/sources/goudurix-barrieres-fourche-2026-11-17.png) : UNE barrière par pointe (départ et retour du raccourci, liées), poteau-pivot
+//    sur la BORDURE à la pointe de l'angle intérieur entre les deux chemins, position A en travers du raccourci, B en travers de la boucle (forkGate, pivot:'tip') ;
+//    le nœud OSM (milieu du chemin, à moins de 3 m de la pointe) ne donne que l'emplacement ; pointe sans nœud : ESTIMÉE (est:1) ;
 //    file sans nœud d'entrée ni SITE.queue.gate : barrière au départ de la file (ESTIMÉE) ;
 //  - les visiteurs ne franchissent que les barrières ouvertes (nextSeg, sauf évacuation) ; chaque barrière se clique sur la carte (engine/render.js).
 // Cas particuliers :
 //  - barrière d'entrée : nœud sur le premier tronçon de la file (à moins de 0,6 m de son axe, dans ses 15 premiers mètres) : la file commence à la barrière, le bout de
 //    chemin qui la précède devient le raccord d'entrée (QS.link, QS.lead : parcouru par les arrivants) ;
-//  - nœud sur la pointe d'une fourche (à moins de 0,35 m d'un bout du raccourci, sur la boucle aussi) : en travers du RACCOURCI, juste après la pointe, là où sa bordure se
-//    détache de celle de la boucle (tipAt) ; nœud au milieu de la boucle ou du raccourci : en travers de ce chemin à cet endroit. Les barrières d'une fourche bougent ensemble.
+//  - nœud au milieu de la boucle ou du raccourci (à plus de 3 m des pointes) : en travers de ce chemin à cet endroit. Les barrières d'une boucle bougent ensemble.
 const OSMB=QS.osmGates===false?[]:(OSM.barriers||[]);const ENTRY_EST=!QS.gate;
 const _np=(P,x,z)=>{let bd=1e9,best=0,acc=0,t=[1,0];for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz),k=L?Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(L*L))):0,d=Math.hypot(a[0]+dx*k-x,a[1]+dz*k-z);if(d<bd){bd=d;best=acc+L*k;t=L?[dx/L,dz/L]:t;}acc+=L;}return {d:bd,at:best,t};};
 const hingeSide=(b,t)=>!b[3]?0:((-t[1])*(-b[5])+t[0]*b[4])*(b[3]==='left'?-1:1)>=0?1:-1; // côté du poteau (1 = droite du sens de la file)
@@ -31,13 +32,14 @@ if(OSM_ENTRY||ENTRY_EST)Object.assign(ENTRY_GATE,gateAt(QS.parts[0].pts,0,false,
 // Barrières d'une fourche (règle ci-dessus) : nœuds OSM, complétés par le jeu à l'entrée de la boucle (et du raccourci) qui n'en a aucun (ESTIMÉ, est:1).
 // Poteau d'une barrière posée par le jeu : sur la bordure EXTÉRIEURE (opposée à l'autre chemin), pour que le vantail ouvert ne gêne pas l'autre chemin.
 const outerSide=(P,Q)=>{const c=ptAt(P,1.5),c2=ptAt(P,1.6),l=Math.hypot(c2[0]-c[0],c2[1]-c[1])||1,nx=-(c2[1]-c[1])/l,nz=(c2[0]-c[0])/l,B=ptAt(Q,1.5);return (B[0]-c[0])*nx+(B[1]-c[1])*nz>0?-1:1;};
-function osmGates(p){if(!p.loop||!p.short)return null;const S=p.short,out=[];
-  for(const b of OSMB){const r0=Math.hypot(b[0]-S[0][0],b[1]-S[0][1]),r1=Math.hypot(b[0]-S[S.length-1][0],b[1]-S[S.length-1][1]),rs=_np(S,b[0],b[1]),rl=_np(p.loop,b[0],b[1]);
-    if(Math.min(r0,r1)<.35&&rl.d<.6){const e=r1<r0,sd=hingeSide(b,rs.t)||1;out.push({on:'short',tip:true,end:e,side:e?-sd:sd,pair:false,loop:false,osm:b[2]||1});continue;}
-    const k=rs.d<=rl.d?'short':'loop',r=k==='short'?rs:rl;if(r.d<.6)out.push({on:k,at:r.at,exact:true,pair:false,side:hingeSide(b,r.t)||1,loop:k==='loop',osm:b[2]||1});}
-  if(!out.length&&(p.gates||p.gate))return null; // fourche sans aucun nœud OSM, barrières données par SITE (repli, déconseillé)
-  if(!out.some(g=>g.loop))out.push({on:'loop',tip:true,end:false,side:outerSide(p.loop,p.short),pair:false,loop:true,est:1}); // entrée de la boucle : ESTIMÉE
-  if(!out.some(g=>!g.loop))out.push({on:'short',tip:true,end:false,side:outerSide(p.short,p.loop),pair:false,loop:false,est:1}); // entrée du raccourci : ESTIMÉE
+function osmGates(p){if(!p.loop||!p.short)return null;const S=p.short,J=[S[0],S[S.length-1]],out=[],tipN=[[],[]];
+  // nœud à moins de 3 m d'une pointe (bout du raccourci, là où il quitte / rejoint la boucle) : barrière de cette pointe ; plus loin : en travers du chemin le plus proche
+  for(const b of OSMB){const r=J.map(q=>Math.hypot(b[0]-q[0],b[1]-q[1])),e=r[1]<r[0]?1:0,rs=_np(S,b[0],b[1]),rl=_np(p.loop,b[0],b[1]);
+    if(r[e]<3&&Math.min(rs.d,rl.d)<.6){tipN[e].push(b);continue;}
+    const k=rs.d<=rl.d?'short':'loop',r2=k==='short'?rs:rl;if(r2.d<.6)out.push({on:k,at:r2.at,exact:true,pair:false,side:hingeSide(b,r2.t)||1,loop:k==='loop',osm:b[2]||1});}
+  if(!out.length&&!tipN[0].length&&!tipN[1].length&&(p.gates||p.gate))return null; // fourche sans aucun nœud OSM, barrières données par SITE (repli, déconseillé)
+  // UNE barrière par pointe (issue #17) : pivot sur la pointe de l'angle intérieur, A = en travers du raccourci, B = en travers de la boucle ; pointe sans nœud OSM : ESTIMÉE
+  for(const e of [0,1])out.push(Object.assign({on:'fork',pivot:'tip',pair:false,end:!!e},tipN[e].length?{osm:tipN[e][0][2]||1,x:tipN[e][0][0],z:tipN[e][0][1]}:{est:1}));
   return out;}
 function pathPos(P,C,d,o,side){
   d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;
@@ -131,7 +133,15 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
       const i=QS.parts.indexOf(p),nb=g.end?QS.parts[i+1]:QS.parts[i-1],NP=nb&&nb.pts?(g.end?nb.pts:nb.pts.slice().reverse()):null;let O=NP?u(NP):[-uS[1],uS[0]];
       if(Math.abs(O[0]*uS[0]+O[1]*uS[1])>.7)O=[-uS[1],uS[0]];const hw=hwAt(T);
       return {h:[T[0]-O[0]*hw,T[1]-O[1]*hw],a:[T[0]+(uS[0]+O[0])*hw,T[1]+(uS[1]+O[1])*hw],b:[T[0]+(uL[0]+O[0])*hw,T[1]+(uL[1]+O[1])*hw],loop:false,fork:1};}
-    const k=hs/((hl+hs)||1),h=[B[0]+(A[0]-B[0])*k,B[1]+(A[1]-B[1])*k];return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1};}
+    // pivot = pointe de l'angle intérieur des chemins DESSINÉS (croquis du propriétaire, issue #17) ; un nœud OSM de pointe est sur la jonction des AXES, en amont de
+    // cette pointe de ≈ demi-largeur / sin(angle/2) (Goudurix : 1,1 et 2,5 m) : il désigne la fourche, le pivot est posé à la pointe (g.dn = écart au nœud, en m)
+    // coin exact : intersection des bordures intérieures (axes décalés de leur demi-largeur, l'un vers l'autre), la plus proche de la jonction le long du raccourci
+    const sideT=(P,O)=>{const n=[-P[1],P[0]];return n[0]*O[0]+n[1]*O[1]>0?n:[-n[0],-n[1]];},nS=sideT(uS,uL),nL=sideT(uL,uS),
+      off=(P,n0,hw)=>{const R=[];for(let i=0;i<P.length;i++){const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],tx=b[0]-a[0],tz=b[1]-a[1],l=Math.hypot(tx,tz)||1;let nx=-tz/l,nz=tx/l;if(nx*n0[0]+nz*n0[1]<0){nx=-nx;nz=-nz;}R.push([P[i][0]+nx*hw,P[i][1]+nz*hw]);}return R;},
+      oS=off(headOf(PS,mx+4),nS,hs),oL=off(PL,nL,hl);let k=hs/((hl+hs)||1),h=[B[0]+(A[0]-B[0])*k,B[1]+(A[1]-B[1])*k];
+    find:for(let i=1;i<oS.length;i++)for(let j=1;j<oL.length;j++){const p=oS[i-1],q=oS[i],r=oL[j-1],t=oL[j],dx=q[0]-p[0],dz=q[1]-p[1],ex=t[0]-r[0],ez=t[1]-r[1],den=dx*ez-dz*ex;if(Math.abs(den)<1e-9)continue;
+      const u=((r[0]-p[0])*ez-(r[1]-p[1])*ex)/den,v=((r[0]-p[0])*dz-(r[1]-p[1])*dx)/den;if(u>=0&&u<=1&&v>=0&&v<=1){h=[p[0]+dx*u,p[1]+dz*u];break find;}}
+    return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1,dn:g.x!=null?+Math.hypot(h[0]-g.x,h[1]-g.z).toFixed(2):undefined};}
   // bordure du raccourci côté boucle, un peu au-delà de la pointe (hors de l'emprise de la boucle)
   const F=PS[0],sd=Math.sign((B[0]-F[0])*(A[1]-F[1])-(B[1]-F[1])*(A[0]-F[0]))||1; // côté de la boucle par rapport au raccourci
   const em=plen(PS)*.3;let e=Math.min(d,em),h=null;for(;e<=em+1e-6;e+=.05){const c=ptAt(PS,e),c2=ptAt(PS,e+.05),tx=c2[0]-c[0],tz=c2[1]-c[1],l=Math.hypot(tx,tz)||1,nx=-tz/l*sd,nz=tx/l*sd;
@@ -143,7 +153,14 @@ function tipAt(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),PL=rv
 const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.tip?tipAt(g,p):g.at||1.6;return Object.assign(gateAt(P,g.exact||g.tip?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
   return Object.assign(r,{cfg:g,part:p});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
-function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);l.g=l.gs[0];}
+const segX=(p,q,r,u)=>{const o=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));return o(p,q,r)!==o(p,q,u)&&o(r,u,p)!==o(r,u,q);};
+const leafEnd=(g,t)=>{const ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));const th=tb+d*t,
+  len=Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1])*(1-t)+Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1])*t;return [g.h[0]+Math.cos(th)*len,g.h[1]+Math.sin(th)*len];}; // même course que leaf (engine/render.js)
+// deux pointes si proches (raccourci de 1 à 2 m : lacets d'OzIris) que leurs vantaux se croiseraient : une seule fourche, une seule barrière (celle de l'entrée), g.merged
+const forkClash=(g1,g2)=>Math.hypot(g1.h[0]-g2.h[0],g1.h[1]-g2.h[1])<.6||[0,.25,.5,.75,1].some(t=>segX(g1.h,leafEnd(g1,t),g2.h,leafEnd(g2,t)));
+function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
+    const f=l.gs.filter(g=>g.cfg&&g.cfg.on==='fork'&&g.cfg.pivot==='tip');if(f.length===2&&forkClash(f[0],f[1])){const k=f.find(g=>g.cfg.end);k.merged=1;l.gs=l.gs.filter(g=>g!==k);f.find(g=>!g.cfg.end).merged=1;}
+    l.g=l.gs[0];}
   if(OSM_ENTRY||QS.gateMoved||ENTRY_EST){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
   // longueur = largeur du chemin : width=* OSM au droit de la barrière (osmWAt, engine/render.js), sinon largeur par défaut du chemin dessiné : ESTIMÉE (g.wEst)
   for(const g of LOOPS.flatMap(l=>l.gs).concat([ENTRY_GATE])){const c=[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2];g.w=+Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1]).toFixed(2);g.wEst=typeof osmWAt!=='function'||!osmWAt(c[0],c[1]);}}

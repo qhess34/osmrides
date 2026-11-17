@@ -72,16 +72,16 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Longueur | **Largeur du chemin**, d'une bordure à l'autre : `width=*` du chemin si présent, sinon largeur par défaut du chemin dessiné (**ESTIMÉE**). |
 | Poteau | Côté `swing_gate:hinge=left` / `right` (vu dans le sens de dessin du chemin) ; sans `hinge`, à droite du sens de la file. Ouverte, la barrière se rabat le long de sa bordure. |
 | Barrière posée à la main par une attraction | **Aucune** quand OSM en donne une. |
-| Boucle de fourche sans nœud OSM | Le jeu pose une barrière à l'**entrée de la boucle** (**ESTIMÉE**) ; de même à l'entrée du raccourci s'il n'en a pas. |
+| Fourche (issue #17, croquis `docs/sources/goudurix-barrieres-fourche-2026-11-17.png`) | **Une seule barrière par pointe** (là où le raccourci quitte la boucle, et là où il la rejoint ; les deux d'une même boucle basculent ensemble). Le nœud OSM, au milieu du chemin, donne seulement **l'emplacement de la fourche** ; le **poteau-pivot** est sur la **bordure**, à la **pointe de l'angle intérieur** entre les deux chemins (coin où leurs bordures se rejoignent). Position A (boucle en service) : en travers du **raccourci**, de ce coin à la bordure opposée, perpendiculaire au raccourci ; position B : pivotée autour du même coin, en travers de la **boucle**. Longueur = largeur du chemin barré dans chaque position (peut différer entre A et B). Clic sur la carte = bascule A ↔ B, animée. Pointe sans nœud OSM : même barrière, posée par le jeu (**ESTIMÉE**). Raccourci si court (1 à 2 m) que les vantaux des deux pointes se croiseraient : une seule barrière, à l'entrée (lacets sud d'OzIris). |
 
-Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; chaque barrière se clique sur la carte. Les barrières d'une même fourche bougent ensemble.
+Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; chaque barrière se clique sur la carte. Les barrières d'une même boucle bougent ensemble.
 
 | Cas | Comment le dessiner dans OSM |
 |---|---|
 | Barrière d'entrée de la file | Nœud `barrier=swing_gate` sur le chemin de file, dans ses 15 premiers mètres (`ref` libre, ex. « Entrée Goudurix ») : la file commence au nœud. |
 | Barrière qui ferme un chemin de file (boucle ou raccourci) | Nœud `barrier=swing_gate` sur ce chemin, à l'endroit de la fermeture. |
-| Barrière à la pointe d'une fourche | Nœud sur le point commun aux deux chemins : le jeu la pose en travers du **raccourci**, juste après la pointe. Pour fermer aussi la boucle, ajouter un nœud **sur la boucle**, à son entrée (sinon le jeu en pose une, estimée). |
-| Barrière de sortie d'un chemin fermable | Nœud sur ce chemin, un peu avant son bout côté gare (à plus de 0,4 m de la pointe : un nœud sur la pointe elle-même ferme le raccourci), même `ref=` que celle de l'entrée. |
+| Barrière de fourche (cas normal) | Un nœud `barrier=swing_gate` **sur le point commun aux deux chemins**, à chaque pointe (départ et retour du raccourci), même `ref=` pour les deux pointes d'une boucle. Le jeu reconnaît un nœud à moins de 3 m d'une pointe ; il en déduit le coin de bordure (pivot) et les deux positions. Pas de `hinge` à donner. |
+| Barrière au milieu d'une boucle ou d'un raccourci | Nœud sur ce chemin à plus de 3 m des pointes : barrière simple en travers de ce chemin, liée à la fourche (cas rare). |
 | Largeur exacte | `width=*` sur le way du chemin de file (sinon largeur estimée). |
 | Côté du poteau | `swing_gate:hinge=left` ou `right`, vu dans le sens de dessin du chemin. |
 | Barrières liées | Même `ref=` (ex. `ref=B1`). |

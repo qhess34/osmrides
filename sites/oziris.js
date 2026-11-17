@@ -52,7 +52,7 @@ const SITE=(()=>{
         // à la fourche ;
         // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
-        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates, règle issue #12) ; boucle sans nœud OSM : barrière du jeu à son entrée (ESTIMÉE)
+        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates, règle issue #12) ; une barrière pivotante par pointe (issue #17)
         {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1)},
         {pts:Q.slice(F1B,F2+1)},
         {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS},

@@ -50,7 +50,7 @@ const SITE=(()=>{
     // Entrée (propriétaire, issue #9 : « ça dépasse trop ») : la barrière OSM est déjà dans la zone piétonne, aucun prolongement (mouthMax 0 : raccord retiré).
     queue:{entry0:ENTRY0,link:[],mouthMax:0,   // barrière d'entrée : nœud OSM « Entrée Goudurix » (engine/queue.js)
       parts:[{pts:[ENTRY0].concat(Q.slice(Math.hypot(Q[0][0]-ENTRY0[0],Q[0][1]-ENTRY0[1])<1.5?1:0,F0+1))},
-        // boucle 1580112207 : barrières = nœuds OSM B1 aux pointes du raccourci ; entrée de la boucle : barrière posée par le jeu (ESTIMÉE, engine/queue.js osmGates)
+        // boucle 1580112207 : barrières = nœuds OSM B1 aux deux pointes : une barrière pivotante par pointe (engine/queue.js osmGates, issue #17)
         {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP},
         {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},
     // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.

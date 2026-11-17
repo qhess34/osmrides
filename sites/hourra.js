@@ -55,7 +55,7 @@ const SITE=(()=>{
       parts:[
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
         // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Barrières = nœuds OSM B1 aux pointes du raccourci (engine/queue.js osmGates,
-        // règle du propriétaire, issue #12) ; la boucle n'a pas de nœud OSM : barrière posée par le jeu à son entrée (ESTIMÉE).
+        // règle du propriétaire, issues #12 et #17) : une barrière pivotante par pointe.
         {name:'boucle nord',short:B.slice(5,8),loop:LOOP},
         {pts:B.slice(7)}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
