@@ -70,6 +70,10 @@
     const ab = E(`(()=>{const l=LOOPS.find(l=>l.kname===${JSON.stringify(name)}),h=[${p[0]},${p[1]}],hw=qwAt(h[0],h[1])/2;return [across(h,l.short.P,hw),across(h,l.loop.P,hw)];})()`);
     const q = v => { let len = Math.hypot(v[0] - p[0], v[1] - p[1]), ang = Math.atan2(v[1] - p[1], v[0] - p[0]); if (len < .5) len = 2.2; return { ang: R1(deg(ang)), len: R2(clamp(len, .2, 20)) }; };
     M.barriers[key] = { x: R2(p[0]), z: R2(p[1]), a: q(ab[0]), b: q(ab[1]) }; adding = null; sel = { t: 'gate', key }; applied(); return key; }
+  // Rattacher une barrière ajoutée à une autre fourche : la clé 'add:<fourche>:<n>' est renommée (n libre le plus petit dans la nouvelle fourche), géométrie intacte
+  function moveGate(key, name) { const M = GM(), m = /^add:(.+):(\d+)$/.exec(key); if (!m || !M.barriers || !M.barriers[key] || m[1] === name) return key;
+    let n = 1; while (M.barriers['add:' + name + ':' + n]) n++; const nk = 'add:' + name + ':' + n; M.barriers[nk] = M.barriers[key]; delete M.barriers[key];
+    if (sel && sel.t === 'gate' && sel.key === key) sel.key = nk; applied(); return nk; }
   function createRoom() { migrate(); const M = GM(); if (M.controlRooms.length) return; const c = E('cam'); M.controlRooms.push({ id: 'poste', x: R2(c.x), z: R2(c.z), angle: 0, w: 3.75, d: 1.7, main: true }); sel = { t: 'room' }; panel(); }
   function deleteRoom() { migrate(); GM().controlRooms.length = 0; sel = null; panel(); }
 
@@ -163,11 +167,12 @@
       if (g.off) return `<div><b>${esc(g.key)}</b></div><div class="note">Barrière <span class="tag t-orph">supprimée</span> : ignorée par le dessin, le clic et la logique du jeu (surcharge <code>{"off": true}</code>, le calcul reste).</div><div class="row"><button id="bAuto">Rétablir la barrière</button></div>`;
       const G = g.g, an = q => R1(deg(Math.atan2(q[1] - G.h[1], q[0] - G.h[0]))), ln = q => R2(Math.hypot(q[0] - G.h[0], q[1] - G.h[1]));
       const est = G.est || (G.cfg && G.cfg.est);
+      const fsel = g.add ? `<div class="row"><label>Fourche <select id="selFork">${E('forkList()').map(f => `<option value="${esc(f.name)}"${f.fork === g.fork ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label></div>` : '';
       return `<div><b>${esc(g.key)}</b></div><div class="note">${g.kind === 'entry' ? 'Barrière d\'entrée — A : fermée en travers du chemin, B : ouverte.' : 'Fourche « ' + esc(g.name || '') + ' » — A : en travers du raccourci (boucle en service), B : position basculée.'} ${g.add ? '<span class="tag t-ovr">ajoutée</span>' : G.ovr ? '<span class="tag t-ovr">corrigée</span>' : 'Calcul automatique' + (est ? ' <span class="tag t-est">estimée</span>' : (G.cfg && G.cfg.osm ? ' (nœud OSM)' : ''))}</div>
         <div class="grid" style="margin-top:6px"><span>Pivot x, z (m)</span><span>${inp('x', R2(G.h[0]))} ${inp('z', R2(G.h[1]))}</span>
         <span>A : angle °, long. m</span><span>${inp('a.ang', an(G.a), 1)} ${inp('a.len', ln(G.a))}</span>
         <span>B : angle °, long. m</span><span>${inp('b.ang', an(G.b), 1)} ${inp('b.len', ln(G.b))}</span></div>
-        <div class="row">${g.add ? '' : `<button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button>`}<button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
+        ${fsel}<div class="row">${g.add ? '' : `<button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button>`}<button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
     const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>';
     return `<div><b>Salle de contrôle</b> ${migrated() ? '' : '<span class="tag t-est">SITE.booth (repli)</span>'}</div>
@@ -182,6 +187,7 @@
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
     });
     const b = $('bAuto'); if (b) b.onclick = () => revertGate(sel.key);
+    const sf = $('selFork'); if (sf) sf.onchange = () => moveGate(sel.key, sf.value);
     const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
   }
   function panel() {

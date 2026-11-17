@@ -67,15 +67,32 @@ const ed = (page, s) => page.evaluate(s);
       await page.click(`#gList .it[data-key="${gd.key}"]`); await sleep(120); await page.click('#bDelGate'); await sleep(80);
       let dd = await ed(page, `ED.draft().barriers[${JSON.stringify(gd.key)}]`);
       ok(dd && dd.off === true && Object.keys(dd).length === 1 && await ed(page, `ED.gates().find(g=>g.key===${JSON.stringify(gd.key)}).off===true`), `barrière ${gd.key} supprimée (surcharge {off:true}, calcul gardé)`);
-      const fk = await ed(page, `ED.E('forkList()')[0].name`), fg = G0.find(g => g.kind === 'fork');
+      let fk = await ed(page, `ED.E('forkList()')[0].name`), fg = G0.find(g => g.kind === 'fork');
       const addAt = async () => { await page.selectOption('#addFork', fk); await page.click('#bAddGate'); await sleep(60);
         const q = await ed(page, `ED.toScr(${fg.h[0] + 1.5},${fg.h[1] - 1})`); await page.mouse.click(q[0], q[1]); await sleep(120); };
-      await addAt(); const ak = 'add:' + fk + ':1';
+      await addAt(); let ak = 'add:' + fk + ':1';
       let ab = await ed(page, `ED.draft().barriers[${JSON.stringify(ak)}]`);
       ok(ab && typeof ab.x === 'number' && ab.a.len >= .2 && ab.b.len >= .2 && await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(ak)}&&g.add&&g.kind==='fork')`), `barrière ajoutée à la fourche « ${fk} » (${ak}, pivot ${ab && ab.x}, ${ab && ab.z})`);
       await page.click('#bDelGate'); await sleep(80);
       ok(!(await ed(page, `!!(ED.draft().barriers||{})[${JSON.stringify(ak)}]`)) && !(await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(ak)})`)), 'barrière ajoutée supprimée (clé retirée de GAME)');
       await addAt(); ab = await ed(page, `ED.draft().barriers[${JSON.stringify(ak)}]`); ok(!!ab, 'barrière rajoutée (même clé ' + ak + ')');
+      // barrière supprimée puis ajoutée sur la même fourche : les deux restent listées ; « Rétablir » rend la barrière calculée ; la fourche d'une barrière ajoutée se change
+      const dk = await ed(page, `ED.gates().find(g=>g.off&&g.kind==='fork')`).then(g => g && g.key);
+      ok(!!dk && await page.isVisible(`#gList .it[data-key="${dk}"]`) && await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(ak)})`), `barrière supprimée ${dk} et barrière ajoutée listées ensemble`);
+      await page.click(`#gList .it[data-key="${dk}"]`); await sleep(100); await page.click('#bAuto'); await sleep(100);
+      ok(await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(dk)}&&!g.off)&&!ED.draft().barriers[${JSON.stringify(dk)}]`), `barrière ${dk} rétablie (surcharge retirée)`);
+      await page.click(`#gList .it[data-key="${dk}"]`); await sleep(100); await page.click('#bDelGate'); await sleep(100); // supprimée de nouveau (vérifiée dans jeu.html)
+      await page.click(`#gList .it[data-key="${ak}"]`); await sleep(100);
+      const forks = await ed(page, `ED.E('forkList()').map(f=>f.name)`);
+      ok(await page.isVisible('#selFork'), 'barrière ajoutée : choix de la fourche proposé');
+      if (forks.length > 1) {
+        const nf = forks.find(n => n !== fk), before = await ed(page, `ED.draft().barriers[${JSON.stringify(ak)}]`);
+        await page.selectOption('#selFork', nf); await sleep(120);
+        const nk = 'add:' + nf + ':1', after = await ed(page, `ED.draft().barriers[${JSON.stringify(nk)}]`);
+        ok(JSON.stringify(after) === JSON.stringify(before) && !(await ed(page, `!!ED.draft().barriers[${JSON.stringify(ak)}]`)), `barrière ajoutée rattachée à « ${nf} » (${ak} -> ${nk}, géométrie intacte)`);
+        ok(await ed(page, `ED.sel().key===${JSON.stringify(nk)}&&ED.gates().find(g=>g.key===${JSON.stringify(nk)}).fork===ED.E('forkList()').find(f=>f.name===${JSON.stringify(nf)}).fork`), 'sélection suivie, fourche changée');
+        ak = nk; fk = nf; ab = after;
+      }
       // ── salle de contrôle ──
       await page.click('#bSelRoom'); await sleep(150);
       const r0 = await ed(page, `ED.rooms()[0]`), s1 = await ed(page, `ED.E('cam.s')`);
