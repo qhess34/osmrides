@@ -321,7 +321,7 @@ function updateRun(t,dt){
 // Quai et portillons : les visiteurs se rangent par travée, puis embarquent quand les portillons s'ouvrent
 function updatePlatform(dt){
   G.platT-=dt;const fr=SEG_OUT.list[0];
-  if(G.platT<=0&&fr&&fr.r<.4&&G.time<1140){
+  if(G.platT<=0&&fr&&fr.r<.4){
     let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
     const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let i=-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r]){i=kb*CSEATS+r;break;}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
@@ -359,7 +359,7 @@ function updateTrains(dt){
 function updateWeather(dt){
   const w=G.wx;if(G.sandbox){w.type='clear';w.next=1e6;G.flash=0;return;}
   if(w.type==='clear'){w.next-=dt;
-    if(w.next<=0&&G.time<1040){
+    if(w.next<=0){
       if(Math.random()<.5){w.type='warn';w.t=30;log('🌩️ Orage en approche ! Suspendez les départs avant qu\'il n\'éclate.','warn');}
       else{w.type='rain';w.t=rnd(100,170);log('🌧️ Averse : moins de visiteurs, file moins patiente.');}
     }
@@ -372,39 +372,33 @@ function updateWeather(dt){
   G.flash=Math.max(0,G.flash-dt*3);
   if(w.type==='storm'&&Math.random()<dt*.3){G.flash=1;sfx.thunder();if(typeof strike==='function')strike();}
 }
+/* Jeu continu (propriétaire, 17/11 : « supprime la notion de jours qui réinitialise tout ») : aucune fin de journée, rien n'est remis à zéro ;
+   l'attraction ne ferme qu'au bouton du joueur. L'horloge tourne sur la plage d'ouverture T_OPEN…T_CLOSE et repart à T_OPEN (affluence continue au raccord,
+   engine/queue.js hourF) ; G.played = minutes de jeu cumulées. Salaires : WAGE € par plage (9 h), prélevés en continu (G.wage = fraction due).
+   Budget sous OVER € (carrière) : fin de partie à tout moment. */
+const T_OPEN=600,T_CLOSE=1140,WAGE=350,OVER=-2000;
 function step(dt){
-  G.time=Math.min(1140,G.time+dt*.5);
+  const m=dt*.5;G.time+=m;if(G.time>=T_CLOSE)G.time-=T_CLOSE-T_OPEN;G.played=(G.played||0)+m;
+  if(!G.sandbox){G.wage=(G.wage||0)+m*WAGE/(T_CLOSE-T_OPEN);if(G.wage>=1){const n=Math.floor(G.wage);G.wage-=n;pay(n);}}
   if(G.sandbox){G.wear.chain=G.wear.track=G.wear.brake=0;G.liftBroken=G.brakeFault=false;for(const t of trains){t.wear=0;t.hs=false;if(t.fault){t.fault=null;if(t.phase==='fault')t.phase='ready';}}}
   updateWeather(dt);updateVisitors(dt);updatePlatform(dt);stepOps(dt);updateTrains(dt);
   if(G.job){G.job.rem-=dt;if(G.job.rem<=0)finishJob();}
-  if(G.time>=1080&&!G.closedMsg){G.closedMsg=true;G.open=false;log('🔔 18:00 — le parc ferme, la file est fermée. Terminez les derniers tours.','warn');}
-  if(G.time>=1080){
-    const riders=trains.reduce((n,t)=>n+count(t),0)+G.plat.filter(r=>r).length;
-    if((G.queue.length===0&&riders===0)||G.time>=1140)endDay();
-  }
+  if(!G.sandbox&&!G.over&&G.money<OVER){G.over=true;G.open=false;log('Le budget est dans le rouge : fin de partie.','bad');bilan();}
 }
-function endDay(){
-  if(G.dayDone)return;G.dayDone=true;clearQueue();G.plat.fill(null);pay(350);
-  const s=G.stats,net=s.income-s.costs;
-  $('dTitle').textContent='Fin du jour '+G.day;
-  $('dTable').innerHTML=[['Passagers transportés',s.riders],['Trains envoyés',s.disp],['Visiteurs repartis mécontents',s.quits],['Visiteurs refoulés (file pleine)',s.turned],
-    ...(G.sandbox?[]:[['Recettes',s.income+' €'],['Dépenses (dont salaires 350 €)',s.costs+' €'],['dont amendes',s.fines+' €'],
-    ['Résultat du jour',(net>=0?'+':'')+net+' €'],['Budget',Math.round(G.money)+' €']]),['Satisfaction',Math.round(G.sat)+' %']]
+/* Bilan cumulé (bouton « Bilan » #bBil, fenêtre #mBil) ; fin de partie : même fenêtre, bouton Recommencer */
+function bilan(){
+  const s=G.stats,net=s.income-s.costs,h=Math.max(1/60,(G.played||0)/60),rph=s.riders/h,H=(T_CLOSE-T_OPEN)/60,goal=(SITE.goal||400)/H;
+  $('bTitle').textContent=G.over?'Fin de partie':'Bilan de l\'exploitation';
+  $('bTable').innerHTML=[['Durée d\'exploitation',Math.floor(h)+' h '+String(Math.floor((G.played||0)%60)).padStart(2,'0')],['Passagers transportés',s.riders],['Passagers par heure',Math.round(rph)],['Trains envoyés',s.disp],['Visiteurs repartis mécontents',s.quits],['Visiteurs refoulés (file pleine)',s.turned],
+    ...(G.sandbox?[]:[['Recettes',s.income+' €'],['Dépenses (dont salaires '+Math.round(WAGE/H)+' € par heure)',Math.round(s.costs)+' €'],['dont amendes',s.fines+' €'],
+    ['Résultat',(net>=0?'+':'')+Math.round(net)+' €'],['Budget',Math.round(G.money)+' €']]),['Satisfaction',Math.round(G.sat)+' %']]
     .map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('');
-  G.over=!G.sandbox&&G.money<-2000;
-  $('dMsg').textContent=G.sandbox?'Bac à sable : pas de verdict financier. Jour suivant quand vous voulez.':G.over?'Le budget est dans le rouge : la direction vous retire les clés de l\'attraction…'
-    :s.riders>=(SITE.goal||400)?((SITE.text&&SITE.text.great)||'Excellente journée !'):s.riders>=(SITE.goal||400)/2?'Journée correcte. Un second train et moins de pannes feraient mieux.'
-    :'Journée difficile. Pensez à ouvrir tôt et à sortir le second train.';
-  $('dBtn').textContent=G.over?'Recommencer':'Jour suivant';
-  $('mDay').classList.remove('hidden');
-}
-function nextDay(){
-  if(G.over){location.reload();return;}
-  G.day++;G.time=600;G.stats=newStats();G.dayDone=false;G.closedMsg=false;G.open=false;
-  G.wx={type:'clear',t:0,next:rnd(240,480)};G.walkers.length=0;
-  for(const t of trains)t.seats.fill(null);G.plat.fill(null);
-  $('mDay').classList.add('hidden');
-  log('☀️ Jour '+G.day+' — l\'attraction est fermée, à vous d\'ouvrir.','good');
+  $('bMsg').textContent=G.over?'Le budget est dans le rouge : la direction vous retire les clés de l\'attraction…'
+    :(G.played||0)<60?'Moins d\'une heure d\'exploitation : bilan encore partiel.'
+    :rph>=goal?((SITE.text&&SITE.text.great)||'Excellente exploitation !'):rph>=goal/2?'Exploitation correcte. Un second train et moins de pannes feraient mieux.'
+    :'Exploitation difficile. Ouvrez l\'entrée et sortez le second train.';
+  $('bBtn').textContent=G.over?'Recommencer':'Reprendre';
+  $('mBil').classList.remove('hidden');
 }
 
 /* ══════════ ACTIONS ET INTERFACE ══════════ */
@@ -418,8 +412,9 @@ function act(a,arg){
   else if(a==='fs')setFs(!fsOn);
   else if(a==='fsdesk')document.body.classList.toggle('fsdesk');
   else if(a==='tab')setTab(arg);
-  else if(a==='nextDay')nextDay();
-  else if(a==='open'){if(!G.open&&G.time>=1080)return;G.open=!G.open;
+  else if(a==='bilan')bilan();
+  else if(a==='closeBil'){if(G.over){location.reload();return;}$('mBil').classList.add('hidden');}
+  else if(a==='open'){if(!G.open&&G.over)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
   else if(a==='evac'){const n=G.queue.length;if(!n)return;
     for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');

@@ -25,26 +25,26 @@
         else if(k.kind==='board'){const e=k.pts[0];for(const t of trains){const i=t.seats.findIndex((s,j)=>{if(!s||s.on)return false;const p=slotPos(j);return Math.hypot(p[0]-e[0],p[2]-e[2])<.02;});if(i>=0){o.slot=i;o.tr=t.i;break;}}}
       }
       return o;});
-    return {v:VER,site:SITE.id,mode:MODE,sig,ts:Date.now(),day:G.day,time:R(G.time,2),g,
+    return {v:VER,site:SITE.id,mode:MODE,sig,ts:Date.now(),time:R(G.time,2),g,
       plat:G.plat.map(r=>r?[r.ci,R(r.w,1),r.on?1:0,R(r.ph,1)]:0),
       job:G.job?Object.assign({},G.job,{t:G.job.t?G.job.t.i:-1}):null,
       trains:trains.map(t=>{const o={};for(const k in t){if(['i','name','col','col2','seats'].includes(k))continue;if(simple(t[k]))o[k]=typeof t[k]==='number'?R(t[k],4):t[k];}
         o.seats=t.seats.map(s=>s?[s.ci,R(s.w,1),s.on?1:0]:0);o.rc=t.rc.map(v=>R(v,3));return o;}),
       q,sl:SEGS.map(e=>e.list.map(v=>G.queue.indexOf(v))),walkers,
       loops:LOOPS.map(l=>[l.on?1:0,R(l.t,3)]),gate:R(ENTRY_GATE.t,3),
-      cam:{key:cam.key,x:R(cam.x,2),z:R(cam.z,2),s:R(cam.s,3),follow:cam.follow,g:cam.g},syn:synOn,
-      day_modal:$('mDay').classList.contains('hidden')?null:[$('dTitle').textContent,$('dTable').innerHTML,$('dMsg').textContent,$('dBtn').textContent]};
+      cam:{key:cam.key,x:R(cam.x,2),z:R(cam.z,2),s:R(cam.s,3),follow:cam.follow,g:cam.g},syn:synOn};
   }
   function save(){
     if(noSave)return;
     try{
       if(G.over){del();return;}
-      if(G.day===1&&G.time===600&&!G.open&&G.stats.riders===0&&!G.queue.length&&!rd())return; // partie intacte : rien à garder
+      if(!G.played&&G.time===600&&!G.open&&G.stats.riders===0&&!G.queue.length&&!rd())return; // partie intacte : rien à garder
       localStorage.setItem(KEY,JSON.stringify(capture()));
     }catch(e){}
   }
   function restore(d){
-    Object.assign(G,d.g);
+    Object.assign(G,d.g);delete G.day;delete G.dayDone;delete G.closedMsg; // anciennes sauvegardes (journées) : champs ignorés, horloge ramenée dans la plage d'ouverture
+    if(!(G.time>=T_OPEN&&G.time<T_CLOSE))G.time=T_OPEN;if(!(G.played>=0))G.played=0;if(!(G.wage>=0))G.wage=0;
     G.plat=d.plat.map(a=>a?{ci:a[0],w:a[1],on:!!a[2],ph:a[3]}:null);
     d.trains.forEach((o,i)=>{const t=trains[i];Object.assign(t,o);if(!Array.isArray(t.rc)||t.rc.length!==NCARS)t.rc=new Array(NCARS).fill(0);t.seats=o.seats.map(a=>a?{ci:a[0],w:a[1],on:!!a[2]}:null);});
     G.job=d.job?Object.assign({},d.job,{t:d.job.t>=0?trains[d.job.t]:undefined}):null;
@@ -67,8 +67,7 @@
     if(typeof d.syn==='boolean'&&d.syn!==synOn)toggleSyn();
     $('crowd').value=Math.round(G.crowd*100);$('crowd').dispatchEvent(new Event('input'));if(!(G.patL>=0&&G.patL<=5))G.patL=1;$('patL').value=G.patL;$('patL').dispatchEvent(new Event('input'));
     $('mHelp').classList.add('hidden');
-    if(d.day_modal){$('dTitle').textContent=d.day_modal[0];$('dTable').innerHTML=d.day_modal[1];$('dMsg').textContent=d.day_modal[2];$('dBtn').textContent=d.day_modal[3];$('mDay').classList.remove('hidden');}
-    else $('mDay').classList.add('hidden');
+    $('mBil').classList.add('hidden'); // ancienne fenêtre de fin de jour (day_modal) ignorée
     if(!noSave){const once=()=>{sfx.init();removeEventListener('pointerdown',once);removeEventListener('keydown',once);};addEventListener('pointerdown',once);addEventListener('keydown',once);}
   }
   function load(){
@@ -76,7 +75,7 @@
     let d;try{d=JSON.parse(raw);}catch(e){d=null;}
     if(!d||d.v!==VER||d.site!==SITE.id||d.mode!==MODE||d.sig!==sig){
       console.log('Sauvegarde ignorée (version ou géométrie de l\'attraction différente) : '+KEY);del();return;}
-    try{restore(d);ui();render(0);log('Partie reprise : jour '+G.day+', '+fmtTime(G.time)+'.','good');}
+    try{restore(d);ui();render(0);log('Partie reprise : '+fmtTime(G.time)+'.','good');}
     catch(e){console.log('Sauvegarde illisible, effacée : '+e);del();location.reload();}
   }
   try{localStorage.setItem('t2z.mode',MODE);}catch(e){}

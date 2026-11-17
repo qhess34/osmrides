@@ -212,6 +212,10 @@ Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=
 
 Lift et zones de freinage surélevées ont une passerelle de service et un escalier jusqu'au sol (`SITE.catwalks`, voir `docs/NOUVELLE-ATTRACTION.md` §3). Pour l'instant **décor seulement** : l'équipe technique reste dessinée à `SITE.jobsites` et il n'existe pas d'évacuation d'un train arrêté en parcours. Suite possible : faire marcher les techniciens et les passagers évacués par ces passerelles (itinéraire déjà calculé : `CATW.walks[].segs`, `CATW.towers`).
 
+## Exploitation continue (propriétaire, 2026-11-17)
+
+Pas de journée ni de remise à zéro : l'horloge boucle sur la plage d'ouverture (10:00–19:00, puis 10:00), les trains, la file, le quai, les zones et la météo gardent leur état. L'entrée de la file ne ferme qu'au bouton `#bOpen` du joueur (aucune fermeture à 18:00). Salaires prélevés en continu ; bilan cumulé au bouton `#bBil` ; budget sous −2 000 € en carrière : fin de partie (Recommencer).
+
 ## Hors périmètre
 
 Barrières de la file (commande à la carte, barrière d'entrée et de sortie liées sur chaque chemin fermable ; barrière de fourche par défaut (issue #17) : une barrière par pointe, pivot sur la bordure à la pointe de l'angle intérieur, en travers du raccourci (A) ou de la boucle (B), les deux pointes d'une boucle liées ; raccourci court : chaque pivot à au plus L/4 de sa pointe, deux barrières distinctes ; éditeur : ajout `add:<tronçon>:<n>` et suppression `{off:true}`, `GAME.barriers`), file à la width OSM, escaliers (largeur du chemin, sortie 2 m, en applique, palier rectangulaire, raccord régulier), quais en béton clair et personnes du quai dessinées au-dessus de la voie et des portillons, passerelles et rochers (tunnel prolongé jusqu'aux bords) : `docs/NOUVELLE-ATTRACTION.md` §2–§3 ; ce ne sont pas des manœuvres de train et aucune commande par train ne s'y ajoute : une barrière se commande à la carte, par fourche (zone de la file), jamais par train.

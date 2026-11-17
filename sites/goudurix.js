@@ -77,7 +77,7 @@ const SITE=(()=>{
     strike:{area:[-60,100,-40,150]},
     // Le premier frein du parcours (B1) RALENTIT nettement le train (propriétaire) : vitesse ramenée à 8 m/s (≈ 29 km/h, ESTIMÉ) en passage normal ; arrêt seulement si le canton suivant est occupé.
     zones:{B1:{trim:{v:8}}},
-    text:{storm:'Orage sur Goudurix : aucun train ne doit partir.',great:'Excellente journée sur Goudurix !'},
+    text:{storm:'Orage sur Goudurix : aucun train ne doit partir.',great:'Excellente exploitation sur Goudurix !'},
     helpGarage:'<b>Garage</b> : une voie de maintenance, en amont de la gare (≈ 45 m avant l\'arrêt du train). L\'aiguillage est un rail rotatif : il tourne sur lui-même autour du tube de rail, pour présenter le circuit (P) ou la voie (1). '
       +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Dispatch de la voie : le train recule de la gare jusqu\'au fond de la voie (il s\'arrête avant le butoir). Remettez l\'aiguillage sur P. '
       +'Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Dispatch : il avance jusqu\'en gare ; aiguillage sur P. '

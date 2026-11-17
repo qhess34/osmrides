@@ -189,7 +189,7 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
 <header>
   <h1><a href="index.html" title="Choisir une autre attraction">←</a> <span id="ttl"></span></h1>
   <div class="hud">
-    <div class="stat">Jour <b id="hDay">1</b> · <b id="hTime">10:00</b></div>
+    <div class="stat">Heure <b id="hTime">10:00</b></div>
     <div class="stat">Météo <b id="hWx">☀️</b></div>
     <div class="stat" id="hMode" style="display:none">Bac à sable</div>
     <div class="stat" id="hMoneyBox">Budget <b id="hMoney">0 €</b></div>
@@ -255,6 +255,11 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
     </section>
 
     <section>
+      <h2>Bilan</h2>
+      <div class="row"><button id="bBil" data-act="bilan">Bilan de l'exploitation</button></div>
+      <div class="note">Jeu continu : statistiques cumulées depuis le début de la partie (passagers, recettes, salaires prélevés à l'heure, satisfaction).</div>
+    </section>
+    <section>
       <h2>Fréquentation du parc</h2>
       <div class="row"><input type="range" id="crowd" min="0" max="300" step="10" value="100" aria-label="Fréquentation du parc"><b id="crowdV">100 % — normale</b></div>
       <div class="note">Règle l'afflux de visiteurs vers l'attraction. Au-delà de 200 %, la file se remplit jusqu'à saturation et les visiteurs en trop sont refoulés.</div>
@@ -311,12 +316,12 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
     <li id="helpGarage"></li>
     <li><b>Maintenance</b> : l'usure augmente à chaque tour. Plus elle est haute, plus les pannes sont fréquentes (lift bloqué, freins, lapbars). À 100 %, l'élément est hors service.</li>
     <li><b>Orage</b> : dès qu'il éclate, suspendez les départs (mode manuel ou arrêt d'urgence). Chaque train envoyé sous l'orage coûte une amende.</li>
-    <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le parc ferme à 18:00.</li>
+    <li>Les visiteurs qui attendent trop longtemps repartent mécontents. Le jeu est continu : l'horloge tourne de 10:00 à 19:00 puis repart à 10:00 (affluence la plus forte en milieu de journée), sans rien remettre à zéro ; l'attraction ne ferme que si vous fermez l'entrée. Le bouton « Bilan de l'exploitation » du pupitre affiche les statistiques cumulées.</li>
     <li><b>Fréquentation</b> : le curseur du panneau de droite règle l'afflux de visiteurs, de parc vide à saturé.</li>
     <li><b>File modulable</b> : un ou plusieurs raccourcis court-circuitent une boucle de la file. À chaque fourche de la file, une barrière pivote pour diriger les visiteurs vers la boucle ou vers le raccourci : cliquez dessus sur la carte. Les visiteurs ne franchissent que les barrières ouvertes ; ceux déjà engagés terminent leur chemin. Le bouton « Toits » retire les toitures pour voir l'intérieur de la gare et du garage. Raccourci ouvert : file courte. Raccourci fermé : file longue, plus de capacité.</li>
     <li><b>Vue aérienne</b> : glissez pour vous déplacer, molette pour zoomer jusqu'aux visiteurs, ou suivez un train avec les boutons en bas de la vue.</li>
   </ul>
-  <p>Chaque passager rapporte 5 €. Les salaires coûtent 350 € par jour.</p>
+  <p>Chaque passager rapporte 5 €. Les salaires coûtent environ 39 € par heure de jeu, prélevés en continu. Budget sous −2 000 € : fin de partie.</p>
   <button class="go" data-act="closeHelp">C'est parti !</button>
   <button id="bNew" style="float:right;font-size:12px;padding:3px 8px">Nouvelle partie</button>
 </div></div>
@@ -325,11 +330,11 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
   <p>La sauvegarde de cette attraction, dans le mode choisi, sera effacée. <b>Carrière</b> : budget, météo, pannes et usure. <b>Bac à sable</b> : ni budget, ni météo, ni pannes. Les sauvegardes des deux modes sont séparées.</p>
   <button id="bNewCareer">Carrière</button> <button id="bNewSandbox">Bac à sable</button> <button id="bNewCancel">Annuler</button>
 </div></div>
-<div class="modal hidden" id="mDay"><div>
-  <h2 id="dTitle"></h2>
-  <table id="dTable"></table>
-  <p id="dMsg"></p>
-  <button class="go" data-act="nextDay" id="dBtn">Jour suivant</button>
+<div class="modal hidden" id="mBil"><div>
+  <h2 id="bTitle"></h2>
+  <table id="bTable"></table>
+  <p id="bMsg"></p>
+  <button class="go" data-act="closeBil" id="bBtn">Reprendre</button>
 </div></div>
 
 <script>

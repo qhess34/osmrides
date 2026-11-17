@@ -323,8 +323,9 @@ const root = path.resolve(__dirname, '..');
     let rp = 0;
     const press = () => { ui(); $('bGate').click(); gp++; }; // le joueur ouvre et ferme les portillons au bouton du pupitre
     const pressRes = () => { ui(); $('bRes').click(); rp++; }; // et les sécurités : ouvrir à l'arrivée, verrouiller portillons fermés (les opérateurs les ferment et les vérifient)
-    for (; it < 400000 && !G.dayDone; it++) {
-      step(.025);
+    const p0 = G.played; let tPrev = G.time, wraps = 0; // jeu continu : 9 h de jeu simulées (ancienne journée 10:00-19:00)
+    for (; it < 400000 && G.played - p0 < 540; it++) {
+      step(.025); if (G.time < tPrev) wraps++; tPrev = G.time;
       if (it % 5 === 0) __opSample();
       if (it === 9000 || it === 22000) act('evac'); // évacuation de la file en pleine journée
       if (it === 14000) for (const v of G.queue) if (Math.random() < .5) v.pat = 0; // abandons dans toute la file
@@ -343,13 +344,13 @@ const root = path.resolve(__dirname, '..');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.dayDone, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
+    return { done: G.played - p0 >= 540 && !G.over && $('mBil').classList.contains('hidden'), wraps, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6) };
   });
-  await page.evaluate(() => { document.getElementById('mDay').classList.add('hidden'); cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
+  await page.evaluate(() => { cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
   const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0;
-  console.log(`site ${site}${build ? ' (build)' : ''}: day done=${r.done} after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
+  console.log(`site ${site}${build ? ' (build)' : ''}: 9h done=${r.done} (clock wraps=${r.wraps}) after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
   console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ}` + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);

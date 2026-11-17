@@ -147,9 +147,9 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
   let mode='career';try{if(localStorage.getItem('t2z.mode')==='sandbox')mode='sandbox';}catch(e){}
   // dernière partie sauvegardée (horodatage ts de engine/save.js), tous sites et modes confondus
   let last=null;
-  for(const s in NAMES)for(const m in MODES){try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+m)||'null');if(d&&d.day&&(!last||(d.ts||0)>(last.ts||0)))last={s,m,day:d.day,time:d.time,ts:d.ts||0};}catch(e){}}
+  for(const s in NAMES)for(const m in MODES){try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+m)||'null');if(d&&d.time!=null&&(!last||(d.ts||0)>(last.ts||0)))last={s,m,time:d.time,ts:d.ts||0};}catch(e){}}
   const lcd=$('lcd'),cont=$('rCont');
-  if(last){const t=NAMES[last.s]+' · '+MODES[last.m]+' · jour '+last.day+' '+fmt(last.time);
+  if(last){const t=NAMES[last.s]+' · '+MODES[last.m]+' · '+fmt(last.time);
     cont.hidden=false;cont.href='jeu.html?site='+last.s+'&mode='+last.m;cont.classList.add('lit');$('contInfo').textContent=NAMES[last.s];
     lcd.textContent='Dernière partie : '+t;}
   function paint(){
@@ -159,7 +159,7 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
     $('modeTxt').textContent=mode==='sandbox'?'Bac à sable : sans budget, météo ni pannes':'Carrière : budget, météo et pannes';
     for(const a of document.querySelectorAll('a.card[data-site]')){
       const s=a.dataset.site;a.href='jeu.html?site='+s+'&mode='+mode;const p=a.querySelector('.prog');p.textContent='';
-      try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+mode)||'null');if(d&&d.day)p.textContent='Partie en cours \u2014 jour '+d.day+' '+fmt(d.time);}catch(e){}
+      try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+mode)||'null');if(d&&d.time!=null)p.textContent='Partie en cours \u2014 '+fmt(d.time);}catch(e){}
     }
   }
   for(const [id,m] of [['mCareer','career'],['mSand','sandbox']])$(id).onclick=()=>{mode=m;try{localStorage.setItem('t2z.mode',m);}catch(e){}paint();};

@@ -21,7 +21,7 @@ function trainStatus(t){
 }
 const lamp=(id,st)=>{$(id).className='lamp'+(st===2?' err':st===1?' occ':'');};
 function ui(){
-  $('hDay').textContent=G.day;$('hTime').textContent=fmtTime(G.time);
+  $('hTime').textContent=fmtTime(G.time);
   $('hWx').textContent={clear:'Beau temps',rain:'Pluie',warn:'Orage en approche',storm:'ORAGE'}[G.wx.type];
   $('hMoneyBox').style.display=G.sandbox?'none':'';$('hMode').style.display=G.sandbox?'':'none';$('hMoney').textContent=Math.round(G.money).toLocaleString('fr-FR')+' €';
   $('hSat').textContent=Math.round(G.sat)+' %';
@@ -30,7 +30,7 @@ function ui(){
   $('hWait').textContent=active?Math.round(G.queue.length/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
   $('hRiders').textContent=G.stats.riders;
   for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
-  $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.time>=1080;
+  $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.over;
   $('bEvac').disabled=!G.queue.length;
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
@@ -74,7 +74,7 @@ function ui(){
   $('techBar').style.width=G.job?(100*(1-G.job.rem/G.job.dur))+'%':'0%';
   $('techTxt').textContent=G.job?Math.ceil(G.job.rem*.5)+' min restantes':'';
   if(document.body.classList.contains('fs')){ // barre du plein écran : heure, file, quai, dernier message du journal
-    $('fsHud').textContent=fmtTime(G.time)+' · Jour '+G.day+' · File '+G.queue.length+' · Quai '+G.plat.filter(r=>r).length+'/'+SEATS+' · '+Math.round(G.money).toLocaleString('fr-FR')+' €';
+    $('fsHud').textContent=fmtTime(G.time)+' · File '+G.queue.length+' · Quai '+G.plat.filter(r=>r).length+'/'+SEATS+' · '+Math.round(G.money).toLocaleString('fr-FR')+' €';
     const m=$('log').firstElementChild;$('fsMsg').textContent=m&&m.lastChild?m.firstChild.textContent+' '+m.lastChild.textContent:'';$('fsMsg').className=m?m.className:'';
     $('bDesk').classList.toggle('on',document.body.classList.contains('fsdesk'));}
   for(const b of document.querySelectorAll('#cams button[data-act=cam]'))b.classList.toggle('on',b.dataset.arg===cam.key);

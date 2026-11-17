@@ -23,7 +23,7 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
 - Quai : un portillon par wagon, deux visiteurs au plus par portillon ; deux opérateurs vérifient les lapbars et valident avant le départ (by-pass possible).
 - File d'attente : les visiteurs suivent les chemins ; des barrières pivotantes ouvrent ou court-circuitent des boucles.
 - Garage : manœuvre manuelle par un tronçon en S coulissant.
-- Maintenance, pannes, météo (pluie, orage), fréquentation réglable, bilan de fin de journée.
+- Maintenance, pannes, météo (pluie, orage), fréquentation réglable, jeu continu (pas de journée ni de remise à zéro), bilan cumulé, fin de partie si le budget plonge.
 
 ## Organisation
 
@@ -33,7 +33,7 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
   - `engine/garage.js` : voie de garage, aiguillage/pont (`GAR`, `SW0`, `gFrame`), quai, opérateurs, zones
   - `engine/state.js` : état `G`, trains, son, cantonnement, maintenance
   - `engine/queue.js` : visiteurs, file (étapes, fourches), marcheurs
-  - `engine/sim.js` : trains, gare, parcours, météo, `step`, fin de journée, `act`
+  - `engine/sim.js` : trains, gare, parcours, météo, `step` (jeu continu), `act`
   - `engine/ui.js` : pupitre et interface DOM
   - `engine/render.js` : dessin canvas, caméra, boucle d'animation
 - `sites/<site>.data.js` : données OpenStreetMap générées. `sites/<site>.js` : configuration écrite à la main.

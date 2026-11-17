@@ -72,7 +72,7 @@ const SITE=(()=>{
       frein:{label:'Frein final',x:-26,z:-30,s:12},garage:{label:'Garage',x:-31,z:-18,s:11},
       rocher:{label:'Rocher',x:42,z:25,s:10},passerelle:{label:'Passerelle',x:35.5,z:-4.4,s:12}},
     labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Rocher',45,35],['Entrée',67,23]],
-    text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur la Trace du Hourra !'},
+    text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente exploitation sur la Trace du Hourra !'},
     // Commande par zones : freins de bloc B1…B3 = freins seuls ; frein final, rail mobile du parcours, rail du chariot, voies = freins + moteurs (défauts du moteur, ESTIMÉ,
     // à confirmer par le propriétaire). Exemple pour changer : zones:{B:{drive:true}, RA:{drive:false}}.
     helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final, commandées par zones. Deux éléments mobiles : '

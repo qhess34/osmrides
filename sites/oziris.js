@@ -77,7 +77,7 @@ const SITE=(()=>{
       // Inversions : plan des figures fourni par le propriétaire (affiche, stylisée) rapproché du tracé OSM par la forme ; emplacements ± 10 m, hauteurs ESTIMÉES.
       ['Dive loop',-8,92],['Looping vertical',36,22],['Immelmann',66,57],['Roulis zéro-G',2,-70],['Roulis zéro-G',8,63]],
     strike:{area:[-90,90,-90,90]},
-    text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur OzIris !'},
+    text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente exploitation sur OzIris !'},
     // Commande par zones : frein final, rail du pont, attente avant gare, voies = freins + moteurs (défauts du moteur, ESTIMÉ, à confirmer).
     helpGarage:'<b>Garage</b> : trois voies de maintenance parallèles au frein final, en amont du pont transbordeur, un train par voie. '
       +'Le pont porte un seul rail, le rail du pont : c\'est la fin du frein final, qui vient chercher les trains au garage. En P il est en ligne avec le circuit ; '
