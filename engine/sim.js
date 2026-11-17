@@ -32,7 +32,10 @@ const ANCH_NAME=YD.at==='brake'?'le frein final':'la gare';
 function anchorFree(t){ // le point de raccordement peut recevoir un train qui sort du garage
   // pont droit : un train déjà passé au-delà du rail du pont (frein avant gare, entrée en gare) ne bloque pas le retour : le rail du pont est une zone de freinage
   // qui retient le train remis en ligne tant que la section suivante est occupée (propriétaire, 2026-11-17 : « le rail chariot est aussi une zone d'attente temporaire »)
-  if(YD.at==='brake')return !trains.some(o=>o!==t&&((o.st==='run'&&o.s>=(BLK.length?BLK[BLK.length-1]:S_BRK)-1&&!(TRAV&&o.s>R1-.1))||(o!==t&&nearDev(o))));
+  // train arrêté SUR le dernier frein de bloc (avant le canton) : il y est retenu par le cantonnement tant que le rail du pont est occupé, il ne bloque pas
+  // (propriétaire, 2026-11-17 : « Dernier canton occupé » refusé alors que le frein suivant était libre) ; seul un train qui a franchi ce frein bloque
+  if(YD.at==='brake'){const B=BLK.length?BLK[BLK.length-1]:null,lim=B!=null?B+.5:S_BRK-1;
+    return !trains.some(o=>o!==t&&((o.st==='run'&&o.s>=lim&&!(B!=null&&o.v<.05&&Math.abs(o.s-B)<.6)&&!(TRAV&&o.s>R1-.1))||nearDev(o)));}
   return !trains.some(o=>o!==t&&(o.st==='station'||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))||nearDev(o)));
 }
 const sameLane=t=>trains.filter(o=>o!==t&&o.st==='garage'&&o.lane===t.lane);
