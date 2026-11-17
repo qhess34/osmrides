@@ -73,6 +73,7 @@ yard: {
 - Rail du circuit hors ligne : les trains du circuit s'arrêtent avant le chariot ; seul un train vide conduit par Frein final AV roule sur le rail du chariot en ligne, et il n'en repart vers la gare que sur Rail du chariot AV.
 - Verrouillages propres : le chariot ne bouge pas si un train y roule, n'y est qu'en partie ou est en manœuvre ; il n'emporte qu'un train arrêté, vide, entièrement sur le rail du chariot ; il ne porte pas un train vers une voie occupée ; il ne remet un train sur le circuit (`G`) que si le dernier canton est libre et que `maxRun` le permet. Tant qu'un train est sur le chariot, le dernier canton est tenu pour occupé.
 - Chaque voie est un canton ; le rail du chariot en est un aussi.
+- Dessin (issue #16) : les voies fixes sont dessinées jusqu'au bout du rail du chariot (jeu visuel 4 cm, le tablier passe dessous, comme pour le circuit) ; le jeu simulé `laneGap` ne change pas. Toutes les voies de garage (tous appareils) portent freins et pneus comme le circuit. Coaster inversé : le train garé ou porté est dessiné sous la poutre.
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre).
 
 ## Principe de commande (décision du propriétaire, 2026-11-14)

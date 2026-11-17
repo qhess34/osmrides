@@ -34,7 +34,7 @@ function setCam(k){cam.key=k;if(k.startsWith('suivi')){cam.follow=+k.slice(5);ca
 $('cams').innerHTML='<button data-act="fs" id="bFs" title="Afficher la carte en plein écran">Plein écran</button>'+Object.entries(CAMS).map(([k,c])=>`<button data-act="cam" data-arg="${k}">${c.label}</button>`).join('')
   +trains.map(t=>`<button data-act="cam" data-arg="suivi${t.i}">Suivre T${t.i+1}</button>`).join('')
   +'<button data-act="syn" id="bSyn" title="Afficher ou masquer le synoptique du circuit">Synoptique</button>'
-  +'<button data-act="roof" id="bRoof" title="Retirer ou remettre les toits de la gare, du poste de conduite et du garage">Toits en place</button>'
+  +'<button data-act="roof" id="bRoof" title="Retirer ou remettre les toits de la gare, du poste de conduite, du garage et des abris">Toits en place</button>'
   +'<button data-act="hidest" id="bHideSt" title="Masquer complètement le bâtiment de gare et les couvertures (toits, rochers) pour voir la file dessous">Masquer la gare</button>';
 (function controls(){
   const ptrs=new Map();let pinch=0,moved=0,multi=false;const free=()=>{cam.g=null;cam.follow=-1;cam.key='';};
@@ -155,7 +155,7 @@ function strip(sm){
   o.h=hs/n;o.inv=uy/n<0;const k=clamp(o.h/30,0,1); // o.inv : tronçon tête en bas (la poutre passe au-dessus des rails)o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
 }
-const BZ=[]; // zones de freinage dessinées : {id, r0, r1, drive}
+const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[j] : tronçon dessiné de la voie de garage j
 (function buildChunks(){
   for(let i=0;i<=N;i++){const p=TR[i%N].p;i?dirtP.lineTo(p.x,p.z):dirtP.moveTo(p.x,p.z);}
   const iA=Math.round(SW_A/DS),iB=Math.round(SW_B/DS),cuts=new Set([iA,iB,N]);for(let i=0;i<N;i+=8)cuts.add(i);
@@ -169,11 +169,13 @@ const BZ=[]; // zones de freinage dessinées : {id, r0, r1, drive}
   const grow=o=>{const e=CMAX+GAP+3;o.x0-=e;o.x1+=e;o.z0-=e;o.z1+=e;return o;}; // tronçons portés : visibles sur toute la course
   if(TRAV){ // pont droit : rail B porté par le chariot (décalé de devC()-GAP), voies droites fixes ; le rail A est le tronçon du circuit (sw)
     chunks.forEach(o=>{if(o.sw)grow(o);});
-    const line=(u0,u1,v)=>{const q=[];for(let u=u0;u<=u1+.01;u+=.5)q.push({x:SW0.x+SW0.tx*u-SW0.vx*v,y:ST_Y,z:SW0.z+SW0.tz*u-SW0.vz*v,nx:-SW0.tz,nz:SW0.tx,i:q.length});return q;};
+    const line=(u0,u1,v)=>{const q=[],n=Math.max(1,Math.ceil((u1-u0)/.5-.02));for(let k=0;k<=n;k++){const u=u0+(u1-u0)*k/n;q.push({x:SW0.x+SW0.tx*u-SW0.vx*v,y:ST_Y,z:SW0.z+SW0.tz*u-SW0.vz*v,nx:-SW0.tz,nz:SW0.tx,i:q.length});}return q;};
     if(!SG){const rb=strip(line(0,R1-R0,0));rb.rb=1;chunks.push(grow(rb));} // rail unique (SG) : le tronçon du circuit est le seul rail porté
-    LANES.forEach(ln=>chunks.push(strip(LREV?line(laneU(ln.end),laneU(U_LANE),ln.d):line(U_LANE,ln.end,ln.d)))); // yard.rev : voies en amont du chariot
+    // Voies fixes dessinées jusqu'au bout du rail porté (issue #16, propriétaire : « pas continus ») : comme le circuit, la voie fixe s'arrête à 4 cm du rail du chariot
+    // (u = R1-R0 ou 0) et le tablier passe dessous ; le jeu de la simulation (yard.laneGap, U_LANE) est inchangé, seul le dessin comble l'écart.
+    LANES.forEach((ln,j)=>{const o=strip(LREV?line(laneU(ln.end),-.04,ln.d):line(R1-R0+.04,ln.end,ln.d));LCH[j]=o;chunks.push(o);}); // yard.rev : voies en amont du chariot
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
-    const nl=LBK?Math.round(ln.link/.5):36,sP=strip(gs.slice(0,nl+1));sP.lk=j+1;chunks.push(sP,strip(gs.slice(nl)));});
+    const nl=LBK?Math.round(ln.link/.5):36,sP=strip(gs.slice(0,nl+1));sP.lk=j+1;LCH[j]=strip(gs.slice(nl));LCH[j].nl=nl;chunks.push(sP,LCH[j]);});
   // Chaîne du lift et équipements de freinage : rattachés à leur tronçon (dessinés avec lui), donc toujours SOUS les trains qui y passent et sous les voies plus hautes
   const cOf=new Int32Array(N+1);for(let c=0;c<cl.length-1;c++)for(let i=cl[c];i<cl[c+1];i++)cOf[i]=c;
   const lc0=Math.round(S_LIFT0/DS),lc1=Math.round((S_LIFT1+3)/DS);
@@ -184,8 +186,12 @@ const BZ=[]; // zones de freinage dessinées : {id, r0, r1, drive}
   BZ.push({id:'Fin',r0:S_BRK+3,r1:TRAV?S_PRE+.4:S_HOLD});if(TRAV)BZ.push({id:ZR,r0:R0+.3,r1:R1-.3});if(PSB)BZ.push({id:'Pre',r0:PSB_A+1,r1:S_PSB});
   if(TRAV&&!SG)BZ.push({id:'RB',r0:0,r1:0,car:1});
   for(const z of BZ)z.drive=!!zc(z.id).drive;
+  LANES.forEach((_,j)=>BZ.push({id:'L'+(j+1),lane:j,drive:true})); // voies de garage : freins et pneus (Dispatch) sur toute la voie, comme le circuit (issue #16 ; disposition ESTIMÉE)
   const onDev=s=>!TRAV&&s>SW_A-1&&s<SW_B+1; // rien sur l'aiguillage lui-même (tronçon mobile)
   for(const z of BZ){let k=0;const add=(o,u)=>{u.id=z.id;u.ty=z.drive&&k%2===1;o.bu.push(u);k++;};
+    if(z.lane!=null){const ln=LANES[z.lane],P=ln.path,o=LCH[z.lane];if(!o)continue; // voie : de son entrée (TRAV : U_LANE ; aiguillage : après le tronçon mobile) au heurtoir
+      for(let i=TRAV?0:o.nl+1;i<P.length-1;i+=3){const q=P[i];if(TRAV&&(q.d<U_LANE+.3||q.d>ln.end-.6))continue;const a=P[Math.max(0,i-1)],b=P[i+1],l=Math.hypot(b.x-a.x,b.z-a.z)||1,tx=(b.x-a.x)/l,tz=(b.z-a.z)/l;
+        add(o,{x:q.x,z:q.z,nx:-tz,nz:tx,tx,tz});}continue;}
     if(z.car){const rb=chunks.find(o=>o.rb);for(let u=.6;u<R1-R0-.3;u+=1.5)add(rb,{x:SW0.x+SW0.tx*u,z:SW0.z+SW0.tz*u,nx:-SW0.tz,nz:SW0.tx,tx:SW0.tx,tz:SW0.tz});continue;} // rail du chariot (pont droit à deux rails)
     for(let i=Math.round(z.r0/DS);i<Math.round(z.r1/DS);i+=3){const ii=((i%N)+N)%N;if(onDev(ii*DS))continue;const f=TR[ii],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(f.T.x,f.T.z)||1;
       add(chunks[cOf[ii]],{x:f.p.x,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:f.T.x/tl,tz:f.T.z/tl});}}
@@ -228,7 +234,13 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVP=new Path2D; // COV
     for(let j=0;j<pts.length-1;j++)ar+=pts[j][0]*pts[j+1][1]-pts[j+1][0]*pts[j][1];
     for(let j=0;j<pts.length-1;j++){const a=pts[j],b=pts[j+1],sg=ar>0?1:-1,nx=(b[1]-a[1])*sg,nz=-(b[0]-a[0])*sg,pp=nx*-.8+nz*-.6>0?lit:dark;pp.moveTo(a[0],a[1]);pp.lineTo(b[0],b[1]);}
     const near=q=>q&&Math.hypot(m[0]-q[0],m[1]-q[1])<q[2];
-    LY.bld.push(Object.assign({p:mkPath(pts,true),m,lit,dark,st:near(SITE.stationAt),h:7,canopy:false,fade:(SITE.fade||[]).some(near),cvb:COV.some(P=>P.some(q=>pin(pts,q[0],q[1])))},o));}; // cvb : couvre un chemin couvert, effacé seulement par « Masquer la gare »
+    const b=Object.assign({p:mkPath(pts,true),m,lit,dark,st:near(SITE.stationAt),h:7,canopy:false,fade:(SITE.fade||[]).some(near),cvb:COV.some(P=>P.some(q=>pin(pts,q[0],q[1])))},o); // cvb : couvre un chemin couvert, effacé seulement par « Masquer la gare »
+    if(!b.cvb&&(b.canopy||SHP.some(q=>pin(pts,q[0],q[1]))))b.fade=b.ab=true; // abri (issue #15) : auvent OSM building=roof, ou bâtiment au-dessus de la file ou du quai : s'efface comme les toits SITE.fade
+    LY.bld.push(b);};
+  // points de la file (tronçons, liaison) et des quais, tous les 1 m : un bâtiment qui en recouvre un est un abri
+  const SHP=[];{const add=P=>{for(let i=1;i<P.length;i++){const a=P[i-1],c=P[i],n=Math.max(1,Math.ceil(Math.hypot(c[0]-a[0],c[1]-a[1])));for(let k=0;k<=n;k++)SHP.push([a[0]+(c[0]-a[0])*k/n,a[1]+(c[1]-a[1])*k/n]);}};
+    for(const g of SEGS)add(g.P);add((QS.link||[]).concat([ENTRY0]));const PQ=Object.assign({load:7.9,exit:0},SITE.plat);
+    for(const B of BAYS)for(const l of [PQ.load/2,PQ.load-.3,-PQ.exit/2])if(l)SHP.push([B.x+B.rx*l,B.z+B.rz*l]);}
   OSM.feats.forEach((f,i)=>{
     const k=f.k,c=f.c&&f.p.length>3,p=mkPath(f.p,c);if(c&&f.h)for(const h of f.h)p.addPath(mkPath(h,true)); // anneaux intérieurs (lac dans une place…) : orientation opposée, trou
     if(f.n&&!seen.has(f.n)&&!(SITE.hideNames||[]).includes(f.n)&&!k.startsWith('highway')){seen.add(f.n);const m=cen(f.p);PLACES.push([f.n.replace(/ \(\d+\)/,''),m[0],m[1]]);}
@@ -337,7 +349,8 @@ const strollers=[];
 let clock=0,wet=0,roofA=1,hideA=1;
 // Files couvertes (propriétaire, 2026-11-16, lot 5, générique) : couloirs sous la gare, sous un bâtiment, sous un rocher ou en tunnel, et leurs visiteurs, MASQUÉS par défaut ;
 // visibles seulement avec « Masquer la gare » (G.hideSt, hideA → 0), plus au simple zoom ni avec les toits retirés.
-const bldA=b=>b.fade?(b.cvb?Math.min(roofA,hideA):roofA):b.cvb?hideA:b.canopy?.8:1;
+// Abris (issue #15, b.ab : auvents OSM building=roof, bâtiments au-dessus de la file ou du quai) : effacés au zoom et par « Toits », comme SITE.fade ; un auvent reste un peu translucide (0,8).
+const bldA=b=>{const a=b.fade?(b.cvb?Math.min(roofA,hideA):roofA):b.cvb?hideA:1;return b.canopy?.8*a:a;};
 // Tunnels du circuit : OSM.tunnels=[[s0,s1(,'roof')],…] (tronçons tagués tunnel=yes, ou covered=yes et layer<0 ; 'roof' = galerie au-dessus du sol, layer>0), puis tunnels ESTIMÉS
 // de SITE.tunnels:[{s:[s0,s1],…}] (s du moteur). Couverture : eau si le tunnel passe sous un plan d'eau OSM (détection automatique), toit de béton ('roof'), sinon remblai enherbé.
 // SITE.tunnels[k]={under:'water'|'ground'|'roof',w:demi-largeur} (k = rang du tunnel OSM) force le choix.
@@ -646,8 +659,8 @@ const _bf=mkF();
 function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu ou ralenti dans la zone ; zone vide : serrée si la section suivante est occupée (la gare, toujours)
   for(const z of BZ){const b=BZS[z.id]||(BZS[z.id]={c:1,a:0}),ts=zTrains(z);
     let cl=zK(z.id)||(z.id==='Fin'&&G.brakeFault)||ts.some(t=>tSp(t)<.05||(t.st==='run'&&PV.has(t)&&t.v<PV.get(t)-.01));
-    if(!ts.length&&!cl)cl=z.id==='St'||!!nextBusy(z.id,null);
-    if(dt>0&&b.cl!==undefined&&b.cl!==!!cl&&z.id!=='St'){const q=z.r0!=null?frameAt((z.r0+z.r1)/2,_bf).p:null;cl?sfx.brakeOn(q&&q.x,q&&q.z):sfx.brakeOff(q&&q.x,q&&q.z);} // son : serrage (claquement) / desserrage (air)
+    if(!ts.length&&!cl)cl=z.id==='St'||z.lane!=null||!!nextBusy(z.id,null); // voie vide : freins serrés
+    if(dt>0&&b.cl!==undefined&&b.cl!==!!cl&&z.id!=='St'&&z.lane==null){const q=z.r0!=null?frameAt((z.r0+z.r1)/2,_bf).p:null;cl?sfx.brakeOn(q&&q.x,q&&q.z):sfx.brakeOff(q&&q.x,q&&q.z);} // son : serrage (claquement) / desserrage (air)
     b.cl=!!cl;
     if(dt>0){b.c=lerp(b.c,cl?1:0,Math.min(1,dt*6));if(z.drive)b.a+=Math.min(8,Math.max(0,...ts.map(tSp)))/.2*dt;}}
   if(dt>0)for(const t of trains)PV.set(t,t.v);
@@ -747,9 +760,14 @@ function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gates
   for(let u=0;u<=NGATES;u++){const g=GUNITS[Math.min(u,NGATES-1)],b=BAYS[g.k],e=u<NGATES?g.c+g.h:g.c-g.h,cx=b.x+b.tx*e,cz=b.z+b.tz*e;ctx.moveTo(cx+b.rx*(PGATE-.05),cz+b.rz*(PGATE-.05));ctx.lineTo(cx+b.rx*(PGATE+2.15),cz+b.rz*(PGATE+2.15));}
   ctx.stroke();
   // un vantail par portillon, articulé sur le séparateur avant ; il pivote vers le train
-  const a=G.gate*1.45,ca=Math.cos(a),sa=Math.sin(a);
+  // Propriétaire (Zeus, 2026-11-17) : les portillons s'ouvrent vers le train sans jamais dépasser le bord du quai. Vantail = largeur du portillon,
+  // au plus le couloir (PGATE-PEDGE-5 cm) ; le reste de la travée est une clôture fixe (largeur de passage ESTIMÉE, non relevée).
+  const a=G.gate*1.45,ca=Math.cos(a),sa=Math.sin(a),GL=g=>Math.min(2*g.h-.3,PGATE-PEDGE-.05);
+  ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
+  for(const g of GUNITS){const b=BAYS[g.k],e0=g.c+g.h-.12-GL(g),e1=g.c-g.h+.15;if(e0-e1<.05)continue;ctx.moveTo(b.x+b.tx*e0+b.rx*PGATE,b.z+b.tz*e0+b.rz*PGATE);ctx.lineTo(b.x+b.tx*e1+b.rx*PGATE,b.z+b.tz*e1+b.rz*PGATE);}
+  ctx.stroke();
   ctx.strokeStyle=G.gate>.5?'#4f9a72':'#a8443a';lw(.13,.9);ctx.lineCap='round';ctx.beginPath();
-  for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,len=2*g.h-.3,px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.moveTo(px,pz);ctx.lineTo(px+(-b.tx*ca-b.rx*sa)*len,pz+(-b.tz*ca-b.rz*sa)*len);}
+  for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,len=GL(g),px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.moveTo(px,pz);ctx.lineTo(px+(-b.tx*ca-b.rx*sa)*len,pz+(-b.tz*ca-b.rz*sa)*len);}
   ctx.stroke();ctx.lineCap='butt';
   ctx.fillStyle='#2b2e33';for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.fillRect(px-.1,pz-.1,.2,.2);}
   // postes de validation des lapbars (les opérateurs et les visiteurs du quai : drawStationPeople)
@@ -849,7 +867,7 @@ function drawWorld(dt){
   const hI=s=>chunkH[Math.floor((((s%L)+L)%L)/DS)%N];
   for(const t of trains){const ex=t.st==='run'&&zoneOf(t.s)==='course'&&t.v>9;t.arms=lerp(t.arms,ex?1:0,Math.min(1,dt*4));
     const cs=t.st==='run'?t.s:t.st==='station'?S_ST:null;
-    for(let k=0;k<NCARS;k++){let h=ST_Y+.05; // garage : au niveau des voies
+    for(let k=0;k<NCARS;k++){let h=INV?ST_Y-1.5:ST_Y+.05; // garage : au niveau des voies ; coaster inversé (issue #16, OzIris) : wagon suspendu SOUS la poutre des voies et du rail du pont, comme sur le circuit
       if(cs!==null){const sc=cs-(k+.5)*CAR,hs=[hI(sc-CAR/2),hI(sc),hI(sc+CAR/2)],up=t.st==='run'&&frameAt(sc,_cf).U.y<0;
         // le wagon est dessiné APRÈS tous les tronçons qu'il recouvre (le plus haut des trois + 5 cm) : jamais recouvert par sa propre voie, ses freins, sa chaîne ;
         // suspendu (coaster inversé) : AVANT sa voie ; tête en bas (looping, vrille) : après, avec ses rails redessinés par-dessus (drawCar)
