@@ -84,7 +84,7 @@ Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane
 |---|---|
 | Gare | freins liés au départ (pas de bouton), moteurs (pneus) avancer / reculer |
 | Lift | marche / arrêt |
-| Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés ; moteurs avancer / reculer là où il y en a |
+| Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés ; moteurs avancer / reculer là où il y en a (freins de bloc : roues de propulsion en marche avant seule, avancer / arrêt) |
 | Chariot / aiguillage | position (P ou voie k) |
 | Voies de garage | bouton **Dispatch** (issue #11) : entrée ou sortie, sens choisi par le moteur ; freins automatiques, plus un bouton **F** de freins forcés (arrêt immédiat) |
 
@@ -100,7 +100,7 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 |---|---|---|---|
 | Gare | `St` | **pas de bouton de frein** (freins serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ), Avancer `f`, Reculer `b`, Arrêt `x` (déplacements à vide vers le garage) | manuel |
 | Lift | `Lift` | Marche `on`, Arrêt `off` (chaîne stoppée : le train sur le lift y reste ; départs bloqués) | — |
-| Freins de bloc | `B1…Bn` | freins `k` (moteurs si `SITE.zones`) | AUTO / MANU `m` |
+| Freins de bloc | `B1…Bn` | freins `k`, roues de propulsion **marche avant seule** (`drive:'fwd'`, propriétaire 2026-11-17) : Avancer `f` (`#zB<k>_f`), Arrêt `x` — **pas de Reculer** | AUTO / MANU `m` |
 | Frein final | `Fin` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
 | Rail mobile du parcours du pont droit (rail A, plaque « Rail parcours ») | `RA` | freins `k`, `f`, `b`, `x` | AUTO / MANU `m` |
 | Rail du chariot (rail B, chariot) | `RB` | freins `k`, `f` (rail en ligne : vers la gare ; face à une voie : refusé, Dispatch de la voie), `b` (refusé), `x` | manuel |
@@ -109,7 +109,8 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 | Voies de garage | `L1…Ln` | **Dispatch** `d` (`#zL<k>_d`, propriétaire, issue #11) et freins forcés `k` (`#zL<k>_k`, Serrer / Relâcher) — pas d'Avancer, Reculer ni Arrêt | manuel |
 | Appareil | — | positions `#yP`, `#y1…#yN`, `#yG` (deux rails), rail mobile du parcours `#yA0`/`#yA1` ; rail unique : `#yP`, `#y1…#yN` seulement | manuel |
 
-- **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`. Défaut : freins partout ; moteurs partout sauf sur les freins de bloc (estimé, à confirmer par attraction).
+- **Moteurs** : `SITE.zones = { <id ou groupe B / L> : {brake, drive} }`, `drive` = `true` (avancer / reculer / arrêt), `'fwd'` (avancer / arrêt, pas de bouton Reculer) ou `false`. Défaut : freins et moteurs partout ; freins de bloc en `'fwd'` (propriétaire, 2026-11-17 : « roues de propulsion sur les zones de break et boutons AV, les AR ne sont pas nécessaires » ; disposition des roues ESTIMÉE). Les AR des autres zones (gare, frein final, rails du pont) restent : ils servent aux manœuvres.
+- **Frein de bloc à roues (MANU)** : un train arrêté au frein n'en repart pas au seul relâchement ; **Avancer** (`#zB<k>_f`) le pousse (jusqu'à `VPROP` = `PH.vmin`, ESTIMÉ, puis gravité quand sa queue a passé le frein), freins relâchés requis, refusé au journal si le canton suivant est occupé ou l'appareil hors de P (règle de départ) ; Arrêt `x` l'arrête tant qu'il n'a pas passé le frein. Sans roues (`drive:false`), le relâchement suffit (ancien comportement). En AUTO : inchangé (cantonnement). `engine/garage.js` `BDRV`, `engine/sim.js` `t.bst` / `t.bgo`.
 - **AUTO / MANU** (zones de freinage) : en AUTO (défaut) le cantonnement serre et relâche seul ; en MANU, `k` serre / relâche et les moteurs obéissent au pupitre. Passer en MANU serre les freins si un train y est arrêté. `#zAuto` remet toutes les zones en AUTO. En MANU, freins relâchés, le cantonnement reste actif (sécurité).
 - **Anti-collision** : relâcher les freins d'une zone qui retient un train est refusé si la section suivante est occupée (canton suivant, chariot, gare).
 - **Gare `f`** : le train **vide** quitte la gare (appareil hors de `P` : règle de départ ; le garage se commande au Dispatch de la voie) (départ à vide ; avec passagers, bouton Départ après les lapbars). Les freins de gare sont liés au départ : fermés tant qu'un train est à quai, ouverts uniquement par la séquence Départ (portillons fermés, lapbars validés).

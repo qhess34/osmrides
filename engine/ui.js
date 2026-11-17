@@ -60,8 +60,8 @@ function ui(){
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}
     if(z==='St'){const h=stHeld();$('zSt_fr').textContent=h?'SERRÉS':'LIBRES';$('zSt_fr').classList.toggle('lit',h);}
     if(Z.brake){const b=$('z'+z+'_k');b.classList.toggle('lit',zK(z)||(!man&&ts.some(t=>t.st==='run'&&t.v===0)));b.disabled=!man;} // allumé = freins serrés (en AUTO : train retenu par le cantonnement)
-    if(Z.drive){$('z'+z+'_f').classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||(t.st==='station'&&t.depReq))||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));$('z'+z+'_b').classList.toggle('lit',ts.some(t=>t.mv<0));
-      for(const c of 'fbx')$('z'+z+'_'+c).disabled=!man;}}
+    if(Z.drive){$('z'+z+'_f').classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||t.bgo||(t.st==='station'&&t.depReq))||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));const bb=$('z'+z+'_b');if(bb)bb.classList.toggle('lit',ts.some(t=>t.mv<0)); // drive:'fwd' (freins de bloc) : pas de bouton AR
+      for(const c of 'fbx'){const e=$('z'+z+'_'+c);if(e)e.disabled=!man;}}}
   $('zAuto').disabled=!ZONES.some(Z=>Z.auto&&G.zm[Z.id]);
   POS_ORDER.forEach(p=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
   if(RA){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});

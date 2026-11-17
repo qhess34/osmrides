@@ -73,8 +73,8 @@ const SITE=(()=>{
       rocher:{label:'Rocher',x:42,z:25,s:10},passerelle:{label:'Passerelle',x:35.5,z:-4.4,s:12}},
     labels:()=>[['Gare',-6,-8],['Lift — 31 m',44,-50],['Frein final',-36,-42],['Garage',-31,-4],['Pont transbordeur',-38,-33],["File d'attente",40,8],['Rocher',45,35],['Entrée',67,23]],
     text:{storm:'Orage sur l\'attraction : aucun train ne doit partir.',great:'Excellente journée sur la Trace du Hourra !'},
-    // Commande par zones : freins de bloc B1…B3 = freins seuls ; frein final, rail mobile du parcours, rail du chariot, voies = freins + moteurs (défauts du moteur, ESTIMÉ,
-    // à confirmer par le propriétaire). Exemple pour changer : zones:{B:{drive:true}, RA:{drive:false}}.
+    // Commande par zones : freins de bloc B1…B3 = freins + roues de propulsion en marche avant seule (drive:'fwd', bouton AV sans AR, propriétaire 2026-11-17) ;
+    // frein final, rail mobile du parcours, rail du chariot, voies = freins + moteurs (défauts du moteur, disposition ESTIMÉE). Exemple pour changer : zones:{B:{drive:false}, RA:{drive:false}}.
     helpGarage:'<b>Garage</b> : six voies droites, un train par voie, desservies par un pont transbordeur droit sur le frein final, commandées par zones. Deux éléments mobiles : '
       +'le rail mobile du parcours (rail du circuit, zone de freinage), sur le circuit (C) ou retiré vers l\'est (E), et le chariot, qui porte le rail du chariot (rail de garage) et emporte le train : en ligne avec le circuit (G) ou face à une voie (1 à 6). '
       +'Pour garer un train : envoyez-le vide (Gare AV), frein final en MANU et serré (il s\'arrête avant le pont), rail parcours sur E, chariot sur G, relâchez le frein final puis Frein final AV : il roule sur le rail du chariot et s\'y arrête ; '

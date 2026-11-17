@@ -81,7 +81,8 @@ const root = path.resolve(__dirname, '..');
       await click('#y' + d0); ok('devRest', await until(`devOn(${d0 - 1})`, 4000));
       await click('#yA0'); ok('raIn', await until('raIn()', 4000));
       ok('stillHeld', await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5));
-      await click('#zB1_k'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
+      await click('#zB1_k'); ok('blk1Waits', await until('false', 200) || await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5)); // MANU, roues de propulsion : relâcher ne suffit pas
+      await click('#zB1_f'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
       // garer le train 0 (vide) : frein final en MANU serré (arrêt avant le pont), rail A retiré, chariot sur G, relâcher, Avancer (frein final) sur le rail B,
       // chariot sur une voie libre (il l'emporte), Dispatch de la voie (il y entre), chariot au repos, rail A sur le circuit
       await click('#zFin_m'); await click('#zFin_k');
@@ -257,7 +258,19 @@ const root = path.resolve(__dirname, '..');
       for (const t of trains) if (t !== A) { t.st = 'garage'; t.g = 1e3; } let vB = null, prev = A.s, stop = false;
       for (let k = 0; k < 40000 && A.st === 'run'; k++) { step(.025); if (prev < BLK[i] && A.s >= BLK[i]) vB = A.v; if (A.blk && A.v === 0) stop = true; prev = A.s; }
       return ' | trim: ' + (vB !== null && vB <= BTRIM[i] + 1 && !stop && A.st !== 'run' ? 'slows' : 'slows:FAIL'); });
-    man += tr; await p3.close();
+    man += tr;
+    // freins de bloc à roues de propulsion (drive:'fwd') : AV seul (pas d'AR), en MANU le train arrêté n'en repart qu'à AV, AV refusé si le canton suivant est occupé
+    await p3.reload(); await p3.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p3.click('[data-act=closeHelp]');
+    const bf = await p3.evaluate(() => { if (!BLK.length || !BDRV[0]) return ''; act('speed', 0); G.wx.next = 1e6; const o = [], A = trains[0], B = trains[1];
+      const run = (c, m) => { for (let i = 0; i < m; i++) { if (c()) break; step(.025); } return c(); }, L = r => r.test($('log').textContent);
+      o.push(document.getElementById('zB1_f') && document.getElementById('zB1_x') && !document.getElementById('zB1_b') ? 'avOnly' : 'avOnly:FAIL');
+      for (const t of trains) { t.seats.fill(null); if (t !== A) { t.st = 'garage'; t.g = 1e3; } } A.st = 'run'; A.s = BLK[0] - 25; A.v = 5; A.inLift = true; A.blk = false; A.bgo = 0; A.bst = 0;
+      act('zone', 'B1:m'); act('zone', 'B1:k'); run(() => A.blk && A.v === 0, 4000); act('zone', 'B1:k');
+      run(() => false, 200); o.push(A.v === 0 && Math.abs(A.s - BLK[0]) < .5 ? 'manuWaits' : 'manuWaits:FAIL');
+      act('zone', 'B1:b'); o.push(L(/marche avant seulement/) ? 'refuseAR' : 'refuseAR:FAIL');
+      if (B) { B.st = 'run'; B.s = BLK[0] + TLEN + 15; B.v = 0; act('zone', 'B1:f'); o.push(L(/Canton suivant occupé/) && !A.bgo ? 'refuseBusy' : 'refuseBusy:FAIL'); B.st = 'garage'; B.g = 1e3; }
+      act('zone', 'B1:f'); run(() => A.s > BLK[0] + 5, 2000); o.push(A.s > BLK[0] + 5 ? 'avGo' : 'avGo:FAIL'); act('zone', 'B1:m'); return ' | blkAV: ' + o.join(' '); });
+    man += bf; await p3.close();
     // sécurités (SITE.car.restraint) : arrivée verrouillée, ouverture au bouton, départ refusé sécurités ouvertes, verrouillage refusé portillons ouverts, verrouillage = fermeture wagon par wagon par les opérateurs puis validation
     const p4 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p4.on('pageerror', e => errors.push(String(e.message || e)));
