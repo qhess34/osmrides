@@ -64,7 +64,7 @@ Reste ESTIMÉ : hauteurs des sommets (rien d'autre que 40 m, 35 m, ≈ 30 m pour
 
 ## Questions ouvertes
 
-Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
+Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/JOURNAL.md`.
 
 ## Documents fournis par le propriétaire (2026-11-15)
 

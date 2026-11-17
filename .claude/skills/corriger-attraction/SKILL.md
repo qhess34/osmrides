@@ -6,5 +6,5 @@ description: Corriger ou ajuster une attraction existante de T2Z d'après une re
 2. Lire `docs/ROADMAP.md` puis seulement le fichier concerné : `sites/<id>.js` d'abord (réglages `SITE`), `tools/specs/<id>.json` pour le profil ou le tracé. Ne jamais éditer `sites/<id>.data.js` : le régénérer avec `tools/make_site.py`.
 3. Le moteur (`engine/*.js`) ne change que si la correction est générique ; sinon rester dans `SITE`. Commande par zones, jamais par train ; vocabulaire : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur.
 4. Vérifier avec `verifier-attraction` et regarder une capture avant/après (`captures-jeu`).
-5. Mettre à jour la note de l'attraction, `docs/NOUVELLE-ATTRACTION.md` (journal) et `docs/ROADMAP.md` ; mettre à jour `tutos.html` si un libellé ou une manœuvre a changé (`maj-tutos`).
+5. Mettre à jour la note de l'attraction, `docs/NOUVELLE-ATTRACTION.md` (journal) et `docs/JOURNAL.md` ; mettre à jour `tutos.html` si un libellé ou une manœuvre a changé (`maj-tutos`).
 6. Commit en anglais à l'impératif. Rendre compte avec `compte-rendu-proprietaire`.
