@@ -118,6 +118,10 @@ const devHoldOn=()=>DEV_HOLD>=0&&(devOff()||trains.some(o=>yardBusy(o))),devHold
 const raLock=()=>trains.find(onRail); // rail A : immobile tant qu'un train y est, y roule ou s'en approche
 const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
+/* Cantonnement et garage (propriétaire, 2026-11-17 : « la présence d'un train sur le chariot doit bloquer les sections précédentes uniquement si le chariot est sur le parcours ») :
+   pont droit, le train porté (ou qui entre / sort d'une voie) ne compte dans le dernier canton que si le rail porteur est en place sur le circuit (PC : G, ou P pour un rail unique).
+   Chariot face à une voie ou en mouvement : il ne bloque pas ; le train qui arrive est alors retenu au frein final avant le pont (aucun rail en ligne, circIn), jamais dans le vide. */
+const yardBlocks=self=>YD.at==='brake'&&(!TRAV||(!devMoving()&&G.dev.pos===PC))&&trains.some(o=>o!==self&&yardBusy(o));
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-TLEN<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
 const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&&!(atAnchor(o)&&G.dev.pos===PC&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
   :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering)||(DEV_HOLD>=0&&o.s>BLK[DEV_HOLD]+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
@@ -185,10 +189,11 @@ const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'cou
 /* ══════════ COMMANDE PAR ZONES (docs/manoeuvres.md, « Principe de commande ») ══════════
    Le joueur commande des zones, jamais des trains : St (gare), Lift, B1…Bn (freins de bloc), Fin (frein final), RA / RB (pont droit :
    rail A du circuit, rail B du chariot), L1…Ln (voies de garage). Chaque zone a des freins (G.zk[z] = serrés) et, selon SITE.zones,
-   des moteurs (pneus) Avancer / Reculer / Arrêt. Les zones de freinage B*, Fin, RA sont en AUTO par défaut (cantonnement) ;
+   des moteurs (pneus / roues de propulsion) Avancer / Reculer / Arrêt ; drive:'fwd' = marche avant seule (Avancer / Arrêt, pas de Reculer). Les zones de freinage B*, Fin, RA sont en AUTO par défaut (cantonnement) ;
    le joueur peut passer chacune en MANU (G.zm[z]) : ses freins et moteurs obéissent alors au pupitre. Gare, rail B et voies : toujours manuels.
-   SITE.zones : { <zone ou groupe B / L> : {brake, drive} } ; défauts : freins partout, moteurs partout sauf freins de bloc (ESTIMÉ, à confirmer). */
-const ZCFG=z=>Object.assign({brake:true,drive:!/^B\d/.test(z)},SITE.zones&&SITE.zones[z.replace(/\d+$/,'')],SITE.zones&&SITE.zones[z]);
+   SITE.zones : { <zone ou groupe B / L> : {brake, drive} } (drive : true | 'fwd' | false) ; défauts : freins et moteurs partout, freins de bloc en marche avant seule
+   (drive:'fwd', propriétaire 2026-11-17 : roues de propulsion et bouton AV, pas d'AR ; disposition ESTIMÉE). */
+const ZCFG=z=>Object.assign({brake:true,drive:/^B\d/.test(z)?'fwd':true},SITE.zones&&SITE.zones[z.replace(/\d+$/,'')],SITE.zones&&SITE.zones[z]);
 const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
   .concat(BLK.map((_,i)=>({id:'B'+(i+1),name:'Bloc '+(i+1),sec:'brk',auto:true})),[{id:'Fin',name:'Frein final',sec:'brk',auto:true}],
     SG?[{id:'RB',name:YD.railName||'Rail du pont',sec:'brk',auto:true}]:TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
@@ -198,6 +203,9 @@ const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
 /* Frein de ralentissement (SITE.zones.B1.trim:{v}) : en passage normal (zone en AUTO, canton suivant libre), le train y est ramené à la vitesse v (m/s) puis continue ; il s'arrête
    seulement si le canton suivant est occupé ou si les freins sont serrés au pupitre. Par zone de frein de bloc : BTRIM[i] (m/s, 0 = pas de ralentissement). */
 const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.trim&&Z.trim.v||0;});
+/* Roues de propulsion des freins de bloc (BDRV[i]) : en MANU, un train arrêté au frein n'en repart qu'au bouton AV (#zB<k>_f, freins relâchés, canton suivant libre),
+   poussé jusqu'à VPROP puis rendu à la gravité quand sa queue a passé le frein ; sans roues (drive:false), le relâchement suffit. En AUTO : inchangé. VPROP = PH.vmin, ESTIMÉ. */
+const BDRV=BLK.map((_,i)=>!!(ZONES.find(o=>o.id==='B'+(i+1))||{}).drive),VPROP=PH.vmin;
 const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : zone d'où un train entre dans la voie en face de l'appareil (au Dispatch de la voie) ; son Arrêt arrête aussi ce train // gare : pas de bouton de frein, freins liés au départ (stHeld)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;

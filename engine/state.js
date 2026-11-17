@@ -123,8 +123,8 @@ const aheadBusy=t=>PSB?preBusy(t):stationBusy(t); // section après le frein fin
 function occupied(a,b,self){
   if(b>=L&&(RA||PSB)){ // dernier canton : frein final, rail mobile et frein avant gare stockent un train chacun (le suivant attend au frein final)
     const z=trains.filter(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN);
-    return z.some(o=>!onRaSt(o)&&!onPsb(o))||(YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));}
-  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&YD.at==='brake'&&trains.some(o=>o!==self&&yardBusy(o)));
+    return z.some(o=>!onRaSt(o)&&!onPsb(o))||yardBlocks(self);}
+  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&yardBlocks(self)); // train porté par le chariot : seulement chariot en ligne (yardBlocks, engine/garage.js)
 }
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";

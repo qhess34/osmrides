@@ -666,7 +666,7 @@ function drawResCar(hl,r,a){ // lapbar commune au wagon : UNE barre en travers D
 }
 /* Équipements des zones de freinage, dessinés avec leur tronçon (sous les trains) :
    - mâchoires mécaniques : deux patins de part et d'autre de l'ailette du train (axe de la voie), dans leur carter ; serrées (patins contre l'axe) ou écartées selon l'état des freins ;
-   - roues de propulsion (pneus) là où la zone a des moteurs (SITE.zones … drive ; défaut : toutes les zones sauf les freins de bloc), une unité sur deux : paire de pneus à axe vertical
+   - roues de propulsion (pneus) là où la zone a des moteurs (SITE.zones … drive ; défaut : toutes les zones, freins de bloc compris en marche avant seule, drive:'fwd'), une unité sur deux : paire de pneus à axe vertical
      qui pincent l'ailette (bois, acier, inversé), pneu à axe horizontal au fond de la gouttière (bob) ; ils tournent quand un train roule dessus.
    Coaster inversé : étriers et pneus de part et d'autre de la poutre caisson. Matières mates ; de loin, un simple trait sombre. Dimensions ESTIMÉES. */
 const BZS={},PV=new WeakMap(),tSp=t=>t.st==='garage'?(t.mv?MV.v:0):t.st==='station'?0:t.v;

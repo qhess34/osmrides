@@ -81,7 +81,8 @@ const root = path.resolve(__dirname, '..');
       await click('#y' + d0); ok('devRest', await until(`devOn(${d0 - 1})`, 4000));
       await click('#yA0'); ok('raIn', await until('raIn()', 4000));
       ok('stillHeld', await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5));
-      await click('#zB1_k'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
+      await click('#zB1_k'); ok('blk1Waits', await until('false', 200) || await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5)); // MANU, roues de propulsion : relâcher ne suffit pas
+      await click('#zB1_f'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
       // garer le train 0 (vide) : frein final en MANU serré (arrêt avant le pont), rail A retiré, chariot sur G, relâcher, Avancer (frein final) sur le rail B,
       // chariot sur une voie libre (il l'emporte), Dispatch de la voie (il y entre), chariot au repos, rail A sur le circuit
       await click('#zFin_m'); await click('#zFin_k');
@@ -262,7 +263,36 @@ const root = path.resolve(__dirname, '..');
       for (const t of trains) if (t !== A) { t.st = 'garage'; t.g = 1e3; } let vB = null, prev = A.s, stop = false;
       for (let k = 0; k < 40000 && A.st === 'run'; k++) { step(.025); if (prev < BLK[i] && A.s >= BLK[i]) vB = A.v; if (A.blk && A.v === 0) stop = true; prev = A.s; }
       return ' | trim: ' + (vB !== null && vB <= BTRIM[i] + 1 && !stop && A.st !== 'run' ? 'slows' : 'slows:FAIL'); });
-    man += tr; await p3.close();
+    man += tr;
+    // freins de bloc à roues de propulsion (drive:'fwd') : AV seul (pas d'AR), en MANU le train arrêté n'en repart qu'à AV, AV refusé si le canton suivant est occupé
+    await p3.reload(); await p3.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p3.click('[data-act=closeHelp]');
+    const bf = await p3.evaluate(() => { if (!BLK.length || !BDRV[0]) return ''; act('speed', 0); G.wx.next = 1e6; const o = [], A = trains[0], B = trains[1];
+      const run = (c, m) => { for (let i = 0; i < m; i++) { if (c()) break; step(.025); } return c(); }, L = r => r.test($('log').textContent);
+      o.push(document.getElementById('zB1_f') && document.getElementById('zB1_x') && !document.getElementById('zB1_b') ? 'avOnly' : 'avOnly:FAIL');
+      for (const t of trains) { t.seats.fill(null); if (t !== A) { t.st = 'garage'; t.g = 1e3; } } A.st = 'run'; A.s = BLK[0] - 25; A.v = 5; A.inLift = true; A.blk = false; A.bgo = 0; A.bst = 0;
+      act('zone', 'B1:m'); act('zone', 'B1:k'); run(() => A.blk && A.v === 0, 4000); act('zone', 'B1:k');
+      run(() => false, 200); o.push(A.v === 0 && Math.abs(A.s - BLK[0]) < .5 ? 'manuWaits' : 'manuWaits:FAIL');
+      act('zone', 'B1:b'); o.push(L(/marche avant seulement/) ? 'refuseAR' : 'refuseAR:FAIL');
+      if (B) { B.st = 'run'; B.s = BLK[0] + TLEN + 15; B.v = 0; act('zone', 'B1:f'); o.push(L(/Canton suivant occupé/) && !A.bgo ? 'refuseBusy' : 'refuseBusy:FAIL'); B.st = 'garage'; B.g = 1e3; }
+      act('zone', 'B1:f'); run(() => A.s > BLK[0] + 5, 2000); o.push(A.s > BLK[0] + 5 ? 'avGo' : 'avGo:FAIL'); act('zone', 'B1:m'); return ' | blkAV: ' + o.join(' '); });
+    man += bf;
+    // pont droit : un train porté par le chariot face à une voie ne bloque pas le dernier canton (propriétaire, 2026-11-17) ; le train qui arrive est retenu avant le pont (aucun rail en ligne)
+    await p3.reload(); await p3.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p3.click('[data-act=closeHelp]');
+    const cb = await p3.evaluate(() => { if (!TRAV || trains.length < 2) return ''; act('speed', 0); G.wx.next = 1e6; const o = [], C = trains.find(t => t.st === 'garage') || trains[1], A = trains.find(t => t !== C);
+      for (const t of trains) { t.seats.fill(null); if (t !== A && t !== C) { t.st = 'garage'; t.g = 1e3; } }
+      C.st = 'garage'; C.lane = -1; C.g = G_B; C.mv = 0; C.v = 0; G.dev.pos = G.dev.to = 1; G.dev.k = 1; if (RA) { G.ra.pos = G.ra.to = 1; G.ra.k = 1; }
+      o.push(onCar(C) && !yardBlocks(null) ? 'carAwayFree' : 'carAwayFree:FAIL');
+      G.dev.pos = G.dev.to = PC; const inl = yardBlocks(null); G.dev.pos = G.dev.to = 1; o.push(inl ? 'carInLineBlocks' : 'carInLineBlocks:FAIL');
+      A.st = 'run'; A.s = (BLK.length ? BLK[BLK.length - 1] : S_BRK) - 30; A.v = 6; A.inLift = true; A.blk = false; A.inBrake = false;
+      for (let i = 0; i < 12000 && !(A.v === 0 && A.s > S_BRK); i++) step(.025); for (let i = 0; i < 200; i++) step(.025);
+      o.push(A.st === 'run' && A.v === 0 && Math.abs(A.s - S_PRE) < .6 && onCar(C) ? 'heldBeforeCar' : 'heldBeforeCar:FAIL(' + A.s.toFixed(1) + '/' + S_PRE.toFixed(1) + ')');
+      // train ARRÊTÉ avant le pont : le chariot revient en ligne avec son train (propriétaire, 2026-11-17), le train arrêté reste retenu tant que le rail porteur est occupé
+      const n0 = ($('log').textContent.match(/Dernier canton occupé/g) || []).length; act('pos', PC);
+      for (let i = 0; i < 2000 && devMoving(); i++) step(.025);
+      o.push(G.dev.pos === PC && C.st === 'run' && ($('log').textContent.match(/Dernier canton occupé/g) || []).length === n0 ? 'carBackStopped' : 'carBackStopped:FAIL');
+      let held = true; for (let i = 0; i < 2400; i++) { step(.025); if (held === true && (onRail(C) || atAnchor(C)) && (A.v > .05 || A.s > S_PRE + .5)) held = 'moved' + i + '/' + [C.st, C.s, C.v, A.s, A.v].map(x => typeof x === 'number' ? x.toFixed(2) : x); if (held === true && C.st === 'run' && C.s > A.s && C.s - A.s < TLEN) held = 'gap' + i; }
+      o.push(held === true ? 'stoppedHeld' : 'stoppedHeld:FAIL(' + held + ')'); return ' | carBlk: ' + o.join(' '); });
+    man += cb; await p3.close();
     // sécurités (SITE.car.restraint) : arrivée verrouillée, ouverture au bouton, départ refusé sécurités ouvertes, verrouillage refusé portillons ouverts, verrouillage = fermeture wagon par wagon par les opérateurs puis validation
     const p4 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p4.on('pageerror', e => errors.push(String(e.message || e)));
