@@ -766,9 +766,6 @@ function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gates
   ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
   for(const g of GUNITS){const b=BAYS[g.k],e0=g.c+g.h-.12-GL(g),e1=g.c-g.h+.15;if(e0-e1<.05)continue;ctx.moveTo(b.x+b.tx*e0+b.rx*PGATE,b.z+b.tz*e0+b.rz*PGATE);ctx.lineTo(b.x+b.tx*e1+b.rx*PGATE,b.z+b.tz*e1+b.rz*PGATE);}
   ctx.stroke();
-  ctx.strokeStyle=G.gate>.5?'#4f9a72':'#a8443a';lw(.13,.9);ctx.lineCap='round';ctx.beginPath();
-  for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,len=GL(g),px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.moveTo(px,pz);ctx.lineTo(px+(-b.tx*ca-b.rx*sa)*len,pz+(-b.tz*ca-b.rz*sa)*len);}
-  ctx.stroke();ctx.lineCap='butt';
   ctx.fillStyle='#2b2e33';for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.fillRect(px-.1,pz-.1,.2,.2);}
   // postes de validation des lapbars (les opérateurs et les visiteurs du quai : drawStationPeople)
   for(const o of OPS){const h=opHome(o.i),b=o.i?BAYS[NCARS-1]:BAYS[0],e=o.i?-1:1,qx=h[0]+b.tx*e*.7,qz=h[1]+b.tz*e*.7;
@@ -780,7 +777,14 @@ function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gates
 // APRÈS la voie, les trains, les portillons, les garde-corps et le sol du quai ; sous le toit de la gare quand il est affiché, au-dessus quand il est effacé
 // (drawWorld). Les visiteurs assis sont dessinés avec leur wagon (drawCar), donc sous le train.
 const PLATK={wait:1,board:1,alight:1},onPlat=k=>PLATK[k.kind]&&(k.kind!=='alight'||STSP.length<3||pipXZ(STSP,k.x,k.z));
-function drawStationPeople(){
+// Vantaux des portillons : dessinés avec les personnes du quai, APRÈS la voie et les trains (sinon le tablier de la voie, plus large que le wagon, les cachait
+// quand ils s'ouvrent vers le train : propriétaire, Zeus, 2026-11-17)
+function drawGateLeaves(){const a=G.gate*1.45,ca=Math.cos(a),sa=Math.sin(a),GL=g=>Math.min(2*g.h-.3,PGATE-PEDGE-.05);
+  ctx.strokeStyle=G.gate>.5?'#4f9a72':'#a8443a';lw(.13,.9);ctx.lineCap='round';ctx.beginPath();
+  for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,len=GL(g),px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.moveTo(px,pz);ctx.lineTo(px+(-b.tx*ca-b.rx*sa)*len,pz+(-b.tz*ca-b.rz*sa)*len);}
+  ctx.stroke();ctx.lineCap='butt';
+}
+function drawStationPeople(){drawGateLeaves();
   G.plat.forEach((r,i)=>{if(r&&r.on){const p=slotPos(i);person(p[0],p[2],r.ci,r.ph,false);}});
   for(const k of G.walkers)if(onPlat(k))person(k.x,k.z,k.ci,k.ph,true);
   for(const o of OPS)person(o.x,o.z,3,o.i+.6,o.mv,'#1d2b4f');
