@@ -69,7 +69,7 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/ROADMAP.md`.
 ## Documents fournis par le propriétaire (2026-11-15)
 
 - Page de recherche d'images enregistrée : seules des **miniatures** (≈ 590 × 330 px) y figurent.
-- `docs/sources/oziris-plan-figures-miniature.jpg` : panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Remplacée par l'affiche en grand, voir « Inversions ».
+- (miniature supprimée au nettoyage du 2026-11-17, doublon de l'affiche) panneau « OzIris » avec le **plan des figures** (tracé vu de dessus, noms des inversions en légende). À cette taille, les noms des figures sont **illisibles** ; seule la forme générale est exploitable. Remplacée par l'affiche en grand, voir « Inversions ».
 - Une miniature d'article titre « Un quatrième train fera son arrivée sur le parcours d'OzIris » : dépassée, le propriétaire confirme **3 trains bleus**.
 - Photos : voie et poutre **bleues**, supports **crème / sable**, sièges suspendus ; décor égyptien (gare à colonnes, bassins).
 
