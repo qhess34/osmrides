@@ -317,7 +317,7 @@ function stairWidths(S){
         const m=Math.max(.8,bd-.25);o.w=Math.min(o.w,m);r.w=Math.min(r.w,m);}}}
   for(const o of STAIRS)for(const q of o.qs)q.w=Math.min(q.w,o.w);}
 const FORKP=LOOPS.flatMap(l=>[l.loop.P[0],l.loop.P[l.loop.P.length-1],l.short.P[0],l.short.P[l.short.P.length-1]]);
-let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=new Path2D,QRAILP=[],QW_MAX=2.2,QW_MIN=.9,QWP=(()=>{const L0=SEGS.map(g=>g.P).concat([(QS.link||[]).concat([ENTRY0])]).filter(P=>P.length>1),S=[];
+let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=new Path2D,QRAILP=[],QMIDS=[],QW_MAX=2.2,QW_MIN=.9,QWP=(()=>{const L0=SEGS.map(g=>g.P).concat([(QS.link||[]).concat([ENTRY0])]).filter(P=>P.length>1),S=[];
   L0.forEach((P,pi)=>{for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(l/.5));for(let k=i>1?1:0;k<=n;k++)S.push({x:a[0]+(b[0]-a[0])*k/n,z:a[1]+(b[1]-a[1])*k/n,tx:(b[0]-a[0])/(l||1),tz:(b[1]-a[1])/(l||1),pi,w:QW_MAX});}});
   const G=new Map,key=(x,z)=>Math.floor(x/3)+','+Math.floor(z/3);for(const q of S){const k=key(q.x,q.z);if(!G.has(k))G.set(k,[]);G.get(k).push(q);}
   S.forEach((q,k)=>q.k=k);
@@ -325,20 +325,32 @@ let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=n
     for(let i=-2;i<=2;i++)for(let j=-2;j<=2;j++)for(const o of G.get((cx+i)+','+(cz+j))||[]){const dx=o.x-q.x,dz=o.z-q.z,l=Math.hypot(dx,dz);if(l<.3||l>6)continue;
       if(o.pi!==q.pi&&FORKP.some(F=>Math.hypot(q.x-F[0],q.z-F[1])<3.5&&Math.hypot(o.x-F[0],o.z-F[1])<3.5))continue; // branches d'une même fourche près de leur point commun : pas de rétrécissement (raccord propre, Zeus lot 5)
       if(Math.abs(dx*q.tx+dz*q.tz)/l<.5&&Math.abs(o.tx*q.tx+o.tz*q.tz)>.5&&l<d){d=l;bo=o;}} // en travers de l'allée, et allée voisine à peu près parallèle
-    q.w=clamp(d-.25,QW_MIN,QW_MAX);if(bo&&d<3&&bo.k>q.k&&!FORKP.some(F=>Math.hypot(q.x-F[0],q.z-F[1])<3.5))q.mid=[(q.x+bo.x)/2,(q.z+bo.z)/2];} // allées collées : barrière de séparation à mi-distance (QRAIL)
-  // barrière continue entre deux allées de file parallèles et proches (propriétaire, 2026-11-16) : main courante sur poteaux, tracée à mi-distance des axes
-  {const runs=[];let r=null;for(let i=0;i<S.length;i++){const q=S[i];if(!q.mid){r=null;continue;}const pr=S[i-1];if(r&&pr&&pr.mid&&pr.pi===q.pi&&Math.hypot(pr.mid[0]-q.mid[0],pr.mid[1]-q.mid[1])<1.2)r.push(q.mid);else runs.push(r=[q.mid]);}
-    for(const R of runs){if(R.length<4)continue;R.forEach((m,j)=>{if(j)QRAIL.lineTo(m[0],m[1]);else QRAIL.moveTo(m[0],m[1]);if(j%4===0)QRAILP.push(m);});}} // tronçons de moins de 1,5 m ignorés (pas de bout de main courante isolé)
+    q.w=clamp(d-.25,QW_MIN,QW_MAX);if(bo&&d<3&&bo.k>q.k){q.mid=[(q.x+bo.x)/2,(q.z+bo.z)/2];q.bo=bo;}} // allées collées : barrière de séparation à mi-distance (QRAIL)
   for(let r=0;r<2;r++)for(let i=1;i<S.length-1;i++)if(S[i-1].pi===S[i].pi&&S[i+1].pi===S[i].pi)S[i].w=Math.min(S[i].w,(S[i-1].w+S[i].w+S[i+1].w)/3+.05); // lissage
   if(OSMW.length){for(const q of S)q.ow=osmWAt(q.x,q.z);const ws=S.filter(q=>q.ow).map(q=>q.ow);if(ws.length){const m=Math.min(...ws);for(const q of S)q.w=q.ow||m;}} // largeur OSM de la file
   // File le long des quais et dans les zones piétonnes (propriétaire, OzIris, 2026-11-16, lot 5, générique) : largeur OSM, sinon 1 m (ESTIMÉ, couloir réel inconnu), et barrières
   // de délimitation (main courante sur poteaux) des DEUX côtés (QSIDE), là où aucune bordure de chemin ne la sépare du sol environnant.
   {const SG=STATION_GROW||SITE.stationPoly||[],PEDP=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3).map(f=>f.p);
     for(const q of S){const st=SG.length>2&&pipXZ(SG,q.x,q.z);if(st||PEDP.some(P=>pipXZ(P,q.x,q.z))){q.w=Math.min(q.w,q.ow||1);q.side=st?2:1;}}}
-  stairWidths(S);QWS=S;
+  stairWidths(S);
+  QWS=S;
   qwAt=(x,z)=>{let bd=1e9,w=2.2;for(const q of S){const d=Math.abs(q.x-x)+Math.abs(q.z-z);if(d<bd){bd=d;w=q.w;}}return w;};reGates(); // barrières sur les bordures dessinées (engine/queue.js)
+  // ... sauf sur un passage (propriétaire, OzIris B2, 2026-11-17) : milieu recouvert par une autre allée (raccourci, jonction) ou par un tronçon transversal de la même allée.
+  // Plus d'exclusion à 3,5 m des pointes de fourche : deux jambes d'une même boucle collées jusqu'à leur fourche gardent leur clôture jusqu'au passage.
+  for(const q of S){if(!q.mid)continue;const m=q.mid,cx=Math.floor(m[0]/3),cz=Math.floor(m[1]/3);let on=false;
+    for(let i=-1;i<=1&&!on;i++)for(let j=-1;j<=1&&!on;j++)for(const o of G.get((cx+i)+','+(cz+j))||[]){if(o===q||o===q.bo)continue;
+      if((o.pi!==q.pi&&o.pi!==q.bo.pi||Math.abs(o.tx*q.tx+o.tz*q.tz)<.7)&&Math.hypot(o.x-m[0],o.z-m[1])<o.w/2+.05){on=true;break;}}
+    if(on)q.mid=null;}
+  // ... ni sous le vantail d'une barrière de file (positions A et B, poteau ; lot 5 : rien qui ressemble à une barrière fixe sur une barrière qui pivote)
+  {const GS=allGates().filter(g=>g&&g.h&&g.a&&g.b),dSeg=(m,h,e)=>{const dx=e[0]-h[0],dz=e[1]-h[1],l=dx*dx+dz*dz||1e-9,t=clamp(((m[0]-h[0])*dx+(m[1]-h[1])*dz)/l,0,1);return Math.hypot(h[0]+dx*t-m[0],h[1]+dz*t-m[1]);};
+    for(const q of S)if(q.mid&&GS.some(g=>Math.hypot(q.mid[0]-g.h[0],q.mid[1]-g.h[1])<.6||dSeg(q.mid,g.h,g.a)<.35||dSeg(q.mid,g.h,g.b)<.35))q.mid=null;}
+  // barrière continue entre deux allées de file parallèles et proches (propriétaire, 2026-11-16) : main courante sur poteaux, tracée à mi-distance des axes
+  {const runs=[];let r=null;for(let i=0;i<S.length;i++){const q=S[i];if(!q.mid){r=null;continue;}const pr=S[i-1];if(r&&pr&&pr.mid&&pr.pi===q.pi&&Math.hypot(pr.mid[0]-q.mid[0],pr.mid[1]-q.mid[1])<1.2)r.push(q.mid);else runs.push(r=[q.mid]);}
+    for(const R of runs){if(R.length<4)continue;R.forEach((m,j)=>{if(j)QRAIL.lineTo(m[0],m[1]);else QRAIL.moveTo(m[0],m[1]);if(j%4===0)QRAILP.push(m);QMIDS.push(m);});}} // tronçons de moins de 1,5 m ignorés (pas de bout de main courante isolé)
+  // une seule clôture entre deux allées collées : la main courante de délimitation (QSIDE, zones piétonnes et gare) du côté de la clôture de séparation n'est pas dessinée
+  for(const q of S)if(q.side)for(const e of [1,-1])if(QMIDS.some(m=>{const dx=m[0]-q.x,dz=m[1]-q.z;return Math.abs(dx)<1.6&&Math.abs(dz)<1.6&&Math.abs(dx*q.tx+dz*q.tz)<.4&&(-q.tz*dx+q.tx*dz)*e>0&&Math.hypot(dx,dz)<1.6;}))(q.nf||(q.nf={}))[e]=1;
   for(const q of S)q.cv=COV.some(P=>dPl(q.x,q.z,P)<.3); // tronçon couvert : dessiné seulement avec le couloir (gare masquée)
-  for(const [k,Pa,Pp] of [[1,QSIDE,QSIDEP],[2,QSIDE2,QSIDEP2]])for(const e of [1,-1]){let on=false;for(let i=0;i<S.length;i++){const q=S[i],ok=q.side===k&&!q.cv&&(!on||S[i-1].pi===q.pi),d=e*(q.w/2+.05),x=q.x-q.tz*d,z=q.z+q.tx*d;
+  for(const [k,Pa,Pp] of [[1,QSIDE,QSIDEP],[2,QSIDE2,QSIDEP2]])for(const e of [1,-1]){let on=false;for(let i=0;i<S.length;i++){const q=S[i],ok=q.side===k&&!q.cv&&!(q.nf&&q.nf[e])&&(!on||S[i-1].pi===q.pi),d=e*(q.w/2+.05),x=q.x-q.tz*d,z=q.z+q.tx*d;
     if(!ok){on=false;continue;}if(on){Pa.lineTo(x,z);if(i%3===0)Pp.push([x,z]);}else{Pa.moveTo(x,z);Pp.push([x,z]);on=true;}}} // 2 : sur le plancher de la gare (dessinées après lui)
   const by=new Map;for(let i=1;i<S.length;i++){const a=S[i-1],b=S[i];if(a.pi!==b.pi||a.cv&&b.cv)continue;const w=Math.round(Math.min(a.w,b.w)*10)/10;if(!by.has(w))by.set(w,new Path2D);const P=by.get(w);P.moveTo(a.x,a.z);P.lineTo(b.x,b.z);}
   return [...by.entries()].sort((a,b)=>b[0]-a[0]);})();

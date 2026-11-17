@@ -337,7 +337,7 @@ const root = path.resolve(__dirname, '..');
     }
     man += ' | dep: ' + ds.join(' '); await p5.close();
   }
-  // gatesMove : chaque barrière de file dessinée appartient à une fourche et change d'angle quand on la bascule ; aucune main courante fixe près d'un poteau de barrière (propriétaire, lot 5)
+  // gatesMove : chaque barrière de file dessinée appartient à une fourche et change d'angle quand on la bascule ; aucune main courante fixe sous un vantail (positions A et B) ni sur son poteau (propriétaire, lot 5 ; règle précisée le 2026-11-17, OzIris B2)
   const gm = await page.evaluate(() => {
     const end = (g, t) => { const ta = Math.atan2(g.a[1] - g.h[1], g.a[0] - g.h[0]), tb = Math.atan2(g.b[1] - g.h[1], g.b[0] - g.h[0]); let d = ta - tb; d = Math.atan2(Math.sin(d), Math.cos(d)); return tb + d * t; };
     const bad = [];
@@ -345,7 +345,8 @@ const root = path.resolve(__dirname, '..');
       const a0 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
       const a1 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
       a0.forEach((v, j) => { if (Math.abs(Math.atan2(Math.sin(v - a1[j]), Math.cos(v - a1[j]))) < .3) bad.push(l.name + '#' + j); });
-      for (const g of l.gs) if (QRAILP.some(q => Math.hypot(q[0] - g.h[0], q[1] - g.h[1]) < 2)) bad.push(l.name + ':rail');
+      const dSeg = (m, h, e) => { const dx = e[0] - h[0], dz = e[1] - h[1], L = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((m[0] - h[0]) * dx + (m[1] - h[1]) * dz) / L)); return Math.hypot(h[0] + dx * t - m[0], h[1] + dz * t - m[1]); };
+      for (const g of l.gs) if (QMIDS.some(q => Math.hypot(q[0] - g.h[0], q[1] - g.h[1]) < .55 || dSeg(q, g.h, g.a) < .3 || dSeg(q, g.h, g.b) < .3)) bad.push(l.name + ':rail'); // pas de main courante fixe sous un vantail (A, B) ni sur son poteau
     });
     return bad;
   });

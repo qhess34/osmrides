@@ -5,9 +5,9 @@
 const SITE=(()=>{
   const Q=OSM.paths.queue,PROM=OSM.paths.prom,QL=OSM.paths.qlink,QIN=OSM.paths.qin,XO=OSM.paths.xout;
   // File (OSM 1580173577 + 1073325805, mise à jour du 2026-11-17) : boucle ouest de (-14,1 ; 57,4) = Q[F1] à (-14,1 ; 56,1) = Q[F1B] (nœuds des barrières OSM B1) ;
-  // lacets sud de 1073325805 entre Q[F2] (-21,6 ; 24,3) et Q[F3] (-21,2 ; 23,2) (barrières OSM B2). Indices retrouvés par les coordonnées (robustes aux nœuds ajoutés).
+  // lacets sud de 1073325805 entre Q[F2] (-21,7 ; 24,4) et Q[F3] (-21,4 ; 23,8) (barrières OSM B2 14383115765 / 14383115768, changeset 192086524). Indices retrouvés par les coordonnées (robustes aux nœuds ajoutés).
   const at=(x,z)=>{let b=0,bd=1e9;Q.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
-  const ENTRY0=[35.4,31.0],F1=at(-14.1,57.4),F1B=at(-14.1,56.1),F2=at(-21.6,24.3),F3=at(-21.2,23.2);
+  const ENTRY0=[35.4,31.0],F1=at(-14.1,57.4),F1B=at(-14.1,56.1),F2=at(-21.7,24.4),F3=at(-21.4,23.8);
   // Garage (OSM) : pont transbordeur (railway=traverser 1330192631) sur la fin du frein final, 3 voies de maintenance (1330192628…30)
   // parallèles au frein final, en AMONT du pont, côté nord-ouest, à 3,0 / 7,0 / 11,0 m de l'axe du circuit (relevé OSM, ±0,5 m), longues de 13,3 m.
   // Le train entre donc dans sa voie en marche arrière (yard.rev). Pont à RAIL UNIQUE (propriétaire, 2026-11-15 : « c'est la voie du parcours
@@ -50,7 +50,7 @@ const SITE=(()=>{
       parts:[
         // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
         // à la fourche ;
-        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite.
+        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (0,7 m, entre les deux nœuds B2) évite.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
         // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates, règle issue #12) ; une barrière pivotante par pointe (issue #17)
         {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1)},
