@@ -51,13 +51,12 @@ const SITE=(()=>{
     // Poste de conduite : extrémité sud-est de la gare (propriétaire), côté sud-ouest de la voie, vitre tournée vers la voie, à 2,8 m de l'axe ;
     // emplacement exact ESTIMÉ (dans le décrochement sud du bâtiment OSM 148160006, là où la voie sort de la gare)
     booth:[2.8,8.0,-2.427],boothLabel:[0.4,11.6],beacon:[3.95,7.85],
-    queue:{entry0:ENTRY0,link:[[61.1,16.8]],gate:{h:[58.35,14.71],a:[57.65,16.79],b:[56.27,14.0]},
+    queue:{entry0:ENTRY0,link:[[61.1,16.8]],
       parts:[
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
-        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Deux barrières PARALLÈLES qui bougent ensemble (propriétaire, 2026-11-16, lot 4) :
-        // barrières de fourche pivotantes, l'une à l'entrée de la boucle, l'autre à sa sortie (jumelle posée par le moteur) ; boucle ouverte : toutes deux en travers du raccourci ;
-        // boucle fermée : l'une barre l'entrée, l'autre la sortie de la boucle. Poteaux-pivots sur la BORDURE du raccourci côté boucle, juste après la pointe (lot 5 ; emplacement exact ESTIMÉ).
-        {name:'boucle nord',short:B.slice(5,8),loop:LOOP,gates:[{on:'fork'}]},
+        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Barrières = nœuds OSM B1 aux pointes du raccourci (engine/queue.js osmGates,
+        // règle du propriétaire, issue #12) ; la boucle n'a pas de nœud OSM : barrière posée par le jeu à son entrée (ESTIMÉE).
+        {name:'boucle nord',short:B.slice(5,8),loop:LOOP},
         {pts:B.slice(7)}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],
     // allée d'accès PROM : dans la zone piétonne OSM (dessinée comme une surface, praticable partout), plus dessinée comme chemin

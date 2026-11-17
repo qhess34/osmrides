@@ -48,10 +48,10 @@ const SITE=(()=>{
     // Poste de contrôle au SUD-EST de la gare, dans son emprise, vitre tournée vers la voie (propriétaire, lot 6) ; pupitre réduit (échelle .55 : 2,1 x 0,9 m, ESTIMÉ).
     booth:[2.25,8.6,Math.PI/2,.55],boothLabel:[7,12],beacon:[2.55,7.75],
     // Entrée (propriétaire, issue #9 : « ça dépasse trop ») : la barrière OSM est déjà dans la zone piétonne, aucun prolongement (mouthMax 0 : raccord retiré).
-    queue:{entry0:ENTRY0,link:[],mouthMax:0,gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
+    queue:{entry0:ENTRY0,link:[],mouthMax:0,   // barrière d'entrée : nœud OSM « Entrée Goudurix » (engine/queue.js)
       parts:[{pts:[ENTRY0].concat(Q.slice(Math.hypot(Q[0][0]-ENTRY0[0],Q[0][1]-ENTRY0[1])<1.5?1:0,F0+1))},
-        // boucle 1580112207 (propriétaire, 2026-11-16) : barrières liées à son ENTRÉE et à sa SORTIE (jumelle de sortie posée par le moteur), à 1,6 m des bouts (ESTIMÉ)
-        {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gates:[{on:'loop',at:1.6}]},
+        // boucle 1580112207 : barrières = nœuds OSM B1 aux pointes du raccourci ; entrée de la boucle : barrière posée par le jeu (ESTIMÉE, engine/queue.js osmGates)
+        {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP},
         {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},
     // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.
     approach:[{w:.5,pts:BRIDGE.slice().reverse().concat([[34,7.5],[29.9,7.7],[18,4.2]],EAST.slice(0,3))},{w:.5,pts:EAST.slice(2).reverse()}],

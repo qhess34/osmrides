@@ -46,17 +46,16 @@ const SITE=(()=>{
     // Poste de conduite (propriétaire, 2026-11-16 : « au sud-est ») : côté est (débarquement), en tête de quai, juste derrière le quai de sortie, entièrement dans
     // le bâtiment de gare OSM 420016980, vitre tournée vers la voie ; emplacement exact ESTIMÉ.
     booth:[-9.7,0.29,2.007],boothLabel:[-5.6,1.6],beacon:[-8.6,-1.6],
-    queue:{entry0:ENTRY0,link:[[37.4,27.8]],gate:{h:[36.3,31.8],a:[34.5,30.2],b:[34.7,33.6]},
+    queue:{entry0:ENTRY0,link:[[37.4,27.8]],
       parts:[
         // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
-        // à la fourche (deux barrières liées, à l'entrée et à la sortie de la boucle : ouvertes = boucle en service, fermées = passage direct) ;
-        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite : UNE barrière de fourche PIVOTANTE (propriétaire, 2026-11-16, lot 4),
-        // poteau au SOMMET de l'angle entre les deux chemins (lot 5), qui ferme soit le raccourci (lacets en service), soit les lacets ; pas de jumelle. Emplacements ESTIMÉS.
+        // à la fourche ;
+        // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
-        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates) ; « gates » ci-dessous = repli si OSM n'en a pas
-        {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1),gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
+        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates, règle issue #12) ; boucle sans nœud OSM : barrière du jeu à son entrée (ESTIMÉE)
+        {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1)},
         {pts:Q.slice(F1B,F2+1)},
-        {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS,gates:[{on:'fork',pivot:'tip',pair:false}]},
+        {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS},
         // fin de la file (OSM 2026-11-16) : chemin 1580105930, passage SOUS la gare (1580105922, tunnel=yes layer=-1 : dessiné sous le toit, qui s'efface au zoom),
         // escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée du quai ouest (passerelle 1580105933)
         {pts:Q.slice(F3).concat(QIN.slice(1,-1))}]},
