@@ -53,6 +53,20 @@ _Mis à jour le 2026-11-17 (soir) par la session de pilotage n° 3._
 - Lot 0 : nettoyage (45 images obsolètes supprimées), audit, roadmap.
 - **Lot 1 fait** : éditeur `editor/` (Node sans dépendance, `compose.yaml`, port 127.0.0.1:8787), barrières (surcharges par clé stable `GAME.barriers`) et salle de contrôle unique (`GAME.controlRooms`, 0 ou 1) dans `sites/<site>.game.js` (facultatif, chargé par `jeu.html` et `build.py`). Test `tools/editor-test.js`. Aucun `game.js` réel encore : au propriétaire de corriger dans l'éditeur.
 
+**Ajouts du 17/11 soir (session n° 3, après le lot 1), publiés sur `main`** :
+- Éditeur : boutons Ajouter / Supprimer une barrière (`add:<tronçon>:<n>`, `{off:true}`), choix « Fourche » pour une barrière ajoutée ; le propriétaire a commencé ses réglages (`sites/*.game.js`, commits « add fixes », « fix »).
+- Fourches à raccourci court : deux barrières distinctes (`g.short`, plus de fusion `g.merged`).
+- Trace du Hourra : passerelle plus posée sur le rail mobile, gouttière étroite entre zones proches (`TRGAP` 10 m ESTIMÉ), passagers du bob collés (`pitch` 0,56).
+- Jeu continu : plus de journées (horloge 10:00–19:00 qui boucle, salaires horaires, fin de partie budget à tout moment, bouton Bilan `#bBil`) ; tests sur 9 h (`G.played`).
+- Freins de bloc : roues de propulsion, `drive:'fwd'`, bouton AV sans AR ; en MANU il faut AV pour repartir (à confirmer par le propriétaire).
+- Pont transbordeur : train sur le chariot compté dans le dernier canton seulement chariot en ligne (`yardBlocks`) ; retour en ligne refusé seulement si un train ROULE dans le dernier canton (`anchorFree`) ; train arrêté au frein final retenu tant que le rail du pont est occupé (OzIris corrigé).
+- Files : garde-corps des deux côtés, une seule clôture entre allées collées, jusqu'aux fourches (`QRAIL`) ; OzIris réimporté (B2).
+
+**En attente du propriétaire** :
+- Lacets sud d'OzIris : ses deux barrières corrigées dans l'éditeur ne sont plus sur les nœuds B2 (proposé : « Revenir au calcul auto ») ; il modifie le petit chemin B2 dans OSM → réimporter OzIris ensuite.
+- Confirmer : AV obligatoire en MANU sur les freins de bloc.
+- Captures des tutoriels dépassées (« Jour 1 », pupitre des freins de bloc) : issue #4.
+
 **Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos), #5 (valeurs estimées), #18 (corrections de niveaux OSM d'OzIris à faire par le propriétaire, puis réimport).
 
 **Décisions du propriétaire** : barrières = jeu (nœud OSM = position initiale) ; une seule salle de contrôle (pupitre), aiguillage plus tard.
