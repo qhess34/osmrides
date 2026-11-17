@@ -78,9 +78,9 @@ const SITE=(()=>{
     zones:{B1:{trim:{v:8}}},
     text:{storm:'Orage sur Goudurix : aucun train ne doit partir.',great:'Excellente journée sur Goudurix !'},
     helpGarage:'<b>Garage</b> : une voie de maintenance, en amont de la gare (≈ 45 m avant l\'arrêt du train). L\'aiguillage est un rail rotatif : il tourne sur lui-même autour du tube de rail, pour présenter le circuit (P) ou la voie (1). '
-      +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Gare AR : le train recule de la gare jusqu\'au fond de la voie. Remettez l\'aiguillage sur P. '
-      +'Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Garage AV : il avance jusqu\'en gare ; aiguillage sur P. '
-      +'L\'aiguillage ne tourne pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit.',
+      +'Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre la fin de la rotation), puis Dispatch de la voie : le train recule de la gare jusqu\'au fond de la voie (il s\'arrête avant le butoir). Remettez l\'aiguillage sur P. '
+      +'Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Dispatch : il avance jusqu\'en gare ; aiguillage sur P. '
+      +'L\'aiguillage ne tourne pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit. Dispatch choisit seul le sens : entrée si un train vide attend à quai et que la voie a de la place, sinon sortie du train de tête.',
     draw:(()=>{
       // POSTE DE L'AIGUILLAGE (photo du propriétaire, docs/sources/goudurix-aiguillage-rotation.png) : plate-forme métallique rouille avec garde-corps, escalier galvanisé,
       // passerelle grillagée grise inclinée le long du tronçon mobile, opérateur debout avec un boîtier de commande. Position ESTIMÉE (la photo n'est pas géoréférencée) :

@@ -83,9 +83,9 @@ const SITE=(()=>{
       +'Le pont porte un seul rail, le rail du pont : c\'est la fin du frein final, qui vient chercher les trains au garage. En P il est en ligne avec le circuit ; '
       +'face à une voie (1 à 3), le circuit est interrompu et les trains attendent avant le pont. Les voies étant en arrière du pont, le train y entre en marche arrière et en ressort en marche avant. '
       +'Pour garer un train : envoyez-le vide (Gare AV), Rail du pont en MANU et freins serrés (il s\'y arrête), pont sur une voie libre (il emporte le train), '
-      +'relâchez les freins puis Rail du pont AR : il recule dans la voie ; pont sur P, TOUT AUTO. '
-      +'Pour sortir un train : pont face à sa voie, Voie k AV (il avance sur le rail du pont), pont sur P avec le dernier canton libre : il repart vers la gare. '
-      +'Le pont ne bouge pas si un train y roule, n\'y est qu\'à moitié, ou avec des passagers.',
+      +'relâchez les freins puis Dispatch de cette voie : il recule dans la voie ; pont sur P, TOUT AUTO. '
+      +'Pour sortir un train : pont face à sa voie, Dispatch de la voie (il avance sur le rail du pont), pont sur P avec le dernier canton libre : il repart vers la gare. '
+      +'Le pont ne bouge pas si un train y roule, n\'y est qu\'à moitié, ou avec des passagers. Dispatch choisit seul le sens : entrée si un train est sur le pont face à une voie libre, sinon sortie.',
     draw:{
       floor(ctx,s,{lw}){ // escalier de sortie OSM 1580105929 (vers l'allée est)
         if(s>5){ctx.save();ctx.translate(1.6,-5.2);ctx.rotate(Math.atan2(2.7,5.3));ctx.fillStyle='#a8a296';ctx.fillRect(-3,-.7,6,1.4);

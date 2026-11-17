@@ -6,7 +6,9 @@
    abscisse t.g (avant du train, 0 = point de raccordement), t.mv = +1 avance, -1 recule, 0 arrêté.
    L'appareil est un chariot coulissant le long de (SW0.vx, SW0.vz) qui porte le tronçon du circuit et le tronçon de
    transfert : position P = décalage 0, voie k = décalage OFF[k] (le tronçon de transfert de la voie k est alors en place). */
-const YD=SITE.yard,TRAV=YD.device==='traverser',GSTEP=TLEN+1.2,MV=Object.assign({v:2.4,t:3,vc:.6},YD.move),
+/* Marge de garage (propriétaire, issue #11) : un train garé s'arrête à BUF m du butoir et à BUF m du train garé devant lui.
+   BUF = SITE.yard.buffer, défaut 2 m : ESTIMÉ (pas de relevé). Voie trop courte : la marge est réduite à ce qui reste (le train doit avoir dégagé l'appareil). */
+const YD=SITE.yard,TRAV=YD.device==='traverser',BUF=YD.buffer!=null?YD.buffer:2,GSTEP=TLEN+BUF,MV=Object.assign({v:2.4,t:3,vc:.6},YD.move),
   DEVN=YD.devName||(YD.device==='switch'?'Aiguillage':'Pont transbordeur'),
   DEVL=YD.devLabel||(YD.device==='switch'?'l\'aiguillage':'le pont transbordeur'); // nom au pupitre, nom dans une phrase
 /* Pont transbordeur droit (device:'traverser') : chariot à deux rails droits parallèles, longs d'un train, posés sur la ligne
@@ -42,7 +44,7 @@ const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=
    laneU(g) : abscisse u (repère du chariot) d'un point de voie d'abscisse g, pour le dessin des voies fixes. */
 const LREV=TRAV&&!!YD.rev,laneU=g=>LREV?2*G_B-TLEN-g:g;
 const LANES=TRAV?YD.lanes.map((ln,j)=>{
-  const end=U_LANE+(ln.len||TLEN+1.4),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
+  const end=U_LANE+(ln.len||TLEN+BUF+.2),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
   return {name:ln.name||'Voie '+(j+1),path,d:ln.d,dev:U_LANE,end,off:GAP-ln.d,cap:ln.cap||Math.max(1,Math.floor((end-U_LANE-TLEN)/GSTEP)+1)};
 }):LBK?YD.lanes.map((ln,j)=>{
   const path=[],P=ln.pts;let acc=0,prev=null,link=YD.b-YD.a;
@@ -72,6 +74,8 @@ const LANES=TRAV?YD.lanes.map((ln,j)=>{
   const dev=YD.a+link,end=acc+YD.a; // abscisses g : sortie de l'appareil (début de la voie), butée
   return {name:ln.name||'Voie '+(j+1),path,link,dev,end,off:ln.off!=null?ln.off:SW_D*(j+1),cap:ln.cap||Math.max(1,Math.floor((end-dev-TLEN)/GSTEP)+1)};
 });
+// Point d'arrêt du train de tête dans chaque voie (avant du train) : BUF avant le butoir, sinon au moins 0,2 m au-delà de l'appareil ; capacité recalculée avec ce point.
+LANES.forEach((l,j)=>{l.stop=Math.max(Math.min(l.end,l.dev+TLEN+.2),l.end-BUF);if(!YD.lanes[j].cap)l.cap=Math.max(1,Math.floor((l.stop-l.dev-TLEN)/GSTEP)+1);});
 /* Frein avant gare (SITE.preBrake:{back, len, name}) : zone de freinage de stockage juste avant l'entrée en gare, un train de long, avec pneus.
    Arrêt de l'avant du train à S_PSB = L - back (back : distance au début de la gare, s=0) ; zone de PSB_A à S_PSB. Le train qui quitte
    le frein final (ou le rail mobile du parcours) va s'y arrêter et y attend que la gare soit libre. */
@@ -190,15 +194,15 @@ const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
     SG?[{id:'RB',name:YD.railName||'Rail du pont',sec:'brk',auto:true}]:TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
     PSB?[{id:'Pre',name:PSB.name||'Frein avant gare',sec:'brk',auto:true}]:[],
     LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
-  .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{fwd:false}:{})); // voies : pas d'Avancer (l'entrée est poussée par la zone porteuse CARR), Reculer et Arrêt seulement
+  .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{brake:false,drive:false}:{})); // voies : un seul bouton Dispatch (issue #11, laneDispatch dans engine/sim.js), freins automatiques
 /* Frein de ralentissement (SITE.zones.B1.trim:{v}) : en passage normal (zone en AUTO, canton suivant libre), le train y est ramené à la vitesse v (m/s) puis continue ; il s'arrête
    seulement si le canton suivant est occupé ou si les freins sont serrés au pupitre. Par zone de frein de bloc : BTRIM[i] (m/s, 0 = pas de ralentissement). */
 const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.trim&&Z.trim.v||0;});
-const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : pousse le train dans la voie en face de l'appareil (Avancer) // gare : pas de bouton de frein, freins liés au départ (stHeld)
+const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : zone d'où un train entre dans la voie en face de l'appareil (au Dispatch de la voie) ; son Arrêt arrête aussi ce train // gare : pas de bouton de frein, freins liés au départ (stHeld)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
 const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z)||(SG&&z==='RB'),ZR=SG?'RB':'RA'; // ZR : zone du rail du circuit sur le pont droit (rail unique : RB, zone de freinage ET zone porteuse)
-const zK=z=>isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
+const zK=z=>z[0]==='L'?false:isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
 const bIn=()=>TRAV&&!SG&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
 const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
 function tZone(t){ // zone où se trouve un train

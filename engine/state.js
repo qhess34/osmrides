@@ -17,7 +17,7 @@ function mkTrain(i,name,col,col2,wear,st){
 const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
 // Trains au garage au départ : voie SITE.trains[i].lane (1…n) ou première voie qui a de la place ; rangés depuis la butée
 {const n=LANES.map(()=>0);trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,j=c?c-1:LANES.findIndex((l,k)=>n[k]<l.cap);
-  if(j<0||n[j]>=LANES[j].cap)throw new Error('SITE.yard : pas de place au garage pour '+t.name);t.lane=j;t.g=LANES[j].end-n[j]*GSTEP;n[j]++;});}
+  if(j<0||n[j]>=LANES[j].cap)throw new Error('SITE.yard : pas de place au garage pour '+t.name);t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;});}
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){
