@@ -113,11 +113,16 @@ const BLD_H=(k,f)=>f&&f.bh||(k==='building=roof'?4:k==='building=hotel'?12:7),RO
 // zones de freinage (freins de bloc : patins BZ0 → point d'arrêt et train arrêté derrière ; frein final S_BRK → S_HOLD ; frein avant gare ; rail du pont droit R0 → R1)
 // et voies de garage — la gouttière est rétrécie au gabarit du wagon (demi-largeur SITE.car.w/2 + BOB_RIM, engine/garage.js, ESTIMÉ) : le train touche le quai.
 // Raccord progressif (courbe en S) sur TRN m à chaque extrémité. TRF(s) = facteur de largeur (1 = gouttière inclinée du parcours, demi-largeur 1,15 m). TRN = 3 m, ESTIMÉ.
-const TRN=3,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DECKW/2)):1,TRF=(()=>{if(!BOB)return ()=>1;const Q=Object.assign({back:1.5,front:1.6},SITE.plat),fn=TRFN,
+const TRN=3,TRGAP=2*TRN+4,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DECKW/2)):1,TRF=(()=>{if(!BOB)return ()=>1;const Q=Object.assign({back:1.5,front:1.6},SITE.plat),fn=TRFN,
   R=[[Math.min(TAG.st0||0,S_ST-TLEN-Q.back),Math.max(TAG.st1!=null?TAG.st1:S_ST,S_ST+Q.front)]];
   R.push([S_LIFT0,S_LIFT1]);BLK.forEach((b,i)=>R.push([Math.min(BZ0[i],b-TLEN),b+.5]));
   if(TAG.brk!=null)R.push([S_BRK,Math.max(S_HOLD,TRAV?R1:S_HOLD)+.5]);if(TRAV)R.push([R0-.5,R1+.5]);if(PSB)R.push([Math.min(PSB_A,S_PSB-TLEN),S_PSB+.5]);
-  const M=R.map(r=>[(r[0]+r[1])/2,(r[1]-r[0])/2]);
+  // Zones étroites rapprochées (propriétaire, 2026-11-17) : si l'écart entre deux zones étroites est inférieur à TRGAP, la gouttière reste étroite entre elles
+  // (pas de court renflement à pleine largeur entre deux raccords en S). TRGAP = 2 raccords + 4 m = 10 m, ESTIMÉ.
+  const I=R.map(r=>{const a=((r[0]%L)+L)%L;return [a,a+(r[1]-r[0])];}).sort((p,q)=>p[0]-q[0]),J=[];
+  for(const r of I){const c=J[J.length-1];if(c&&r[0]-c[1]<TRGAP)c[1]=Math.max(c[1],r[1]);else J.push(r.slice());}
+  if(J.length>1){const a=J[J.length-1],b=J[0];if(b[0]+L-a[1]<TRGAP){b[0]=a[0]-L;b[1]=Math.max(b[1],a[1]-L);J.pop();}} // écart à cheval sur l'origine du circuit
+  const M=J.map(r=>[(r[0]+r[1])/2,(r[1]-r[0])/2]);
   return s=>{let d=1e9;for(const m of M){const e=Math.abs(((s-m[0])%L+L*1.5)%L-L/2)-m[1];if(e<d)d=e;}if(d<=0)return fn;if(d>=TRN)return 1;const k=d/TRN;return fn+(1-fn)*k*k*(3-2*k);};})();
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,spine:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,rp:null,ch:null,bu:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
@@ -506,7 +511,16 @@ const CATW=(function(){
   // pénalité d'un point posé à (x,z), hauteur y, s = abscisse de la zone (autres voies, file, gare)
   const pen=(x,z,y,s,r)=>{let p=0;for(let j=0;j<N;j+=2){const q=TR[j].p,ds=Math.abs(((j*DS-s)%L+L*1.5)%L-L/2);if(ds<14)continue;const d=Math.hypot(q.x-x,q.z-z);if(d<half(j*DS)+r)p+=Math.abs(q.y-y)<7?3:.4;}
     for(const q of QWS)if(Math.abs(q.x-x)+Math.abs(q.z-z)<q.w/2+r+1&&Math.hypot(q.x-x,q.z-z)<q.w/2+r)p+=3;
-    if(STSP.length>2&&pipXZ(STSP,x,z))p+=5;return p;};
+    if(STSP.length>2&&pipXZ(STSP,x,z))p+=5;if(inSweep(x,z,r))p+=5;return p;};
+  /* Appareil de voie (issue lot 14, 2026-11-17) : aucune passerelle sur le tronçon porté par l'appareil mobile (rail A / rail B d'un pont droit, tronçon mobile
+     d'un aiguillage ou d'une table, SW_A → SW_B) — une passerelle fixe ne suivrait pas le rail qui glisse, et le personnel n'est pas posé sur un chariot ;
+     aucune passerelle au sol dans l'espace balayé (fosse et dalle du pont droit, couloir de coulissement de l'aiguillage). La zone garde le plus long tronçon fixe. */
+  const DA=SW_A-.6,DB=SW_B+.6,onDev=s=>(((s-DA)%L)+L)%L<=DB-DA;
+  const SWP=TRAV?(()=>{const dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,Lr=R1-R0,
+      gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;return [[-.7,Lr+.7,vB,vA],[gu0,gu0+gw,vB,-dm+1.6]];})()
+    :(()=>{const P=[];for(let s=SW_A;s<=SW_B+1e-6;s+=.5){const f=TR[((Math.round(s/DS)%N)+N)%N].p;P.push([f.x,f.z]);}return P;})();
+  const inSweep=(x,z,r)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*SW0.tz,v=dx*SW0.vx+dz*SW0.vz;return SWP.some(b=>u>b[0]-r&&u<b[1]+r&&v>b[2]-r&&v<b[3]+r);}
+    const lim=SW_D+1.5+r;return SWP.some(q=>Math.hypot(q[0]-x,q[1]-z)<lim);};
   const at=(f,sd,d)=>[f.x+f.nx*sd*d,f.z+f.nz*sd*d];
   const zones=[{id:'Lift',a:S_LIFT0,b:S_LIFT1,lift:1}].concat(BLK.map((b,i)=>({id:'B'+(i+1),a:Math.min(BZ0[i],b-TLEN),b:b+.5})),
     TAG.brk!=null?[{id:'Fin',a:S_BRK,b:S_HOLD+.5}]:[],PSB?[{id:'Pre',a:Math.min(PSB_A,S_PSB-TLEN),b:S_PSB+.5}]:[]);
@@ -515,6 +529,8 @@ const CATW=(function(){
     let i0=ii(zn.a),i1=ii(zn.b);
     if(zn.lift){let k=0;while(k<40&&el(fr(i0))>.2&&!inTunS((i0-1)*DS)){i0--;k++;}zn.foot=el(fr(i0))>.2;} // pied du lift : la passerelle-escalier descend jusqu'au sol
     else if(zn.a<=lift.b+4&&zn.a>=lift.b-2&&lift.w){lift.w.i1=Math.max(lift.w.i1,i1);continue;} // frein collé au sommet du lift : même passerelle
+    if(!zn.lift){let run=null,cur=null;for(let i=i0;i<=i1;i++){if(onDev(fr(i).s)){cur=null;continue;}if(cur)cur.i1=i;else cur={i0:i,i1:i};if(!run||cur.i1-cur.i0>run.i1-run.i0)run=cur;} // tronçon porté par l'appareil exclu
+      if(!run)continue;i0=run.i0;i1=run.i1;}
     const F=[];for(let i=i0;i<=i1;i++){const f=fr(i);f.ri=i;if(!inTunS(f.s))F.push(f);}
     if(!F.length)continue;const low=!zn.lift&&Math.max(...F.map(el))<EL; // zone de freinage au niveau du sol (hors gare) : passerelle au sol, sans tour (issue #7, complément)
     if(low&&cf.ground===false||zn.lift&&Math.max(...F.map(el))<EL)continue;

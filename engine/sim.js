@@ -30,7 +30,9 @@ const atAnchor=t=>YD.at==='brake'?(t.st==='run'&&t.v===0&&Math.abs(t.s-S_HOLD)<.
 /* ══════════ MANŒUVRES (docs/manoeuvres.md) : Positionner, Avancer, Reculer, Arrêter ══════════ */
 const ANCH_NAME=YD.at==='brake'?'le frein final':'la gare';
 function anchorFree(t){ // le point de raccordement peut recevoir un train qui sort du garage
-  if(YD.at==='brake')return !trains.some(o=>o!==t&&((o.st==='run'&&o.s>=(BLK.length?BLK[BLK.length-1]:S_BRK)-1)||(o!==t&&nearDev(o))));
+  // pont droit : un train déjà passé au-delà du rail du pont (frein avant gare, entrée en gare) ne bloque pas le retour : le rail du pont est une zone de freinage
+  // qui retient le train remis en ligne tant que la section suivante est occupée (propriétaire, 2026-11-17 : « le rail chariot est aussi une zone d'attente temporaire »)
+  if(YD.at==='brake')return !trains.some(o=>o!==t&&((o.st==='run'&&o.s>=(BLK.length?BLK[BLK.length-1]:S_BRK)-1&&!(TRAV&&o.s>R1-.1))||(o!==t&&nearDev(o))));
   return !trains.some(o=>o!==t&&(o.st==='station'||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))||nearDev(o)));
 }
 const sameLane=t=>trains.filter(o=>o!==t&&o.st==='garage'&&o.lane===t.lane);

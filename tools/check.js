@@ -177,6 +177,9 @@ const root = path.resolve(__dirname, '..');
         ok('estopFrozen', await page.evaluate(k0 => devMoving() && G.dev.k === k0, k) && await logHas('arrêt d.urgence')); }
       await click('#bStop'); ok('dev2b', await until('devOn(1)', 4000));
       await click('#zL2_d'); ok('onCar2b', await until('trains[2].lane<0&&!trains[2].mv', 8000));
+      ok('carHoldsAhead', await page.evaluate(() => { // rail du pont = zone d'attente (propriétaire, 2026-11-17) : un train au-delà du pont ne bloque pas le retour, un train en amont (dernier canton) oui
+        const c = trains[2], o = trains.find(x => x !== c && x.st !== 'garage'); if (!o) return true; const k = {st: o.st, s: o.s}; o.st = 'run';
+        o.s = R1 + TLEN + 1; const a = anchorFree(c); o.s = S_PRE - 1; const b = anchorFree(c); Object.assign(o, k); return a && !b; }));
       await click('#yP'); ok('back2b', await until("trains[2].st==='run'&&circIn()&&atAnchor(trains[2])", 4000)); await shot('7-retour-en-P');
       ok('stored2', await until('false', 200) || await page.evaluate(() => (atAnchor(trains[2]) || onPsb(trains[2])) && trains.some(t => t.st === 'station'))); // stocké au frein final / rail du pont, ou sur la zone d'attente avant gare (Pre)
       await click('#bAuto');
