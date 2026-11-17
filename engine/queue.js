@@ -1,6 +1,31 @@
 'use strict';
 /* ══════════ VISITEURS (chemins réels : accès, file, sortie) ══════════ */
-const SP=.42,QS=SITE.queue,ENTRY0=QS.entry0,ENTRY_GATE=Object.assign({t:1},QS.gate); // gate.a : fermé en travers du chemin, gate.b : ouvert le long de la bordure
+const SP=.42,QS=SITE.queue;
+// Barrières de file relevées dans OSM (issues #2 et #8 : nœuds barrier=swing_gate | gate | lift_gate, OSM.barriers = [[x, z, ref, hinge, tx, tz, bout]], tools/make_site.py) :
+// elles REMPLACENT les barrières posées par le moteur ou données par SITE (SITE.queue.osmGates:false pour s'en passer).
+//  - barrière d'entrée : nœud sur le premier tronçon de la file (à moins de 0,6 m de son axe, dans ses 15 premiers mètres) : la file commence à la barrière, le bout de
+//    chemin qui la précède devient le raccord d'entrée (QS.link, QS.lead : parcouru par les arrivants) ; côté du poteau = swing_gate:hinge (vu dans le sens OSM), sinon à droite ;
+//  - barrière de fourche : nœud sur la pointe d'une fourche (à moins de 1,2 m du début ou de la fin du raccourci) = barrière basculante, poteau au sommet de l'angle
+//    ({on:'fork', pivot:'tip'}) ; nœud au milieu de la boucle ou du raccourci : barrière en travers à cet endroit ({on:'loop'|'short', at, exact}). Pas de jumelle ajoutée :
+//    OSM donne chaque barrière (les barrières d'une même fourche bougent ensemble).
+const OSMB=QS.osmGates===false?[]:(OSM.barriers||[]);
+const _np=(P,x,z)=>{let bd=1e9,best=0,acc=0,t=[1,0];for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz),k=L?Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(L*L))):0,d=Math.hypot(a[0]+dx*k-x,a[1]+dz*k-z);if(d<bd){bd=d;best=acc+L*k;t=L?[dx/L,dz/L]:t;}acc+=L;}return {d:bd,at:best,t};};
+const hingeSide=(b,t)=>!b[3]?0:((-t[1])*(-b[5])+t[0]*b[4])*(b[3]==='left'?-1:1)>=0?1:-1; // côté du poteau (1 = droite du sens de la file)
+const OSM_ENTRY=(()=>{const p0=QS.parts[0]&&QS.parts[0].pts;if(!p0||p0.length<2)return null;let best=null;
+  for(const b of OSMB){const r=_np(p0,b[0],b[1]);if(r.d<.6&&r.at<=15&&(!best||r.at<best.r.at))best={b,r};}
+  if(!best)return null;const P=p0,d=best.r.at,lead=[];let acc=0,i=1;lead.push(P[0]);
+  for(;i<P.length;i++){const l=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);if(acc+l>=d-.05)break;acc+=l;lead.push(P[i]);}
+  const k=i<P.length?(d-acc)/(Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])||1):1,j=Math.min(i,P.length-1),B=[+(P[j-1][0]+(P[j][0]-P[j-1][0])*k).toFixed(2),+(P[j-1][1]+(P[j][1]-P[j-1][1])*k).toFixed(2)];
+  const rest=P.slice(j).filter(q=>Math.hypot(q[0]-B[0],q[1]-B[1])>.05);
+  QS.link=(QS.link||[]).concat(lead.filter((q,n)=>n||!QS.link||!QS.link.length||Math.hypot(q[0]-QS.link[QS.link.length-1][0],q[1]-QS.link[QS.link.length-1][1])>.05));
+  QS.lead=lead;QS.entry0=B;QS.parts[0].pts=[B].concat(rest);return {b:best.b,side:hingeSide(best.b,best.r.t)||1};})();
+const ENTRY0=QS.entry0,ENTRY_GATE=Object.assign({t:1},QS.gate); // gate.a : fermé en travers du chemin, gate.b : ouvert le long de la bordure
+if(OSM_ENTRY)Object.assign(ENTRY_GATE,gateAt(QS.parts[0].pts,0,false,1.1,OSM_ENTRY.side)); // recalée à la largeur dessinée par reGates
+function osmGates(p){if(!OSMB.length||!p.loop||!p.short)return null;const S=p.short,out=[];
+  for(const b of OSMB){const r0=Math.hypot(b[0]-S[0][0],b[1]-S[0][1]),r1=Math.hypot(b[0]-S[S.length-1][0],b[1]-S[S.length-1][1]);
+    if(Math.min(r0,r1)<1.2){out.push({on:'fork',pivot:'tip',pair:false,end:r1<r0,osm:b[2]||1});continue;}
+    for(const k of ['loop','short']){const r=_np(p[k],b[0],b[1]);if(r.d<.6){out.push({on:k,at:r.at,exact:true,pair:false,side:hingeSide(b,r.t)||1,loop:k==='loop',osm:b[2]||1});break;}}}
+  return out.length?out:null;}
 function pathPos(P,C,d,o,side){
   d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;
   const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1),dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
@@ -64,10 +89,10 @@ let qwAt=()=>2.2;
 // Barrière posée par le moteur : {on:'loop'|'short', at:d, end:true?, loop:bool} = en travers du chemin (boucle ou raccourci) à d m de son début (de sa fin si end),
 // poteau-pivot sur la BORDURE (h), fermée en travers jusqu'à la bordure opposée (a), ouverte le long de la bordure (b) ; half : demi-largeur couverte (défaut : la
 // moitié de la largeur dessinée du chemin à cet endroit).
-function gateAt(P,d,end,half){P=end?P.slice().reverse():P;let i=1,acc=0;
+function gateAt(P,d,end,half,sd){P=end?P.slice().reverse():P;sd=sd||1;let i=1,acc=0;
   while(i<P.length-1&&acc+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1])<d){acc+=Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]);i++;}
-  const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k],hw=half||qwAt(c[0],c[1])/2;
-  return {h:[c[0]-tz*hw,c[1]+tx*hw],a:[c[0]+tz*hw,c[1]-tx*hw],b:[c[0]-tz*hw+tx*2*hw,c[1]+tx*hw+tz*2*hw]};}
+  const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,tx=(b[0]-a[0])/l,tz=(b[1]-a[1])/l,k=Math.min(l,d-acc),c=[a[0]+tx*k,a[1]+tz*k],hw=half||qwAt(c[0],c[1])/2,nx=-tz*sd,nz=tx*sd;
+  return {h:[c[0]+nx*hw,c[1]+nz*hw],a:[c[0]-nx*hw,c[1]-nz*hw],b:[c[0]+nx*hw+tx*2*hw,c[1]+nz*hw+tz*2*hw]};}
 // Règle des barrières (propriétaire, 2026-11-16, toutes les attractions) : un chemin de file fermable a une barrière à son ENTRÉE et une à sa SORTIE (celle-ci empêche
 // de remonter le chemin fermé par l'autre bout), qui bougent ensemble. Toute barrière posée par le moteur ({on, at}) reçoit donc sa jumelle à l'autre bout du même chemin
 // ({end} inversé), sauf si la configuration la donne déjà ou si pair:false.
@@ -88,16 +113,22 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
   let d=.2,A,B;for(;d<=mx;d+=.05){A=ptAt(PL,d);B=ptAt(PS,d);if(Math.hypot(A[0]-B[0],A[1]-B[1])>=hwAt(A)+hwAt(B))break;}d=Math.min(d,mx);A=ptAt(PL,d);B=ptAt(PS,d);
   const hl=hwAt(A),hs=hwAt(B);
   if(g.pivot==='tip'||(g.pivot!=='edge'&&g.pair===false)){ // sommet de l'angle : point des bordures intérieures où elles se rejoignent
+    const T=PS[0],u=P=>{const q=P.find(q=>Math.hypot(q[0]-T[0],q[1]-T[1])>.8)||P[P.length-1],l=Math.hypot(q[0]-T[0],q[1]-T[1])||1;return [(q[0]-T[0])/l,(q[1]-T[1])/l];},uS=u(PS),uL=u(rv(p.loop));
+    if(uS[0]*uL[0]+uS[1]*uL[1]<-.85){ // raccourci et boucle face à face (angle plat) : pas de sommet ; poteau sur la bordure opposée au chemin qui continue, vantail en diagonale
+      const i=QS.parts.indexOf(p),nb=g.end?QS.parts[i+1]:QS.parts[i-1],NP=nb&&nb.pts?(g.end?nb.pts:nb.pts.slice().reverse()):null;let O=NP?u(NP):[-uS[1],uS[0]];
+      if(Math.abs(O[0]*uS[0]+O[1]*uS[1])>.7)O=[-uS[1],uS[0]];const hw=hwAt(T);
+      return {h:[T[0]-O[0]*hw,T[1]-O[1]*hw],a:[T[0]+(uS[0]+O[0])*hw,T[1]+(uS[1]+O[1])*hw],b:[T[0]+(uL[0]+O[0])*hw,T[1]+(uL[1]+O[1])*hw],loop:false,fork:1};}
     const k=hs/((hl+hs)||1),h=[B[0]+(A[0]-B[0])*k,B[1]+(A[1]-B[1])*k];return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1};}
   // bordure du raccourci côté boucle, un peu au-delà de la pointe (hors de l'emprise de la boucle)
   const F=PS[0],sd=Math.sign((B[0]-F[0])*(A[1]-F[1])-(B[1]-F[1])*(A[0]-F[0]))||1; // côté de la boucle par rapport au raccourci
   const em=plen(PS)*.3;let e=Math.min(d,em),h=null;for(;e<=em+1e-6;e+=.05){const c=ptAt(PS,e),c2=ptAt(PS,e+.05),tx=c2[0]-c[0],tz=c2[1]-c[1],l=Math.hypot(tx,tz)||1,nx=-tz/l*sd,nz=tx/l*sd;
     const q=[c[0]+nx*hs,c[1]+nz*hs];h=q;if(nearOn(PL,q[0],q[1])[2]>=hl+.05)break;} // au plus au tiers du raccourci : les deux barrières parallèles restent distinctes
   return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1};}
-const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
+const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,g.exact?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
   return Object.assign(r,{cfg:g,part:p});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
-function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);l.g=l.gs[0];}}
+function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);l.g=l.gs[0];}
+  if(OSM_ENTRY){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY.side));}} // barrière d'entrée OSM : au départ de la file, à la largeur dessinée
 // Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise de la gare (agrandie à ses quais, STATION_GROW),
 // qui la longe (parallèle à la voie de gare) et dont le sommet est à moins de 4 m d'une porte OSM (entrance=*) est dessiné À L'EXTÉRIEUR, collé au mur : décalé perpendiculairement à la voie, côté extérieur, jusqu'à ce que son bord
 // intérieur (largeur APPW) touche le mur. Les points de la file, de la sortie et des allées posés sur lui sont décalés d'autant (visiteurs sur l'escalier). o.app={nx,nz,top}
@@ -160,7 +191,7 @@ const QMOUTH=QS.mouth!=null?QS.mouth:5;
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}
-  else{const gs=pairGates(p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
+  else{const gs=pairGates(osmGates(p)||p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
 });
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;
@@ -180,7 +211,7 @@ function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniqu
   if(v.mode!=='q')return leavePath(v);
   const pts=[[v.x,0,v.z]];let e=v.e,ds=e.len-v.r;
   while(e){for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);e=prevSeg(e,evac);ds=1e9;}
-  return pts.concat(P3(approach().slice().reverse(),.7));
+  return pts.concat(P3((QS.lead||[]).slice().reverse().concat(approach().slice().reverse()),.7));
 }
 function exitPath(pre){const X=SITE.exit,t=X.tails[Math.floor(Math.random()*X.tails.length)];return pre.concat(P3(X.path,.35).slice(X.door?1:0),P3(t,.7));} // pre : trajet jusqu'à la porte (alightWalk) ; X.path commence à la porte
 function walker(pts,ci,done,sp,emo,kind){G.walkers.push({kind,pts,i:1,x:pts[0][0],y:pts[0][1],z:pts[0][2],ci,done,sp:sp||2.6,ph:rnd(0,6)});if(emo)emote(emo,pts[0]);}
@@ -194,7 +225,7 @@ function moveAlong(k,dt){
 }
 function joinQueue(){
   if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.01,0,100);G.stats.turned++;return;}
-  const pts=P3(approach(),.7);pts.push([ENTRY0[0],0,ENTRY0[1]]);
+  const pts=P3(approach().concat(QS.lead||[]),.7);pts.push([ENTRY0[0],0,ENTRY0[1]]);
   G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',side:Math.random()<.5?-1:1,sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
 const _qp={x:0,y:0,z:0,side:0};

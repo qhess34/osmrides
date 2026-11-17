@@ -4,8 +4,10 @@
    maintenance) : sites/oziris.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/oziris-notes.md. */
 const SITE=(()=>{
   const Q=OSM.paths.queue,PROM=OSM.paths.prom,QL=OSM.paths.qlink,QIN=OSM.paths.qin,XO=OSM.paths.xout;
-  // File (OSM 1580173577 + 1073325805) : fourche de la boucle ouest au nœud (-15,5 ; 57,4) = Q[10] ; lacets sud de 1073325805 entre Q[27] (-21,7 ; 24,5) et Q[31] (-21,2 ; 23,2).
-  const ENTRY0=[35.4,31.0],F1=10,F2=27,F3=31;
+  // File (OSM 1580173577 + 1073325805, mise à jour du 2026-11-17) : boucle ouest de (-14,1 ; 57,4) = Q[F1] à (-14,1 ; 56,1) = Q[F1B] (nœuds des barrières OSM B1) ;
+  // lacets sud de 1073325805 entre Q[F2] (-21,6 ; 24,3) et Q[F3] (-21,2 ; 23,2) (barrières OSM B2). Indices retrouvés par les coordonnées (robustes aux nœuds ajoutés).
+  const at=(x,z)=>{let b=0,bd=1e9;Q.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
+  const ENTRY0=[35.4,31.0],F1=at(-14.1,57.4),F1B=at(-14.1,56.1),F2=at(-21.6,24.3),F3=at(-21.2,23.2);
   // Garage (OSM) : pont transbordeur (railway=traverser 1330192631) sur la fin du frein final, 3 voies de maintenance (1330192628…30)
   // parallèles au frein final, en AMONT du pont, côté nord-ouest, à 3,0 / 7,0 / 11,0 m de l'axe du circuit (relevé OSM, ±0,5 m), longues de 13,3 m.
   // Le train entre donc dans sa voie en marche arrière (yard.rev). Pont à RAIL UNIQUE (propriétaire, 2026-11-15 : « c'est la voie du parcours
@@ -50,8 +52,9 @@ const SITE=(()=>{
         // 1073325805 vers la gare, avec ses lacets sud Q[F2…F3] que le raccourci 1580173580 (1,4 m) évite : UNE barrière de fourche PIVOTANTE (propriétaire, 2026-11-16, lot 4),
         // poteau au SOMMET de l'angle entre les deux chemins (lot 5), qui ferme soit le raccourci (lacets en service), soit les lacets ; pas de jumelle. Emplacements ESTIMÉS.
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
-        {name:'boucle ouest',loop:OSM.paths.qloopW,short:[Q[F1],Q[F1]],gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
-        {pts:Q.slice(F1,F2+1)},
+        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates) ; « gates » ci-dessous = repli si OSM n'en a pas
+        {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1),gates:[{on:'loop',at:1.6},{on:'loop',at:1.6,end:true}]},
+        {pts:Q.slice(F1B,F2+1)},
         {name:'lacets sud',loop:Q.slice(F2,F3+1),short:OSM.paths.qshortS,gates:[{on:'fork',pivot:'tip',pair:false}]},
         // fin de la file (OSM 2026-11-16) : chemin 1580105930, passage SOUS la gare (1580105922, tunnel=yes layer=-1 : dessiné sous le toit, qui s'efface au zoom),
         // escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée du quai ouest (passerelle 1580105933)

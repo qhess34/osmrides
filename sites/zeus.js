@@ -2,10 +2,10 @@
 /* Tonnerre 2 Zeus — configuration de l'attraction pour le moteur (engine/*.js).
    Les coordonnées viennent de sites/zeus.data.js (OpenStreetMap) ; ce qui est estimé est signalé. */
 const SITE=(()=>{
-  // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare
-  const W=OSM.queue.concat([OSM.steps[1]]);
+  // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare (OSM 93696870, relue le 2026-11-17 : barrière d'entrée, fourche est en (-12,2 ; 28,4))
+  const W=(OSM.paths&&OSM.paths.queue||OSM.queue).concat([OSM.steps[1]]),SHORT_E=OSM.paths&&OSM.paths.short;
   const at=(x,z)=>{let b=0,bd=1e9;W.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
-  const JB=at(-27.2,25.2),JA=at(-25.9,27.3),J2=at(-13.6,28.1),J1=at(-4.1,16.4),ENTRY0=[-28.6,-5.4];
+  const JB=at(-27.2,25.2),JA=at(-25.9,27.3),J2=at(-12.2,28.4),J1=at(-4.1,16.4),ENTRY0=[-28.6,-5.4];
   const PROM_W=[[-107.1,-8.2],[-95.1,-8.7],[-83.4,-9.8],[-74.9,-14],[-67,-17.3],[-61.1,-20.1],[-57.7,-19.1],[-50.9,-15.2],[-44.4,-11.1],[-39.7,-9.8],[-33.4,-9],[-30.1,-9.2]];
   const PROM_N=[[4.8,-56.4],[3.6,-42.4],[-.2,-32.2],[-8.6,-25],[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]];
   const onGarage=x=>[x,OSM.maint[0][1]+(x-OSM.maint[0][0])*(OSM.maint[2][1]-OSM.maint[0][1])/(OSM.maint[2][0]-OSM.maint[0][0])]; // voie de maintenance réelle
@@ -34,7 +34,7 @@ const SITE=(()=>{
         // poteaux-pivots sur la bordure du raccourci, à l'entrée et à la sortie ; route de la file inchangée (validée). Emplacements ESTIMÉS.
         {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]],gates:[{on:'fork'}]},
         {pts:W.slice(JA,J2+1)},
-        {name:'raccourci est',loop:W.slice(J2,J1+1),short:[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]],gates:[{on:'fork'}]},
+        {name:'raccourci est',loop:W.slice(J2,J1+1),short:SHORT_E||[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]],gates:[{on:'fork'}]},
         {pts:W.slice(J1)}]},
     approach:[{w:.6,pts:PROM_W.concat([[-29.2,-9]])},{w:.4,pts:PROM_N.concat([[-29.2,-9]])}],
     noStroll:[[-27.5,-1.5]],

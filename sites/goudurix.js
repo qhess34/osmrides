@@ -8,7 +8,10 @@ const SITE=(()=>{
   // (132709980) de l'entrée sud (23,8 ; 87,7) jusqu'à (-28 ; -2), puis un raccord ESTIMÉ vers le quai ouest. Le chemin 1102233771 (côté est, nord-sud) sert d'arrivée et de sortie.
   // File (OSM, mise à jour du propriétaire 2026-11-16) : départ de la promenade 1102233771 en (22,3 ; 25,0), chemin 1580112206 vers le sud-ouest, fourche en (5,3 ; 50,5) :
   // raccourci ou boucle 1580112207, puis le long de la voie de retour jusqu'à l'escalier 1580112204 qui monte à l'entrée du quai ouest (entrance=main (-3,0 ; -0,4)).
-  const Q=OSM.paths.q,QLOOP=OSM.paths.qloop,QIN=OSM.paths.qin,XO=OSM.paths.xout,ENTRY0=[21.4,26.1],F0=6,F1=8;
+  // Mise à jour OSM du 2026-11-17 : la file 1580112206 commence à la barrière d'entrée OSM (19,4 ; 28,5), reliée à la promenade par 1580408092 ; barrières OSM B1 aux deux
+  // pointes de la boucle. Indices de fourche retrouvés par les coordonnées.
+  const Q=OSM.paths.q,QLOOP=OSM.paths.qloop,QIN=OSM.paths.qin,XO=OSM.paths.xout,ENTRY0=[21.4,26.1];
+  const at=(x,z)=>{let b=0,bd=1e9;Q.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;},F0=at(5.3,50.5),F1=at(-2.9,48.2);
   const EAST=OSM.paths.queue; // 1102233771 : de (16,5 ; 11,6) vers l'entrée sud (23,8 ; 87,7), passe par le départ de la file (22,3 ; 25,0) = EAST[2]
   // Sens de marche (propriétaire, 2026-11-15 : « le lift est la montée après la gare ») : gare vers le sud, lift droit sur l'axe nord-sud (s 44 → 136, OSM
   // « brake_run » + début de 541092982), puis les figures dans le lac, retour par la diagonale ouest (OSM « lift_hill », ici zone de freinage) et la courbe nord (OSM « launch_straight »).
@@ -45,7 +48,7 @@ const SITE=(()=>{
     // Poste de contrôle au SUD-EST de la gare, dans son emprise, vitre tournée vers la voie (propriétaire, lot 6) ; pupitre réduit (échelle .55 : 2,1 x 0,9 m, ESTIMÉ).
     booth:[2.25,8.6,Math.PI/2,.55],boothLabel:[7,12],beacon:[2.55,7.75],
     queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
-      parts:[{pts:[ENTRY0].concat(Q.slice(1,F0+1))},
+      parts:[{pts:[ENTRY0].concat(Q.slice(Math.hypot(Q[0][0]-ENTRY0[0],Q[0][1]-ENTRY0[1])<1.5?1:0,F0+1))},
         // boucle 1580112207 (propriétaire, 2026-11-16) : barrières liées à son ENTRÉE et à sa SORTIE (jumelle de sortie posée par le moteur), à 1,6 m des bouts (ESTIMÉ)
         {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gates:[{on:'loop',at:1.6}]},
         {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},

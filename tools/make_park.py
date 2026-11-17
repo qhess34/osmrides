@@ -133,7 +133,7 @@ for r in root.iter('relation'):
     if t.get('type') == 'site' and 'Zeus' in t.get('name', ''):
         zeus_ways |= {m.get('ref') for m in r.findall('member') if m.get('type') == 'way'}
 import glob, os
-SPEC_WAYS = {os.path.basename(f)[:-5]: {str(i) for i in json.load(open(f))['track_ways']} for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'specs', '*.json'))}  # tronçons des circuits : tools/specs/<site>.json
+SPEC_WAYS = {os.path.basename(f)[:-5]: {str(i) for i in json.load(open(f)).get('track_ways', [])} for f in glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'specs', '*.json'))}  # tronçons des circuits : tools/specs/<site>.json
 oziris_ways = {'937048122', '541161843', '937048120', '541161845', '541161844', '421460641', '541161850', '1102773847', '541161849', '1101623925', '541161848', '541161847', '937048121', '1330192627'}  # tools/specs/oziris.json
 goudurix_ways = {'937067647', '541092977', '541092979', '541092993', '541092992', '541092990', '541092991', '541092989', '541092988', '541092987', '1181620312', '541092986', '1181620311', '541092985', '1181620310', '1181620309', '541092984', '541092983', '541092982', '937067646'}  # tools/specs/goudurix.json
 hourra_ways = {'1231613335', '937061488', '1182632576', '541427605', '1182632575', '541427599', '1182419818', '541427592'}

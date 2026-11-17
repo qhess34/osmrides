@@ -46,7 +46,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Escaliers | `highway=steps` (+ `incline=up/down`, `width=*`) | Lu | Marches, garde-corps, visiteurs ralentis ; largeur du chemin qu'ils prolongent. **`incline` (avec le sens du way) place le palier en HAUT de l'escalier** ; sans lui, le haut est deviné (côté gare / porte, puis passerelle), sinon pas de palier. |
 | Passerelle | `bridge=yes` + `layer=*` | Lu | Chemin dessiné par-dessus la voie, visiteurs dessus. |
 | Chemin couvert, souterrain | `tunnel=yes`, `covered=yes`, `indoor=yes` ou `layer` négatif | Lu | Couloir caché, visible avec « Masquer la gare ». |
-| Barrière | nœud `barrier=swing_gate` (+ `swing_gate:hinge=left/right`, `ref=*`) | Prévu | Position exacte des barrières de file (voir §5). |
+| Barrière | nœud `barrier=swing_gate` (ou `gate`, `lift_gate`) (+ `swing_gate:hinge=left/right`, `ref=*`) | Lu | Barrières de file du jeu, à la place de celles que le moteur posait (voir §5) : nœud au début de la file = barrière d'entrée (la file commence à la barrière) ; nœud sur la pointe d'une fourche = barrière basculante ; nœud au milieu d'un chemin = barrière en travers (`hinge` donne le côté du poteau). |
 | Garde-corps | `barrier=fence` ou `barrier=handrail` | Lu comme décor | Dessinés comme décor ; pas encore utilisés pour délimiter la file (le jeu pose ses propres barrières). |
 
 ## 4. Décor
@@ -57,7 +57,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Eau | `natural=water`, `water=*`, `waterway=*` | Lu | Bassins, lacs, tunnel sous l'eau. |
 | Forêt, pelouse | `landuse=forest`, `natural=wood`, `landuse=grass`, `leisure=park` | Lu | Textures du sol. |
 | Arbres | nœud `natural=tree` | Lu | Arbres isolés. |
-| Rochers | `natural=rock` / `stone` | Lu | Massif en relief, tunnels de voie et de file dessous. |
+| Rochers | `natural=rock` / `stone` (way fermé ou relation multipolygone) | Lu | Massif en relief, tunnels de voie et de file dessous. Un rocher en relation est assemblé à partir de ses tronçons. |
 | Bâtiments | `building=*` | Lu | Toits, avec `name` affiché. |
 | Hauteur des bâtiments | `height=*`, `building:levels=*` | Utile | Ombres et ordre de dessin plus justes. |
 
@@ -69,6 +69,9 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Barrière basculante (ferme un chemin ou l'autre) | Nœud `barrier=swing_gate` sur le point de bifurcation : le pivot est sur la pointe. |
 | Deux barrières parallèles qui bougent ensemble (boucle et raccourci) | Un nœud `barrier=swing_gate` sur chaque chemin, avec la même `ref=` (ex. `ref=B1`). |
 | Côté du pivot | `swing_gate:hinge=left` ou `right`, vu dans le sens de dessin du chemin. |
+| Barrière d'entrée de la file | Nœud `barrier=swing_gate` sur le chemin de file, dans ses premiers mètres (`ref` libre, ex. « Entrée Goudurix »). |
+
+Les barrières de fourche bougent toutes ensemble avec leur fourche (même `ref` conseillée). Une barrière sur la pointe d'une fourche pivote sur la pointe ; `hinge` n'y sert pas.
 | Entrée et sortie d'un même chemin fermable | Deux nœuds avec la même `ref=` : ils bougent ensemble. |
 
 ## 6. Avant d'importer une nouvelle attraction
