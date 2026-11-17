@@ -14,7 +14,7 @@
  "skip": [
   "stairs"
  ],
- "note_osm": "Tonnerre 2 Zeus : voie, file (OSM.queue, OSM.steps), gare et voie de maintenance viennent d'une version antérieure de l'outil (2026-11-14) et sont CONSERVÉES (mode « base » de tools/make_site.py) ; origine retrouvée par la voie de maintenance OSM 938337765 (± 0,05 m). Décor, zones piétonnes, portes, largeurs, barrières (barrier=swing_gate) et arbres relus dans OSM (mise à jour du propriétaire du 2026-11-17, changesets 192068485 et 192068605). Escaliers OSM non exportés (skip) : ceux de la gare sont dessinés par SITE.draw.floor. File relue dans OSM (2026-11-17) : 93696870 (avec la barrière d'entrée et la fourche du raccourci est déplacée en (-12,2 ; 28,4)) et raccourci est 937019287.",
+ "note_osm": "Tonnerre 2 Zeus : voie, file (OSM.queue, OSM.steps), gare et voie de maintenance viennent d'une version antérieure de l'outil (2026-11-14) et sont CONSERVÉES (mode « base » de tools/make_site.py) ; origine retrouvée par la voie de maintenance OSM 938337765 (± 0,05 m). Décor, zones piétonnes, portes, largeurs, barrières (barrier=swing_gate) et arbres relus dans OSM (mise à jour du propriétaire du 2026-11-17, changesets 192068485 et 192068605). Escaliers OSM non exportés (skip) : ceux de la gare sont dessinés par SITE.draw.floor. File relue dans OSM (2026-11-17) : 93696870 (avec la barrière d'entrée et la fourche du raccourci est déplacée en (-12,2 ; 28,4)) et raccourci est 937019287. Extrait du 2026-11-17 après le changeset 192070451 (barrières B2 du raccourci est : une sur le raccourci 937019287, une sur la file 93696870).",
  "paths": {
   "queue": 93696870,
   "short": 937019287

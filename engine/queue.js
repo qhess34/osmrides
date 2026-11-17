@@ -21,10 +21,14 @@ const OSM_ENTRY=(()=>{const p0=QS.parts[0]&&QS.parts[0].pts;if(!p0||p0.length<2)
   QS.lead=lead;QS.entry0=B;QS.parts[0].pts=[B].concat(rest);return {b:best.b,side:hingeSide(best.b,best.r.t)||1};})();
 let ENTRY0=QS.entry0;const ENTRY_GATE=Object.assign({t:1},QS.gate); // gate.a : fermé en travers du chemin, gate.b : ouvert le long de la bordure
 if(OSM_ENTRY)Object.assign(ENTRY_GATE,gateAt(QS.parts[0].pts,0,false,1.1,OSM_ENTRY.side)); // recalée à la largeur dessinée par reGates
+// Barrières de file OSM (propriétaire, issue #12) : chacune ferme SON chemin EN TRAVERS, à la largeur dessinée, poteau sur une bordure (côté swing_gate:hinge si donné),
+// ouverte = rabattue le long de cette bordure (gateAt). Nœud au milieu d'un chemin de la fourche : barrière en travers de ce chemin (le plus proche : boucle ou raccourci).
+// Nœud sur la pointe de la fourche (bout du raccourci, commun aux deux chemins) : barrière en travers du RACCOURCI, juste après la pointe, là où sa bordure se détache
+// de celle de la boucle (tipAt) ; pour fermer aussi la boucle, OSM donne une barrière sur la boucle (Zeus, raccourci est, changeset 192070451).
 function osmGates(p){if(!OSMB.length||!p.loop||!p.short)return null;const S=p.short,out=[];
-  for(const b of OSMB){const r0=Math.hypot(b[0]-S[0][0],b[1]-S[0][1]),r1=Math.hypot(b[0]-S[S.length-1][0],b[1]-S[S.length-1][1]);
-    if(Math.min(r0,r1)<1.2){out.push({on:'fork',pivot:'tip',pair:false,end:r1<r0,osm:b[2]||1});continue;}
-    for(const k of ['loop','short']){const r=_np(p[k],b[0],b[1]);if(r.d<.6){out.push({on:k,at:r.at,exact:true,pair:false,side:hingeSide(b,r.t)||1,loop:k==='loop',osm:b[2]||1});break;}}}
+  for(const b of OSMB){const r0=Math.hypot(b[0]-S[0][0],b[1]-S[0][1]),r1=Math.hypot(b[0]-S[S.length-1][0],b[1]-S[S.length-1][1]),rs=_np(S,b[0],b[1]),rl=_np(p.loop,b[0],b[1]);
+    if(Math.min(r0,r1)<.35&&rl.d<.6){const e=r1<r0,sd=hingeSide(b,rs.t)||1;out.push({on:'short',tip:true,end:e,side:e?-sd:sd,pair:false,loop:false,osm:b[2]||1});continue;}
+    const k=rs.d<=rl.d?'short':'loop',r=k==='short'?rs:rl;if(r.d<.6)out.push({on:k,at:r.at,exact:true,pair:false,side:hingeSide(b,r.t)||1,loop:k==='loop',osm:b[2]||1});}
   return out.length?out:null;}
 function pathPos(P,C,d,o,side){
   d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;
@@ -124,7 +128,10 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
   const em=plen(PS)*.3;let e=Math.min(d,em),h=null;for(;e<=em+1e-6;e+=.05){const c=ptAt(PS,e),c2=ptAt(PS,e+.05),tx=c2[0]-c[0],tz=c2[1]-c[1],l=Math.hypot(tx,tz)||1,nx=-tz/l*sd,nz=tx/l*sd;
     const q=[c[0]+nx*hs,c[1]+nz*hs];h=q;if(nearOn(PL,q[0],q[1])[2]>=hl+.05)break;} // au plus au tiers du raccourci : les deux barrières parallèles restent distinctes
   return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1};}
-const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.at||1.6;return Object.assign(gateAt(P,g.exact?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
+// pointe de fourche : distance depuis la pointe où la bordure du raccourci se détache de celle de la boucle (au plus 25 % du raccourci : deux barrières distinctes sur un raccourci court)
+function tipAt(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),PL=rv(p.loop),mx=Math.min(4,plen(PS)*.25),hw=q=>g.half||qwAt(q[0],q[1])/2;let d=.2;
+  for(;d<mx;d+=.05){const B=ptAt(PS,d),c=nearOn(headOf(PL,d+6),B[0],B[1]);if(c[2]>=hw(B)+hw(c)-.05)break;}return Math.min(d,mx);}
+const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.tip?tipAt(g,p):g.at||1.6;return Object.assign(gateAt(P,g.exact||g.tip?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
   return Object.assign(r,{cfg:g,part:p});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
 function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);l.g=l.gs[0];}
