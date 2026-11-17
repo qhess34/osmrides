@@ -16,7 +16,7 @@
         o.barriers = {};
         for (const key of Object.keys(g.barriers).sort()) {
           const b = g.barriers[key];
-          o.barriers[key] = { x: r2(b.x), z: r2(b.z), a: { ang: r1(b.a.ang), len: r2(b.a.len) }, b: { ang: r1(b.b.ang), len: r2(b.b.len) } };
+          o.barriers[key] = b.off === true ? { off: true } : { x: r2(b.x), z: r2(b.z), a: { ang: r1(b.a.ang), len: r2(b.a.len) }, b: { ang: r1(b.b.ang), len: r2(b.b.len) } };
         }
       } else if (k === 'controlRooms') {
         o.controlRooms = g.controlRooms.map(r => ({ id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }));
@@ -40,8 +40,12 @@
         if (keys.length > LIM.barriers) E.push('barriers : trop de surcharges');
         for (const key of keys) {
           const b = B[key], p = 'barriers["' + key + '"]';
-          if (!/^(entry|fork:[^\n"\\]{1,80}:[a-z]+[0-9]+(#[0-9]+)?)$/.test(key)) { E.push(p + ' : clé invalide'); continue; }
-          if (!b || typeof b !== 'object') { E.push(p + ' : objet attendu'); continue; }
+          // clés : 'entry', 'fork:<tronçon>:<rôle>' (barrière calculée), 'add:<tronçon>:<n>' (barrière ajoutée à la main, liée à la fourche de ce tronçon)
+          const isAdd = /^add:[^\n"\\:]{1,80}:[1-9][0-9]{0,2}$/.test(key);
+          if (!isAdd && !/^(entry|fork:[^\n"\\]{1,80}:[a-z]+[0-9]+(#[0-9]+)?)$/.test(key)) { E.push(p + ' : clé invalide'); continue; }
+          if (!b || typeof b !== 'object' || Array.isArray(b)) { E.push(p + ' : objet attendu'); continue; }
+          // suppression d'une barrière calculée : {off:true} seul (le calcul n'est jamais effacé) ; une barrière ajoutée se retire de GAME, sans off
+          if ('off' in b) { if (isAdd) E.push(p + ' : une barrière ajoutée se supprime en retirant sa clé (pas de off)'); else if (b.off !== true || Object.keys(b).length !== 1) E.push(p + ' : suppression = {"off": true} seul'); continue; }
           for (const k of Object.keys(b)) if (!['x', 'z', 'a', 'b'].includes(k)) E.push(p + ' : clé inconnue ' + k);
           if (!num(b.x, -LIM.xz, LIM.xz) || !num(b.z, -LIM.xz, LIM.xz)) E.push(p + ' : x, z (m) hors bornes');
           for (const s of ['a', 'b']) {

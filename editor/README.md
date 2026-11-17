@@ -20,6 +20,8 @@ Sans Docker : `node editor/server.js` (Node 22, aucune dépendance ; `PORT`, `HO
 
 - Choisir l'attraction en haut. La carte se déplace et se zoome comme dans le jeu.
 - **Barrières** (liste à droite ; sur la carte : orange = entrée, cyan = fourche ; point vert = barrière corrigée ; trait plein = position A, tirets = position B) : cliquer pour sélectionner, glisser pour déplacer le pivot, glisser les poignées **A** / **B** pour orienter et allonger chaque position. **Revenir au calcul auto** supprime la surcharge. Valeurs fines facultatives dans le panneau « Sélection ».
+- **Supprimer la barrière** (barrière sélectionnée) : barrière calculée → surcharge `{"off": true}` (croix rouge sur la carte, « supprimée » dans la liste ; ignorée par le dessin, le clic et la logique du jeu ; **Rétablir la barrière** retire la surcharge) ; barrière ajoutée → retirée de `game.js`.
+- **Ajouter une barrière** (sous la liste) : choisir la fourche, cliquer le bouton puis le pivot sur la carte ; A est posée en travers du raccourci, B en travers de la boucle (à ajuster aux poignées). Elle bascule avec sa fourche et se clique sur la carte du jeu.
 - **Salle de contrôle** (une seule par attraction, celle du pupitre) : sans `game.js`, le jeu prend `SITE.booth` ; l'éditeur propose de la reprendre (bouton « Reprendre la salle », ou automatiquement à la première modification). Glisser = déplacer, coins = redimensionner, rond = tourner (côté vitre vers la voie). Supprimer / créer (seulement s'il n'y en a pas).
 - **Différences et enregistrement** : résumé avant / après, diff ligne à ligne du fichier, validation par le serveur, puis **Enregistrer**. **Recharger** abandonne les modifications.
 - Surcharge orpheline (barrière qui n'existe plus, par exemple après un changement de file) : signalée en rouge, supprimée seulement au bouton.
@@ -35,7 +37,7 @@ const GAME = {
 };
 ```
 
-- `barriers` : clé stable `entry` ou `fork:<nom du tronçon de SITE.queue.parts>:<rôle>` (rôle `fork0` / `fork1` = pointe de départ / de retour du raccourci, `loop0`, `short1`… = barrière en travers d'un chemin) ; `x`, `z` = pivot (m) ; `a`, `b` = positions (angle en degrés, `atan2(dz, dx)`, longueur en m). Entrée : A fermée, B ouverte ; fourche : A en travers du raccourci, B en travers de la boucle.
+- `barriers` : clé stable `entry` ou `fork:<nom du tronçon de SITE.queue.parts>:<rôle>` (rôle `fork0` / `fork1` = pointe de départ / de retour du raccourci, `loop0`, `short1`… = barrière en travers d'un chemin), valeur `{x, z, a, b}` ou `{"off": true}` (supprimée) ; `add:<nom du tronçon>:<n>` = barrière ajoutée à la fourche de ce tronçon, `{x, z, a, b}` seulement ; `x`, `z` = pivot (m) ; `a`, `b` = positions (angle en degrés, `atan2(dz, dx)`, longueur en m). Entrée : A fermée, B ouverte ; fourche : A en travers du raccourci, B en travers de la boucle.
 - `controlRooms` : 0 ou 1 salle `{id, x, z, angle (degrés), w, d (m), main}` ; `[]` = aucune salle (ni pupitre dessiné, ni gyrophare, ni étiquette).
 - Clés inconnues de l'éditeur (lots futurs) : conservées telles quelles, signalées.
 
@@ -53,4 +55,4 @@ const GAME = {
 
 ## Tests
 
-`NODE_PATH=$(npm root -g) node tools/editor-test.js [goudurix zeus] [--check]` : éditeur ouvert, barrière et salle modifiées à la souris, salle supprimée puis créée, diff, sauvegarde, relecture après redémarrage du serveur, application dans `jeu.html` (géométrie, dessin, clic sur la carte, visiteurs) ; `--check` lance aussi `tools/check.js` avec le `game.js` écrit. Les `game.js` de test sont retirés à la fin.
+`NODE_PATH=$(npm root -g) node tools/editor-test.js [goudurix zeus] [--check]` : éditeur ouvert, barrière et salle modifiées à la souris, barrière supprimée, barrière ajoutée puis supprimée puis rajoutée, salle supprimée puis créée, diff, sauvegarde, relecture après redémarrage du serveur, application dans `jeu.html` (géométrie, dessin, clic sur la carte, visiteurs) ; `--check` lance aussi `tools/check.js` avec le `game.js` écrit. Les `game.js` de test sont retirés à la fin.

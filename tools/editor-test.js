@@ -1,7 +1,8 @@
 // Test de l'éditeur (lot 1) : node tools/editor-test.js [goudurix zeus] [--check] [--shot=f.jpg]
 // (NODE_PATH=$(npm root -g) pour Playwright). Pour chaque attraction : serveur editor/server.js lancé ici, éditeur ouvert, une barrière déplacée, orientée
 // et allongée à la souris, salle de contrôle reprise de SITE.booth, déplacée, redimensionnée, tournée, supprimée puis recréée, diff, sauvegarde ; serveur redémarré,
-// relecture identique ; puis jeu.html (file://) : barrière et salle appliquées (géométrie, dessin, clic sur la carte), visiteurs qui passent.
+// relecture identique ; barrière calculée supprimée ({off:true}), barrière ajoutée à une fourche, supprimée puis rajoutée ('add:<tronçon>:1') ; puis jeu.html (file://) :
+// barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent.
 // --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, gatesMove). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
 const { chromium } = require('playwright');
@@ -61,6 +62,20 @@ const ed = (page, s) => page.evaluate(s);
       await drag(page, p, to);
       const o2 = await ed(page, `ED.draft().barriers[${JSON.stringify(g0.key)}]`);
       ok(Math.abs(o2.a.len - o.a.len) > .1 && o2.b.ang === o.b.ang, `position A orientée et allongée (${o.a.ang}° ${o.a.len} m -> ${o2.a.ang}° ${o2.a.len} m)`);
+      // ── supprimer une barrière calculée (surcharge {off:true}), ajouter une barrière à une fourche puis la supprimer (clé retirée), la rajouter ──
+      const gd = G0.find(g => g.kind === 'fork' && g.key !== g0.key) || G0.find(g => g.key !== g0.key);
+      await page.click(`#gList .it[data-key="${gd.key}"]`); await sleep(120); await page.click('#bDelGate'); await sleep(80);
+      let dd = await ed(page, `ED.draft().barriers[${JSON.stringify(gd.key)}]`);
+      ok(dd && dd.off === true && Object.keys(dd).length === 1 && await ed(page, `ED.gates().find(g=>g.key===${JSON.stringify(gd.key)}).off===true`), `barrière ${gd.key} supprimée (surcharge {off:true}, calcul gardé)`);
+      const fk = await ed(page, `ED.E('forkList()')[0].name`), fg = G0.find(g => g.kind === 'fork');
+      const addAt = async () => { await page.selectOption('#addFork', fk); await page.click('#bAddGate'); await sleep(60);
+        const q = await ed(page, `ED.toScr(${fg.h[0] + 1.5},${fg.h[1] - 1})`); await page.mouse.click(q[0], q[1]); await sleep(120); };
+      await addAt(); const ak = 'add:' + fk + ':1';
+      let ab = await ed(page, `ED.draft().barriers[${JSON.stringify(ak)}]`);
+      ok(ab && typeof ab.x === 'number' && ab.a.len >= .2 && ab.b.len >= .2 && await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(ak)}&&g.add&&g.kind==='fork')`), `barrière ajoutée à la fourche « ${fk} » (${ak}, pivot ${ab && ab.x}, ${ab && ab.z})`);
+      await page.click('#bDelGate'); await sleep(80);
+      ok(!(await ed(page, `!!(ED.draft().barriers||{})[${JSON.stringify(ak)}]`)) && !(await ed(page, `ED.gates().some(g=>g.key===${JSON.stringify(ak)})`)), 'barrière ajoutée supprimée (clé retirée de GAME)');
+      await addAt(); ab = await ed(page, `ED.draft().barriers[${JSON.stringify(ak)}]`); ok(!!ab, 'barrière rajoutée (même clé ' + ak + ')');
       // ── salle de contrôle ──
       await page.click('#bSelRoom'); await sleep(150);
       const r0 = await ed(page, `ED.rooms()[0]`), s1 = await ed(page, `ED.E('cam.s')`);
@@ -118,6 +133,16 @@ const ed = (page, s) => page.evaluate(s);
       const gj = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${gk});return g&&{ovr:g.g.ovr,h:g.g.h,a:g.g.a,kind:g.kind,fork:g.fork};})()`);
       const ea = [ov.x + Math.cos(ov.a.ang * Math.PI / 180) * ov.a.len, ov.z + Math.sin(ov.a.ang * Math.PI / 180) * ov.a.len];
       ok(gj && gj.ovr && Math.abs(gj.h[0] - ov.x) < 1e-6 && Math.abs(gj.h[1] - ov.z) < 1e-6 && Math.hypot(gj.a[0] - ea[0], gj.a[1] - ea[1]) < 1e-6, 'jeu : barrière corrigée appliquée (pivot, position A)');
+      // barrière supprimée : ni dessin ni clic ; barrière ajoutée : liée à sa fourche (bascule avec elle, clic sur la carte)
+      const ofd = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${JSON.stringify(gd.key)});return g&&g.off;})()`);
+      ok(ofd === true && exp.barriers[gd.key].off === true, 'jeu : barrière supprimée ignorée (g.off)');
+      const ag = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${JSON.stringify(ak)});if(!g)return null;const l=LOOPS[g.fork];return {add:g.add,fork:g.fork,name:l.kname,h:g.g.h,a:g.g.a,b:g.g.b,loop:g.g.loop};})()`);
+      ok(ag && ag.add && ag.name === fk && Math.abs(ag.h[0] - ab.x) < 1e-6, `jeu : barrière ajoutée présente sur la fourche « ${ag && ag.name} »`);
+      const agc = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${JSON.stringify(ak)}),L=LOOPS[g.fork],t=L.t;cam.g=null;cam.follow=-1;cam.key='';cam.x=g.g.h[0];cam.z=g.g.h[1];cam.s=24;render(.05);
+        const e=t>.5?g.g.a:g.g.b,x=g.g.h[0]+(e[0]-g.g.h[0])*.6,z=g.g.h[1]+(e[1]-g.g.h[1])*.6,rc=cv.getBoundingClientRect();return {on:L.on,f:g.fork,x:rc.left+(x-cam.x)*cam.s+VW/2,y:rc.top+(z-cam.z)*cam.s+VH/2};})()`);
+      await jp.mouse.click(agc.x, agc.y); await sleep(100);
+      ok((await jp.evaluate(`LOOPS[${agc.f}].on`)) !== agc.on, 'jeu : clic sur la barrière ajoutée = bascule de sa fourche');
+      await jp.evaluate(`(()=>{const L=LOOPS[${agc.f}];if(L.on!==${agc.on})act('loop',${agc.f});for(let i=0;i<40;i++)step(.05);})()`);
       const rj = await jp.evaluate(`ctlRooms()`), re = exp.controlRooms[0];
       ok(rj.length === 1 && ['x', 'z', 'angle', 'w', 'd'].every(k => rj[0][k] === re[k]), 'jeu : salle de contrôle appliquée');
       // dessin : couleur du local au centre de la salle (toits retirés, caméra sur la salle)

@@ -10,6 +10,7 @@ const SP=.42,QS=SITE.queue;
 //  - FOURCHE (issue #17, croquis docs/sources/goudurix-barrieres-fourche-2026-11-17.png) : UNE barrière par pointe (départ et retour du raccourci, liées), poteau-pivot
 //    sur la BORDURE à la pointe de l'angle intérieur entre les deux chemins, position A en travers du raccourci, B en travers de la boucle (forkGate, pivot:'tip') ;
 //    le nœud OSM (milieu du chemin, à moins de 3 m de la pointe) ne donne que l'emplacement ; pointe sans nœud : ESTIMÉE (est:1) ;
+//    raccourci court (coins des deux pointes croisés) : chaque pivot à au plus L/4 de SA pointe, deux barrières distinctes aux deux bouts du raccourci (g.short) ;
 //    file sans nœud d'entrée ni SITE.queue.gate : barrière au départ de la file (ESTIMÉE) ;
 //  - les visiteurs ne franchissent que les barrières ouvertes (nextSeg, sauf évacuation) ; chaque barrière se clique sur la carte (engine/render.js).
 // Cas particuliers :
@@ -129,10 +130,17 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
   const hl=hwAt(A),hs=hwAt(B);
   if(g.pivot==='tip'||(g.pivot!=='edge'&&g.pair===false)){ // sommet de l'angle : point des bordures intérieures où elles se rejoignent
     const T=PS[0],u=P=>{const q=P.find(q=>Math.hypot(q[0]-T[0],q[1]-T[1])>.8)||P[P.length-1],l=Math.hypot(q[0]-T[0],q[1]-T[1])||1;return [(q[0]-T[0])/l,(q[1]-T[1])/l];},uS=u(PS),uL=u(rv(p.loop));
+    // raccourci COURT (OzIris : 1,2 à 1,3 m, Zeus raccourci ouest : 2,4 m ; propriétaire, 2026-11-17 : « je devrais avoir deux barrières ici ») : les coins intérieurs des deux
+    // pointes se croisent (d0 + d1 > L/2, d = distance du pivot le long du raccourci depuis SA pointe) ; chaque pivot est alors ramené à au plus L/4 de sa pointe, sur la
+    // bordure côté boucle : deux barrières DISTINCTES aux deux extrémités du raccourci, jamais confondues (g.short = 1)
+    const LS=plen(PS),dOf=r=>r&&r.h?_np(r.g.end?p.short.slice().reverse():p.short,r.h[0],r.h[1]).at:0,
+      clash=!g.solo&&(()=>{const me=forkGate(Object.assign({},g,{solo:1}),p),ot=forkGate(Object.assign({},g,{solo:1,end:!g.end,x:undefined,z:undefined}),p);
+        return dOf({g,h:me.h})+dOf({g:{end:!g.end},h:ot.h})>LS*.5;})(),cap=LS*.25;
     if(uS[0]*uL[0]+uS[1]*uL[1]<-.85){ // raccourci et boucle face à face (angle plat) : pas de sommet ; poteau sur la bordure opposée au chemin qui continue, vantail en diagonale
       const i=QS.parts.indexOf(p),nb=g.end?QS.parts[i+1]:QS.parts[i-1],NP=nb&&nb.pts?(g.end?nb.pts:nb.pts.slice().reverse()):null;let O=NP?u(NP):[-uS[1],uS[0]];
       if(Math.abs(O[0]*uS[0]+O[1]*uS[1])>.7)O=[-uS[1],uS[0]];const hw=hwAt(T);
-      return {h:[T[0]-O[0]*hw,T[1]-O[1]*hw],a:[T[0]+(uS[0]+O[0])*hw,T[1]+(uS[1]+O[1])*hw],b:[T[0]+(uL[0]+O[0])*hw,T[1]+(uL[1]+O[1])*hw],loop:false,fork:1};}
+      const hh=[T[0]-O[0]*hw,T[1]-O[1]*hw]; // raccourci court : vantail A en travers du raccourci (la diagonale dépasserait l'autre pointe et croiserait sa barrière)
+      return {h:hh,a:clash?across(hh,PS,hs):[T[0]+(uS[0]+O[0])*hw,T[1]+(uS[1]+O[1])*hw],b:[T[0]+(uL[0]+O[0])*hw,T[1]+(uL[1]+O[1])*hw],loop:false,fork:1,short:clash?1:undefined};}
     // pivot = pointe de l'angle intérieur des chemins DESSINÉS (croquis du propriétaire, issue #17) ; un nœud OSM de pointe est sur la jonction des AXES, en amont de
     // cette pointe de ≈ demi-largeur / sin(angle/2) (Goudurix : 1,1 et 2,5 m) : il désigne la fourche, le pivot est posé à la pointe (g.dn = écart au nœud, en m)
     // coin exact : intersection des bordures intérieures (axes décalés de leur demi-largeur, l'un vers l'autre), la plus proche de la jonction le long du raccourci
@@ -141,7 +149,11 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
       oS=off(headOf(PS,mx+4),nS,hs),oL=off(PL,nL,hl);let k=hs/((hl+hs)||1),h=[B[0]+(A[0]-B[0])*k,B[1]+(A[1]-B[1])*k];
     find:for(let i=1;i<oS.length;i++)for(let j=1;j<oL.length;j++){const p=oS[i-1],q=oS[i],r=oL[j-1],t=oL[j],dx=q[0]-p[0],dz=q[1]-p[1],ex=t[0]-r[0],ez=t[1]-r[1],den=dx*ez-dz*ex;if(Math.abs(den)<1e-9)continue;
       const u=((r[0]-p[0])*ez-(r[1]-p[1])*ex)/den,v=((r[0]-p[0])*dz-(r[1]-p[1])*dx)/den;if(u>=0&&u<=1&&v>=0&&v<=1){h=[p[0]+dx*u,p[1]+dz*u];break find;}}
-    return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1,dn:g.x!=null?+Math.hypot(h[0]-g.x,h[1]-g.z).toFixed(2):undefined};}
+    if(clash&&dOf({g,h})>cap){const c=ptAt(PS,cap),c2=ptAt(PS,cap+.05),l=Math.hypot(c2[0]-c[0],c2[1]-c[1])||1;let nx=-(c2[1]-c[1])/l,nz=(c2[0]-c[0])/l;if(nx*nS[0]+nz*nS[1]<0){nx=-nx;nz=-nz;}h=[c[0]+nx*hs,c[1]+nz*hs];}
+    if(clash){const c=nearOn(PL,h[0],h[1]),T2=PS[Math.min(1,PS.length-1)];if(Math.hypot(c[0]-h[0],c[1]-h[1])<.3){ // pivot sur l'axe de la boucle : vantail B perpendiculaire à la boucle, côté opposé au raccourci
+      const L2=headOf(PL,Math.max(.5,_np(PL,h[0],h[1]).at+.3)),q0=L2[L2.length-2]||PL[0],q1=L2[L2.length-1],l=Math.hypot(q1[0]-q0[0],q1[1]-q0[1])||1;let nx=-(q1[1]-q0[1])/l,nz=(q1[0]-q0[0])/l;
+      if(nx*(T2[0]-T[0])+nz*(T2[1]-T[1])>0){nx=-nx;nz=-nz;}return {h,a:across(h,PS,hs),b:[c[0]+nx*hl,c[1]+nz*hl],loop:false,fork:1,short:1};}}
+    return {h,a:across(h,PS,hs),b:across(h,PL,hl),loop:false,fork:1,short:clash?1:undefined,dn:g.x!=null?+Math.hypot(h[0]-g.x,h[1]-g.z).toFixed(2):undefined};}
   // bordure du raccourci côté boucle, un peu au-delà de la pointe (hors de l'emprise de la boucle)
   const F=PS[0],sd=Math.sign((B[0]-F[0])*(A[1]-F[1])-(B[1]-F[1])*(A[0]-F[0]))||1; // côté de la boucle par rapport au raccourci
   const em=plen(PS)*.3;let e=Math.min(d,em),h=null;for(;e<=em+1e-6;e+=.05){const c=ptAt(PS,e),c2=ptAt(PS,e+.05),tx=c2[0]-c[0],tz=c2[1]-c[1],l=Math.hypot(tx,tz)||1,nx=-tz/l*sd,nz=tx/l*sd;
@@ -153,13 +165,9 @@ function tipAt(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),PL=rv
 const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.tip?tipAt(g,p):g.at||1.6;return Object.assign(gateAt(P,g.exact||g.tip?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
   return Object.assign(r,{cfg:g,part:p,key:g.key});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
-const segX=(p,q,r,u)=>{const o=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));return o(p,q,r)!==o(p,q,u)&&o(r,u,p)!==o(r,u,q);};
-const leafEnd=(g,t)=>{const ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));const th=tb+d*t,
-  len=Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1])*(1-t)+Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1])*t;return [g.h[0]+Math.cos(th)*len,g.h[1]+Math.sin(th)*len];}; // même course que leaf (engine/render.js)
-// deux pointes si proches (raccourci de 1 à 2 m : lacets d'OzIris) que leurs vantaux se croiseraient : une seule fourche, une seule barrière (celle de l'entrée), g.merged
-const forkClash=(g1,g2)=>Math.hypot(g1.h[0]-g2.h[0],g1.h[1]-g2.h[1])<.6||[0,.25,.5,.75,1].some(t=>segX(g1.h,leafEnd(g1,t),g2.h,leafEnd(g2,t)));
+// Deux pointes très proches (lacets d'OzIris, raccourci de 1 à 2 m) : on garde DEUX barrières (propriétaire, 2026-11-17 : « je devrais avoir deux barrières ici »),
+// plus de fusion : forkGate écarte leurs pivots (g.short) ; filet de sécurité : surcharge, ajout ou suppression dans l'éditeur (GAME.barriers).
 function reGates(){for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
-    const f=l.gs.filter(g=>g.cfg&&g.cfg.on==='fork'&&g.cfg.pivot==='tip');if(f.length===2&&forkClash(f[0],f[1])){const k=f.find(g=>g.cfg.end);k.merged=1;l.gs=l.gs.filter(g=>g!==k);f.find(g=>!g.cfg.end).merged=1;}
     l.g=l.gs[0];}
   if(OSM_ENTRY||QS.gateMoved||ENTRY_EST){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
   gameGates();
@@ -252,17 +260,26 @@ QS.parts.forEach((p,si)=>{
 // du chemin pour l'entrée, en travers du raccourci pour une fourche ; b = ouverte le long de la bordure / en travers de la boucle). Clé absente du jeu : surcharge orpheline
 // (signalée par l'éditeur, ignorée ici). g.ovr = 1 : barrière corrigée ; g.auto = valeur calculée.
 ENTRY_GATE.key='entry';
-LOOPS.forEach((l,n)=>{const base='fork:'+(l.name||('part'+STAGES.findIndex(st=>st.fork===l)))+':',seen={};
+LOOPS.forEach((l,n)=>{l.kname=l.name||('part'+STAGES.findIndex(st=>st.fork===l));const base='fork:'+l.kname+':',seen={};
   l.gs.forEach((g,k)=>{const c=g.cfg;let r=c?(c.on||'g')+(c.end?1:0):'site'+k;if(seen[r])r+='#'+(++seen[r]);else seen[r]=1;if(c)c.key=base+r;g.key=base+r;});});
 function allGates(){return LOOPS.flatMap(l=>l.gs).concat([ENTRY_GATE]);}
 function unGate(g){if(g.ovr){Object.assign(g,g.auto);delete g.ovr;delete g.auto;}}
 const okNum=v=>typeof v==='number'&&isFinite(v);
-function gameGates(){const B=GM.barriers||{};for(const g of allGates()){unGate(g);const o=B[g.key];
-  if(!o||!okNum(o.x)||!okNum(o.z)||!o.a||!o.b||![o.a.ang,o.a.len,o.b.ang,o.b.len].every(okNum))continue;
+// Suppression (filet de sécurité, propriétaire 2026-11-17) : {off:true} sur la clé d'une barrière calculée = barrière ignorée par le dessin, le clic et la logique (g.off) ;
+// le calcul n'est jamais effacé (retirer la surcharge la rend). Ajout : clé 'add:<nom du tronçon de SITE.queue.parts>:<n>' = barrière posée à la main dans l'éditeur,
+// {x, z, a, b} comme une surcharge, liée à la fourche de ce tronçon (bascule avec elle : A = fermée quand la boucle est ouverte, clic sur la carte) ; g.add = 1.
+const okGate=o=>o&&okNum(o.x)&&okNum(o.z)&&o.a&&o.b&&[o.a.ang,o.a.len,o.b.ang,o.b.len].every(okNum);
+function gameGates(){const B=GM.barriers||{};for(const l of LOOPS)l.gs=l.gs.filter(g=>!g.add);
+  for(const g of allGates()){unGate(g);delete g.off;const o=B[g.key];if(o&&o.off===true){g.off=1;continue;}if(!okGate(o))continue;
   const h=[o.x,o.z],e=q=>{const t=q.ang*Math.PI/180;return [h[0]+Math.cos(t)*q.len,h[1]+Math.sin(t)*q.len];};
-  g.auto={h:g.h,a:g.a,b:g.b};g.h=h;g.a=e(o.a);g.b=e(o.b);g.ovr=1;}}
+  g.auto={h:g.h,a:g.a,b:g.b};g.h=h;g.a=e(o.a);g.b=e(o.b);g.ovr=1;}
+  for(const key of Object.keys(B).sort()){const m=/^add:(.+):(\d+)$/.exec(key),o=B[key];if(!m||!okGate(o))continue;const l=LOOPS.find(l=>l.kname===m[1]);if(!l)continue;
+    const h=[o.x,o.z],e=q=>{const t=q.ang*Math.PI/180;return [h[0]+Math.cos(t)*q.len,h[1]+Math.sin(t)*q.len];};l.gs.push({key,add:1,h,a:e(o.a),b:e(o.b),loop:false,fork:1,w:o.a.len,wEst:false});}
+  for(const l of LOOPS)l.g=l.gs.find(g=>!g.off)||l.gs[0];}
 // liste des barrières (éditeur) : clé, type (entrée / fourche), fourche, barrière
-function gateList(){return [{key:'entry',kind:'entry',fork:-1,g:ENTRY_GATE}].concat(LOOPS.flatMap((l,i)=>l.gs.map(g=>({key:g.key,kind:'fork',fork:i,name:l.name,g}))));}
+function gateList(){return [{key:'entry',kind:'entry',fork:-1,g:ENTRY_GATE,off:!!ENTRY_GATE.off}].concat(LOOPS.flatMap((l,i)=>l.gs.map(g=>({key:g.key,kind:'fork',fork:i,name:l.name,g,off:!!g.off,add:!!g.add}))));}
+// fourches où l'éditeur peut ajouter une barrière (nom du tronçon de SITE.queue.parts)
+function forkList(){return LOOPS.map((l,i)=>({fork:i,name:l.kname}));}
 gameGates();
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;
@@ -316,7 +333,7 @@ function updateVisitors(dt){
     if(v.w>v.pat*PAT_M[G.patL]){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3,0,'quit');continue;}
     if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière d'entrée : seul passage vers la file
       if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v),v.ci,null,3,0,'turn');continue;}
-      if(ENTRY_GATE.t>.02)continue;
+      if(ENTRY_GATE.t>.02&&!ENTRY_GATE.off)continue; // barrière d'entrée supprimée par l'éditeur : ignorée par la logique
       if(!room(SEG_IN))continue; // patiente devant la barrière le temps que la file avance
       v.mode='q';v.e=SEG_IN;v.r=SEG_IN.len;SEG_IN.list.push(v);
     }

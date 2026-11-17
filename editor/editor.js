@@ -4,7 +4,7 @@
    stable, D2) ; salle de contrôle : GAME.controlRooms (0 ou 1 salle, D3). Écriture : seulement par le serveur (editor/server.js), après diff et validation. */
 (function () {
   const S = window.T2ZSchema, $ = id => document.getElementById(id), fr = $('fr'), ov = $('ov'), oc = ov.getContext('2d');
-  let W = null, E = null, site = '', orig = { exists: false, text: '' }, sel = null, drag = null, ready = false;
+  let W = null, E = null, site = '', orig = { exists: false, text: '' }, sel = null, drag = null, ready = false, adding = null; // adding : nom du tronçon de la fourche où poser une barrière (clic du pivot)
   const deg = r => r * 180 / Math.PI, rad = d => d * Math.PI / 180, R2 = v => Math.round(v * 100) / 100, R1 = v => Math.round(v * 10) / 10;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const api = (u, o) => fetch(u, Object.assign({ cache: 'no-store' }, o)).then(r => r.json());
@@ -17,7 +17,7 @@
     open(L.some(s => s.id === s0) ? s0 : L[0].id);
   }
   async function open(id) {
-    ready = false; sel = null; site = id; $('site').value = id;
+    ready = false; sel = null; adding = null; site = id; $('site').value = id;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
     $('file').textContent = 'sites/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
@@ -53,7 +53,7 @@
   function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; return g; }
   function ovrOf(g) { // surcharge d'une barrière, créée depuis sa géométrie actuelle au premier changement
     const M = GM(); if (!M.barriers) M.barriers = {};
-    if (!M.barriers[g.key]) { const p = q => ({ ang: R1(deg(Math.atan2(q[1] - g.h[1], q[0] - g.h[0]))), len: R2(Math.hypot(q[0] - g.h[0], q[1] - g.h[1])) }); M.barriers[g.key] = { x: R2(g.h[0]), z: R2(g.h[1]), a: p(g.a), b: p(g.b) }; }
+    if (!M.barriers[g.key] || M.barriers[g.key].off) { const p = q => ({ ang: R1(deg(Math.atan2(q[1] - g.h[1], q[0] - g.h[0]))), len: R2(Math.hypot(q[0] - g.h[0], q[1] - g.h[1])) }); M.barriers[g.key] = { x: R2(g.h[0]), z: R2(g.h[1]), a: p(g.a), b: p(g.b) }; }
     return M.barriers[g.key];
   }
   function migrate() { // salle déduite de SITE.booth (D3) : SITE reste inchangé, la salle passe dans GAME à la sauvegarde
@@ -62,6 +62,14 @@
   }
   const applied = () => { E('reGates()'); panel(); };
   function revertGate(key) { const M = GM(); if (M.barriers) { delete M.barriers[key]; if (!Object.keys(M.barriers).length) delete M.barriers; } applied(); }
+  // Supprimer : barrière calculée -> surcharge {off:true} (le calcul reste, « Rétablir » retire la surcharge) ; barrière ajoutée -> clé retirée de GAME
+  function deleteGate(key) { const g = gates().find(x => x.key === key); if (!g) return; const M = GM(); if (!M.barriers) M.barriers = {};
+    if (g.add) delete M.barriers[key]; else M.barriers[key] = { off: true }; if (!Object.keys(M.barriers).length) delete M.barriers; if (g.add) sel = null; applied(); }
+  // Ajouter : pivot cliqué sur la carte, A en travers du raccourci, B en travers de la boucle de la fourche choisie ; clé 'add:<tronçon>:<n>' (n libre le plus petit)
+  function addGate(name, p) { const M = GM(); if (!M.barriers) M.barriers = {}; let n = 1; while (M.barriers['add:' + name + ':' + n]) n++; const key = 'add:' + name + ':' + n;
+    const ab = E(`(()=>{const l=LOOPS.find(l=>l.kname===${JSON.stringify(name)}),h=[${p[0]},${p[1]}],hw=qwAt(h[0],h[1])/2;return [across(h,l.short.P,hw),across(h,l.loop.P,hw)];})()`);
+    const q = v => { let len = Math.hypot(v[0] - p[0], v[1] - p[1]), ang = Math.atan2(v[1] - p[1], v[0] - p[0]); if (len < .5) len = 2.2; return { ang: R1(deg(ang)), len: R2(clamp(len, .2, 20)) }; };
+    M.barriers[key] = { x: R2(p[0]), z: R2(p[1]), a: q(ab[0]), b: q(ab[1]) }; adding = null; sel = { t: 'gate', key }; applied(); return key; }
   function createRoom() { migrate(); const M = GM(); if (M.controlRooms.length) return; const c = E('cam'); M.controlRooms.push({ id: 'poste', x: R2(c.x), z: R2(c.z), angle: 0, w: 3.75, d: 1.7, main: true }); sel = { t: 'room' }; panel(); }
   function deleteRoom() { migrate(); GM().controlRooms.length = 0; sel = null; panel(); }
 
@@ -71,7 +79,7 @@
     if (sel && sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); if (g) { if (Math.hypot(p[0] - g.g.a[0], p[1] - g.g.a[1]) < tol) return { t: 'gate', key: g.key, m: 'a' }; if (Math.hypot(p[0] - g.g.b[0], p[1] - g.g.b[1]) < tol) return { t: 'gate', key: g.key, m: 'b' }; } }
     if (sel && sel.t === 'room') { const r = rooms()[0]; if (r) { if (Math.hypot(p[0] - rotH(r)[0], p[1] - rotH(r)[1]) < tol) return { t: 'room', m: 'rot' }; for (let i = 0; i < 4; i++) { const q = roomPt(r, [CORNERS[i][0] * r.w / 2, CORNERS[i][1] * r.d / 2]); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'room', m: 'c' + i }; } } }
     let best = null, bd = tol;
-    for (const g of gates()) { const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
+    for (const g of gates()) { if (g.off) continue; const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
     if (best) return best;
     const r = rooms()[0]; if (r) { const l = toLocal(r, p); if (Math.abs(l[0]) <= r.w / 2 + .2 && Math.abs(l[1]) <= r.d / 2 + .2) return { t: 'room', m: 'move' }; }
     return null;
@@ -80,7 +88,9 @@
     const cv = E('cv');
     const pos = e => toW(e.clientX, e.clientY);
     W.addEventListener('pointerdown', e => {
-      if (e.target !== cv || e.button > 0) return; const p = pos(e), h = hit(p); if (!h) return;
+      if (e.target !== cv || e.button > 0) return; const p = pos(e);
+      if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(adding, p); return; }
+      const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
       sel = h.t === 'gate' ? { t: 'gate', key: h.key } : { t: 'room' };
       if (h.t === 'room' && !migrated()) migrate(); // première modification de la salle : reprise de SITE.booth
@@ -90,7 +100,7 @@
       panel();
     }, true);
     W.addEventListener('pointermove', e => {
-      if (!drag) { if (e.target === cv && hit(pos(e))) { cv.style.cursor = 'move'; e.stopImmediatePropagation(); } return; }
+      if (!drag) { if (e.target === cv && adding) { cv.style.cursor = 'crosshair'; e.stopImmediatePropagation(); return; } if (e.target === cv && hit(pos(e))) { cv.style.cursor = 'move'; e.stopImmediatePropagation(); } return; }
       e.stopImmediatePropagation(); e.preventDefault(); const p = pos(e), dx = p[0] - drag.p0[0], dz = p[1] - drag.p0[1];
       if (!drag.moved && Math.hypot(dx, dz) * E('cam').s < 3) return; drag.moved = true;
       if (drag.t === 'gate') {
@@ -127,10 +137,11 @@
     for (const L of segs) { oc.beginPath(); L.forEach((q, i) => { const a = P(q[0], q[1]); i ? oc.lineTo(a[0], a[1]) : oc.moveTo(a[0], a[1]); }); oc.stroke(); }
     oc.setLineDash([]);
     for (const g of gates()) {
+      if (g.off) { const h = P(g.g.h[0], g.g.h[1]); oc.strokeStyle = '#e5484d'; oc.lineWidth = 2; oc.beginPath(); oc.moveTo(h[0] - 5, h[1] - 5); oc.lineTo(h[0] + 5, h[1] + 5); oc.moveTo(h[0] + 5, h[1] - 5); oc.lineTo(h[0] - 5, h[1] + 5); oc.stroke(); continue; }
       const col = g.kind === 'entry' ? '#f0a23b' : '#5fd3e6', on = sel && sel.t === 'gate' && sel.key === g.key, h = P(g.g.h[0], g.g.h[1]), a = P(g.g.a[0], g.g.a[1]), b = P(g.g.b[0], g.g.b[1]);
       oc.strokeStyle = col; oc.lineWidth = on ? 3 : 2; oc.beginPath(); oc.moveTo(h[0], h[1]); oc.lineTo(a[0], a[1]); oc.stroke();
       oc.setLineDash([4, 3]); oc.lineWidth = on ? 2 : 1.3; oc.beginPath(); oc.moveTo(h[0], h[1]); oc.lineTo(b[0], b[1]); oc.stroke(); oc.setLineDash([]);
-      oc.fillStyle = g.g.ovr ? '#4cc38a' : col; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.arc(h[0], h[1], on ? 6 : 4.5, 0, 7); oc.fill(); oc.stroke();
+      oc.fillStyle = g.g.ovr || g.add ? '#4cc38a' : col; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.arc(h[0], h[1], on ? 6 : 4.5, 0, 7); oc.fill(); oc.stroke();
       if (on) for (const [q, t] of [[a, 'A'], [b, 'B']]) { oc.fillStyle = '#fff'; oc.fillRect(q[0] - 5, q[1] - 5, 10, 10); oc.strokeRect(q[0] - 5, q[1] - 5, 10, 10); oc.fillStyle = '#fff'; oc.font = '600 11px system-ui'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 8, q[1] - 6); oc.fillText(t, q[0] + 8, q[1] - 6); oc.lineWidth = 1.5; }
     }
     for (const rm of rooms()) {
@@ -149,13 +160,14 @@
     if (!sel) return '<span class="note">Cliquer une barrière ou la salle de contrôle sur la carte. Glisser : déplacer ; poignées A / B : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
     if (sel.t === 'gate') {
       const g = gates().find(x => x.key === sel.key); if (!g) return '<span class="err">Barrière introuvable.</span>';
+      if (g.off) return `<div><b>${esc(g.key)}</b></div><div class="note">Barrière <span class="tag t-orph">supprimée</span> : ignorée par le dessin, le clic et la logique du jeu (surcharge <code>{"off": true}</code>, le calcul reste).</div><div class="row"><button id="bAuto">Rétablir la barrière</button></div>`;
       const G = g.g, an = q => R1(deg(Math.atan2(q[1] - G.h[1], q[0] - G.h[0]))), ln = q => R2(Math.hypot(q[0] - G.h[0], q[1] - G.h[1]));
       const est = G.est || (G.cfg && G.cfg.est);
-      return `<div><b>${esc(g.key)}</b></div><div class="note">${g.kind === 'entry' ? 'Barrière d\'entrée — A : fermée en travers du chemin, B : ouverte.' : 'Fourche « ' + esc(g.name || '') + ' » — A : en travers du raccourci (boucle en service), B : position basculée.'} ${G.ovr ? '<span class="tag t-ovr">corrigée</span>' : 'Calcul automatique' + (est ? ' <span class="tag t-est">estimée</span>' : (G.cfg && G.cfg.osm ? ' (nœud OSM)' : ''))}</div>
+      return `<div><b>${esc(g.key)}</b></div><div class="note">${g.kind === 'entry' ? 'Barrière d\'entrée — A : fermée en travers du chemin, B : ouverte.' : 'Fourche « ' + esc(g.name || '') + ' » — A : en travers du raccourci (boucle en service), B : position basculée.'} ${g.add ? '<span class="tag t-ovr">ajoutée</span>' : G.ovr ? '<span class="tag t-ovr">corrigée</span>' : 'Calcul automatique' + (est ? ' <span class="tag t-est">estimée</span>' : (G.cfg && G.cfg.osm ? ' (nœud OSM)' : ''))}</div>
         <div class="grid" style="margin-top:6px"><span>Pivot x, z (m)</span><span>${inp('x', R2(G.h[0]))} ${inp('z', R2(G.h[1]))}</span>
         <span>A : angle °, long. m</span><span>${inp('a.ang', an(G.a), 1)} ${inp('a.len', ln(G.a))}</span>
         <span>B : angle °, long. m</span><span>${inp('b.ang', an(G.b), 1)} ${inp('b.len', ln(G.b))}</span></div>
-        <div class="row"><button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
+        <div class="row">${g.add ? '' : `<button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button>`}<button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
     const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>';
     return `<div><b>Salle de contrôle</b> ${migrated() ? '' : '<span class="tag t-est">SITE.booth (repli)</span>'}</div>
@@ -170,6 +182,7 @@
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
     });
     const b = $('bAuto'); if (b) b.onclick = () => revertGate(sel.key);
+    const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
   }
   function panel() {
     if (!ready) return;
@@ -183,8 +196,12 @@
     if ($('bDelRoom')) $('bDelRoom').onclick = deleteRoom;
     if ($('bSelRoom')) $('bSelRoom').onclick = () => { sel = { t: 'room' }; const r = rooms()[0]; focus(r.x, r.z); panel(); };
     const L = gates(), keys = new Set(L.map(g => g.key));
-    $('gList').innerHTML = L.map(g => { const est = g.g.est || (g.g.cfg && g.g.cfg.est); return `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.kind === 'entry' ? 't-entry">entrée' : 't-fork">fourche'}</span><span class="k" title="${esc(g.key)}">${esc(g.kind === 'entry' ? 'Entrée de la file' : (g.name || '') + ' · ' + g.key.split(':').pop())}</span>${g.g.ovr ? '<span class="tag t-ovr">corrigée</span>' : est ? '<span class="tag t-est">estimée</span>' : ''}</div>`; }).join('');
+    $('gList').innerHTML = L.map(g => { const est = g.g.est || (g.g.cfg && g.g.cfg.est); return `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.kind === 'entry' ? 't-entry">entrée' : 't-fork">fourche'}</span><span class="k" title="${esc(g.key)}">${esc(g.kind === 'entry' ? 'Entrée de la file' : (g.name || '') + ' · ' + g.key.split(':').pop())}</span>${g.off ? '<span class="tag t-orph">supprimée</span>' : g.add ? '<span class="tag t-ovr">ajoutée</span>' : g.g.ovr ? '<span class="tag t-ovr">corrigée</span>' : est ? '<span class="tag t-est">estimée</span>' : ''}</div>`; }).join('');
     for (const el of $('gList').querySelectorAll('.it')) el.onclick = () => { sel = { t: 'gate', key: el.dataset.key }; const g = gates().find(x => x.key === sel.key); focus(g.g.h[0], g.g.h[1]); panel(); };
+    const F = E('forkList()'), fv = $('addFork').value;
+    $('addFork').innerHTML = F.map(f => `<option value="${esc(f.name)}">${esc(f.name)}</option>`).join(''); if (F.some(f => f.name === fv)) $('addFork').value = fv;
+    $('secAdd').hidden = !F.length; $('bAddGate').textContent = adding ? 'Cliquer le pivot sur la carte… (annuler)' : 'Ajouter une barrière';
+    $('bAddGate').onclick = () => { adding = adding ? null : $('addFork').value; panel(); };
     const orph = Object.keys(GM().barriers || {}).filter(k => !keys.has(k));
     $('orph').innerHTML = orph.length ? '<p class="err">Surcharges orphelines (la barrière n\'existe plus dans le jeu) :</p>' + orph.map(k => `<div class="it"><span class="tag t-orph">orpheline</span><span class="k">${esc(k)}</span><button data-del="${esc(k)}">Supprimer</button></div>`).join('') : '';
     for (const el of $('orph').querySelectorAll('[data-del]')) el.onclick = () => { if (confirm('Supprimer la surcharge orpheline ' + el.dataset.del + ' ?')) revertGate(el.dataset.del); };
@@ -196,7 +213,7 @@
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
     const orph = Object.keys(d.barriers || {}).filter(k => !new Set(gates().map(g => g.key)).has(k)).length;
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
-      + `<div>${Object.keys(d.barriers || {}).length} barrière(s) corrigée(s)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'SITE.booth (repli)'}.</div>`;
+      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'SITE.booth (repli)'}.</div>`;
     window.ED.dirty = dirty;
   }
 
@@ -225,6 +242,6 @@
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), draft: () => draft(), site: () => site, sel: () => sel };
+  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
   loadSites();
 })();
