@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} }); // départ propre : pas de partie sauvegardée
   await page.goto(url);
-  await page.waitForSelector('[data-act=closeHelp]', { timeout: 10000 });
+  await page.waitForFunction(() => typeof act === 'function' && (act('help'), true), undefined, { timeout: 10000 });
   await page.click('[data-act=closeHelp]');
   // Manœuvre scriptée avec les vrais boutons du pupitre (garage SITE.yard, docs/manoeuvres.md) : sortir le train garé, garer l'autre à vide, deux refus
   let man = 'skipped';
@@ -236,7 +236,7 @@ const root = path.resolve(__dirname, '..');
   }
   { // règle du lift (par défaut pour toutes les attractions) : un seul train sur le lift (le suivant attend au pied), train retenu en haut tant que la zone de freinage suivante est occupée
     const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    await p2.goto(url); await p2.waitForSelector('[data-act=closeHelp]'); await p2.click('[data-act=closeHelp]');
+    await p2.goto(url); await p2.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p2.click('[data-act=closeHelp]');
     const lf = await p2.evaluate(() => { act('speed', 0); G.wx.next = 1e6; const o = [], A = trains[0], B = trains[1]; if (!B) return 'single-train';
       const run = (c, m) => { for (let i = 0; i < m; i++) { if (c()) break; step(.025); } return c(); };
       for (const t of trains) { t.seats.fill(null); } B.st = 'station'; B.s = S_ST; B.g = 0; B.phase = 'board'; B.v = 0; A.st = 'run'; A.s = S_LIFT0 + 20; A.v = 4; A.inLift = true; A.blk = false;
@@ -248,7 +248,7 @@ const root = path.resolve(__dirname, '..');
       run(() => B.wait && B.v === 0, 6000); o.push(B.wait && B.s > S_LIFT1 - 6 && B.s < S_REL ? 'topHold' : 'topHold:FAIL'); return o.join(' '); });
     man += ' | lift: ' + lf;
     await p2.close(); const p3 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-    await p3.goto(url); await p3.waitForSelector('[data-act=closeHelp]'); await p3.click('[data-act=closeHelp]');
+    await p3.goto(url); await p3.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p3.click('[data-act=closeHelp]');
     const tr = await p3.evaluate(() => { const i = BTRIM.findIndex(v => v > 0); if (i < 0) return ''; act('speed', 0); G.wx.next = 1e6; const A = trains[0]; A.st = 'run'; A.s = Math.max(S_REL, BLK[i] - 120); A.v = 14; A.inLift = true; A.seats.fill(null); A.blk = false;
       for (const t of trains) if (t !== A) { t.st = 'garage'; t.g = 1e3; } let vB = null, prev = A.s, stop = false;
       for (let k = 0; k < 40000 && A.st === 'run'; k++) { step(.025); if (prev < BLK[i] && A.s >= BLK[i]) vB = A.v; if (A.blk && A.v === 0) stop = true; prev = A.s; }
@@ -257,7 +257,7 @@ const root = path.resolve(__dirname, '..');
     // sécurités (SITE.car.restraint) : arrivée verrouillée, ouverture au bouton, départ refusé sécurités ouvertes, verrouillage refusé portillons ouverts, verrouillage = fermeture wagon par wagon par les opérateurs puis validation
     const p4 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p4.on('pageerror', e => errors.push(String(e.message || e)));
-    await p4.goto(url); await p4.waitForSelector('[data-act=closeHelp]'); await p4.click('[data-act=closeHelp]');
+    await p4.goto(url); await p4.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p4.click('[data-act=closeHelp]');
     const u4 = (c, m = 4000) => p4.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [c, m]);
     const log4 = re => p4.evaluate(r => new RegExp(r).test($('log').textContent), re);
     const rs = [];
@@ -278,7 +278,7 @@ const root = path.resolve(__dirname, '..');
     // règle de départ (propriétaire, 2026-11-15) : appareil de voie hors de P, départ autorisé seulement si une zone de freinage peut retenir le train avant l'appareil
     const p5 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p5.on('pageerror', e => errors.push(String(e.message || e)));
-    await p5.goto(url); await p5.waitForSelector('[data-act=closeHelp]'); await p5.click('[data-act=closeHelp]');
+    await p5.goto(url); await p5.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p5.click('[data-act=closeHelp]');
     const u5 = (c, m = 4000) => p5.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [c, m]);
     const log5 = re => p5.evaluate(r => new RegExp(r).test($('log').textContent), re);
     const ds = [], dk = (n, v) => ds.push(n + (v ? '' : ':FAIL'));

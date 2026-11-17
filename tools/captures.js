@@ -9,7 +9,7 @@ async function open(b,site,vp,extra='',syn='0'){
   const ctx=await b.newContext(vp);const p=await ctx.newPage();p.errs=[];
   p.on('pageerror',e=>p.errs.push(String(e.message)));
   await p.addInitScript(v=>{try{localStorage.setItem('t2z.syn',v)}catch(e){}},syn);await p.addInitScript(()=>{try{for(const k of Object.keys(localStorage))if(k.startsWith('t2z.save.'))localStorage.removeItem(k);}catch(e){}});
-  await p.goto(U(site)+extra);await p.waitForSelector('[data-act=closeHelp]');await p.click('[data-act=closeHelp]');
+  await p.goto(U(site)+extra);await p.waitForFunction(() => typeof act === 'function' && (act('help'), true));await p.click('[data-act=closeHelp]');
   return p;}
 const run=(p,n)=>p.evaluate(n=>{act('speed',0);G.wx.next=1e6;for(let i=0;i<n;i++)step(.05);ui();},n);
 const cam=async(p,k,s)=>{await p.evaluate(([k,s])=>{G.roofOff=true;if(k==='yard'){cam.key='';cam.follow=-1;cam.g={x:SW0.x+SW0.tx*10-SW0.vx*10,z:SW0.z+SW0.tz*10-SW0.vz*10,s:s||10};}else setCam(k);if(s)cam.g.s=s;for(let i=0;i<40;i++)render(.05);},[k,s]);};

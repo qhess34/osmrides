@@ -45,7 +45,7 @@ const load = async (ctx, url, errors, first) => {
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForFunction(() => window.G && window.t2zSave);
-  if (first) { await page.waitForSelector('[data-act=closeHelp]'); await page.click('[data-act=closeHelp]'); }
+  if (first) { await page.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await page.click('[data-act=closeHelp]'); }
   return page;
 };
 const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('t2z.save.')).map(k => k + '=' + Math.round(localStorage[k].length / 1024) + 'K').join(' '));
@@ -129,7 +129,7 @@ const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k
   {
     const c2 = await browser.newContext(); await c2.addInitScript(() => { Object.defineProperty(window, 'localStorage', { get() { throw new Error('denied'); } }); });
     const errs = []; const p = await c2.newPage(); p.on('pageerror', e => errs.push(String(e.message)));
-    await p.goto(URL(sites[0], 'career')); await p.waitForSelector('[data-act=closeHelp]'); await p.click('[data-act=closeHelp]');
+    await p.goto(URL(sites[0], 'career')); await p.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p.click('[data-act=closeHelp]');
     const r = await drive(p, 5); ok('no storage', r.min >= 4.9 && !errs.length, errs.slice(0, 2)); await c2.close();
   }
   await browser.close();

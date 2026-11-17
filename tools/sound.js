@@ -14,7 +14,7 @@ const sites = process.argv.slice(2).filter(a => !a.startsWith('--'));
     p.on('pageerror', e => errs.push(String(e.message))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
     await p.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} });
     await p.goto(`file://${root}/jeu.html?site=${site}&mode=sandbox`);
-    await p.waitForSelector('[data-act=closeHelp]'); await p.click('[data-act=closeHelp]');
+    await p.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p.click('[data-act=closeHelp]');
     const muted0 = await p.evaluate(() => sfx.muted());
     await p.click('#bMute'); // son activé : le vrai graphe Web Audio est construit et utilisé
     const r = await p.evaluate(() => {

@@ -461,6 +461,8 @@ function act(a,arg){
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&!b.disabled)act(b.dataset.act,b.dataset.arg);});
 // patience des visiteurs (G.patL, niveau 0…5) : multiplie la patience tirée à l'arrivée (v.pat) ; le dernier niveau est infini (personne ne quitte la file)
 const PAT_M=[.5,1,2,4,8,Infinity],PAT_N=['faible','normale','grande','très grande','extrême','infinie'];
+// Aide : plus ouverte au lancement (propriétaire, 2026-11-17), seulement au bouton « ? » ; le son démarre au premier geste du joueur
+{const once=()=>{sfx.init();removeEventListener('pointerdown',once);removeEventListener('keydown',once);};addEventListener('pointerdown',once);addEventListener('keydown',once);}
 $('patL').addEventListener('input',e=>{G.patL=+e.target.value;$('patV').textContent=PAT_N[G.patL];});
 $('crowd').addEventListener('input',e=>{G.crowd=e.target.value/100;const c=+e.target.value;
   $('crowdV').textContent=c+' % — '+(c===0?'parc vide':c<=50?'faible':c<=120?'normale':c<=200?'forte':'saturée');});

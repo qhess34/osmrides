@@ -74,7 +74,7 @@ Aucune dépendance, aucun serveur : tout doit fonctionner en ouvrant le fichier 
 ## Vérifier avant de dire que c'est fait
 
 Playwright et Chromium sont préinstallés (`require('playwright')`, `chromium.launch()` sans option).
-Ouvrir `file:///…/jeu.html?site=<site>`, fermer l'aide (`[data-act=closeHelp]`), puis dans `page.evaluate` :
+Ouvrir `file:///…/jeu.html?site=<site>` (l'aide n'est plus ouverte au lancement, seulement au bouton « ? » `[data-act=help]` ; les scripts l'ouvrent avec `act('help')` puis cliquent `[data-act=closeHelp]`), puis dans `page.evaluate` :
 
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - journée complète : boucler jusqu'à `G.dayDone`, en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
