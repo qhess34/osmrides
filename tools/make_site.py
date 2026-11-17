@@ -119,6 +119,10 @@ else:
         for v in stv[1:]:
             if abs(v[1] - e_) < 1e-6: e_ = v[2]
         auto['st0'] = 0; auto['st1'] = round(e_, 1)
+        # gare prolongée par des tronçons d'un autre type OSM (« moving » d'OzIris, rôle station forcé par « roles ») : arrêt de la tête du train
+        # à la fin du dernier tronçon vraiment tagué station (repère « stp », lu par engine/core.js stationStop)
+        tv = [v for v in stv if tags(WAY[v[3]]).get('roller_coaster:track') == 'station' and v[2] <= e_ + 1e-6]
+        if tv and tv[-1][2] < e_ - .5: auto['stp'] = round(tv[-1][2], 1)
     lfv = [v for v in osm_iv if v[0] == 'lift']
     if lfv: auto['lift0'] = round(lfv[0][1], 1); auto['lift1'] = round(lfv[-1][2], 1)
     bkv = [v for v in osm_iv if v[0] == 'brake' and (not lfv or v[1] >= lfv[0][1])]
@@ -304,6 +308,9 @@ else:
     inInv = lambda s: any(a - 6 <= s <= b + 6 for _, a, b in inv_ground)
     CR = []; i = 0  # rangs des points de contrôle : tous les `step` points, chaque point dans les inversions
     while i < nr: CR.append(i); i += 1 if inInv(SG[i]) else step
+    if 'stp' in T:  # arrêt en gare : son propre point de contrôle (pas d'arrondi au point précédent, 3 m plus tôt)
+        ti = round(T['stp'] * n / L0) if not inv_ground else min(range(nr), key=lambda r: abs(SG[r] - T['stp']))
+        if ti not in CR: CR = sorted(CR + [ti])
     tagr = {}
     for k, s in T.items():
         ti = round(s * n / L0) if not inv_ground else min(range(nr), key=lambda r: abs(SG[r] - s))
