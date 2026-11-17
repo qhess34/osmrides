@@ -194,7 +194,7 @@ const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
     SG?[{id:'RB',name:YD.railName||'Rail du pont',sec:'brk',auto:true}]:TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
     PSB?[{id:'Pre',name:PSB.name||'Frein avant gare',sec:'brk',auto:true}]:[],
     LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
-  .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{brake:false,drive:false}:{})); // voies : un seul bouton Dispatch (issue #11, laneDispatch dans engine/sim.js), freins automatiques
+  .map(Z=>Z.id==='Lift'?Z:Object.assign(Z,ZCFG(Z.id),Z.id==='St'?{brake:false}:{},Z.sec==='gar'?{brake:false,drive:false}:{})); // voies : bouton Dispatch (issue #11, laneDispatch dans engine/sim.js), freins automatiques, plus un bouton de freins forcés #zL<k>_k (G.zk.L<k>, zK)
 /* Frein de ralentissement (SITE.zones.B1.trim:{v}) : en passage normal (zone en AUTO, canton suivant libre), le train y est ramené à la vitesse v (m/s) puis continue ; il s'arrête
    seulement si le canton suivant est occupé ou si les freins sont serrés au pupitre. Par zone de frein de bloc : BTRIM[i] (m/s, 0 = pas de ralentissement). */
 const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.trim&&Z.trim.v||0;});
@@ -202,7 +202,7 @@ const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : zone d'où
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
 const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z)||(SG&&z==='RB'),ZR=SG?'RB':'RA'; // ZR : zone du rail du circuit sur le pont droit (rail unique : RB, zone de freinage ET zone porteuse)
-const zK=z=>z[0]==='L'?false:isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
+const zK=z=>z[0]==='L'?!!G.zk[z]:isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
 const bIn=()=>TRAV&&!SG&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
 const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
 function tZone(t){ // zone où se trouve un train

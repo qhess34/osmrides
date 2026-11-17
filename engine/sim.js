@@ -121,7 +121,7 @@ function yardBack(t){
 }
 function updateYard(t,dt){
   if(!t.mv||G.estop)return;
-  {const z=tZone(t);if(zK(z)){t.mv=0;log(t.name+' arrêté : freins de '+zName(z)+' serrés.','warn');return;}}
+  {const z=tZone(t),l=t.lane>=0?'L'+(t.lane+1):'';const k=zK(z)?z:l&&zK(l)?l:'';if(k){t.mv=0;log(t.name+' arrêté : freins de '+zName(k)+' serrés.','warn');return;}} // freins forcés de la voie : ils arrêtent aussi le train qui y entre depuis la zone porteuse ou en sort
   if(t.mv>0){const m=fwdLim(t);t.g=Math.min(m,t.g+MV.v*dt);
     if(t.g>=m-1e-6){t.mv=0;t.ld=0;log(t.g>=LANES[t.lane].stop-.05?t.name+' est garé en bout de '+posName(t.lane+1)+'.':t.name+' arrêté derrière le train garé devant lui.');}}
   else if(TRAV){const m=backLim(t);t.g=Math.max(m,t.g-MV.v*dt);
@@ -140,13 +140,19 @@ function updateYard(t,dt){
 function laneDispatch(j){
   const N=zName('L'+(j+1));
   if(G.estop)return refuse(N+' : Dispatch refusé, arrêt d\'urgence enclenché.');
+  if(zK('L'+(j+1)))return refuse(N+' : freins forcés serrés, relâchez-les (bouton F de la voie) avant le Dispatch.');
   if(devMoving())return refuse(N+' : '+DEVN+' en mouvement, attendez qu\'il soit en place.');
   if(!devOn(j))return refuse(N+' : '+DEVN+' n\'est pas en place sur cette voie : positionnez-le d\'abord sur '+posId(j+1)+'.');
   const inL=trains.filter(o=>o.st==='garage'&&o.lane===j);
   if(inL.some(o=>o.mv))return refuse(N+' : manœuvre déjà en cours.');
   const r=inL.find(o=>o.ld>0&&fwdLim(o)-o.g>.05);if(r)return yardFwd(r); // entrée interrompue : elle reprend
+  {const x=inL.find(o=>o.ld<0);if(x)return yardBack(x);} // sortie interrompue (freins forcés) : elle reprend
   const e=trains.find(o=>!o.mv&&(TRAV?o.st==='garage'&&o.lane<0:atAnchor(o))),room=TRAV?!inL.length:inL.length<LANES[j].cap;
   if(e&&room){const z=tZone(e);if(zK(z))return refuse('Freins de '+zName(z)+' serrés : relâchez-les pour que '+e.name+' entre dans '+N+'.');return yardFwd(e);}
+  // zone porteuse à un seul train (propriétaire, issue #11 : « sur la voie chariot il n'y a la place que pour un train ») : si elle porte déjà un train,
+  // le Dispatch ne fait jamais sortir le train garé ; il ne peut que faire entrer le train porté, et refuse si la voie est pleine
+  const carried=e||(TRAV&&trains.find(o=>o.st==='garage'&&!inL.includes(o)&&(o.lane<0||onCar(o))));
+  if(carried)return refuse(N+' : '+zName(CARR).toLowerCase()+' porte déjà un train ('+carried.name+')'+(e===carried?', voie pleine : il n\'y entre pas':'')+(inL.length?', aucun train ne sort de la voie.':'.'));
   if(inL.length){const t=inL.slice().sort((a,b)=>a.g-b.g)[0];
     if(TRAV&&zK('RB'))return refuse('Freins de '+zName('RB').toLowerCase()+' serrés : aucun train ne sort de '+N+'.');
     return yardBack(t);}
@@ -163,7 +169,11 @@ function nextBusy(z,t){ // anti-collision : section suivante occupée (refus du 
 }
 function zoneCmd(z,c){
   const Z=ZONES.find(o=>o.id===z);if(!Z)return false;const N=Z.name;
-  if(Z.sec==='gar')return c==='d'?laneDispatch(+z.slice(1)-1):refuse(N+' : un seul bouton, Dispatch.');
+  if(Z.sec==='gar'){if(c==='d')return laneDispatch(+z.slice(1)-1);if(c!=='k')return refuse(N+' : boutons Dispatch et freins seulement.');
+    // freins forcés de la voie (propriétaire, issue #11) : serrer arrête aussitôt le train qui entre dans la voie ou en sort ; relâcher libère, la reprise se fait au Dispatch
+    if(!G.zk[z]){G.zk[z]=true;let n=0;for(const t of trains)if(t.st==='garage'&&t.lane===+z.slice(1)-1&&t.mv){t.mv=0;n++;}
+      log('Freins forcés serrés : '+N+(n?' (train arrêté).':'.')+' Dispatch refusé tant qu\'ils sont serrés.','warn');return true;}
+    G.zk[z]=false;log('Freins forcés relâchés : '+N+'. Reprise au bouton Dispatch.','good');return true;}
   if(z==='Lift'){const off=c==='off';if(off===G.liftOff)return refuse('Lift déjà '+(off?'à l\'arrêt.':'en marche.'));
     G.liftOff=off;log(off?'Lift à l\'arrêt : la chaîne est stoppée, un train sur le lift y reste.':'Lift en marche.',off?'warn':'good');return true;}
   if(c==='m'){if(!Z.auto)return false;const m=!G.zm[z];G.zm[z]=m;G.zk[z]=m&&zT(z).some(t=>t.st==='run'&&t.v===0); // passage en MANU : freins serrés si un train y est arrêté
@@ -468,12 +478,12 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     return `<div class="zrow">${nm}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
       +(Z.brake?zb(z,'k','amber','F','Freins de la zone : serrer / relâcher (relâchement refusé si la section suivante est occupée)'):z==='St'?'<span class="plate" id="zSt_fr" title="Freins de gare : serrés automatiquement tant qu\'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)">AUTO</span>':E)
       +(Z.drive?zb(z,'f','green','AV','Moteurs de la zone : avancer le train qui s\'y trouve')+zb(z,'b','green','AR','Moteurs de la zone : reculer le train qui s\'y trouve')+zb(z,'x','amber','STOP','Moteurs de la zone : arrêt'):E+E+E)+'</div>';};
-  const lrow=Z=>`<div class="zrow"><div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>`+zb(Z.id,'d','green disp','DISPATCH','Dispatch : '+DEVN.toLowerCase()+' en place sur cette voie, fait entrer le train prêt (zone porteuse) ou sortir le train de tête vers '+DEVL+' ; le sens est choisi selon la position de l\'appareil')+'</div>';
+  const lrow=Z=>`<div class="zrow"><div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>${E}`+zb(Z.id,'k','amber','F','Freins forcés de la voie : serrer (arrêt immédiat du train qui entre ou sort, Dispatch refusé) / relâcher (reprise au Dispatch)')+zb(Z.id,'d','green disp','DISPATCH','Dispatch : '+DEVN.toLowerCase()+' en place sur cette voie, fait entrer le train prêt (zone porteuse) ou sortir le train de tête vers '+DEVL+' ; le sens est choisi selon la position de l\'appareil')+'</div>';
   const sec=(t,k,x,h=1)=>`<div class="dsec"><span>${t}</span>${x||''}</div>`+(h?head:'')+ZONES.filter(Z=>Z.sec===k).map(row).join('');
   $('deskZones').innerHTML=sec('Gare','st')+sec('Lift','lift','',0)
     +sec('Zones de freinage','brk','<button class="pb sq sm blue" id="zAuto" data-act="zauto" title="Toutes les zones de freinage en AUTO">TOUT AUTO</button>')
     +`<div class="dsec"><span>Garage</span></div><div class="deskrow"><div class="ctl" style="flex:2"><div class="pair" id="yPos"></div><div class="plate"><span id="yName"></span><br><span id="yState"></span></div></div></div>`
-    +ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
+    +(LANES.length?'<div class="zrow"><span></span><span></span><span class="plate">Freins</span><span class="plate" style="grid-column:4/-1">Voie</span></div>':'')+ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
 $('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p===PG?'position G, rail de garage sur le circuit':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${posId(p)}</button>`).join('');
 $('yName').textContent=DEVN;
 if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');

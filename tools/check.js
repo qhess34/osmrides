@@ -39,6 +39,23 @@ const root = path.resolve(__dirname, '..');
       await click('#bGate'); ok('gateOpen', await page.evaluate(() => G.gatesOpen));
       await click('#bGate'); ok('gateShut', await until('!G.gatesOpen&&G.gate<.05', 400));
     };
+    const forceBrake = async (k, i) => { // freins forcés de la voie k (issue #11) serrés pendant le mouvement du train i : arrêt immédiat, Dispatch refusé, relâchés puis reprise au Dispatch
+      ok('laneMoving' + k, await page.evaluate(i => !!trains[i].mv, i));
+      await click(`#zL${k}_k`); const g0 = await page.evaluate(i => trains[i].g, i);
+      ok('laneBrakeStop' + k, await until(`!trains[${i}].mv&&G.zk.L${k}`, 2) && await until('false', 80) === false && await page.evaluate(([i, g0, k]) => !trains[i].mv && Math.abs(trains[i].g - g0) < .3 && $('zL' + k + '_k').classList.contains('lit'), [i, g0, k]));
+      await click(`#zL${k}_d`); ok('refuseLaneBrake' + k, await logHas('freins forcés serrés') && await page.evaluate(i => !trains[i].mv, i));
+      await click(`#zL${k}_k`); ok('laneBrakeRel' + k, await page.evaluate(k => !G.zk['L' + k] && !$('zL' + k + '_k').classList.contains('lit'), k));
+      await click(`#zL${k}_d`); ok('laneResume' + k, await page.evaluate(i => !!trains[i].mv, i));
+    };
+    const carrierFull = async i => { // zone porteuse à un seul train (issue #11) : le train i est sur le chariot / rail du pont ; voie pleine en face → refus, aucun mouvement
+      const k = await page.evaluate(() => LANES.findIndex((l, j) => trains.some(t => t.st === 'garage' && t.lane === j)) + 1);
+      if (!k) return ok('carrierFull:none', true);
+      await click('#y' + k); ok('refuseCarryFull', await logHas('ne peut pas y être porté') && await page.evaluate(() => !devMoving())); // l'appareil chargé ne vient pas face à une voie pleine
+      // garde du Dispatch (laneDispatch) : appareil chargé placé de force face à la voie pleine, Dispatch refusé, aucun mouvement, puis état rendu
+      ok('refuseCarrierFull', await page.evaluate(([i, k]) => { const d = Object.assign({}, G.dev); G.dev.pos = G.dev.to = k; G.dev.k = 1;
+        const r = act('zone', 'L' + k + ':d'), still = !trains.some(t => t.mv) && trains[i].lane < 0; Object.assign(G.dev, d);
+        return still && new RegExp('porte déjà un train').test($('log').textContent); }, [i, k]));
+    };
     const shotDir = (process.argv.find(a => a.startsWith('--shots=')) || '').slice(8);
     const shot = async name => { if (!shotDir) return; fs.mkdirSync(shotDir, { recursive: true });
       await page.evaluate(() => { G.roofOff = true; cam.g = { x: SW0.x + SW0.tx * 10 - SW0.vx * 10, z: SW0.z + SW0.tz * 10 - SW0.vz * 10, s: 10 }; cam.follow = -1; for (let i = 0; i < 40; i++) render(.05); });
@@ -76,10 +93,10 @@ const root = path.resolve(__dirname, '..');
       const f = await page.evaluate(() => LANES.findIndex((l, j) => !trains.some(t => t.st === 'garage' && t.lane === j)) + 1);
       await click('#y' + f); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
       await click('#yA0'); ok('refuseMovingA', await logHas('ne revient sur le circuit que si'));
-      ok('dev' + f, await until(`devOn(${f - 1})`, 4000)); await shot('4-chariot-voie');
+      ok('dev' + f, await until(`devOn(${f - 1})`, 4000)); await carrierFull(0); await shot('4-chariot-voie');
       await click('#zRB_f'); ok('refuseRBpush', await logHas('au bouton Dispatch de cette voie'));
       await click(`#zL${f === 1 ? 2 : 1}_d`); ok('refuseNotOn', await logHas('n.est pas en place sur cette voie'));
-      await click(`#zL${f}_d`); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400));
+      await click(`#zL${f}_d`); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400)); await forceBrake(f, 0);
       await click('#y' + (f === 1 ? 2 : 1)); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
       ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
@@ -87,7 +104,7 @@ const root = path.resolve(__dirname, '..');
       await click('#yA0'); ok('raIn2', await until('raIn()', 4000)); await shot('5-railA-revenu');
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin && !G.zm.B1));
       // stockage : en AUTO, frein avant gare (Pre), rail mobile du parcours (RA) et frein final (Fin) retiennent un train chacun pendant que la gare est occupée
-      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zPre_m')));
+      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !!document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zPre_m')));
       // le 3e train part d'avant le dernier frein de bloc (cantonnement)
       const three = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage' && !t.mv).slice(0, 3); if (g.length < 3 || !trains.some(t => t.st === 'station')) return null;
         g.forEach((t, k) => { t.st = 'run'; t.s = k < 2 ? S_PRE - 14 - k * (TLEN + 3) : BLK[BLK.length - 1] - 20; t.v = 4; t.lane = 0; t.g = 0; t.mv = 0; t.depReq = false; t.inLift = false; t.inBrake = false; t.blk = false; t.entering = false; t.toPre = false; t.hold = 0; t.fdrive = 0; t.told = false; t.preTold = false; t.lkTold = false; });
@@ -127,10 +144,11 @@ const root = path.resolve(__dirname, '..');
       await click('#y3'); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
       await until('G.dev.k>.5', 400); await shot('2-rail-emporte-le-train');
       ok('dev3', await until('devOn(2)', 4000)); await shot('3-face-voie-3');
+      await carrierFull(0);
       await click('#zL3_d'); ok('refuseRBBrake', await logHas('Freins de Rail du pont serrés'));
       await click('#zRB_k'); await click('#zRB_b'); ok('refuseRBpush', await logHas('au bouton Dispatch de cette voie'));
       await click('#zL1_d'); ok('refuseNotOn', await logHas('n.est pas en place sur cette voie'));
-      await click('#zL3_d'); ok('in0', await until('trains[0].lane===2&&trains[0].g>G_B+2', 400)); await shot('4-recul-dans-la-voie-3');
+      await click('#zL3_d'); ok('in0', await until('trains[0].lane===2&&trains[0].g>G_B+2', 400)); await forceBrake(3, 0); await shot('4-recul-dans-la-voie-3');
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&trains[0].lane===2&&!trains[0].mv&&!nearDev(trains[0])", 8000));
       ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
@@ -163,7 +181,7 @@ const root = path.resolve(__dirname, '..');
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus (aiguillage dans le prolongement de la gare) ; Goudurix : aiguillage en amont (yard.back), entrée au garage en marche arrière
       const lbk = await page.evaluate(() => LBK), PUSH = '#zL1_d', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones ; garage : bouton Dispatch de la voie (issue #11)
-      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zSt_f')));
+      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !!document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zSt_f')));
       await click('#bAuto'); await gates();
       await click('#zSt_f'); ok('depart0', await until(`trains[0].st==='run'&&trains[0].s>${SB}+TLEN+3`, 4000));
       await click('#y1'); ok('dev1', await until('devOn(0)', 800));
@@ -179,7 +197,7 @@ const root = path.resolve(__dirname, '..');
       await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
       await click('#bGate'); await click(PUSH); ok('refuseGates', await logHas('Portillons ouverts : fermez-les'));
       await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
-      await click(PUSH); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400));
+      await click(PUSH); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400)); await forceBrake(1, 0);
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 8000));
       ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
@@ -207,7 +225,7 @@ const root = path.resolve(__dirname, '..');
       await click('#zSt_f'); ok('depart1', await until("trains[1].st==='run'&&trains[1].s>S_ST+TLEN+3", 4000));
       await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
       await click('#zFin_k'); ok('finRel0', await until("!G.zk.Fin", 400));
-      await click('#zL1_d'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000));
+      await click('#zL1_d'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000)); await forceBrake(1, 0);
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 12000));
       await click('#yP'); ok('devP2', await until('!devOff()', 800));

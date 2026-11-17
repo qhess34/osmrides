@@ -1035,7 +1035,7 @@ function frame(now){
   requestAnimationFrame(frame);
 }
 document.title=SITE.title+' — Simulateur d\'exploitation';$('ttl').textContent=SITE.title;$('helpTtl').textContent=SITE.title+' — à vous les commandes';
-$('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=SITE.helpGarage||'';
+$('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=(SITE.helpGarage||'')+(SITE.helpGarage&&LANES.length?' Le bouton F de chaque voie force ses freins : serrés, ils arrêtent aussitôt le train qui entre ou sort et Dispatch est refusé ; relâchés, la reprise se fait au Dispatch.':''); // phrase commune (issue #11)
 log('Bienvenue sur '+SITE.title+' ! '+trains[0].name+' est en gare'+((n=>n?', '+n+' train'+(n>1?'s':'')+' au garage':'')(trains.filter(t=>t.st==='garage').length))+'. Ouvrez l\'entrée pour commencer.','good');
 ui();requestAnimationFrame(frame);
 Object.assign(window,{G,trains,act,step,cam,L,render,SD:S_DROP,ui});

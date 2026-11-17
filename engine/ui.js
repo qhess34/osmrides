@@ -54,7 +54,7 @@ function ui(){
   }
   for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z==='Fin'||z==='Pre')&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
-    if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : bouton Dispatch, allumé pendant un mouvement
+    if(Z.sec==='gar'){const b=$('z'+z+'_d'),k=zK(z);b.classList.toggle('lit',!k&&ts.some(t=>t.mv));b.disabled=!!G.estop;$('z'+z+'_k').classList.toggle('lit',k);if(k)$('lz'+z).className='zl'+(ts.length||trains.some(t=>t.st==='garage'&&t.lane===+z.slice(1)-1)?' occ':'');continue;} // voie : Dispatch allumé pendant un mouvement ; F allumé = freins forcés serrés (voyant orange si un train est retenu)
     if(z==='Lift'){$('zLift_on').classList.toggle('lit',!G.liftOff);$('zLift_off').classList.toggle('lit',G.liftOff);continue;}
     const man=!Z.auto||!!G.zm[z];
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}
