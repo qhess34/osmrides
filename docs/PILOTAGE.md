@@ -44,18 +44,25 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-16 par la session « Optimisation tokens T2Z »._
+_Mis à jour le 2026-11-17 par la session de pilotage n° 2 (reprise du 16/11)._
 
 **Publié sur `main`** (tout est aussi sur la branche de travail) :
 - 4 attractions jouables : Tonnerre 2 Zeus, La Trace du Hourra, OzIris, Goudurix ; plan du parc ; écran titre, tutoriels, À propos ; PWA installable et hors ligne ; mobile et plein écran.
-- Moteur commun : commande par zones (AUTO/MANU), règle du lift, règle de départ avec appareil hors de P, garages (aiguillage, pont transbordeur deux rails et rail unique, aiguillage rotatif en S), sécurités (lapbars/harnais, vérification par les opérateurs), synoptique, sauvegarde automatique, bac à sable, sons synthétisés, inversions (loop, vrilles), tunnels/rochers/passerelles/escaliers/zones piétonnes lus dans OSM, barrières de file (entrée/sortie liées, parallèles, pivotantes).
-- Lot 6 (dernier) : quais au gabarit, portillons rapprochés, 14 portillons Goudurix, paliers en haut des escaliers, toit de Zeus sur tout le quai, files prolongées dans les zones piétonnes, pointillé des files couvertes. Guide `docs/OSM-GUIDE.md`.
+- Moteur commun : commande par zones (AUTO/MANU), règle du lift, règle de départ avec appareil hors de P, garages (aiguillage, pont transbordeur deux rails et rail unique, aiguillage rotatif en S), sécurités, synoptique, sauvegarde, bac à sable, sons synthétisés, inversions, tunnels/rochers/passerelles/escaliers/zones piétonnes lus dans OSM.
+- Lots 7–9 (16–17/11) : gouttière du bob étroite en gare, au lift, aux freins et au garage (#6) ; passerelles de service + escaliers le long du lift (à droite, info propriétaire) et des freins, sauf Zeus (#7) ; import OSM du 17/11 : zones piétonnes, rochers TDH, files, arbres, **barrières OSM lues par le jeu** (#8, #2) ; entrée de file de Zeus (#10) ; prolongement des files plafonné (`queue.mouthMax`, Zeus 4,5 m barrière devant la statue, Goudurix 0, #9) ; barrières en travers du chemin, poteau côté `hinge` (#12) ; garage : un bouton **Dispatch** + un bouton freins **F** par voie, marge 2 m au butoir, chariot / pont = un seul train (#11) ; OzIris : arrêt en gare au bout du tronçon OSM `station`, nouvelle entrée (#13). Montages `docs/plans/lot-7.jpg`, `lot-8.jpg`, `lot-9.jpg`.
+- #14 (bâtiment « Au Dolmen Gourmand » à dessiner sous la voie du Hourra) : publié (011a260) ; règle générique (bâtiment entièrement survolé dessiné sous la voie, hauteur OSM `height` / `building:levels` lue, sinon 7 m ESTIMÉ) ; seul cas : Dolmen Gourmand.
 
-**Issues ouvertes** : #1 questions du lot 6 ; #2 OSM barrières/escaliers/largeurs puis lecture par le jeu (le propriétaire édite OSM, attendre son « OSM mis à jour ») ; #3 vérifications sur un vrai téléphone ; #4 vignettes et tutos à rafraîchir en fin d'étape ; #5 valeurs encore estimées.
+**Issues ouvertes** : #1 questions du lot 6 (Q1, Q3, Q4, Q6, Q7 sans réponse) ; #3 vérifications sur un vrai téléphone ; #4 vignettes et tutos à rafraîchir (Dispatch et freins de voie changent le pupitre garage : captures des tutos à refaire) ; #5 valeurs estimées (complétée le 17/11) ; #12 question au propriétaire : barrière OSM à ajouter sur chaque boucle de fourche, ou barrière posée automatiquement par le jeu ?
+
+**Questions en attente du propriétaire** : #12 ci-dessus ; quai d'OzIris (largeur `load` 7 m estimée) ; mobile non retesté depuis l'import OSM (lancer `tools/mobile.js` au prochain lot).
 
 **Rien en cours** au moment du renouvellement : aucun sous-agent, aucune autre session active.
 
 **Points de vigilance** :
+- Tous les sous-agents `moteur` ont dit ne pas pouvoir lancer `testeur` : ils lancent `check.js` eux-mêmes ; le pilote relance `check.js` ×4 (et `save.js`) après une fusion.
+- Deux sous-agents en parallèle : `isolation: worktree` pour le second, puis fusion (conflit probable seulement dans `AGENTS.md`, ligne `SITE` très longue) ; supprimer le worktree après fusion.
+- Le hook d'arrêt réclame un commit quand un sous-agent a des fichiers en cours : ne pas commiter à sa place.
+- Captures des sous-agents : demander la mise en page bureau (viewport large), sinon les barres du téléphone apparaissent.
 - Les quotas : Opus/Fable peuvent atteindre la limite de 5 h ; reprendre l'agent (SendMessage) après la remise à zéro plutôt que d'en relancer un.
 - Les sessions cloud ne peuvent pas ouvrir github.io ni Wikimedia ; `api.openstreetmap.org` fonctionne.
 - Questions et réponses du propriétaire : historique dans `docs/plans/QUESTIONS.md` et `docs/*-notes.md` ; décisions de manœuvre dans `docs/manoeuvres.md`.
