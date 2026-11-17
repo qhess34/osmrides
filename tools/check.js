@@ -17,7 +17,8 @@ const root = path.resolve(__dirname, '..');
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', e => errors.push(String(e.message || e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  errors.push('console: ' + m.text()); });
   await page.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} }); // départ propre : pas de partie sauvegardée
   await page.goto(url);
   await page.waitForFunction(() => typeof act === 'function' && (act('help'), true), undefined, { timeout: 10000 });

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeur T2Z</title>
+<style>
+:root{--bg:#0f1626;--panel:#18223a;--panel2:#202d4b;--line:#32426a;--txt:#e8ecf6;--dim:#9aa7c4;--gold:#f2c14e;--ok:#4cc38a;--warn:#f0a23b;--bad:#e5484d;--blue:#4f8cff;--entry:#f0a23b;--fork:#5fd3e6;--room:#c99cff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{display:flex;flex-direction:column;height:100%}
+header{display:flex;align-items:center;gap:10px;padding:7px 12px;background:#141d33;border-bottom:2px solid var(--gold)}
+header h1{font-size:15px;margin:0;color:var(--gold);white-space:nowrap}
+header .sp{flex:1}
+#dirty{color:var(--dim)}#dirty.on{color:var(--warn)}
+main{display:flex;flex:1;min-height:0}
+#stage{position:relative;flex:1;min-width:0;background:#8fc7ee}
+#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#side{width:330px;flex:none;overflow:auto;padding:8px;background:var(--panel);border-left:1px solid var(--line)}
+section{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px}
+section h2{margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--gold)}
+button,select,input{font:inherit;color:var(--txt);background:#2c3c63;border:1px solid #47598a;border-radius:6px;padding:4px 8px}
+button{cursor:pointer}button:hover:not(:disabled){background:#3a4d7d}button:disabled{opacity:.4;cursor:not-allowed}
+button.go{background:#1f7a52;border-color:var(--ok)}button.bad{background:#7a1f24;border-color:var(--bad)}
+input{width:76px;background:#141d33}
+.list{max-height:220px;overflow:auto}
+.it{display:flex;gap:6px;align-items:center;padding:3px 4px;border-radius:5px;cursor:pointer}
+.it:hover{background:#2a3a5f}.it.sel{background:#34508a}
+.it .k{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10.5px;padding:0 5px;border-radius:4px;border:1px solid currentColor}
+.t-entry{color:var(--entry)}.t-fork{color:var(--fork)}.t-ovr{color:var(--ok)}.t-est{color:var(--dim)}.t-orph{color:var(--bad)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.grid{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center}
+.note{color:var(--dim);font-size:12px;margin:4px 0}
+.warn{color:var(--warn)}.err{color:#ff8a8d}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#modal.on{display:flex}
+#modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(820px,94vw);max-height:88vh;display:flex;flex-direction:column;padding:12px}
+#diff{flex:1;overflow:auto;background:#0b1120;border-radius:6px;padding:6px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre}
+#diff .a{background:#123d27;color:#9ff0bf}#diff .r{background:#4a1518;color:#ffb3b5}#diff .c{color:#7f8aa6}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+.cols div{background:#0b1120;border-radius:6px;padding:6px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>Éditeur T2Z</h1>
+  <select id="site" title="Attraction"></select>
+  <span id="file" class="note"></span>
+  <span class="sp"></span>
+  <span id="dirty">aucune modification</span>
+  <button id="bReload" title="Abandonner les modifications et relire sites/&lt;site&gt;.game.js">Recharger</button>
+  <button id="bDiff" class="go" title="Voir les différences avant d'enregistrer">Différences et enregistrement</button>
+</header>
+<main>
+  <div id="stage"><iframe id="fr" title="Jeu"></iframe><canvas id="ov"></canvas></div>
+  <div id="side">
+    <section id="secMig" hidden><h2>Migration</h2><p class="note">Pas de salle de contrôle dans <code>game.js</code> : le jeu utilise <code>SITE.booth</code> (écrit à la main). Reprendre cette salle dans l'éditeur ? (<code>SITE</code> reste inchangé.)</p><div class="row"><button id="bMig" class="go">Reprendre la salle</button></div></section>
+    <section><h2>Sélection</h2><div id="selBox" class="note">Cliquer une barrière ou la salle de contrôle sur la carte. Glisser : déplacer ; poignées : orienter, allonger, redimensionner. La carte se déplace et se zoome comme dans le jeu.</div></section>
+    <section><h2>Salle de contrôle</h2><div id="roomBox"></div></section>
+    <section><h2>Barrières de file</h2><p class="note"><span class="tag t-entry">entrée</span> <span class="tag t-fork">fourche</span> <span class="tag t-ovr">corrigée</span> <span class="tag t-est">estimée</span></p><div id="gList" class="list"></div><div id="orph"></div></section>
+    <section><h2>Fichier</h2><div id="valBox" class="note"></div></section>
+  </div>
+</main>
+</div>
+<div id="modal"><div class="box">
+  <h2 style="margin:0 0 6px;color:var(--gold);font-size:14px">Différences — <span id="mFile"></span></h2>
+  <div class="cols"><div id="mBefore"></div><div id="mAfter"></div></div>
+  <div id="mMsg" class="note"></div>
+  <div id="diff"></div>
+  <div class="row" style="justify-content:flex-end"><button id="bCancel">Fermer</button><button id="bSave" class="go">Enregistrer</button></div>
+</div></div>
+<script src="schema.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

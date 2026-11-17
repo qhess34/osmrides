@@ -1,0 +1,154 @@
+// Test de l'éditeur (lot 1) : node tools/editor-test.js [goudurix zeus] [--check] [--shot=f.jpg]
+// (NODE_PATH=$(npm root -g) pour Playwright). Pour chaque attraction : serveur editor/server.js lancé ici, éditeur ouvert, une barrière déplacée, orientée
+// et allongée à la souris, salle de contrôle reprise de SITE.booth, déplacée, redimensionnée, tournée, supprimée puis recréée, diff, sauvegarde ; serveur redémarré,
+// relecture identique ; puis jeu.html (file://) : barrière et salle appliquées (géométrie, dessin, clic sur la carte), visiteurs qui passent.
+// --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, gatesMove). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
+// avant sont restaurés).
+const { chromium } = require('playwright');
+const { spawn, execFileSync } = require('child_process');
+const fs = require('fs'), path = require('path');
+const S = require('../editor/schema.js');
+const ROOT = path.resolve(__dirname, '..'), PORT = 8791, BASE = 'http://127.0.0.1:' + PORT;
+const args = process.argv.slice(2), SITES = args.filter(a => !a.startsWith('--')), CHECK = args.includes('--check');
+const SHOT = (args.find(a => a.startsWith('--shot=')) || '').slice(7);
+if (!SITES.length) SITES.push('goudurix', 'zeus');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const gp = id => path.join(ROOT, 'sites', id + '.game.js');
+
+let srv = null;
+async function startServer() {
+  srv = spawn(process.execPath, [path.join(ROOT, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), T2Z_ROOT: ROOT }), stdio: ['ignore', 'pipe', 'inherit'] });
+  for (let i = 0; i < 100; i++) { try { const r = await fetch(BASE + '/api/sites'); if (r.ok) return; } catch (e) { } await sleep(50); }
+  throw new Error('serveur injoignable');
+}
+async function stopServer() { if (!srv) return; const p = new Promise(r => srv.once('exit', r)); srv.kill('SIGTERM'); await p; srv = null; }
+
+async function drag(page, from, to) {
+  await page.mouse.move(from[0], from[1]); await page.mouse.down();
+  for (let k = 1; k <= 6; k++) await page.mouse.move(from[0] + (to[0] - from[0]) * k / 6, from[1] + (to[1] - from[1]) * k / 6);
+  await page.mouse.up(); await sleep(60);
+}
+const ed = (page, s) => page.evaluate(s);
+
+(async () => {
+  const backup = {}; for (const id of SITES) if (fs.existsSync(gp(id))) backup[id] = fs.readFileSync(gp(id), 'utf8');
+  const browser = await chromium.launch(); let fail = 0;
+  try {
+    for (const id of SITES) {
+      if (fs.existsSync(gp(id))) fs.unlinkSync(gp(id)); // part d'une attraction sans game.js
+      const out = [], errors = [];
+      const ok = (c, m) => { out.push((c ? '' : 'FAIL ') + m); if (!c) fail++; };
+      await startServer();
+      const page = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+      page.on('pageerror', e => errors.push(String(e.message || e)));
+      page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$|404/.test(((m.location() || {}).url || '') + m.text())) errors.push('console: ' + m.text()); });
+      await page.goto(BASE + '/editor/?site=' + id);
+      await page.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 30000 });
+      ok(await page.isVisible('#secMig'), 'migration proposée');
+      // ── barrière : fourche si possible, sinon entrée ──
+      const G0 = await ed(page, `ED.gates().map(g=>({key:g.key,kind:g.kind,h:g.g.h,a:g.g.a,b:g.g.b}))`);
+      const g0 = G0.find(g => g.kind === 'fork') || G0[0];
+      ok(G0.some(g => g.kind === 'entry') && G0.length > 1, `barrières listées (${G0.length}, ${G0.filter(g => g.kind === 'fork').length} de fourche)`);
+      await page.click(`#gList .it[data-key="${g0.key}"]`); await sleep(150);
+      const s0 = await ed(page, `ED.E('cam.s')`);
+      let p = await ed(page, `ED.toScr(${g0.h[0]},${g0.h[1]})`);
+      await drag(page, p, [p[0] + 30, p[1] + 18]);
+      let o = await ed(page, `ED.draft().barriers&&ED.draft().barriers[${JSON.stringify(g0.key)}]`);
+      ok(o && Math.abs(o.x - g0.h[0] - 30 / s0) < .15 && Math.abs(o.z - g0.h[1] - 18 / s0) < .15, `barrière ${g0.key} déplacée (${o && o.x}, ${o && o.z})`);
+      const A = await ed(page, `(()=>{const g=ED.gates().find(g=>g.key===${JSON.stringify(g0.key)}).g;return {a:g.a,h:g.h};})()`);
+      p = await ed(page, `ED.toScr(${A.a[0]},${A.a[1]})`); const hS = await ed(page, `ED.toScr(${A.h[0]},${A.h[1]})`);
+      const to = [hS[0] + (p[0] - hS[0]) * 1.3 + 8, hS[1] + (p[1] - hS[1]) * 1.3 - 8];
+      await drag(page, p, to);
+      const o2 = await ed(page, `ED.draft().barriers[${JSON.stringify(g0.key)}]`);
+      ok(Math.abs(o2.a.len - o.a.len) > .1 && o2.b.ang === o.b.ang, `position A orientée et allongée (${o.a.ang}° ${o.a.len} m -> ${o2.a.ang}° ${o2.a.len} m)`);
+      // ── salle de contrôle ──
+      await page.click('#bSelRoom'); await sleep(150);
+      const r0 = await ed(page, `ED.rooms()[0]`), s1 = await ed(page, `ED.E('cam.s')`);
+      p = await ed(page, `ED.toScr(${r0.x},${r0.z})`);
+      await drag(page, p, [p[0] - 25, p[1] + 20]);
+      let d = await ed(page, `ED.draft()`);
+      ok(Array.isArray(d.controlRooms) && d.controlRooms.length === 1 && Math.abs(d.controlRooms[0].x - r0.x + 25 / s1) < .15, `salle reprise de SITE.booth et déplacée (${d.controlRooms && d.controlRooms[0].x}, ${d.controlRooms && d.controlRooms[0].z})`);
+      ok(await page.isHidden('#secMig'), 'migration faite');
+      await page.click('#bDelRoom'); await sleep(80);
+      d = await ed(page, `ED.draft()`); ok(d.controlRooms.length === 0, 'salle supprimée');
+      ok(await ed(page, `ED.E('beaconAt()===null&&boothLabelAt()===null')`), 'sans salle : ni gyrophare ni étiquette');
+      await page.click('#bNewRoom'); await sleep(80);
+      let r = await ed(page, `ED.rooms()[0]`);
+      ok(r && r.w === 3.75, 'salle créée');
+      p = await ed(page, `ED.toScr(${r.x},${r.z})`);
+      const tgt = await ed(page, `ED.toScr(${r0.x + 1},${r0.z - .5})`);
+      await page.click('#bSelRoom'); await sleep(100); p = await ed(page, `ED.toScr(${r.x},${r.z})`); const tg2 = await ed(page, `ED.toScr(${r0.x + 1},${r0.z - .5})`); void tgt;
+      await drag(page, p, tg2);
+      r = await ed(page, `ED.rooms()[0]`);
+      const c = await ed(page, `(()=>{const r=ED.rooms()[0],t=r.angle*Math.PI/180,l=[r.w/2,r.d/2];return ED.toScr(r.x+l[0]*Math.cos(t)-l[1]*Math.sin(t),r.z+l[0]*Math.sin(t)+l[1]*Math.cos(t));})()`);
+      await drag(page, c, [c[0] + 20, c[1] + 12]);
+      const rw = await ed(page, `ED.rooms()[0]`);
+      ok(rw.w > r.w + .5 && rw.d > r.d + .3, `salle redimensionnée (${r.w} x ${r.d} -> ${rw.w} x ${rw.d} m)`);
+      const rh = await ed(page, `(()=>{const r=ED.rooms()[0],t=r.angle*Math.PI/180,l=[0,r.d/2+1.4];return ED.toScr(r.x+l[0]*Math.cos(t)-l[1]*Math.sin(t),r.z+l[0]*Math.sin(t)+l[1]*Math.cos(t));})()`);
+      const rc = await ed(page, `ED.toScr(ED.rooms()[0].x,ED.rooms()[0].z)`);
+      await drag(page, rh, [rc[0] + (rh[0] - rc[0]) * .2 + 60, rc[1] + (rh[1] - rc[1]) * .2]);
+      const ra = await ed(page, `ED.rooms()[0]`);
+      ok(Math.abs(ra.angle - rw.angle) > 20, `salle tournée (${rw.angle}° -> ${ra.angle}°)`);
+      if (SHOT) { await page.click(`#gList .it[data-key="${g0.key}"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); }
+      // ── diff puis sauvegarde ──
+      await page.click('#bDiff'); await page.waitForSelector('#diff .a', { timeout: 5000 });
+      const nAdd = await page.$$eval('#diff .a', e => e.length);
+      ok(nAdd > 5 && !(await page.isDisabled('#bSave')), `diff affiché (${nAdd} lignes ajoutées)`);
+      await page.click('#bSave'); await page.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 5000 });
+      const exp = await ed(page, `ED.draft()`);
+      ok(fs.existsSync(gp(id)) && fs.readFileSync(gp(id), 'utf8') === S.text(exp), 'sites/' + id + '.game.js écrit (JSON strict, normalisé)');
+      ok(!(await ed(page, `ED.dirty`)), 'plus de modification en attente');
+      await page.close();
+      // ── redémarrage du serveur, relecture ──
+      await stopServer(); await startServer();
+      const p2 = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+      p2.on('pageerror', e => errors.push(String(e.message || e)));
+      await p2.goto(BASE + '/editor/?site=' + id); await p2.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 30000 });
+      const rd = await p2.evaluate(`ED.draft()`);
+      ok(JSON.stringify(S.normalize(rd)) === JSON.stringify(S.normalize(exp)) && !(await p2.evaluate('ED.dirty')), 'relecture identique après redémarrage du serveur');
+      ok(await p2.isHidden('#secMig'), 'pas de migration reproposée');
+      await p2.close(); await stopServer();
+      // ── jeu.html (file://) ──
+      const jp = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+      jp.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
+      await jp.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp.waitForFunction(() => typeof gateList === 'function' && typeof render === 'function', null, { timeout: 30000 });
+      await jp.evaluate(() => { localStorage.clear(); act('speed', 0); G.wx.next = 1e6; });
+      const ov = exp.barriers[g0.key], gk = JSON.stringify(g0.key);
+      const gj = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${gk});return g&&{ovr:g.g.ovr,h:g.g.h,a:g.g.a,kind:g.kind,fork:g.fork};})()`);
+      const ea = [ov.x + Math.cos(ov.a.ang * Math.PI / 180) * ov.a.len, ov.z + Math.sin(ov.a.ang * Math.PI / 180) * ov.a.len];
+      ok(gj && gj.ovr && Math.abs(gj.h[0] - ov.x) < 1e-6 && Math.abs(gj.h[1] - ov.z) < 1e-6 && Math.hypot(gj.a[0] - ea[0], gj.a[1] - ea[1]) < 1e-6, 'jeu : barrière corrigée appliquée (pivot, position A)');
+      const rj = await jp.evaluate(`ctlRooms()`), re = exp.controlRooms[0];
+      ok(rj.length === 1 && ['x', 'z', 'angle', 'w', 'd'].every(k => rj[0][k] === re[k]), 'jeu : salle de contrôle appliquée');
+      // dessin : couleur du local au centre de la salle (toits retirés, caméra sur la salle)
+      const px = await jp.evaluate(`(()=>{const r=ctlRooms()[0];act('roof');cam.g=null;cam.follow=-1;cam.key='';cam.x=r.x;cam.z=r.z;cam.s=30;for(let i=0;i<60;i++)render(.05);
+        const t=r.angle*Math.PI/180,lx=-r.w*.3,lz=-r.d*.3,X=(r.x+lx*Math.cos(t)-lz*Math.sin(t)-cam.x)*cam.s+VW/2,Z=(r.z+lx*Math.sin(t)+lz*Math.cos(t)-cam.z)*cam.s+VH/2;
+        const d=ctx.getImageData(Math.round(X*DPR),Math.round(Z*DPR),1,1).data;return [d[0],d[1],d[2]];})()`);
+      ok(Math.abs(px[0] - 0x3a) < 14 && Math.abs(px[1] - 0x43) < 14 && Math.abs(px[2] - 0x4f) < 14, `jeu : salle dessinée à sa nouvelle place (pixel ${px})`);
+      // clic sur la carte : à mi-longueur de la position courante du vantail corrigé
+      const st0 = await jp.evaluate(`(()=>{const g=gateList().find(x=>x.key===${gk});const L=g.kind==='entry'?null:LOOPS[g.fork];const t=L?(g.g.loop?1-L.t:L.t):ENTRY_GATE.t;cam.x=g.g.h[0];cam.z=g.g.h[1];cam.s=24;render(.05);
+        const ta=Math.atan2(g.g.a[1]-g.g.h[1],g.g.a[0]-g.g.h[0]),tb=Math.atan2(g.g.b[1]-g.g.h[1],g.g.b[0]-g.g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));const th=tb+d*t,
+        len=(Math.hypot(g.g.b[0]-g.g.h[0],g.g.b[1]-g.g.h[1])*(1-t)+Math.hypot(g.g.a[0]-g.g.h[0],g.g.a[1]-g.g.h[1])*t)*.6,x=g.g.h[0]+Math.cos(th)*len,z=g.g.h[1]+Math.sin(th)*len,rc=cv.getBoundingClientRect();
+        return {on:L?L.on:G.open,x:rc.left+(x-cam.x)*cam.s+VW/2,y:rc.top+(z-cam.z)*cam.s+VH/2,fork:g.fork};})()`);
+      await jp.mouse.click(st0.x, st0.y); await sleep(100);
+      const on1 = await jp.evaluate(`${st0.fork}>=0?LOOPS[${st0.fork}].on:G.open`);
+      ok(on1 !== st0.on, 'jeu : clic sur la barrière corrigée = bascule de sa fourche');
+      // logique : visiteurs qui entrent dans la file et la parcourent (barrière d'entrée ouverte, fourches ouvertes)
+      const vis = await jp.evaluate(`(()=>{if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();let n=0;for(let i=0;i<4000;i++){step(.05);}return {q:G.queue.filter(v=>v.mode==='q').length,ok:G.queue.length};})()`);
+      ok(vis.q > 0, `jeu : visiteurs dans la file (${vis.q})`);
+      await jp.close();
+      if (CHECK) {
+        const r = (() => { try { return execFileSync(process.execPath, [path.join(ROOT, 'tools/check.js'), id], { encoding: 'utf8', env: process.env }); } catch (e) { return String(e.stdout || '') + 'FAIL'; } })();
+        const last = r.trim().split('\n'), line = last.find(l => /offpath=/.test(l)) || '', gm = (r.match(/gatesMove=\S+/) || [''])[0];
+        ok(/\nPASS\s*$/.test('\n' + r.trim().split('\n').pop() + '\n') || /^PASS$/m.test(r), `check.js ${id} avec game.js : ${r.trim().split('\n').pop()} ${line.split(' (')[0]} ${line.match(/strollQ=\d+/) || ''} ${gm}`);
+      }
+      ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
+      console.log(id + ':\n  ' + out.join('\n  '));
+    }
+  } finally {
+    await browser.close(); await stopServer();
+    for (const id of SITES) { if (backup[id] != null) fs.writeFileSync(gp(id), backup[id]); else if (fs.existsSync(gp(id))) fs.unlinkSync(gp(id)); }
+  }
+  console.log(fail ? 'FAIL (' + fail + ')' : 'PASS');
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.error(e); try { srv && srv.kill(); } catch (_) { } process.exit(1); });

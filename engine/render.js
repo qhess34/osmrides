@@ -739,13 +739,24 @@ function drawLip(){const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exi
   const sides=P.exit?[1,-1]:[1];ctx.fillStyle=PLAT_COL;for(const e of sides)quad(e*PEDGE,e*LIP);
   if(cam.s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha=.16;for(const e of sides)quad(e*PEDGE,e*LIP);ctx.globalAlpha=1;}
   ctx.strokeStyle='#e8b93c';lw(.2,.8);ctx.beginPath();for(const e of sides){const l=e*(PEDGE+.06);ctx.moveTo(a.x-a.tx*1+a.rx*l,a.z-a.tz*1+a.rz*l);ctx.lineTo(b.x+b.tx*1+b.rx*l,b.z+b.tz*1+b.rz*l);}ctx.stroke();}
-function drawBooth(s){ // poste de conduite : SITE.booth=[x, z, angle], la vitre (côté +y local) tournée vers la voie
-  const B=SITE.booth,sc=B[3]||1;ctx.save();ctx.translate(B[0],B[1]);ctx.rotate(B[2]);ctx.scale(sc,sc); // B[3] : échelle (pupitre plus petit, défaut 1)
+// Salle de contrôle (poste de conduite, pupitre) : GAME.controlRooms=[{id, x, z, angle (degrés), w, d (m), main}] (éditeur, docs/ARCHITECTURE.md D3) ; une seule salle par
+// attraction pour l'instant (propriétaire, lot 1) : la salle main (sinon la première) porte le pupitre ; liste vide = aucune salle (ni opérateur au pupitre, ni gyrophare,
+// ni étiquette). Sans GAME.controlRooms : repli sur SITE.booth=[x, z, angle (rad), échelle] (pupitre de 3,75 x 1,7 m à l'échelle 1, ESTIMÉ). Gyrophare et étiquette :
+// SITE.beacon / SITE.boothLabel ramenés au repère de la salle (ils la suivent quand elle bouge), sinon posés sur la salle.
+const BOOTH_W=3.75,BOOTH_D=1.7;
+const B0=SITE.booth?(()=>{const B=SITE.booth,sc=B[3]||1,c=Math.cos(B[2]),sn=Math.sin(B[2]),loc=q=>q?[(q[0]-B[0])*c+(q[1]-B[1])*sn,-(q[0]-B[0])*sn+(q[1]-B[1])*c]:null;
+  return {room:{id:'poste',x:B[0],z:B[1],angle:B[2]*180/Math.PI,w:BOOTH_W*sc,d:BOOTH_D*sc,main:true},bl:loc(SITE.beacon),ll:loc(SITE.boothLabel)};})():null;
+function ctlRooms(){const R=Array.isArray(GM.controlRooms)?GM.controlRooms:B0?[B0.room]:[];return R.filter(r=>r&&[r.x,r.z,r.angle,r.w,r.d].every(v=>typeof v==='number'&&isFinite(v)));}
+function mainRoom(){const R=ctlRooms();return R.find(r=>r.main)||R[0]||null;}
+const roomPt=(r,l)=>{const t=r.angle*Math.PI/180;return [r.x+l[0]*Math.cos(t)-l[1]*Math.sin(t),r.z+l[0]*Math.sin(t)+l[1]*Math.cos(t)];};
+function beaconAt(){const r=mainRoom();if(!r)return null;const l=B0&&B0.bl?B0.bl:[r.w/2-.35,-r.d/2+.3];return roomPt(r,[clamp(l[0],-r.w/2-.5,r.w/2+.5),clamp(l[1],-r.d/2-.5,r.d/2+.5)]);}
+function boothLabelAt(){const r=mainRoom();if(!r)return null;if(B0&&B0.ll)return roomPt(r,B0.ll);return [r.x,r.z-Math.max(r.w,r.d)/2-2.2];}
+function drawBooth(s){for(const r of ctlRooms()){const sx=r.w/BOOTH_W,sz=r.d/BOOTH_D,t=r.angle*Math.PI/180;ctx.save();ctx.translate(r.x,r.z);ctx.rotate(t);ctx.scale(sx,sz); // vitre (côté +z local) tournée vers la voie
   ctx.fillStyle='#3a434f';ctx.fillRect(-1.875,-.85,3.75,1.7);ctx.fillStyle='#8fd0e8';ctx.fillRect(-1.72,.62,3.45,.2);
-  ctx.fillStyle='#20262e';ctx.fillRect(-1.37,.15,2.7,.42);
-  if(s>6)[['#4cc38a',-.97],['#f2c14e',-.37],['#4f8cff',.23],['#e5484d',.88]].forEach(([c,x])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,.36,.1,0,7);ctx.fill();});
+  if(r===mainRoom()){ctx.fillStyle='#20262e';ctx.fillRect(-1.37,.15,2.7,.42);
+    if(s>6)[['#4cc38a',-.97],['#f2c14e',-.37],['#4f8cff',.23],['#e5484d',.88]].forEach(([c,x])=>{ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,.36,.1,0,7);ctx.fill();});}
   ctx.restore();
-  if(s>6)person(B[0]+Math.sin(B[2])*.32*sc,B[1]-Math.cos(B[2])*.32*sc,3,1.2,false,'#1d2b4f');
+  if(s>6&&r===mainRoom())person(r.x+Math.sin(t)*.32*sz,r.z-Math.cos(t)*.32*sz,3,1.2,false,'#1d2b4f');}
 }
 function leaf(g,t){ // vantail métallique : pivot h en bordure, extrémité en a (t=1) ou en b (t=0)
   const ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));
@@ -939,7 +950,7 @@ function drawWorld(dt){
   if(roofA<.6&&SITE.draw&&SITE.draw.underRoof)SITE.draw.underRoof(ctx,roofA,API); // charpente visible sous le toit effacé
   if(pplLate)drawStationPeople(); // toit effacé : personnes du quai au-dessus du toit, de la charpente et des colonnes
   if(tunnelP){ctx.fillStyle='#5a4630';ctx.fill(tunnelP);ctx.strokeStyle='#3a2c1c';lw(.3,.8);ctx.stroke(tunnelP);}
-  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#3f9a66';ctx.beginPath();ctx.arc(SITE.beacon[0],SITE.beacon[1],.2,0,7);ctx.fill();
+  const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#3f9a66';const bc=beaconAt();if(bc){ctx.beginPath();ctx.arc(bc[0],bc[1],.2,0,7);ctx.fill();}
   if(SITE.draw&&SITE.draw.landmarks){SITE.draw.landmarks(ctx,s,API);leaf(ENTRY_GATE,ENTRY_GATE.t);ctx.lineCap='butt';} // barrière d'entrée redessinée au-dessus d'un monument qui enjambe l'entrée (statue de Zeus, issue #10) : elle se clique sur la carte
   if(bolt&&G.flash>.3){const g=ctx.createRadialGradient(bolt.x,bolt.z,0,bolt.x,bolt.z,30);g.addColorStop(0,`rgba(255,255,220,${G.flash})`);g.addColorStop(1,'rgba(255,255,220,0)');ctx.fillStyle=g;ctx.fillRect(bolt.x-30,bolt.z-30,60,60);
     ctx.strokeStyle=`rgba(255,250,200,${G.flash})`;lw(.5,1.5);ctx.beginPath();for(const b of bolt.br)b.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
@@ -1048,7 +1059,7 @@ function drawOverlay(dt){
   ctx.font='italic 11px system-ui,sans-serif';ctx.fillStyle='#dfe8d2';
   if(s<9)for(const [t,x,z] of PLACES){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font='600 12px system-ui,sans-serif';ctx.fillStyle='#fff';
-  if(s>9&&s<26){const q=SITE.boothLabel;ctx.strokeText('Poste de conduite',X(q[0]),Z(q[1]));ctx.fillText('Poste de conduite',X(q[0]),Z(q[1]));}
+  const bq=boothLabelAt();if(bq&&s>9&&s<26){ctx.strokeText('Poste de conduite',X(bq[0]),Z(bq[1]));ctx.fillText('Poste de conduite',X(bq[0]),Z(bq[1]));}
   if(s<16)for(const [t,x,z] of LABELS){ctx.strokeText(t,X(x),Z(z));ctx.fillText(t,X(x),Z(z));}
   ctx.font=Math.round(clamp(s*1.3,14,24))+'px serif';
   for(let i=emos.length-1;i>=0;i--){const e=emos[i];e.life-=dt*Math.max(1,G.speed);if(e.life<=0){emos.splice(i,1);continue;}ctx.globalAlpha=Math.min(1,e.life);ctx.fillText(e.ch,X(e.x),Z(e.z)-10-(2.2-e.life)*10);}

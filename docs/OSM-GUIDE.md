@@ -46,7 +46,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Escaliers | `highway=steps` (+ `incline=up/down`, `width=*`) | Lu | Marches, garde-corps, visiteurs ralentis ; largeur du chemin qu'ils prolongent. **`incline` (avec le sens du way) place le palier en HAUT de l'escalier** ; sans lui, le haut est deviné (côté gare / porte, puis passerelle), sinon pas de palier. |
 | Passerelle | `bridge=yes` + `layer=*` | Lu | Chemin dessiné par-dessus la voie, visiteurs dessus. |
 | Chemin couvert, souterrain | `tunnel=yes`, `covered=yes`, `indoor=yes` ou `layer` négatif | Lu | Couloir caché, visible avec « Masquer la gare ». |
-| Barrière | nœud `barrier=swing_gate` (ou `gate`, `lift_gate`…) (+ `swing_gate:hinge=left/right`, `ref=*`) | Lu | Barrières de file du jeu (règle du §5) : le nœud donne la **position** ; le jeu la pose **en travers du chemin**, de la **largeur du chemin** (`width=*`), poteau côté `hinge`. Elle remplace toute barrière posée par le jeu. |
+| Barrière | nœud `barrier=swing_gate` (ou `gate`, `lift_gate`…) (+ `swing_gate:hinge=left/right`, `ref=*`) | Lu | Barrières de file du jeu (règle du §5) : le nœud donne la **position** ; le jeu la pose **en travers du chemin**, de la **largeur du chemin** (`width=*`), poteau côté `hinge`. Elle remplace toute barrière posée par le jeu. Position initiale seulement : une barrière corrigée dans l'éditeur (`GAME.barriers`, lot 1) l'emporte. |
 | Garde-corps | `barrier=fence` ou `barrier=handrail` | Lu comme décor | Dessinés comme décor ; pas encore utilisés pour délimiter la file (le jeu pose ses propres barrières). |
 
 ## 4. Décor

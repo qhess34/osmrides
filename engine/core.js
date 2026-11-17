@@ -1,6 +1,8 @@
 'use strict';
 /* Moteur du simulateur d'exploitation (jeu de fan, non officiel). L'attraction est décrite par OSM (données générées) et SITE (configuration), chargés avant ce fichier. Unités : mètres, secondes. */
 const $=id=>document.getElementById(id);
+// Données du jeu écrites par l'éditeur (sites/<site>.game.js, `const GAME={…}`, facultatif, docs/ARCHITECTURE.md D1) : priorité GAME > SITE > calcul du moteur.
+const GM=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAME:{};
 class V3{
   constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z;}
   set(x,y,z){this.x=x;this.y=y;this.z=z;return this;}

@@ -11,7 +11,8 @@ const sites = process.argv.slice(2).filter(a => !a.startsWith('--'));
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] }); let fail = 0;
   for (const site of sites.length ? sites : ['zeus', 'hourra', 'oziris', 'goudurix']) {
     const p = await b.newPage({ viewport: { width: 1200, height: 800 } }); const errs = [];
-    p.on('pageerror', e => errs.push(String(e.message))); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+    p.on('pageerror', e => errs.push(String(e.message))); p.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  errs.push(m.text()); });
     await p.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} });
     await p.goto(`file://${root}/jeu.html?site=${site}&mode=sandbox`);
     await p.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p.click('[data-act=closeHelp]');

@@ -151,17 +151,18 @@ function forkGate(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),mx
 function tipAt(g,p){const rv=P=>g.end?P.slice().reverse():P,PS=rv(p.short),PL=rv(p.loop),mx=Math.min(4,plen(PS)*.25),hw=q=>g.half||qwAt(q[0],q[1])/2;let d=.2;
   for(;d<mx;d+=.05){const B=ptAt(PS,d),c=nearOn(headOf(PL,d+6),B[0],B[1]);if(c[2]>=hw(B)+hw(c)-.05)break;}return Math.min(d,mx);}
 const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):(()=>{const P=g.on==='short'?p.short:p.loop,L=plen(P),d=g.tip?tipAt(g,p):g.at||1.6;return Object.assign(gateAt(P,g.exact||g.tip?d:L<2*d+.8?Math.max(.15,L*.2):d,g.end,g.half,g.side),{loop:g.loop!=null?!!g.loop:g.on!=='short'});})();
-  return Object.assign(r,{cfg:g,part:p});};
+  return Object.assign(r,{cfg:g,part:p,key:g.key});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
 const segX=(p,q,r,u)=>{const o=(a,b,c)=>Math.sign((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]));return o(p,q,r)!==o(p,q,u)&&o(r,u,p)!==o(r,u,q);};
 const leafEnd=(g,t)=>{const ta=Math.atan2(g.a[1]-g.h[1],g.a[0]-g.h[0]),tb=Math.atan2(g.b[1]-g.h[1],g.b[0]-g.h[0]);let d=ta-tb;d=Math.atan2(Math.sin(d),Math.cos(d));const th=tb+d*t,
   len=Math.hypot(g.b[0]-g.h[0],g.b[1]-g.h[1])*(1-t)+Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1])*t;return [g.h[0]+Math.cos(th)*len,g.h[1]+Math.sin(th)*len];}; // même course que leaf (engine/render.js)
 // deux pointes si proches (raccourci de 1 à 2 m : lacets d'OzIris) que leurs vantaux se croiseraient : une seule fourche, une seule barrière (celle de l'entrée), g.merged
 const forkClash=(g1,g2)=>Math.hypot(g1.h[0]-g2.h[0],g1.h[1]-g2.h[1])<.6||[0,.25,.5,.75,1].some(t=>segX(g1.h,leafEnd(g1,t),g2.h,leafEnd(g2,t)));
-function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
+function reGates(){for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
     const f=l.gs.filter(g=>g.cfg&&g.cfg.on==='fork'&&g.cfg.pivot==='tip');if(f.length===2&&forkClash(f[0],f[1])){const k=f.find(g=>g.cfg.end);k.merged=1;l.gs=l.gs.filter(g=>g!==k);f.find(g=>!g.cfg.end).merged=1;}
     l.g=l.gs[0];}
   if(OSM_ENTRY||QS.gateMoved||ENTRY_EST){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
+  gameGates();
   // longueur = largeur du chemin : width=* OSM au droit de la barrière (osmWAt, engine/render.js), sinon largeur par défaut du chemin dessiné : ESTIMÉE (g.wEst)
   for(const g of LOOPS.flatMap(l=>l.gs).concat([ENTRY_GATE])){const c=[(g.h[0]+g.a[0])/2,(g.h[1]+g.a[1])/2];g.w=+Math.hypot(g.a[0]-g.h[0],g.a[1]-g.h[1]).toFixed(2);g.wEst=typeof osmWAt!=='function'||!osmWAt(c[0],c[1]);}}
 // Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise de la gare (agrandie à ses quais, STATION_GROW),
@@ -243,6 +244,26 @@ QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}
   else{const gs=pairGates(osmGates(p)||p.gates||[p.gate]).map(g=>resolveGate(g,p)),l={name:p.name,on:true,t:1,g:gs[0],gs,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
 });
+// Barrières corrigées par l'éditeur (GAME.barriers, docs/ARCHITECTURE.md D2, lot 1) : le calcul ci-dessus donne la valeur par défaut ; une surcharge, par CLÉ STABLE,
+// remplace pivot et positions A / B ; elle sert au dessin, au clic sur la carte et à la liaison de la barrière à sa fourche (les visiteurs ne franchissent que les chemins
+// ouverts : la logique de passage suit la fourche, pas la géométrie). Clé : 'entry' (barrière d'entrée) ; 'fork:<nom du tronçon de SITE.queue.parts>:<rôle>' avec
+// rôle = <on><bout> ('fork0' = pointe de départ du raccourci, 'fork1' = pointe de retour, 'loop0', 'short1'… = barrière posée en travers d'un chemin), 'site<k>' pour une
+// barrière donnée par SITE ; doublon : suffixe '#2'. Surcharge : {x, z (pivot, m), a:{ang, len}, b:{ang, len}} (angle en degrés, atan2(dz, dx) ; a = fermée en travers
+// du chemin pour l'entrée, en travers du raccourci pour une fourche ; b = ouverte le long de la bordure / en travers de la boucle). Clé absente du jeu : surcharge orpheline
+// (signalée par l'éditeur, ignorée ici). g.ovr = 1 : barrière corrigée ; g.auto = valeur calculée.
+ENTRY_GATE.key='entry';
+LOOPS.forEach((l,n)=>{const base='fork:'+(l.name||('part'+STAGES.findIndex(st=>st.fork===l)))+':',seen={};
+  l.gs.forEach((g,k)=>{const c=g.cfg;let r=c?(c.on||'g')+(c.end?1:0):'site'+k;if(seen[r])r+='#'+(++seen[r]);else seen[r]=1;if(c)c.key=base+r;g.key=base+r;});});
+function allGates(){return LOOPS.flatMap(l=>l.gs).concat([ENTRY_GATE]);}
+function unGate(g){if(g.ovr){Object.assign(g,g.auto);delete g.ovr;delete g.auto;}}
+const okNum=v=>typeof v==='number'&&isFinite(v);
+function gameGates(){const B=GM.barriers||{};for(const g of allGates()){unGate(g);const o=B[g.key];
+  if(!o||!okNum(o.x)||!okNum(o.z)||!o.a||!o.b||![o.a.ang,o.a.len,o.b.ang,o.b.len].every(okNum))continue;
+  const h=[o.x,o.z],e=q=>{const t=q.ang*Math.PI/180;return [h[0]+Math.cos(t)*q.len,h[1]+Math.sin(t)*q.len];};
+  g.auto={h:g.h,a:g.a,b:g.b};g.h=h;g.a=e(o.a);g.b=e(o.b);g.ovr=1;}}
+// liste des barrières (éditeur) : clé, type (entrée / fourche), fourche, barrière
+function gateList(){return [{key:'entry',kind:'entry',fork:-1,g:ENTRY_GATE}].concat(LOOPS.flatMap((l,i)=>l.gs.map(g=>({key:g.key,kind:'fork',fork:i,name:l.name,g}))));}
+gameGates();
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;
 let QLEN=0;

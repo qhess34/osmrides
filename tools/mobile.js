@@ -26,7 +26,8 @@ async function open(browser, vp, url, noFs) {
   const ctx = await browser.newContext(vp), page = await ctx.newPage(), errors = [];
   if (noFs) await page.addInitScript(() => { for (const k of ['requestFullscreen', 'webkitRequestFullscreen']) try { Object.defineProperty(Element.prototype, k, { value: undefined, configurable: true }); } catch (e) {} });
   page.on('pageerror', e => errors.push(String(e.message || e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  errors.push('console: ' + m.text()); });
   await page.goto(url);
   const cdp = await ctx.newCDPSession(page);
   return { ctx, page, errors, cdp };

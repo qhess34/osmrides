@@ -17,7 +17,7 @@ Architecture, séparation des données et décisions : `docs/ARCHITECTURE.md`. H
 | Lot | Objet | Dépend de | Complexité | Modèle |
 |---|---|---|---|---|
 | 0 | Nettoyage, audit, roadmap | — | faible | Opus (pilotage) — **fait 2026-11-17** |
-| 1 | Éditeur v1 (Docker) : barrières et salles de contrôle | 0 | moyenne | Opus (modèle de surcharge + moteur), Sonnet (interface) — **en cours** |
+| 1 | Éditeur v1 (Docker) : barrières et salles de contrôle | 0 | moyenne | Opus (modèle de surcharge + moteur), Sonnet (interface) — **fait 2026-11-17** |
 | 2 | Traçabilité OSM à l'import | 0 | faible | Sonnet |
 | 3 | Paramètres d'instance éditables (trains, couleurs, sous-type) | 1 | moyenne | Sonnet |
 | 4 | Édition des objets OSM importés (corrections locales) | 1, 2 | élevée | Opus (modèle) + Sonnet |
@@ -33,7 +33,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 
 ---
 
-### Lot 1 — Éditeur v1 : barrières et salles de contrôle (en cours)
+### Lot 1 — Éditeur v1 : barrières et salles de contrôle (fait 2026-11-17 : `editor/README.md`, test `tools/editor-test.js`)
 
 - **Objectif** : premier éditeur local, WYSIWYG, sur les 4 attractions existantes.
 - **Fonctions** : choisir une attraction ; voir file, barrières (entrée, fourches) et salles de contrôle sur le vrai rendu du jeu ; sélectionner, déplacer, tourner une barrière, ajuster sa longueur, revenir au calcul automatique ; salles : sélectionner, déplacer, tourner, redimensionner, créer, supprimer ; diff avant sauvegarde ; sauvegarde dans `sites/<site>.game.js` ; rechargement à l'identique.

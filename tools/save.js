@@ -42,7 +42,8 @@ const drive = (page, minutes, o = {}) => page.evaluate(([min, o]) => {
 const load = async (ctx, url, errors, first) => {
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(String(e.message || e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForFunction(() => window.G && window.t2zSave);
   if (first) { await page.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await page.click('[data-act=closeHelp]'); }
