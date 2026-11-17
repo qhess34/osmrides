@@ -177,16 +177,26 @@ const APPW=2;
 // Entrée de la file sur une zone piétonne (propriétaire, 2026-11-16, lot 6, d'après OzIris, générique) : là où la file débouche sur une zone piétonne OSM, elle est
 // prolongée DANS la zone, dans l'axe de son premier tronçon, jusqu'à QMOUTH m de file dans la zone (SITE.queue.mouth, défaut 5 m, ESTIMÉ d'après OzIris) ; ce couloir
 // est délimité par des barrières des deux côtés (engine/render.js, QSIDE). Le raccord QS.link commence à la bouche du couloir et les accès (SITE.approach) y mènent.
+// Plafond (propriétaire, issue #9) : la part de file dans la zone (raccord compris) ne dépasse pas SITE.queue.mouthMax (défaut 20 %) de la profondeur de la zone, mesurée
+// dans la direction du prolongement depuis le bord où la file en sort ; au-delà, le raccord est coupé à ce plafond (QS.mouthCut), sans jamais toucher à la file OSM.
 const QMOUTH=QS.mouth!=null?QS.mouth:5;
+const QMOUTH_MAX=QS.mouthMax!=null?QS.mouthMax:.2; // part maximale de la profondeur de la zone piétonne occupée par la file (propriétaire, issue #9)
 (function queueMouth(){const PED=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3).map(f=>f.p);if(!PED.length||!QMOUTH)return;
   const pin=(P,q)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>q[1])!==(P[j][1]>q[1])&&q[0]<(P[j][0]-P[i][0])*(q[1]-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
   const p0=QS.parts[0]&&QS.parts[0].pts||[],C=(QS.link||[]).concat([ENTRY0],p0.filter((q,i)=>i||Math.hypot(q[0]-ENTRY0[0],q[1]-ENTRY0[1])>.05)),Z=PED.find(P=>pin(P,C[0]));if(!Z||C.length<2)return;
-  let inL=0;for(let i=1;i<C.length;i++){const l=Math.hypot(C[i][0]-C[i-1][0],C[i][1]-C[i-1][1]);if(!pin(Z,C[i])){let lo=0,hi=1;for(let k=0;k<12;k++){const m=(lo+hi)/2;if(pin(Z,[C[i-1][0]+(C[i][0]-C[i-1][0])*m,C[i-1][1]+(C[i][1]-C[i-1][1])*m]))lo=m;else hi=m;}inL+=l*lo;break;}inL+=l;}
-  if(inL>=QMOUTH-.3)return;
+  let inL=0,X=C[C.length-1];for(let i=1;i<C.length;i++){const l=Math.hypot(C[i][0]-C[i-1][0],C[i][1]-C[i-1][1]);if(!pin(Z,C[i])){let lo=0,hi=1;for(let k=0;k<12;k++){const m=(lo+hi)/2;if(pin(Z,[C[i-1][0]+(C[i][0]-C[i-1][0])*m,C[i-1][1]+(C[i][1]-C[i-1][1])*m]))lo=m;else hi=m;}inL+=l*lo;X=[C[i-1][0]+(C[i][0]-C[i-1][0])*lo,C[i-1][1]+(C[i][1]-C[i-1][1])*lo];break;}inL+=l;}
   let j=1;while(j<C.length-1&&Math.hypot(C[j][0]-C[0][0],C[j][1]-C[0][1])<.5)j++;const l=Math.hypot(C[j][0]-C[0][0],C[j][1]-C[0][1])||1,ux=(C[0][0]-C[j][0])/l,uz=(C[0][1]-C[j][1])/l;
-  let d=QMOUTH-inL;while(d>.3&&!pin(Z,[C[0][0]+ux*(d+.8),C[0][1]+uz*(d+.8)]))d-=.2; // reste dans la zone (0,8 m de marge)
-  if(d<=.3)return;const M=[+(C[0][0]+ux*d).toFixed(2),+(C[0][1]+uz*d).toFixed(2)];QS.link=[M].concat(QS.link||[]);QS.mouthAt=M;
-  for(const A of SITE.approach){const P=A.pts=A.pts.slice();while(P.length>1&&dPl(P[P.length-1][0],P[P.length-1][1],[M,C[0]])<1.6)P.pop();P.push(M.slice());} // accès jusqu'à la bouche du couloir
+  // plafond (propriétaire, issue #9) : la file ne s'avance pas dans la zone de plus de QMOUTH_MAX (20 %) de sa profondeur, mesurée depuis le bord où la file sort de la zone,
+  // dans la direction du prolongement ; au-delà, le raccord (QS.link / QS.lead, jamais la file OSM après la barrière d'entrée) est COUPÉ à ce plafond.
+  let D=0;while(D<400&&pin(Z,[X[0]+ux*(D+.2),X[1]+uz*(D+.2)]))D+=.2;const cap=QMOUTH_MAX*D;QS.mouthDepth=+D.toFixed(1);
+  const fix=M=>{QS.mouthAt=M;for(const A of SITE.approach){const P=A.pts=A.pts.slice();while(P.length>1&&dPl(P[P.length-1][0],P[P.length-1][1],[M,C[0]])<1.6)P.pop();P.push(M.slice());}}; // accès jusqu'à la bouche du couloir
+  if(inL>cap+.05){const nE=(QS.link||[]).length;let cut=inL-cap,acc=0,k=1;for(;k<=nE;k++){const sl=Math.hypot(C[k][0]-C[k-1][0],C[k][1]-C[k-1][1]);if(acc+sl>=cut)break;acc+=sl;}
+    if(k>nE){QS.link=[];QS.lead=[];QS.mouthCut=1;fix(ENTRY0.slice());return;} // raccord entièrement retiré : la file commence à son entrée
+    const f=(cut-acc)/(Math.hypot(C[k][0]-C[k-1][0],C[k][1]-C[k-1][1])||1),M=[+(C[k-1][0]+(C[k][0]-C[k-1][0])*f).toFixed(2),+(C[k-1][1]+(C[k][1]-C[k-1][1])*f).toFixed(2)];
+    QS.link=[M].concat(C.slice(k,nE));QS.lead=QS.link.slice();QS.mouthCut=1;fix(M);return;}
+  const want=Math.min(QMOUTH,cap);if(inL>=want-.3)return;
+  let d=want-inL;while(d>.3&&!pin(Z,[C[0][0]+ux*(d+.8),C[0][1]+uz*(d+.8)]))d-=.2; // reste dans la zone (0,8 m de marge)
+  if(d<=.3)return;const M=[+(C[0][0]+ux*d).toFixed(2),+(C[0][1]+uz*d).toFixed(2)];QS.link=[M].concat(QS.link||[]);fix(M);
 })();
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
