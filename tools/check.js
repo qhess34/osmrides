@@ -167,21 +167,26 @@ const root = path.resolve(__dirname, '..');
       await shot('6-circuit-interrompu');
       if (/circuitHeld1:FAIL/.test(steps.join(' '))) console.log('DBG', await page.evaluate(() => JSON.stringify({t1: [trains[1].st, trains[1].s, trains[1].v, zoneOf(trains[1].s)], S_PRE, lb: G.liftBroken, bf: G.brakeFault, dev: G.dev, log: $('log').textContent.slice(0, 600)})));
       await click('#zL2_d'); ok('onCar2', await until('trains[2].lane<0&&!trains[2].mv', 8000));
-      await click('#yP'); ok('refuseLastCanton', await logHas('Dernier canton occupé') && await page.evaluate(() => devOn(1)));
-      await click('#zL2_d'); ok('back2', await until('trains[2].lane===1&&!trains[2].mv&&!nearDev(trains[2])', 8000));
-      await click('#yP'); ok('devP2', await until('circIn()', 4000));
+      // train 1 ARRÊTÉ dans le dernier canton (avant le pont) : il ne bloque pas le retour en ligne (propriétaire, 2026-11-17) ; seul un train qui y roule bloque
+      ok('refuseRollingLast', await page.evaluate(() => { const c = trains[2], o = trains[1], k = {s: o.s, v: o.v}; o.v = 1; const a = anchorFree(c); o.v = 0; const b = anchorFree(c); Object.assign(o, k); return !a && b; }));
+      await click('#yP'); ok('backStopped2', await until("trains[2].st==='run'&&circIn()", 4000) && !await logHas('Dernier canton occupé'));
+      ok('held1', await page.evaluate(() => { let ok = true; for (let i = 0; i < 8000 && trains[2].st !== 'station'; i++) { step(.025); // train 1 retenu (cantonnement) tant que le rail du pont porte le train 2
+        if (atAnchor(trains[2]) && (trains[1].v > .05 || trains[1].s > S_PRE + .5)) ok = 'moved'; if (trains[1].st === 'run' && trains[2].st === 'run' && trains[2].s > trains[1].s && trains[2].s - trains[1].s < TLEN) ok = 'gap'; } // gap : avant que le train 2 repasse s=0
+        ui(); if (!(ok === true && trains[2].st === 'station' && trains[1].st === 'run')) console.error('DBG held1', JSON.stringify({ok, t1: [trains[1].st, trains[1].s, trains[1].v], t2: [trains[2].st, trains[2].s, trains[2].v], S_PRE, R0, R1, S_HOLD})); return ok === true && trains[2].st === 'station' && trains[1].st === 'run'; }));
+      ok('pass2', await until("trains[2].phase==='board'", 8000));
+      await gates(); await click('#zSt_f'); ok('depart2', await until("trains[2].st==='run'&&trains[2].s>S_ST+TLEN+3", 4000));
       ok('pass1', await until("trains[1].st==='station'", 8000));
-      // sortir le train 2 (voie 2) : il revient sur le circuit en P et y est retenu (zone de stockage) tant que la gare est occupée
-      await click('#y2'); await until('G.dev.k>.3', 400); await click('#bStop'); // arrêt d'urgence : le pont est figé
+      // sortir le train 0 (voie 3) : il revient sur le circuit en P et y est retenu (zone de stockage) tant que la gare est occupée
+      await click('#y3'); await until('G.dev.k>.3', 400); await click('#bStop'); // arrêt d'urgence : le pont est figé
       { const k = await page.evaluate(() => G.dev.k); await until('false', 100); await click('#y1');
         ok('estopFrozen', await page.evaluate(k0 => devMoving() && G.dev.k === k0, k) && await logHas('arrêt d.urgence')); }
-      await click('#bStop'); ok('dev2b', await until('devOn(1)', 4000));
-      await click('#zL2_d'); ok('onCar2b', await until('trains[2].lane<0&&!trains[2].mv', 8000));
+      await click('#bStop'); ok('dev2b', await until('devOn(2)', 4000));
+      await click('#zL3_d'); ok('onCar2b', await until('trains[0].lane<0&&!trains[0].mv', 8000));
       ok('carHoldsAhead', await page.evaluate(() => { // rail du pont = zone d'attente (propriétaire, 2026-11-17) : un train au-delà du pont ne bloque pas le retour, un train en amont (dernier canton) oui
-        const c = trains[2], o = trains.find(x => x !== c && x.st !== 'garage'); if (!o) return true; const k = {st: o.st, s: o.s}; o.st = 'run';
+        const c = trains[0], o = trains.find(x => x !== c && x.st !== 'garage'); if (!o) return true; const k = {st: o.st, s: o.s, v: o.v}; o.st = 'run'; o.v = 1;
         o.s = R1 + TLEN + 1; const a = anchorFree(c); o.s = S_PRE - 1; const b = anchorFree(c); Object.assign(o, k); return a && !b; }));
-      await click('#yP'); ok('back2b', await until("trains[2].st==='run'&&circIn()&&atAnchor(trains[2])", 4000)); await shot('7-retour-en-P');
-      ok('stored2', await until('false', 200) || await page.evaluate(() => (atAnchor(trains[2]) || onPsb(trains[2])) && trains.some(t => t.st === 'station'))); // stocké au frein final / rail du pont, ou sur la zone d'attente avant gare (Pre)
+      await click('#yP'); ok('back2b', await until("trains[0].st==='run'&&circIn()&&atAnchor(trains[0])", 4000)); await shot('7-retour-en-P');
+      ok('stored2', await until('false', 200) || await page.evaluate(() => (atAnchor(trains[0]) || onPsb(trains[0])) && trains.some(t => t.st === 'station'))); // stocké au frein final / rail du pont, ou sur la zone d'attente avant gare (Pre)
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus (aiguillage dans le prolongement de la gare) ; Goudurix : aiguillage en amont (yard.back), entrée au garage en marche arrière
       const lbk = await page.evaluate(() => LBK), PUSH = '#zL1_d', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones ; garage : bouton Dispatch de la voie (issue #11)
