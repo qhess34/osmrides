@@ -19,7 +19,7 @@ const OSM_ENTRY=(()=>{const p0=QS.parts[0]&&QS.parts[0].pts;if(!p0||p0.length<2)
   const rest=P.slice(j).filter(q=>Math.hypot(q[0]-B[0],q[1]-B[1])>.05);
   QS.link=(QS.link||[]).concat(lead.filter((q,n)=>n||!QS.link||!QS.link.length||Math.hypot(q[0]-QS.link[QS.link.length-1][0],q[1]-QS.link[QS.link.length-1][1])>.05));
   QS.lead=lead;QS.entry0=B;QS.parts[0].pts=[B].concat(rest);return {b:best.b,side:hingeSide(best.b,best.r.t)||1};})();
-const ENTRY0=QS.entry0,ENTRY_GATE=Object.assign({t:1},QS.gate); // gate.a : fermé en travers du chemin, gate.b : ouvert le long de la bordure
+let ENTRY0=QS.entry0;const ENTRY_GATE=Object.assign({t:1},QS.gate); // gate.a : fermé en travers du chemin, gate.b : ouvert le long de la bordure
 if(OSM_ENTRY)Object.assign(ENTRY_GATE,gateAt(QS.parts[0].pts,0,false,1.1,OSM_ENTRY.side)); // recalée à la largeur dessinée par reGates
 function osmGates(p){if(!OSMB.length||!p.loop||!p.short)return null;const S=p.short,out=[];
   for(const b of OSMB){const r0=Math.hypot(b[0]-S[0][0],b[1]-S[0][1]),r1=Math.hypot(b[0]-S[S.length-1][0],b[1]-S[S.length-1][1]);
@@ -128,7 +128,7 @@ const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):((
   return Object.assign(r,{cfg:g,part:p});};
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
 function reGates(){for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);l.g=l.gs[0];}
-  if(OSM_ENTRY){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY.side));}} // barrière d'entrée OSM : au départ de la file, à la largeur dessinée
+  if(OSM_ENTRY||QS.gateMoved){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));}} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
 // Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise de la gare (agrandie à ses quais, STATION_GROW),
 // qui la longe (parallèle à la voie de gare) et dont le sommet est à moins de 4 m d'une porte OSM (entrance=*) est dessiné À L'EXTÉRIEUR, collé au mur : décalé perpendiculairement à la voie, côté extérieur, jusqu'à ce que son bord
 // intérieur (largeur APPW) touche le mur. Les points de la file, de la sortie et des allées posés sur lui sont décalés d'autant (visiteurs sur l'escalier). o.app={nx,nz,top}
@@ -198,6 +198,10 @@ const QMOUTH_MAX=QS.mouthMax!=null?QS.mouthMax:.2; // part maximale de la profon
   let d=want-inL;while(d>.3&&!pin(Z,[C[0][0]+ux*(d+.8),C[0][1]+uz*(d+.8)]))d-=.2; // reste dans la zone (0,8 m de marge)
   if(d<=.3)return;const M=[+(C[0][0]+ux*d).toFixed(2),+(C[0][1]+uz*d).toFixed(2)];QS.link=[M].concat(QS.link||[]);fix(M);
 })();
+// Barrière d'entrée au bout du prolongement (SITE.queue.gateAtMouth, propriétaire, issue #9, Zeus : barrière devant la statue) : AJUSTEMENT du jeu, pas OSM.
+// Le raccord dans la zone piétonne devient le début de la file : la barrière d'entrée (nœud OSM ou QS.gate) est déplacée à la bouche du couloir (QS.mouthAt).
+if(QS.gateAtMouth&&QS.link&&QS.link.length){const P=QS.parts[0].pts,L=QS.link;QS.osmEntry0=ENTRY0.slice();QS.parts[0].pts=L.concat(P.filter((q,i)=>i||Math.hypot(q[0]-L[L.length-1][0],q[1]-L[L.length-1][1])>.05));
+  ENTRY0=QS.entry0=L[0].slice();QS.link=[];QS.lead=[];QS.gateMoved=1;Object.assign(ENTRY_GATE,gateAt(QS.parts[0].pts,0,false,1.1,OSM_ENTRY?OSM_ENTRY.side:1));}
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}

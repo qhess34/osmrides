@@ -27,7 +27,9 @@ const SITE=(()=>{
     fade:[[0,2.5,9],[7.3,-3.7,1.5],[49,-3,8],[-4,11.4,4]],   // toits qui s'effacent : gare, poste de conduite, garage, escalier
     plat:{load:7.9,exit:3,back:.1,front:1.6},   // exit : quai de débarquement côté nord jusqu'au mur (ESTIMÉ d'après le bâtiment OSM) ; couloir de descente au milieu
     booth:[7.275,-3.7,0],boothLabel:[10.5,-6.6],beacon:[9.6,-4.9],
-    queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],gate:{h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28]},
+    // Entrée (propriétaire, issue #9) : file prolongée de 4,5 m dans la zone piétonne (45 % de ses 10 m de profondeur) et barrière d'entrée déplacée au bout,
+    // devant la statue : AJUSTEMENT du jeu (le nœud OSM « Entrée T2Z » est sous la statue, en (-28 ; -1,2)), voir engine/queue.js gateAtMouth.
+    queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],mouthMax:.45,gateAtMouth:true,gate:{h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28]},
       parts:[
         {pts:[ENTRY0].concat(W.slice(0,JB+1))},
         // Raccourcis (propriétaire, 2026-11-16, lot 5) : deux barrières PARALLÈLES par raccourci, comme la boucle de la Trace du Hourra (engine/queue.js forkGate, pivot 'edge') :

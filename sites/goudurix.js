@@ -47,7 +47,8 @@ const SITE=(()=>{
     plat:{load:6.2,exit:3.5,back:.6,front:1.6,gatesPer:'row'},
     // Poste de contrôle au SUD-EST de la gare, dans son emprise, vitre tournée vers la voie (propriétaire, lot 6) ; pupitre réduit (échelle .55 : 2,1 x 0,9 m, ESTIMÉ).
     booth:[2.25,8.6,Math.PI/2,.55],boothLabel:[7,12],beacon:[2.55,7.75],
-    queue:{entry0:ENTRY0,link:[],gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
+    // Entrée (propriétaire, issue #9 : « ça dépasse trop ») : la barrière OSM est déjà dans la zone piétonne, aucun prolongement (mouthMax 0 : raccord retiré).
+    queue:{entry0:ENTRY0,link:[],mouthMax:0,gate:{h:[22.2,26.7],a:[20.6,25.5],b:[20.9,28.3]},   // barrière d'entrée ESTIMÉE au départ OSM de la file
       parts:[{pts:[ENTRY0].concat(Q.slice(Math.hypot(Q[0][0]-ENTRY0[0],Q[0][1]-ENTRY0[1])<1.5?1:0,F0+1))},
         // boucle 1580112207 (propriétaire, 2026-11-16) : barrières liées à son ENTRÉE et à sa SORTIE (jumelle de sortie posée par le moteur), à 1,6 m des bouts (ESTIMÉ)
         {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP,gates:[{on:'loop',at:1.6}]},
