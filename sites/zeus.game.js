@@ -37,6 +37,18 @@ const GAME = {
         "ang": 1.4,
         "len": 2.2
       }
+    },
+    "fork:raccourci ouest:fork0": {
+      "x": -27.5,
+      "z": 26.85,
+      "a": {
+        "ang": -29.7,
+        "len": 2.2
+      },
+      "b": {
+        "ang": -122,
+        "len": 2.15
+      }
     }
   },
   "controlRooms": [
