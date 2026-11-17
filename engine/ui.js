@@ -54,13 +54,14 @@ function ui(){
   }
   for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z==='Fin'||z==='Pre')&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
+    if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : bouton Dispatch, allumé pendant un mouvement
     if(z==='Lift'){$('zLift_on').classList.toggle('lit',!G.liftOff);$('zLift_off').classList.toggle('lit',G.liftOff);continue;}
     const man=!Z.auto||!!G.zm[z];
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}
     if(z==='St'){const h=stHeld();$('zSt_fr').textContent=h?'SERRÉS':'LIBRES';$('zSt_fr').classList.toggle('lit',h);}
     if(Z.brake){const b=$('z'+z+'_k');b.classList.toggle('lit',zK(z)||(!man&&ts.some(t=>t.st==='run'&&t.v===0)));b.disabled=!man;} // allumé = freins serrés (en AUTO : train retenu par le cantonnement)
-    if(Z.drive){if(Z.fwd!==false)$('z'+z+'_f').classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||(t.st==='station'&&t.depReq))||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));$('z'+z+'_b').classList.toggle('lit',ts.some(t=>t.mv<0));
-      for(const c of Z.fwd===false?'bx':'fbx')$('z'+z+'_'+c).disabled=!man;}}
+    if(Z.drive){$('z'+z+'_f').classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||(t.st==='station'&&t.depReq))||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));$('z'+z+'_b').classList.toggle('lit',ts.some(t=>t.mv<0));
+      for(const c of 'fbx')$('z'+z+'_'+c).disabled=!man;}}
   $('zAuto').disabled=!ZONES.some(Z=>Z.auto&&G.zm[Z.id]);
   POS_ORDER.forEach(p=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
   if(RA){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});

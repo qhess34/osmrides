@@ -51,9 +51,9 @@ const root = path.resolve(__dirname, '..');
       await page.evaluate(() => act('zone', 'B1:k')); ok('refuseAuto', await logHas('en AUTO : passez'));
       await click('#zB1_m'); await click('#zB1_k'); ok('blk1Held', await until('trains[0].blk&&trains[0].v===0&&Math.abs(trains[0].s-BLK[0])<.5', 8000) && await logHas('arrêté au frein de bloc 1'));
       await shot('1-repos');
-      // sortir le train de la voie k : chariot face à la voie, AR de la voie (sur le rail B), rail A retiré, chariot sur G, Avancer (rail B) vers la gare
+      // sortir le train de la voie k : chariot face à la voie, Dispatch de la voie (sur le rail B), rail A retiré, chariot sur G, Avancer (rail B) vers la gare
       await click('#y' + o.k); ok('dev' + o.k, await until(`devOn(${o.k - 1})`, 4000));
-      await click(`#zL${o.k}_b`); ok('onCar' + o.i, await until(`trains[${o.i}].lane<0&&!trains[${o.i}].mv`, 8000));
+      await click(`#zL${o.k}_d`); ok('onCar' + o.i, await until(`trains[${o.i}].lane<0&&!trains[${o.i}].mv`, 8000));
       await click('#yG'); ok('refuseRailA', await logHas('ne vient en ligne que si') && await page.evaluate(() => !devMoving()));
       await click('#yA1'); ok('raOut', await until('raOut()', 4000));
       await click('#yG'); ok('carried' + o.i, await until(`devMoving()&&onCar(trains[${o.i}])`, 40));
@@ -65,7 +65,7 @@ const root = path.resolve(__dirname, '..');
       ok('stillHeld', await page.evaluate(() => trains[0].v === 0 && Math.abs(trains[0].s - BLK[0]) < .5));
       await click('#zB1_k'); ok('blk1Released', await until('trains[0].s>BLK[0]+5', 2000));
       // garer le train 0 (vide) : frein final en MANU serré (arrêt avant le pont), rail A retiré, chariot sur G, relâcher, Avancer (frein final) sur le rail B,
-      // chariot sur une voie libre (il l'emporte), Avancer (rail B) dans la voie, chariot au repos, rail A sur le circuit
+      // chariot sur une voie libre (il l'emporte), Dispatch de la voie (il y entre), chariot au repos, rail A sur le circuit
       await click('#zFin_m'); await click('#zFin_k');
       ok('preHeld0', await until('trains[0].v===0&&Math.abs(trains[0].s-S_PRE)<.5', 20000) && await logHas('frein final serré'));
       await click('#zFin_f'); ok('refuseFinBrake', await logHas('freins serrés, relâchez'));
@@ -77,15 +77,17 @@ const root = path.resolve(__dirname, '..');
       await click('#y' + f); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
       await click('#yA0'); ok('refuseMovingA', await logHas('ne revient sur le circuit que si'));
       ok('dev' + f, await until(`devOn(${f - 1})`, 4000)); await shot('4-chariot-voie');
-      await click(`#zL${f}_k`); await click('#zRB_f'); ok('refuseLaneBrake', await logHas(`Freins de Voie ${f} serrés`)); await click(`#zL${f}_k`);
-      await click('#zRB_f'); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400));
+      await click('#zRB_f'); ok('refuseRBpush', await logHas('au bouton Dispatch de cette voie'));
+      await click(`#zL${f === 1 ? 2 : 1}_d`); ok('refuseNotOn', await logHas('n.est pas en place sur cette voie'));
+      await click(`#zL${f}_d`); ok('in0', await until(`trains[0].lane===${f - 1}&&trains[0].g>G_B+2`, 400));
       await click('#y' + (f === 1 ? 2 : 1)); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until(`trains[0].st==='garage'&&trains[0].lane===${f - 1}&&!trains[0].mv&&!nearDev(trains[0])`, 8000));
+      ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
       if (f !== d0) { await click('#y' + d0); ok('devRest2', await until(`devOn(${d0 - 1})`, 4000)); }
       await click('#yA0'); ok('raIn2', await until('raIn()', 4000)); await shot('5-railA-revenu');
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin && !G.zm.B1));
       // stockage : en AUTO, frein avant gare (Pre), rail mobile du parcours (RA) et frein final (Fin) retiennent un train chacun pendant que la gare est occupée
-      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zPre_m')));
+      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zPre_m')));
       // le 3e train part d'avant le dernier frein de bloc (cantonnement)
       const three = await page.evaluate(() => { const g = trains.filter(t => t.st === 'garage' && !t.mv).slice(0, 3); if (g.length < 3 || !trains.some(t => t.st === 'station')) return null;
         g.forEach((t, k) => { t.st = 'run'; t.s = k < 2 ? S_PRE - 14 - k * (TLEN + 3) : BLK[BLK.length - 1] - 20; t.v = 4; t.lane = 0; t.g = 0; t.mv = 0; t.depReq = false; t.inLift = false; t.inBrake = false; t.blk = false; t.entering = false; t.toPre = false; t.hold = 0; t.fdrive = 0; t.told = false; t.preTold = false; t.lkTold = false; });
@@ -114,7 +116,7 @@ const root = path.resolve(__dirname, '..');
       await click('#bAuto');
     } else if (trav && await page.evaluate(() => LREV && SG)) { // OzIris : pont transbordeur à RAIL UNIQUE (le rail du circuit vient chercher les trains ; P, 1…3), voies en amont (yard.rev)
       ok('noYG', await page.evaluate(() => !document.getElementById('yG') && !!document.getElementById('yP') && !document.getElementById('zRA_m') && !!document.getElementById('zRB_m')
-        && !document.getElementById('zL1_f') && document.getElementById('zL1_b').textContent === 'AV'));
+        && !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !!document.getElementById('zL1_d')));
       await click('#bAuto'); await gates();
       // garer le train 0 (vide) : Rail du pont en MANU, freins serrés (le train s'y arrête), pont sur la voie 3 (il emporte le train), relâcher, Rail du pont AR (dans la voie), pont sur P
       await click('#zRB_m'); await click('#zRB_k'); ok('rbManu', await page.evaluate(() => zK('RB')));
@@ -125,16 +127,18 @@ const root = path.resolve(__dirname, '..');
       await click('#y3'); ok('carry0', await until("devMoving()&&trains[0].st==='garage'&&trains[0].lane<0", 40));
       await until('G.dev.k>.5', 400); await shot('2-rail-emporte-le-train');
       ok('dev3', await until('devOn(2)', 4000)); await shot('3-face-voie-3');
-      await click('#zRB_b'); ok('refuseRBBrake', await logHas('freins serrés, relâchez'));
-      await click('#zRB_k'); await click('#zRB_f'); ok('refuseRBfwd', await logHas('entre dans une voie en marche arrière'));
-      await click('#zRB_b'); ok('in0', await until('trains[0].lane===2&&trains[0].g>G_B+2', 400)); await shot('4-recul-dans-la-voie-3');
+      await click('#zL3_d'); ok('refuseRBBrake', await logHas('Freins de Rail du pont serrés'));
+      await click('#zRB_k'); await click('#zRB_b'); ok('refuseRBpush', await logHas('au bouton Dispatch de cette voie'));
+      await click('#zL1_d'); ok('refuseNotOn', await logHas('n.est pas en place sur cette voie'));
+      await click('#zL3_d'); ok('in0', await until('trains[0].lane===2&&trains[0].g>G_B+2', 400)); await shot('4-recul-dans-la-voie-3');
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&trains[0].lane===2&&!trains[0].mv&&!nearDev(trains[0])", 8000));
+      ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
       await click('#yP'); ok('devP', await until('circIn()', 4000));
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.RB && !G.zm.B1));
-      // sortir le train 1 (voie 1) : pont (vide) face à la voie 1, Voie 1 AV (sur le rail du pont), pont sur P : il repart seul vers la gare (zone en AUTO)
+      // sortir le train 1 (voie 1) : pont (vide) face à la voie 1, Dispatch de la voie 1 (sur le rail du pont), pont sur P : il repart seul vers la gare (zone en AUTO)
       await click('#y1'); ok('dev1', await until('devOn(0)', 4000));
-      await click('#zL1_b'); ok('onCar1', await until('trains[1].lane<0&&!trains[1].mv', 8000)); await shot('5-sortie-sur-rail-du-pont');
+      await click('#zL1_d'); ok('onCar1', await until('trains[1].lane<0&&!trains[1].mv', 8000)); await shot('5-sortie-sur-rail-du-pont');
       await click('#yP'); ok('back1', await until("trains[1].st==='run'&&circIn()&&tZone(trains[1])==='RB'", 4000));
       ok('station1', await until("trains[1].st==='station'&&trains[1].phase==='board'", 8000));
       // rail hors de P : le train du circuit attend avant le pont (frein final en AUTO), puis passe quand le rail revient
@@ -143,28 +147,27 @@ const root = path.resolve(__dirname, '..');
       ok('circuitHeld1', await until('trains[1].v===0&&Math.abs(trains[1].s-S_PRE)<.5', 20000) && await logHas('attend avant'));
       await shot('6-circuit-interrompu');
       if (/circuitHeld1:FAIL/.test(steps.join(' '))) console.log('DBG', await page.evaluate(() => JSON.stringify({t1: [trains[1].st, trains[1].s, trains[1].v, zoneOf(trains[1].s)], S_PRE, lb: G.liftBroken, bf: G.brakeFault, dev: G.dev, log: $('log').textContent.slice(0, 600)})));
-      await click('#zL2_b'); ok('onCar2', await until('trains[2].lane<0&&!trains[2].mv', 8000));
+      await click('#zL2_d'); ok('onCar2', await until('trains[2].lane<0&&!trains[2].mv', 8000));
       await click('#yP'); ok('refuseLastCanton', await logHas('Dernier canton occupé') && await page.evaluate(() => devOn(1)));
-      await click('#zRB_m'); await click('#zRB_b'); ok('back2', await until('trains[2].lane===1&&!trains[2].mv&&!nearDev(trains[2])', 8000));
+      await click('#zL2_d'); ok('back2', await until('trains[2].lane===1&&!trains[2].mv&&!nearDev(trains[2])', 8000));
       await click('#yP'); ok('devP2', await until('circIn()', 4000));
       ok('pass1', await until("trains[1].st==='station'", 8000));
-      await click('#zAuto');
       // sortir le train 2 (voie 2) : il revient sur le circuit en P et y est retenu (zone de stockage) tant que la gare est occupée
       await click('#y2'); await until('G.dev.k>.3', 400); await click('#bStop'); // arrêt d'urgence : le pont est figé
       { const k = await page.evaluate(() => G.dev.k); await until('false', 100); await click('#y1');
         ok('estopFrozen', await page.evaluate(k0 => devMoving() && G.dev.k === k0, k) && await logHas('arrêt d.urgence')); }
       await click('#bStop'); ok('dev2b', await until('devOn(1)', 4000));
-      await click('#zL2_b'); ok('onCar2b', await until('trains[2].lane<0&&!trains[2].mv', 8000));
+      await click('#zL2_d'); ok('onCar2b', await until('trains[2].lane<0&&!trains[2].mv', 8000));
       await click('#yP'); ok('back2b', await until("trains[2].st==='run'&&circIn()&&atAnchor(trains[2])", 4000)); await shot('7-retour-en-P');
       ok('stored2', await until('false', 200) || await page.evaluate(() => (atAnchor(trains[2]) || onPsb(trains[2])) && trains.some(t => t.st === 'station'))); // stocké au frein final / rail du pont, ou sur la zone d'attente avant gare (Pre)
       await click('#bAuto');
     } else if (hasYard && !trav && !brake) { // Tonnerre 2 Zeus (aiguillage dans le prolongement de la gare) ; Goudurix : aiguillage en amont (yard.back), entrée au garage en marche arrière
-      const lbk = await page.evaluate(() => LBK), PUSH = lbk ? '#zSt_b' : '#zSt_f', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones
-      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zSt_f')));
+      const lbk = await page.evaluate(() => LBK), PUSH = '#zL1_d', SB = lbk ? 'S_ST' : 'SW_B'; // commandes par zones ; garage : bouton Dispatch de la voie (issue #11)
+      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_f') && !document.getElementById('zL1_b') && !document.getElementById('zL1_k') && !!document.getElementById('zL1_d') && !!document.getElementById('zSt_f')));
       await click('#bAuto'); await gates();
       await click('#zSt_f'); ok('depart0', await until(`trains[0].st==='run'&&trains[0].s>${SB}+TLEN+3`, 4000));
       await click('#y1'); ok('dev1', await until('devOn(0)', 800));
-      await click('#zL1_b'); ok('out1', await until("trains[1].st==='station'", 8000));
+      await click('#zL1_d'); ok('out1', await until("trains[1].st==='station'", 8000));
       await click('#yP'); ok('devP', await until('!devOff()', 800));
       // frein final en MANU, serré : il retient le train 0 ; relâchement refusé tant que la gare est occupée (anti-collision)
       await click('#zFin_m'); await click('#zFin_k');
@@ -172,13 +175,14 @@ const root = path.resolve(__dirname, '..');
       await click('#zFin_k'); ok('refuseAntiCollision', await logHas('relâchement refusé, section suivante occupée'));
       await click('#zSt_f'); ok('depart1', await until(`trains[1].st==='run'&&trains[1].s>${SB}+TLEN+3`, 4000));
       await click('#zFin_k'); ok('arrive0', await until("trains[0].st==='station'&&trains[0].phase==='board'", 20000));
+      await click(PUSH); ok('refuseNotOn', await logHas('n.est pas en place sur cette voie'));
       await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
       await click('#bGate'); await click(PUSH); ok('refuseGates', await logHas('Portillons ouverts : fermez-les'));
       await click('#bGate'); await until('!G.gatesOpen&&G.gate<.05', 400);
-      await click('#zL1_k'); await click(PUSH); ok('refuseLaneBrake', await logHas('Freins de Garage serrés')); await click('#zL1_k');
       await click(PUSH); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 400));
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 8000));
+      ok('buffer0', await page.evaluate(() => LANES[trains[0].lane].end - trains[0].g > .5 && trains[0].g <= LANES[trains[0].lane].stop + .01)); // marge au butoir (issue #11)
       await click('#yP'); ok('devP2', await until('!devOff()', 800));
       // frein final en MANU : serré, il retient le train 1 ; relâché, le train entre en gare
       await click('#zFin_k');
@@ -187,23 +191,23 @@ const root = path.resolve(__dirname, '..');
       await click('#zAuto'); ok('allAuto', await page.evaluate(() => !G.zm.Fin));
       await click('#bAuto');
     } else if (hasYard && !trav && brake) { // Goudurix : aiguillage au frein final (le train s'arrête à l'aiguillage, la zone porteuse est le frein final)
-      ok('noLaneFwd', await page.evaluate(() => !document.getElementById('zL1_f') && !!document.getElementById('zL1_b') && !!document.getElementById('zFin_f')));
+      ok('dispatchOnly', await page.evaluate(() => !document.getElementById('zL1_b') && !!document.getElementById('zL1_d') && !!document.getElementById('zFin_f')));
       await click('#bAuto'); await gates();
       await click('#zSt_f'); ok('depart0', await until("trains[0].st==='run'&&trains[0].s>S_ST+TLEN+3", 4000));
-      // sortir le train garé : aiguillage sur la voie, Garage AR, puis aiguillage sur P une fois le train dégagé
+      // sortir le train garé : aiguillage sur la voie, Dispatch de la voie, puis aiguillage sur P une fois le train dégagé
       await click('#y1'); ok('dev1', await until('devOn(0)', 400));
-      await click('#zL1_b'); ok('out1', await until("trains[1].st==='run'&&trains[1].v===0&&Math.abs(trains[1].s-S_HOLD)<.4", 8000)); // revenu sur le frein final
+      await click('#zL1_d'); ok('out1', await until("trains[1].st==='run'&&trains[1].v===0&&Math.abs(trains[1].s-S_HOLD)<.4", 8000)); // revenu sur le frein final
       await click('#yP'); ok('devP', await until('!devOff()', 800));
       ok('in1', await until("trains[1].st==='station'", 8000));
       // frein final en MANU, serré : il retient le train 0 ; relâchement refusé tant que la gare est occupée (anti-collision)
       await click('#zFin_m'); await click('#zFin_k');
       ok('finHeld0', await until("trains[0].st==='run'&&trains[0].v===0&&Math.abs(trains[0].s-S_HOLD)<.4", 30000));
       await click('#zFin_k'); ok('refuseAntiCollision', await logHas('relâchement refusé, section suivante occupée'));
-      // le train 1 repart (gare libre), puis garer le train 0 (vide, arrêté à l'aiguillage) : aiguillage sur la voie (entrée en gare bloquée), freins relâchés, Frein final AV le pousse dans la voie
+      // le train 1 repart (gare libre), puis garer le train 0 (vide, arrêté à l'aiguillage) : aiguillage sur la voie (entrée en gare bloquée), freins relâchés, Dispatch de la voie le fait entrer
       await click('#zSt_f'); ok('depart1', await until("trains[1].st==='run'&&trains[1].s>S_ST+TLEN+3", 4000));
       await click('#y1'); ok('dev1b', await until('devOn(0)', 800));
       await click('#zFin_k'); ok('finRel0', await until("!G.zk.Fin", 400));
-      await click('#zFin_f'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000));
+      await click('#zL1_d'); ok('in0', await until("trains[0].st==='garage'&&trains[0].g>4", 4000));
       await click('#yP'); ok('refuseLocked', await logHas('verrouillé'));
       ok('parked0', await until("trains[0].st==='garage'&&!trains[0].mv&&!nearDev(trains[0])", 12000));
       await click('#yP'); ok('devP2', await until('!devOff()', 800));
