@@ -44,25 +44,24 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-17 par la session de pilotage n° 2 (reprise du 16/11)._
+_Mis à jour le 2026-11-17 (soir) par la session de pilotage n° 3._
 
-**Publié sur `main`** (tout est aussi sur la branche de travail) :
-- 4 attractions jouables : Tonnerre 2 Zeus, La Trace du Hourra, OzIris, Goudurix ; plan du parc ; écran titre, tutoriels, À propos ; PWA installable et hors ligne ; mobile et plein écran.
-- Moteur commun : commande par zones (AUTO/MANU), règle du lift, règle de départ avec appareil hors de P, garages (aiguillage, pont transbordeur deux rails et rail unique, aiguillage rotatif en S), sécurités, synoptique, sauvegarde, bac à sable, sons synthétisés, inversions, tunnels/rochers/passerelles/escaliers/zones piétonnes lus dans OSM.
-- Lots 7–9 (16–17/11) : gouttière du bob étroite en gare, au lift, aux freins et au garage (#6) ; passerelles de service + escaliers le long du lift (à droite, info propriétaire) et des freins, sauf Zeus (#7) ; import OSM du 17/11 : zones piétonnes, rochers TDH, files, arbres, **barrières OSM lues par le jeu** (#8, #2) ; entrée de file de Zeus (#10) ; prolongement des files plafonné (`queue.mouthMax`, Zeus 4,5 m barrière devant la statue, Goudurix 0, #9) ; barrières en travers du chemin, poteau côté `hinge` (#12) ; garage : un bouton **Dispatch** + un bouton freins **F** par voie, marge 2 m au butoir, chariot / pont = un seul train (#11) ; OzIris : arrêt en gare au bout du tronçon OSM `station`, nouvelle entrée (#13). Montages `docs/plans/lot-7.jpg`, `lot-8.jpg`, `lot-9.jpg`.
-- #14 (bâtiment « Au Dolmen Gourmand » à dessiner sous la voie du Hourra) : publié (011a260) ; règle générique (bâtiment entièrement survolé dessiné sous la voie, hauteur OSM `height` / `building:levels` lue, sinon 7 m ESTIMÉ) ; seul cas : Dolmen Gourmand.
+**Nouvelle orientation (propriétaire, 17/11)** : moteur d'attractions générique + éditeur WYSIWYG local sous Docker, création d'attraction sans IA. Lire d'abord `docs/ROADMAP.md` (lots 0–10, modèles) et `docs/ARCHITECTURE.md` (couches de données, décisions D1–D6, écarts OSM / jeu). L'ancienne feuille de route est `docs/JOURNAL.md`.
 
-**Issues ouvertes** : #1 questions du lot 6 (Q1, Q3, Q4, Q6, Q7 sans réponse) ; #3 vérifications sur un vrai téléphone ; #4 vignettes et tutos à rafraîchir (Dispatch et freins de voie changent le pupitre garage : captures des tutos à refaire) ; #5 valeurs estimées (complétée le 17/11) ; #12 question au propriétaire : barrière OSM à ajouter sur chaque boucle de fourche, ou barrière posée automatiquement par le jeu ?
+**Publié sur `main`** :
+- Lots 10–12 du jeu : toits des abris effaçables, freins et pneus des voies de garage, rail du chariot continu (Hourra), train suspendu sous la poutre (OzIris), portillons ouverts vers le train sans dépasser le quai, réglage de patience (jusqu'à infinie), aide seulement au bouton « ? », barrières de file normalisées (#12) puis une barrière pivotante par pointe de fourche (#17), réimport OSM d'OzIris (#18).
+- Lot 0 : nettoyage (45 images obsolètes supprimées), audit, roadmap.
+- **Lot 1 fait** : éditeur `editor/` (Node sans dépendance, `compose.yaml`, port 127.0.0.1:8787), barrières (surcharges par clé stable `GAME.barriers`) et salle de contrôle unique (`GAME.controlRooms`, 0 ou 1) dans `sites/<site>.game.js` (facultatif, chargé par `jeu.html` et `build.py`). Test `tools/editor-test.js`. Aucun `game.js` réel encore : au propriétaire de corriger dans l'éditeur.
 
-**Questions en attente du propriétaire** : #12 ci-dessus ; quai d'OzIris (largeur `load` 7 m estimée) ; mobile non retesté depuis l'import OSM (lancer `tools/mobile.js` au prochain lot).
+**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos), #5 (valeurs estimées), #18 (corrections de niveaux OSM d'OzIris à faire par le propriétaire, puis réimport).
 
-**Rien en cours** au moment du renouvellement : aucun sous-agent, aucune autre session active.
+**Décisions du propriétaire** : barrières = jeu (nœud OSM = position initiale) ; une seule salle de contrôle (pupitre), aiguillage plus tard.
+
+**Prochaine tâche recommandée** : lot 2 (traçabilité OSM à l'import, Sonnet), puis lot 3 ou 5 en parallèle.
 
 **Points de vigilance** :
-- Tous les sous-agents `moteur` ont dit ne pas pouvoir lancer `testeur` : ils lancent `check.js` eux-mêmes ; le pilote relance `check.js` ×4 (et `save.js`) après une fusion.
-- Deux sous-agents en parallèle : `isolation: worktree` pour le second, puis fusion (conflit probable seulement dans `AGENTS.md`, ligne `SITE` très longue) ; supprimer le worktree après fusion.
-- Le hook d'arrêt réclame un commit quand un sous-agent a des fichiers en cours : ne pas commiter à sa place.
-- Captures des sous-agents : demander la mise en page bureau (viewport large), sinon les barres du téléphone apparaissent.
-- Les quotas : Opus/Fable peuvent atteindre la limite de 5 h ; reprendre l'agent (SendMessage) après la remise à zéro plutôt que d'en relancer un.
+- `check.js`, `save.js`, `mobile.js`, `sound.js` ignorent l'erreur de chargement attendue de `game.js` absent.
+- Docker est utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d` (tester sur une copie appartenant à 1000:1000, le dépôt cloud appartient à root).
+- Les sous-agents du dépôt (`moteur`, `attraction`) ne peuvent pas lancer `testeur` : ils testent eux-mêmes ; le pilote relance `check.js` ×4.
+- Quotas : en cas de limite, reprendre l'agent (SendMessage) après la remise à zéro.
 - Les sessions cloud ne peuvent pas ouvrir github.io ni Wikimedia ; `api.openstreetmap.org` fonctionne.
-- Questions et réponses du propriétaire : historique dans `docs/plans/QUESTIONS.md` et `docs/*-notes.md` ; décisions de manœuvre dans `docs/manoeuvres.md`.
