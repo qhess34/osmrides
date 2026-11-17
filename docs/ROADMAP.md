@@ -91,7 +91,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 
 - Nouveau module de simulation sans voie (cycles, nacelles). Opus, élevée.
 
-## Décisions à prendre par le propriétaire
+## Décisions du propriétaire
 
-- **Barrières et OSM** : jusqu'ici les nœuds OSM `barrier=*` plaçaient les barrières (issues #12, #17). Désormais la barrière relève du jeu (lot 1) : le nœud OSM reste un indice pour la position initiale ; la position finale est celle de l'éditeur. À confirmer.
-- **Salle de contrôle multiple** : la première salle porte le pupitre (poste de conduite) ; les autres sont dessinées comme locaux techniques. Faut-il un rôle par salle (conduite, aiguillage, technique) ?
+- 2026-11-17 — **Barrières** : relèvent du jeu ; le nœud OSM `barrier=*` ne donne que la position initiale, la position finale est celle de l'éditeur.
+- 2026-11-17 — **Salle de contrôle** : une seule par attraction, celle du pupitre (poste de conduite). Postes d'aiguillage et autres locaux : plus tard.
