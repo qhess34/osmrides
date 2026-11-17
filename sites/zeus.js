@@ -29,14 +29,13 @@ const SITE=(()=>{
     booth:[7.275,-3.7,0],boothLabel:[10.5,-6.6],beacon:[9.6,-4.9],
     // Entrée (propriétaire, issue #9) : file prolongée de 4,5 m dans la zone piétonne (45 % de ses 10 m de profondeur) et barrière d'entrée déplacée au bout,
     // devant la statue : AJUSTEMENT du jeu (le nœud OSM « Entrée T2Z » est sous la statue, en (-28 ; -1,2)), voir engine/queue.js gateAtMouth.
-    queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],mouthMax:.45,gateAtMouth:true,gate:{h:[-29.5,-4.39],a:[-27.4,-5.01],b:[-28.87,-2.28]},
+    queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],mouthMax:.45,gateAtMouth:true,
       parts:[
         {pts:[ENTRY0].concat(W.slice(0,JB+1))},
-        // Raccourcis (propriétaire, 2026-11-16, lot 5) : deux barrières PARALLÈLES par raccourci, comme la boucle de la Trace du Hourra (engine/queue.js forkGate, pivot 'edge') :
-        // poteaux-pivots sur la bordure du raccourci, à l'entrée et à la sortie ; route de la file inchangée (validée). Emplacements ESTIMÉS.
-        {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]],gates:[{on:'fork'}]},
+        // Raccourcis : barrières = nœuds OSM barrier=* (règle du propriétaire, issue #12, engine/queue.js osmGates) ; boucle sans nœud OSM : barrière posée par le jeu à son entrée (ESTIMÉE).
+        {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]]},
         {pts:W.slice(JA,J2+1)},
-        {name:'raccourci est',loop:W.slice(J2,J1+1),short:SHORT_E||[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]],gates:[{on:'fork'}]},
+        {name:'raccourci est',loop:W.slice(J2,J1+1),short:SHORT_E||[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]]},
         {pts:W.slice(J1)}]},
     approach:[{w:.6,pts:PROM_W.concat([[-29.2,-9]])},{w:.4,pts:PROM_N.concat([[-29.2,-9]])}],
     noStroll:[[-27.5,-1.5]],
