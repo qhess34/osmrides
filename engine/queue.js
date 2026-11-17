@@ -264,7 +264,7 @@ function updateVisitors(dt){
   const imp=w==='storm'?3:w==='rain'?1.5:1;
   for(let i=Q.length-1;i>=0;i--){
     const v=Q[i];v.w+=dt*imp;
-    if(v.w>v.pat){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3,0,'quit');continue;}
+    if(v.w>v.pat*PAT_M[G.patL]){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3,0,'quit');continue;}
     if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière d'entrée : seul passage vers la file
       if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v),v.ci,null,3,0,'turn');continue;}
       if(ENTRY_GATE.t>.02)continue;

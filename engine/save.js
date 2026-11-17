@@ -65,7 +65,7 @@
     resetOps();for(const t of trains)if(t.st==='station'&&t.phase==='check')startCheck(t);
     Object.assign(cam,d.cam);if(cam.follow>=0&&!cam.g)cam.g={s:12};
     if(typeof d.syn==='boolean'&&d.syn!==synOn)toggleSyn();
-    $('crowd').value=Math.round(G.crowd*100);$('crowd').dispatchEvent(new Event('input'));
+    $('crowd').value=Math.round(G.crowd*100);$('crowd').dispatchEvent(new Event('input'));if(!(G.patL>=0&&G.patL<=5))G.patL=1;$('patL').value=G.patL;$('patL').dispatchEvent(new Event('input'));
     $('mHelp').classList.add('hidden');
     if(d.day_modal){$('dTitle').textContent=d.day_modal[0];$('dTable').innerHTML=d.day_modal[1];$('dMsg').textContent=d.day_modal[2];$('dBtn').textContent=d.day_modal[3];$('mDay').classList.remove('hidden');}
     else $('mDay').classList.add('hidden');

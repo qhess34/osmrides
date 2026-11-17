@@ -459,6 +459,9 @@ function act(a,arg){
   ui();
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&!b.disabled)act(b.dataset.act,b.dataset.arg);});
+// patience des visiteurs (G.patL, niveau 0…5) : multiplie la patience tirée à l'arrivée (v.pat) ; le dernier niveau est infini (personne ne quitte la file)
+const PAT_M=[.5,1,2,4,8,Infinity],PAT_N=['faible','normale','grande','très grande','extrême','infinie'];
+$('patL').addEventListener('input',e=>{G.patL=+e.target.value;$('patV').textContent=PAT_N[G.patL];});
 $('crowd').addEventListener('input',e=>{G.crowd=e.target.value/100;const c=+e.target.value;
   $('crowdV').textContent=c+' % — '+(c===0?'parc vide':c<=50?'faible':c<=120?'normale':c<=200?'forte':'saturée');});
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target.tagName!=='BUTTON'){e.preventDefault();act('speed',G.speed?0:1);}});
