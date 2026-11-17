@@ -18,9 +18,9 @@ const SITE=(()=>{
   const lane=(n,d)=>({name:'Voie '+n,d,cap:1});
   return {
     id:'hourra',title:'La Trace du Hourra',kind:'bob',trackName:'Gouttière',goal:900,lap:110,
-    // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées. pitch : 0,78 m d'axe à axe entre les deux passagers
+    // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées. pitch : 0,56 m d'axe à axe, passagers l'un contre l'autre (propriétaire, 2026-11-17 : pas d'espace entre eux)
     // (propriétaire : « collés l'un contre l'autre ») ; tient dans 1,55 m avec la lapbar devant le passager avant, sans allonger le bob.
-    car:{len:1.55,n:7,seats:2,inline:true,w:.95,pitch:.78},
+    car:{len:1.55,n:7,seats:2,inline:true,w:.95,pitch:.56},
     // 6 trains (propriétaire), 5 au plus sur le parcours : les 5 autres démarrent chacun sur sa voie de garage. Teintes sourdes supposées (couleurs réelles non vérifiées).
     // Gouttière rouge foncé à nervures extérieures, bord rouge vif (photo du propriétaire, 2026-11-14)
     trough:{lo:[112,38,36],hi:[140,52,46],edge:'#5a1f1c',deck:'#6e2622',rim:'#b8322c',shine:'rgba(255,220,210,.12)'},
