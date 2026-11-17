@@ -270,7 +270,18 @@ const root = path.resolve(__dirname, '..');
       act('zone', 'B1:b'); o.push(L(/marche avant seulement/) ? 'refuseAR' : 'refuseAR:FAIL');
       if (B) { B.st = 'run'; B.s = BLK[0] + TLEN + 15; B.v = 0; act('zone', 'B1:f'); o.push(L(/Canton suivant occupé/) && !A.bgo ? 'refuseBusy' : 'refuseBusy:FAIL'); B.st = 'garage'; B.g = 1e3; }
       act('zone', 'B1:f'); run(() => A.s > BLK[0] + 5, 2000); o.push(A.s > BLK[0] + 5 ? 'avGo' : 'avGo:FAIL'); act('zone', 'B1:m'); return ' | blkAV: ' + o.join(' '); });
-    man += bf; await p3.close();
+    man += bf;
+    // pont droit : un train porté par le chariot face à une voie ne bloque pas le dernier canton (propriétaire, 2026-11-17) ; le train qui arrive est retenu avant le pont (aucun rail en ligne)
+    await p3.reload(); await p3.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p3.click('[data-act=closeHelp]');
+    const cb = await p3.evaluate(() => { if (!TRAV || trains.length < 2) return ''; act('speed', 0); G.wx.next = 1e6; const o = [], C = trains.find(t => t.st === 'garage') || trains[1], A = trains.find(t => t !== C);
+      for (const t of trains) { t.seats.fill(null); if (t !== A && t !== C) { t.st = 'garage'; t.g = 1e3; } }
+      C.st = 'garage'; C.lane = -1; C.g = G_B; C.mv = 0; C.v = 0; G.dev.pos = G.dev.to = 1; G.dev.k = 1; if (RA) { G.ra.pos = G.ra.to = 1; G.ra.k = 1; }
+      o.push(onCar(C) && !yardBlocks(null) ? 'carAwayFree' : 'carAwayFree:FAIL');
+      G.dev.pos = G.dev.to = PC; const inl = yardBlocks(null); G.dev.pos = G.dev.to = 1; o.push(inl ? 'carInLineBlocks' : 'carInLineBlocks:FAIL');
+      A.st = 'run'; A.s = (BLK.length ? BLK[BLK.length - 1] : S_BRK) - 30; A.v = 6; A.inLift = true; A.blk = false; A.inBrake = false;
+      for (let i = 0; i < 12000 && !(A.v === 0 && A.s > S_BRK); i++) step(.025); for (let i = 0; i < 200; i++) step(.025);
+      o.push(A.st === 'run' && A.v === 0 && Math.abs(A.s - S_PRE) < .6 && onCar(C) ? 'heldBeforeCar' : 'heldBeforeCar:FAIL(' + A.s.toFixed(1) + '/' + S_PRE.toFixed(1) + ')'); return ' | carBlk: ' + o.join(' '); });
+    man += cb; await p3.close();
     // sécurités (SITE.car.restraint) : arrivée verrouillée, ouverture au bouton, départ refusé sécurités ouvertes, verrouillage refusé portillons ouverts, verrouillage = fermeture wagon par wagon par les opérateurs puis validation
     const p4 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p4.on('pageerror', e => errors.push(String(e.message || e)));
