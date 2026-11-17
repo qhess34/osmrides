@@ -465,6 +465,8 @@ const CW=SITE.car.w||1.24,INL=!!SITE.car.inline;
    d'escalier au pied), paliers de repos tous les 6 m de montée (intermédiaires), palier au sommet. Frein surélevé : tour d'escalier (volées alternées de 2 m de montée,
    vue du dessus : les deux dernières) à une extrémité ; frein collé au sommet du lift : même passerelle que le lift, pas de tour.
    Côté : SITE.catwalks.side[<zone>] (1 = droite du sens de marche, −1 = gauche), sinon le plus dégagé (ni quai / gare, ni autre voie, ni file).
+   Zone de freinage AU SOL (hors gare : frein final, frein avant gare…) : passerelle au niveau de la voie, sans tour, sur le plus long tronçon libre (ni quai, ni gare,
+   ni file, ni autre voie), 3 m au moins (issue #7, complément) ; SITE.catwalks.ground:false pour s'en passer.
    SITE.catwalks=false : aucune passerelle (Zeus). Largeur W = 0,8 m, écart à la voie, paliers, tours : ESTIMÉS (aucun relevé). Ouvrages OSM (passerelle, escalier)
    déjà le long d'une zone : utilisés à la place (la zone n'est pas doublée). Itinéraire : décor seulement (pas encore suivi par les techniciens ni par une évacuation de train). */
 const CATW=(function(){
@@ -486,12 +488,17 @@ const CATW=(function(){
     let i0=ii(zn.a),i1=ii(zn.b);
     if(zn.lift){let k=0;while(k<40&&el(fr(i0))>.2&&!inTunS((i0-1)*DS)){i0--;k++;}zn.foot=el(fr(i0))>.2;} // pied du lift : la passerelle-escalier descend jusqu'au sol
     else if(zn.a<=lift.b+4&&zn.a>=lift.b-2&&lift.w){lift.w.i1=Math.max(lift.w.i1,i1);continue;} // frein collé au sommet du lift : même passerelle
-    const F=[];for(let i=i0;i<=i1;i++){const f=fr(i);if(!inTunS(f.s))F.push(f);}
-    if(!F.length||Math.max(...F.map(el))<EL)continue; // voie au sol : rien
+    const F=[];for(let i=i0;i<=i1;i++){const f=fr(i);f.ri=i;if(!inTunS(f.s))F.push(f);}
+    if(!F.length)continue;const low=!zn.lift&&Math.max(...F.map(el))<EL; // zone de freinage au niveau du sol (hors gare) : passerelle au sol, sans tour (issue #7, complément)
+    if(low&&cf.ground===false||zn.lift&&Math.max(...F.map(el))<EL)continue;
     if(OSMW.some(P=>F.filter((f,k)=>k%4===0).filter(f=>dPl(f.x,f.z,P)<half(f.s)+W+1).length>=F.length/8))continue; // ouvrage OSM le long de la zone : utilisé tel quel
     let sd=FS[zn.id];
     if(sd!==1&&sd!==-1){let best=1e9;for(const e of [1,-1]){let p=0;for(let k=0;k<F.length;k+=2){const f=F[k],c=at(f,e,half(f.s)+W/2);p+=pen(c[0],c[1],f.y,f.s,W/2+.2);}if(p<best-1e-6){best=p;sd=e;}}}
-    const w={id:zn.id,sd,i0,i1,lift:!!zn.lift};walks.push(w);if(zn.lift)lift.w=w;
+    if(low){ // au sol : seulement le plus long tronçon libre (ni quai ni gare, ni file, ni autre voie), 3 m au moins
+      let run=null,cur=null;for(const f of F){const c=at(f,sd,half(f.s)+W/2),ok=!pen(c[0],c[1],f.y,f.s,W/2+.2)&&!pen(...at(f,sd,half(f.s)+W+.1),f.y,f.s,.1);
+        if(ok){if(cur&&f.ri===cur.i1+1)cur.i1=f.ri;else cur={i0:f.ri,i1:f.ri};if(!run||cur.i1-cur.i0>run.i1-run.i0)run=cur;}else cur=null;}
+      if(!run||(run.i1-run.i0)*DS<3)continue;i0=run.i0;i1=run.i1;}
+    const w={id:zn.id,sd,i0,i1,lift:!!zn.lift,low};walks.push(w);if(zn.lift)lift.w=w;
     if(!zn.lift||zn.foot){ // tour d'escalier : extrémité la plus dégagée (frein), ou pied du lift resté en hauteur
       const ends=zn.lift?[[i0,1]]:[[i0,1],[i1,-1]];let tb=null;
       for(const [ie,dir] of ends){const f=fr(ie),h=el(f);if(h<EL)continue;const nf=Math.max(1,Math.ceil(h/2)),run=nf>1?3.2:Math.max(1.2,h*1.6),TL=run+(nf>1?1.8:.9),TWd=nf>1?2*W+.1:W;
