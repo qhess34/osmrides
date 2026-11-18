@@ -96,3 +96,9 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/JOURNAL.md`.
 - **Escaliers** : largeur du chemin dessiné qu'ils prolongent (escaliers d'entrée : largeur de la file, sans chevauchement ; escalier de sortie 1580105929 : allée, 3,2 m).
 
 - **Lot 5 (2026-11-16)** : barrière pivotante des lacets sud : poteau au **sommet de l'angle** entre raccourci et lacets ; file 1 m (ESTIMÉ) **délimitée de barrières** des deux côtés dans la zone piétonne de l'entrée et le long des quais ; couloirs sous la gare visibles seulement avec « Masquer la gare » ; escalier de sortie 1580105929 : 2 m ; promeneurs exclus des chemins de la file.
+
+### Issue #19 (propriétaire, 2026-11-18, changeset 192117430)
+
+- « Au final pas de barrière B2 » : raccourci 1580173580 et nœuds B2 supprimés dans OSM ; lacets sud obligatoires ; partie « lacets sud » retirée de `sites/oziris.js`, entrées `fork:lacets sud:*` retirées de `sites/oziris.game.js`.
+- File souterraine revue : 1580105922 (niveau -2, plus de zigzag sous la gare), 1580105931 et escalier 1580105924 (-2), couloir 1580105925 (-1), escalier 1580105926 (`layer=-1`, `incline=up`) qui remonte au niveau 0 ; 1580105932 supprimé ; allées 1580105937 / 1580105923 / 1580105936 / 1580105935 (niveau 0) jusqu'à l'entrée du quai `entrance=main` (-15,9 ; -11,7).
+- Gare affichée : niveaux -1 et -2 cachés (ni tracé, ni visiteurs), fin d'escalier au débouché de 1580105926 ; allée 1580105923 rétrécie à 0,6 m (à 3,6 m de la voie, portillons à 2,2 m) : dégagement de 1,15 m au lieu de 1,2 m, l'axe OSM traverse encore les travées d'attente (question au propriétaire). Montage : `docs/plans/lot-oziris-gare.jpg`.

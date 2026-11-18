@@ -22,7 +22,7 @@ Le fichier de spécification (JSON) décrit :
   inversions    … {type:'loop', osm:true, s0, s1, h} : looping dessiné dans OSM (aller, retour au sommet, aller), hauteur seule estimée
   (décor)       zones piétonnes (aires et multipolygones, anneaux assemblés, trous) -> feats highway=pedestrian fermés ; chemins à l'intérieur : f.in=1 ;
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
-                passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; chemins à width OSM -> OSM.widths=[[w, pts]…] ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, w}]
+                passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; chemins à width OSM -> OSM.widths=[[w, pts]…] ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, lv, w}] ; niveau souterrain (layer / level < 0) : f.lv, lv
                 (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone : feats (moteur)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
   base, skip    mode « décor seul » : base = fichier de données existant dont la voie (cps), la file et la gare sont gardées (Tonnerre 2 Zeus) ; skip = clés non exportées
@@ -373,6 +373,13 @@ isped = lambda t: (t.get('highway') == 'pedestrian' and (t.get('area') == 'yes' 
 def lay(t):
     try: return float(t.get('layer', 0))
     except ValueError: return 0
+def lvl(t):  # niveau d'un chemin : le plus bas de layer et level OSM (level « -1;0 » : -1) ; 0 si absent
+    v = 0
+    for k in ('layer', 'level'):
+        for x in str(t.get(k, '')).replace(',', ';').split(';'):
+            try: v = min(v, float(x))
+            except ValueError: pass
+    return v
 def bheight(t):  # hauteur d'un bâtiment en m : height OSM, sinon building:levels × 3 m ; None si absente (moteur : 7 m ESTIMÉ)
     for k, m in (('height', 1), ('building:levels', 3)):
         try: v = float(t.get(k, '').replace(',', '.').replace('m', '').strip()) * m
@@ -389,6 +396,7 @@ def add(t, p, closed, holes=None):
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
         if kind.startswith('highway=') and not closed and iscov(t): f['cv'] = 1
+        if kind.startswith('highway=') and not closed and lvl(t) < 0: f['lv'] = lvl(t)  # niveau souterrain (-1, -2…) : caché dans l'emprise de la gare tant qu'elle est affichée (moteur)
         if kind.startswith('building') and bheight(t): f['bh'] = bheight(t)  # hauteur du bâtiment (voie qui le survole : bâtiment dessiné sous la voie, moteur)
         if kind.startswith('highway=') and not closed and t.get('bridge') not in (None, 'no') and not iscov(t): f['br'] = max(1, int(lay(t))); f.update({'w': wnum(t)} if wnum(t) else {})  # passerelle piétonne : dessinée au-dessus de la voie si elle la franchit (moteur)
         if closed and holes:  # anneaux intérieurs (multipolygone) : lac dans une place, îlot…, orientés à l'opposé de l'anneau extérieur (remplissage « nonzero » du canevas)
@@ -471,7 +479,7 @@ for wid, w in WAY.items():
     if not any(inb(q) for q in p): continue
     inc = t.get('incline', ''); up = 1 if inc in ('up', 'yes') or inc.endswith('%') and not inc.startswith('-') else -1 if inc in ('down',) or inc.startswith('-') else 0
     wd = wnum(t) or min([wnum(tags(o)) for i in (n_[0], n_[-1]) for o in NODE_WAYS[i] if o is not w and wnum(tags(o))] or [0]) or None  # largeur : escalier, sinon chemin raccordé
-    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'w': wd} if wd else {})})
+    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'lv': lvl(t)} if lvl(t) < 0 else {}), **({'w': wd} if wd else {})})
 print('escaliers : %d ; passerelles : %d ; rochers : %d' % (len(steps), sum(1 for f in feats if f.get('br')), sum(1 for f in feats if f['k'] in ('natural=rock', 'natural=stone') and f['c'])))
 # chemins à largeur OSM (highway non fermé avec width=*) : [w, [[x,z]…]] — le moteur dessine la file à cette largeur là où elle les suit (engine/render.js QWP)
 widths = []
