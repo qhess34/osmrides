@@ -124,6 +124,20 @@ const TRN=3,TRGAP=2*TRN+4,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DEC
   if(J.length>1){const a=J[J.length-1],b=J[0];if(b[0]+L-a[1]<TRGAP){b[0]=a[0]-L;b[1]=Math.max(b[1],a[1]-L);J.pop();}} // écart à cheval sur l'origine du circuit
   const M=J.map(r=>[(r[0]+r[1])/2,(r[1]-r[0])/2]);
   return s=>{let d=1e9;for(const m of M){const e=Math.abs(((s-m[0])%L+L*1.5)%L-L/2)-m[1];if(e<d)d=e;}if(d<=0)return fn;if(d>=TRN)return 1;const k=d/TRN;return fn+(1-fn)*k*k*(3-2*k);};})();
+/* Espace balayé par l'appareil de voie (issue lot 14 ; issue #20 : partagé par les passerelles CATW et les poteaux de la voie) : pont droit = fosse du chariot
+   (SWP[0]) et emprise des voies de garage (SWP[1]) ; aiguillage / table / rotatif = couloir autour du tronçon mobile SW_A → SW_B. inSweep(x, z, r, pit) : pit = fosse seule. */
+const SWP=TRAV?(()=>{const dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,Lr=R1-R0,
+    gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;return [[-.7,Lr+.7,vB,vA],[gu0,gu0+gw,vB,-dm+1.6]];})()
+  :(()=>{const P=[];for(let s=SW_A;s<=SW_B+1e-6;s+=.5){const f=TR[((Math.round(s/DS)%N)+N)%N].p;P.push([f.x,f.z]);}return P;})();
+const inSweep=(x,z,r,pit)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*SW0.tz,v=dx*SW0.vx+dz*SW0.vz;return (pit?SWP.slice(0,1):SWP).some(b=>u>b[0]-r&&u<b[1]+r&&v>b[2]-r&&v<b[3]+r);}
+  const lim=SW_D+1.5+r;return SWP.some(q=>Math.hypot(q[0]-x,q[1]-z)<lim);};
+/* Poteaux de la voie (issue #20, propriétaire : « il manque les supports sur la dernière partie avec les zones de freinage ») : une voie inversée ou acier (INV, STL)
+   reçoit ses supports dès qu'elle est à plus de 1,5 m au-dessus du sol ou du toit survolé (yg), et non plus seulement 1,5 m au-dessus de la GARE : sur OzIris
+   la gare est à 4 m (train suspendu), donc frein final, rail du pont et attente avant gare (4 m) n'en avaient aucun. Exclus : l'emprise de la gare (voie tenue par
+   le bâtiment), le tronçon porté par l'appareil de voie (sm.dev) et l'espace qu'il balaie (inSweep). Coaster inversé : poteau du côté libre (l'autre si le premier
+   tombe dans l'espace balayé, une voie de garage ou sur une voie plus basse), aucun si les deux côtés sont pris. Bois et bob : inchangés. */
+const STPL=STATION_GROW||SITE.stationPoly||[],poleFree=(x,z,y,s,low)=>{if(STPL.length>2&&pipXZ(STPL,x,z)||inSweep(x,z,.3))return false;if(!low)return true;
+  for(let j=0;j<N;j+=2){const q=TR[j].p;if(q.y>y-1||Math.abs(((j*DS-s)%L+L*1.5)%L-L/2)<14)continue;if(Math.abs(q.x-x)<1.8&&Math.abs(q.z-z)<1.8&&Math.hypot(q.x-x,q.z-z)<1.8)return false;}return true;};
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,spine:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,rp:null,ch:null,bu:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const yg=q=>q.y-roofH(q.x,q.z),SB=q=>roofH(q.x,q.z); // yg : hauteur au-dessus du sol ou du toit d'un bâtiment survolé (ROOFB) ; SB : hauteur du pied du poteau (son ombre part de là)
@@ -139,10 +153,10 @@ function strip(sm){
       for(const e of [-1,1])o.rp.rect(q.x+q.nx*w*e-.22,q.z+q.nz*w*e-.22,.44,.44);}
     if(WOODY&&q.i%2===1){o.ties.moveTo(q.x-q.nx*.9,q.z-q.nz*.9);o.ties.lineTo(q.x+q.nx*.9,q.z+q.nz*.9);}
     if(STL){if(q.i%3===0){o.ties.moveTo(q.x-q.nx*.62,q.z-q.nz*.62);o.ties.lineTo(q.x+q.nx*.62,q.z+q.nz*.62);} // entretoises entre les deux rails tubulaires
-      if(i<n-1&&q.i%10===0&&q.y>ST_Y+1.5){const sp=.55+Math.min(yg(q),40)*.07,gb=SB(q); // support en A : deux jambes qui s'écartent vers le sol, traverse à mi-hauteur
+      if(i<n-1&&q.i%10===0&&!sm.dev&&yg(q)>1.5&&poleFree(q.x,q.z,q.y,q.i*DS)){const sp=.55+Math.min(yg(q),40)*.07,gb=SB(q); // support en A : deux jambes qui s'écartent vers le sol, traverse à mi-hauteur
         for(const e of [-1,1]){const bx=q.x+q.nx*sp*e,bz=q.z+q.nz*sp*e;o.str.moveTo(q.x+q.nx*.45*e,q.z+q.nz*.45*e);o.str.lineTo(bx,bz);o.shb.moveTo(bx+gb*SHX,bz+gb*SHZ);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}
         o.hand.moveTo(q.x-q.nx*sp*.7,q.z-q.nz*sp*.7);o.hand.lineTo(q.x+q.nx*sp*.7,q.z+q.nz*sp*.7);}}
-    if(STL){}else if(INV){if(i<n-1&&q.i%13===0&&q.y>ST_Y+1.5){const e=(q.i/13)%2?1:-1,w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
+    if(STL){}else if(INV){let e=(q.i/13)%2?1:-1;if(i<n-1&&q.i%13===0&&!sm.dev&&yg(q)>1.5&&(poleFree(q.x+q.nx*SUPW*e,q.z+q.nz*SUPW*e,q.y,q.i*DS,1)||poleFree(q.x-q.nx*SUPW*e,q.z-q.nz*SUPW*e,q.y,q.i*DS,1)&&(e=-e))){const w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
       o.str.moveTo(bx,bz);o.str.lineTo(q.x-q.nx*.6*e,q.z-q.nz*.6*e);o.hand.moveTo(bx-tx*.35,bz-tz*.35);o.hand.lineTo(bx+tx*.35,bz+tz*.35);o.shb.moveTo(bx+SB(q)*SHX,bz+SB(q)*SHZ);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
     else if(i<n-1&&q.i%(BOB?12:6)===0){const w=wid(yg(q))*(BOB?sm.trk?TRF(q.i*DS):TRFN:1);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
       if(!BOB&&q.y>7.5&&i+6<n){const b=sm[i+6],w2=wid(yg(b)),e=(q.i/6)%2?1:-1;o.str.moveTo(q.x-q.nx*w*e,q.z-q.nz*w*e);o.str.lineTo(b.x+b.nx*w2*e,b.z+b.nz*w2*e);}
@@ -167,7 +181,7 @@ const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[
   const cl=[...cuts].sort((a,b)=>a-b);
   for(let c=0;c<cl.length-1;c++){const sm=[];
     for(let i=cl[c];i<=cl[c+1];i++){const f=TR[i%N];sm.push({x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x,nz:f.R.z,ux:f.U.x,uz:f.U.z,uy:f.U.y,i});} // R projeté (non normalisé) : vue du dessus, la voie qui pivote (dévers, vrilles, loopings) se resserre, largeur ∝ |cos θ|
-    sm.trk=1;const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
+    sm.trk=1;sm.dev=cl[c]>=iA&&cl[c+1]<=iB&&iA<iB;const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
     if(!o.sw&&cl[c+1]!==iA){const a=TR[cl[c+1]%N].p,f=TR[(cl[c+1]+1)%N].p;o.deck.lineTo((a.x+f.x)/2,(a.z+f.z)/2);}
     for(let i=cl[c];i<cl[c+1];i++)chunkH[i]=o.h;}
   // tronçon en S (mobile) et voie de garage
@@ -175,12 +189,12 @@ const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[
   if(TRAV){ // pont droit : rail B porté par le chariot (décalé de devC()-GAP), voies droites fixes ; le rail A est le tronçon du circuit (sw)
     chunks.forEach(o=>{if(o.sw)grow(o);});
     const line=(u0,u1,v)=>{const q=[],n=Math.max(1,Math.ceil((u1-u0)/.5-.02));for(let k=0;k<=n;k++){const u=u0+(u1-u0)*k/n;q.push({x:SW0.x+SW0.tx*u-SW0.vx*v,y:ST_Y,z:SW0.z+SW0.tz*u-SW0.vz*v,nx:-SW0.tz,nz:SW0.tx,i:q.length});}return q;};
-    if(!SG){const rb=strip(line(0,R1-R0,0));rb.rb=1;chunks.push(grow(rb));} // rail unique (SG) : le tronçon du circuit est le seul rail porté
+    if(!SG){const L0=line(0,R1-R0,0);L0.dev=1;const rb=strip(L0);rb.rb=1;chunks.push(grow(rb));} // rail unique (SG) : le tronçon du circuit est le seul rail porté
     // Voies fixes dessinées jusqu'au bout du rail porté (issue #16, propriétaire : « pas continus ») : comme le circuit, la voie fixe s'arrête à 4 cm du rail du chariot
     // (u = R1-R0 ou 0) et le tablier passe dessous ; le jeu de la simulation (yard.laneGap, U_LANE) est inchangé, seul le dessin comble l'écart.
     LANES.forEach((ln,j)=>{const o=strip(LREV?line(laneU(ln.end),-.04,ln.d):line(R1-R0+.04,ln.end,ln.d));LCH[j]=o;chunks.push(o);}); // yard.rev : voies en amont du chariot
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
-    const nl=LBK?Math.round(ln.link/.5):36,sP=strip(gs.slice(0,nl+1));sP.lk=j+1;LCH[j]=strip(gs.slice(nl));LCH[j].nl=nl;chunks.push(sP,LCH[j]);});
+    const nl=LBK?Math.round(ln.link/.5):36,gl=gs.slice(0,nl+1);gl.dev=1;const sP=strip(gl);sP.lk=j+1;LCH[j]=strip(gs.slice(nl));LCH[j].nl=nl;chunks.push(sP,LCH[j]);});
   // Chaîne du lift et équipements de freinage : rattachés à leur tronçon (dessinés avec lui), donc toujours SOUS les trains qui y passent et sous les voies plus hautes
   const cOf=new Int32Array(N+1);for(let c=0;c<cl.length-1;c++)for(let i=cl[c];i<cl[c+1];i++)cOf[i]=c;
   const lc0=Math.round(S_LIFT0/DS),lc1=Math.round((S_LIFT1+3)/DS);
@@ -553,24 +567,24 @@ const CW=SITE.car.w||1.24,INL=!!SITE.car.inline;
 const CATW=(function(){
   const C=SITE.catwalks;if(C===false)return {walks:[],towers:[]};
   const cf=C||{},W=cf.w||.8,EL=cf.minH!=null?cf.minH:.8,FS=cf.side||{},walks=[],towers=[];
+  /* Coaster inversé (issue #20, propriétaire : « la passerelle en galvanisé est à remplacer par un sol en galvanisé sur toute la largeur ») : au lieu d'une passerelle
+     latérale, plancher en caillebotis galvanisé SOUS la voie et le train suspendu, centré sur l'axe, garde-corps des deux côtés ; lift : marches sur toute la largeur.
+     Largeur FW = largeur du wagon + 2 × 0,3 m (SITE.catwalks.floorW pour la forcer), hauteur = voie − HANG (3 m sous le rail) : ESTIMÉES. Escaliers d'évacuation
+     (tours) inchangés, posés au-delà du bord du plancher. SITE.catwalks.floor:false : passerelle latérale comme les autres kinds. */
+  const FL=INV&&cf.floor!==false,FW=cf.floorW||CW+.6,HANG=3,WW=FL?FW:W;
   const fr=i=>{i=((i%N)+N)%N;const f=TR[i],g=TR[(i+1)%N],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(g.p.x-f.p.x,g.p.z-f.p.z)||1;return {i,s:i*DS,x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:(g.p.x-f.p.x)/tl,tz:(g.p.z-f.p.z)/tl};};
   const half=s=>(BOB?DECKW/2*TRF(s):INV?Math.max(DECKW/2,CW/2):STL?.75:DECKW/2)+.15; // bord de la voie (ou du train suspendu) + 15 cm
   const el=f=>f.y-ST_Y,ii=s=>Math.round(s/DS);
   const OSMW=OSM.feats.filter(f=>(f.br||f.k==='highway=steps')&&!f.c).map(f=>f.p).concat(STAIRS.filter(o=>!(o.qs&&o.qs.length)).map(o=>o.p));
   // pénalité d'un point posé à (x,z), hauteur y, s = abscisse de la zone (autres voies, file, gare)
-  const pen=(x,z,y,s,r)=>{let p=0;for(let j=0;j<N;j+=2){const q=TR[j].p,ds=Math.abs(((j*DS-s)%L+L*1.5)%L-L/2);if(ds<14)continue;const d=Math.hypot(q.x-x,q.z-z);if(d<half(j*DS)+r)p+=Math.abs(q.y-y)<7?3:.4;}
+  const pen=(x,z,y,s,r,pit)=>{let p=0;for(let j=0;j<N;j+=2){const q=TR[j].p,ds=Math.abs(((j*DS-s)%L+L*1.5)%L-L/2);if(ds<14)continue;const d=Math.hypot(q.x-x,q.z-z);if(d<half(j*DS)+r)p+=Math.abs(q.y-y)<7?3:.4;}
     for(const q of QWS)if(Math.abs(q.x-x)+Math.abs(q.z-z)<q.w/2+r+1&&Math.hypot(q.x-x,q.z-z)<q.w/2+r)p+=3;
-    if(STSP.length>2&&pipXZ(STSP,x,z))p+=5;if(inSweep(x,z,r))p+=5;return p;};
+    if(STSP.length>2&&pipXZ(STSP,x,z))p+=5;if(inSweep(x,z,r,pit))p+=5;return p;};
   /* Appareil de voie (issue lot 14, 2026-11-17) : aucune passerelle sur le tronçon porté par l'appareil mobile (rail A / rail B d'un pont droit, tronçon mobile
      d'un aiguillage ou d'une table, SW_A → SW_B) — une passerelle fixe ne suivrait pas le rail qui glisse, et le personnel n'est pas posé sur un chariot ;
      aucune passerelle au sol dans l'espace balayé (fosse et dalle du pont droit, couloir de coulissement de l'aiguillage). La zone garde le plus long tronçon fixe. */
-  const DA=SW_A-.6,DB=SW_B+.6,onDev=s=>(((s-DA)%L)+L)%L<=DB-DA;
-  const SWP=TRAV?(()=>{const dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,Lr=R1-R0,
-      gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;return [[-.7,Lr+.7,vB,vA],[gu0,gu0+gw,vB,-dm+1.6]];})()
-    :(()=>{const P=[];for(let s=SW_A;s<=SW_B+1e-6;s+=.5){const f=TR[((Math.round(s/DS)%N)+N)%N].p;P.push([f.x,f.z]);}return P;})();
-  const inSweep=(x,z,r)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*SW0.tz,v=dx*SW0.vx+dz*SW0.vz;return SWP.some(b=>u>b[0]-r&&u<b[1]+r&&v>b[2]-r&&v<b[3]+r);}
-    const lim=SW_D+1.5+r;return SWP.some(q=>Math.hypot(q[0]-x,q[1]-z)<lim);};
-  const at=(f,sd,d)=>[f.x+f.nx*sd*d,f.z+f.nz*sd*d];
+  const DA=SW_A-.6,DB=SW_B+.6,onDev=s=>(((s-DA)%L)+L)%L<=DB-DA; // espace balayé : SWP / inSweep (plus haut, partagés avec les poteaux)
+  const at=(f,sd,d)=>[f.x+f.nx*sd*d,f.z+f.nz*sd*d],md=s=>FL?0:half(s)+W/2,ed=s=>FL?FW/2:half(s)+W; // axe et bord extérieur du plancher / de la passerelle
   const zones=[{id:'Lift',a:S_LIFT0,b:S_LIFT1,lift:1}].concat(BLK.map((b,i)=>({id:'B'+(i+1),a:Math.min(BZ0[i],b-TLEN),b:b+.5})),
     TAG.brk!=null?[{id:'Fin',a:S_BRK,b:S_HOLD+.5}]:[],PSB?[{id:'Pre',a:Math.min(PSB_A,S_PSB-TLEN),b:S_PSB+.5}]:[]);
   const lift=zones[0];
@@ -583,30 +597,30 @@ const CATW=(function(){
     const F=[];for(let i=i0;i<=i1;i++){const f=fr(i);f.ri=i;if(!inTunS(f.s))F.push(f);}
     if(!F.length)continue;const low=!zn.lift&&Math.max(...F.map(el))<EL; // zone de freinage au niveau du sol (hors gare) : passerelle au sol, sans tour (issue #7, complément)
     if(low&&cf.ground===false||zn.lift&&Math.max(...F.map(el))<EL)continue;
-    if(OSMW.some(P=>F.filter((f,k)=>k%4===0).filter(f=>dPl(f.x,f.z,P)<half(f.s)+W+1).length>=F.length/8))continue; // ouvrage OSM le long de la zone : utilisé tel quel
+    if(OSMW.some(P=>F.filter((f,k)=>k%4===0).filter(f=>dPl(f.x,f.z,P)<ed(f.s)+1).length>=F.length/8))continue; // ouvrage OSM le long de la zone : utilisé tel quel
     let sd=FS[zn.id];
-    if(sd!==1&&sd!==-1){let best=1e9;for(const e of [1,-1]){let p=0;for(let k=0;k<F.length;k+=2){const f=F[k],c=at(f,e,half(f.s)+W/2);p+=pen(c[0],c[1],f.y,f.s,W/2+.2);}if(p<best-1e-6){best=p;sd=e;}}}
+    if(sd!==1&&sd!==-1){let best=1e9;for(const e of [1,-1]){let p=0;for(let k=0;k<F.length;k+=2){const f=F[k],c=at(f,e,FL?FW/2+W/2:half(f.s)+W/2);p+=pen(c[0],c[1],f.y,f.s,W/2+.2);}if(p<best-1e-6){best=p;sd=e;}}}
     if(low){ // au sol : seulement le plus long tronçon libre (ni quai ni gare, ni file, ni autre voie), 3 m au moins
-      let run=null,cur=null;for(const f of F){const c=at(f,sd,half(f.s)+W/2),ok=!pen(c[0],c[1],f.y,f.s,W/2+.2)&&!pen(...at(f,sd,half(f.s)+W+.1),f.y,f.s,.1);
+      let run=null,cur=null;for(const f of F){const c=at(f,sd,half(f.s)+W/2),ok=FL?!pen(f.x,f.z,f.y,f.s,FW/2,1):!pen(c[0],c[1],f.y,f.s,W/2+.2)&&!pen(...at(f,sd,half(f.s)+W+.1),f.y,f.s,.1);
         if(ok){if(cur&&f.ri===cur.i1+1)cur.i1=f.ri;else cur={i0:f.ri,i1:f.ri};if(!run||cur.i1-cur.i0>run.i1-run.i0)run=cur;}else cur=null;}
       if(!run||(run.i1-run.i0)*DS<3)continue;i0=run.i0;i1=run.i1;}
     const w={id:zn.id,sd,i0,i1,lift:!!zn.lift,low};walks.push(w);if(zn.lift)lift.w=w;
     if(!zn.lift||zn.foot){ // tour d'escalier : extrémité la plus dégagée (frein), ou pied du lift resté en hauteur
       const ends=zn.lift?[[i0,1]]:[[i0,1],[i1,-1]];let tb=null;
       for(const [ie,dir] of ends){const f=fr(ie),h=el(f);if(h<EL)continue;const nf=Math.max(1,Math.ceil(h/2)),run=nf>1?3.2:Math.max(1.2,h*1.6),TL=run+(nf>1?1.8:.9),TWd=nf>1?2*W+.1:W;
-        const d0=half(f.s)+W+.1,o={x:f.x,z:f.z,y:f.y,h,ux:f.tx*dir,uz:f.tz*dir,nx:f.nx*sd,nz:f.nz*sd,d0,TL,TW:TWd,nf,run};
+        const d0=ed(f.s)+.1,o={x:f.x,z:f.z,y:f.y,h,ux:f.tx*dir,uz:f.tz*dir,nx:f.nx*sd,nz:f.nz*sd,d0,TL,TW:TWd,nf,run};
         let p=0;for(let u=0;u<=TL;u+=1)for(const v of [d0,d0+TWd])p+=pen(o.x+o.ux*u+o.nx*v,o.z+o.uz*u+o.nz*v,f.y,f.s,.3);if(!tb||p<tb.p)tb=Object.assign(o,{p});}
       if(tb)towers.push(tb);}}
   // géométrie dessinée : morceaux de 8 points (alignés sur les tronçons de voie, même hauteur de tri)
   for(const w of walks){w.segs=[];let rise=null;
     for(let a=w.i0;a<w.i1;a=(Math.floor(a/8)+1)*8){const b=Math.min(w.i1,(Math.floor(a/8)+1)*8),P=[],Q=[],R=[],tr=[],ld=[];
-      for(let i=a;i<=b;i++){const f=fr(i);if(inTunS(f.s))continue;const d=half(f.s)+W/2;P.push(at(f,w.sd,d));Q.push(at(f,w.sd,d+W/2));R.push(at(f,w.sd,d-W/2));
+      for(let i=a;i<=b;i++){const f=fr(i);if(inTunS(f.s))continue;const d=md(f.s);P.push(at(f,w.sd,d));Q.push(at(f,w.sd,d+WW/2));R.push(at(f,w.sd,d-WW/2));
         if(i<b){const g=fr(i+1),dy=g.y-f.y,dh=Math.hypot(g.x-f.x,g.z-f.z)||DS;
           if(w.lift&&dy/dh>.08){const r0=el(f),r1=el(g);for(let m=Math.ceil(r0/.2)*.2;m<r1;m+=.2){const k=(m-r0)/(dy||1),x=f.x+(g.x-f.x)*k,z=f.z+(g.z-f.z)*k,c=[x+f.nx*w.sd*d,z+f.nz*w.sd*d];
-            if(Math.floor(m/6)>Math.floor((m-.2)/6)&&m>1)ld.push(c);tr.push([c[0]-f.nx*W/2,c[1]-f.nz*W/2,c[0]+f.nx*W/2,c[1]+f.nz*W/2,m]);}}}}
+            if(!FL&&Math.floor(m/6)>Math.floor((m-.2)/6)&&m>1)ld.push(c);tr.push([c[0]-f.nx*WW/2,c[1]-f.nz*WW/2,c[0]+f.nx*WW/2,c[1]+f.nz*WW/2,m]);}}}}
       if(P.length<2)continue;let ys=0;for(let i=a;i<=b;i++)ys+=fr(i).y;
-      w.segs.push({h:chunkH[((Math.floor((a+b)/2)%N)+N)%N]-.01,y:ys/(b-a+1),c:mkPath(P),o:mkPath(Q),n:mkPath(R),Q,tr,ld,nx:fr(a).nx*w.sd,nz:fr(a).nz*w.sd});}
-    const s=w.segs[w.segs.length-1];if(w.lift&&s){const f=fr(w.i1),c=at(f,w.sd,half(f.s)+W/2);s.top=[c[0],c[1],f.tx,f.tz,f.nx*w.sd,f.nz*w.sd];}} // palier au sommet
+      w.segs.push({h:chunkH[((Math.floor((a+b)/2)%N)+N)%N]-.01,y:Math.max(0,ys/(b-a+1)-(FL?HANG:0)),w:WW,fl:FL,c:mkPath(P),o:mkPath(Q),n:mkPath(R),Q,Rn:R,tr,ld,nx:fr(a).nx*w.sd,nz:fr(a).nz*w.sd});}
+    const s=w.segs[w.segs.length-1];if(w.lift&&s){const f=fr(w.i1),c=at(f,w.sd,md(f.s));s.top=[c[0],c[1],f.tx,f.tz,f.nx*w.sd,f.nz*w.sd];}} // palier au sommet
   for(const t of towers){const c=(u,v)=>[t.x+t.ux*u+t.nx*v,t.z+t.uz*u+t.nz*v],v0=t.d0-W/2-.1,v1=t.d0+t.TW;
     t.poly=[c(-.2,v0),c(t.TL,v0),c(t.TL,v1),c(-.2,v1)];t.fl=[];const L0=t.nf>1?.9:0; // palier haut (jonction avec la passerelle), volées, palier bas
     const nfl=Math.min(t.nf,2);for(let k=0;k<nfl;k++){const va=t.d0+k*(W+.1),vb=va+W,tr=[];for(let u=L0;u<=L0+t.run+1e-6;u+=.28)tr.push([...c(u,va),...c(u,vb),(k===0?1-(u-L0)/t.run:(u-L0)/t.run)]);
@@ -615,15 +629,16 @@ const CATW=(function(){
   return {walks,towers,W};})();
 const CW_GR='#5d605d',CW_RL='#a9aba5',CW_EDGE='#34373b'; // acier galvanisé terni (couleurs sourdes)
 const polyP=P=>{ctx.beginPath();P.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();};
-function drawCatwalk(g){const W=CATW.W;ctx.save();ctx.lineCap='butt';ctx.lineJoin='round';
+function drawCatwalk(g){const W=g.w||CATW.W;ctx.save();ctx.lineCap='butt';ctx.lineJoin='round';
   ctx.strokeStyle='rgba(20,22,24,.55)';ctx.lineWidth=W+.12;ctx.stroke(g.c);ctx.strokeStyle=CW_GR;ctx.lineWidth=W;ctx.stroke(g.c); // caillebotis
   if(cam.s>5&&!g.tr.length){ctx.setLineDash([.05,.12]);ctx.strokeStyle='rgba(25,26,28,.35)';ctx.lineWidth=W*.86;ctx.stroke(g.c);ctx.setLineDash([]);} // barreaux du caillebotis
   if(cam.s>3)for(const t of g.tr){const k=Math.min(1,(t[4]%6)/6),c=Math.round(78+40*k);ctx.strokeStyle=`rgb(${c},${c+2},${c})`;lw(.05,.4);ctx.beginPath();ctx.moveTo(t[0],t[1]);ctx.lineTo(t[2],t[3]);ctx.stroke();} // marches (plus claires en montant)
   for(const q of g.ld){ctx.fillStyle='#4f524f';ctx.beginPath();ctx.arc(q[0],q[1],W*.55,0,7);ctx.fill();} // paliers de repos
   if(g.top){const [x,z,tx,tz,nx,nz]=g.top,h=W/2;ctx.fillStyle=CW_GR;polyP([[x-nx*h,z-nz*h],[x+tx*1.4-nx*h,z+tz*1.4-nz*h],[x+tx*1.4+nx*h,z+tz*1.4+nz*h],[x+nx*h,z+nz*h]]);ctx.fill();ctx.strokeStyle=CW_EDGE;lw(.05,.4);ctx.stroke();}
-  ctx.strokeStyle=CW_EDGE;lw(.05,.4);ctx.stroke(g.n); // plinthe côté voie
+  if(g.fl){ctx.strokeStyle='rgba(0,0,0,.35)';lw(.09,.6);ctx.stroke(g.n);ctx.strokeStyle=CW_RL;lw(.05,.5);ctx.stroke(g.n);} // plancher pleine largeur (inversé) : garde-corps des deux côtés
+  else{ctx.strokeStyle=CW_EDGE;lw(.05,.4);ctx.stroke(g.n);} // plinthe côté voie
   ctx.strokeStyle='rgba(0,0,0,.35)';lw(.09,.6);ctx.stroke(g.o);ctx.strokeStyle=CW_RL;lw(.05,.5);ctx.stroke(g.o); // garde-corps extérieur
-  if(cam.s>7){ctx.fillStyle=CW_EDGE;for(let i=0;i<g.Q.length;i+=3)ctx.fillRect(g.Q[i][0]-.05,g.Q[i][1]-.05,.1,.1);} // potelets
+  if(cam.s>7){ctx.fillStyle=CW_EDGE;for(const P of g.fl?[g.Q,g.Rn]:[g.Q])for(let i=0;i<P.length;i+=3)ctx.fillRect(P[i][0]-.05,P[i][1]-.05,.1,.1);} // potelets
   ctx.restore();}
 function drawTower(t){ctx.save();ctx.lineJoin='round';
   polyP(t.poly);ctx.fillStyle='rgba(30,32,34,.5)';ctx.fill(); // vide de la cage (on voit les volées du dessous)
@@ -631,8 +646,8 @@ function drawTower(t){ctx.save();ctx.lineJoin='round';
   for(const f of t.fl){polyP(f.p);ctx.fillStyle='#676a66';ctx.fill();if(cam.s>3){lw(.05,.4);for(const r of f.tr){const c=Math.round(80+60*r[4]);ctx.strokeStyle=`rgb(${c},${c+2},${c})`;ctx.beginPath();ctx.moveTo(r[0],r[1]);ctx.lineTo(r[2],r[3]);ctx.stroke();}}}
   polyP(t.poly);ctx.strokeStyle='rgba(0,0,0,.35)';lw(.09,.6);ctx.stroke();ctx.strokeStyle=CW_RL;lw(.05,.5);ctx.stroke(); // garde-corps de la cage
   ctx.restore();}
-function catwalkShadows(){ctx.save();ctx.lineCap='butt';ctx.lineWidth=CATW.W;
-  for(const w of CATW.walks)for(const g of w.segs){ctx.save();ctx.translate(g.y*SHX,g.y*SHZ);ctx.stroke(g.c);ctx.restore();}
+function catwalkShadows(){ctx.save();ctx.lineCap='butt';
+  for(const w of CATW.walks)for(const g of w.segs){ctx.lineWidth=g.w;ctx.save();ctx.translate(g.y*SHX,g.y*SHZ);ctx.stroke(g.c);ctx.restore();}
   for(const t of CATW.towers){ctx.save();ctx.translate(t.y*SHX*.5,t.y*SHZ*.5);polyP(t.poly);ctx.fill();ctx.restore();}ctx.restore();}
 function drawCar(t,k,shadow){
   carFrame(t,k,_cf);const p=_cf.p,a=Math.atan2(_cf.T.z,_cf.T.x),hl=CAR/2-.07,hw=CW/2;
