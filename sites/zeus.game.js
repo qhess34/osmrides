@@ -2,6 +2,18 @@
 // Le corps est du JSON strict : à modifier de préférence avec l'éditeur (docker compose up -d, http://127.0.0.1:8787/).
 const GAME = {
   "barriers": {
+    "add:raccourci est:1": {
+      "x": -2.53,
+      "z": 17.43,
+      "a": {
+        "ang": 1.7,
+        "len": 2.37
+      },
+      "b": {
+        "ang": -90.6,
+        "len": 1.98
+      }
+    },
     "entry": {
       "x": -29.14,
       "z": -5.98,
