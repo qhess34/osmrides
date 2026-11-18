@@ -42,7 +42,7 @@ const SITE=(()=>{
     fade:[[-7,-8,9],[-24,-24,12],[-35,-25,8]],   // toits qui s'effacent : gare, halle du frein final et du pont, garage
     // Quais : embarquement côté ouest (entrée OSM), débarquement côté est (sortie OSM) ; profondeurs ESTIMÉES d'après le bâtiment OSM 420016980.
     stairsOut:false,   // escaliers de la file dans la gare, tels qu'OSM (issue #13) : pas d'escalier « en applique »
-    plat:{load:7.0,exit:3.5,back:.6,front:1.6},
+    plat:{load:7.3,exit:3.5,back:.6,front:1.6},   // quai d'embarquement jusqu'à l'entrée OSM (entrance=main, à 7,0 m de la voie depuis le changeset 192118796) : profondeur ESTIMÉE
     // Poste de conduite (propriétaire, 2026-11-16 : « au sud-est ») : côté est (débarquement), en tête de quai, juste derrière le quai de sortie, entièrement dans
     // le bâtiment de gare OSM 420016980, vitre tournée vers la voie ; emplacement exact ESTIMÉ.
     booth:[-9.7,0.29,2.007],boothLabel:[-5.6,1.6],beacon:[-8.6,-1.6],
@@ -60,7 +60,7 @@ const SITE=(()=>{
     approach:[{w:.5,pts:[[57.4,-2.3],[50.4,21.4],[38.1,26.5]]},{w:.5,pts:[[-5.3,19.5],[34.4,27.3],[38.1,26.5]]}],
     paths:[PROM,QL,XO],
     // Entrée de la gare (OSM entrance=main, (-7.4, 4.3)) puis couloir d'attente côté est
-    board:{via:[QIN[QIN.length-1]],walk:4.45},   // entrée OSM de la gare (entrance=main, (-15,9 ; -11,7), changeset 192117430 du 2026-11-18), au bout de la file ; couloir d'attente à 4,45 m de la voie (ESTIMÉ ; lot 6 : portillons rapprochés du bord)
+    board:{via:[QIN[QIN.length-1]],walk:4.45},   // entrée OSM de la gare (entrance=main, (-16,7 ; -12,0), changeset 192118796 du 2026-11-18), au bout de la file ; couloir d'attente à 4,45 m de la voie (ESTIMÉ ; lot 6 : portillons rapprochés du bord)
     // Sortie (OSM 2026-11-16) : porte entrance=exit (-7,5 ; -9,5) du quai est, passerelle 1580105927 (layer 2), escalier 1580105929 qui descend, allée 1580105928 vers l'est.
     exit:{door:XO[0],path:XO,
       tails:[[[10.4,-.7],[10.6,-4.3],[11.1,-12.1],[14.8,-27.4],[39.5,-8.3],[50.7,-1.1]],[[10.4,-.7],[-1.3,9.0],[-5.3,19.5]]]},

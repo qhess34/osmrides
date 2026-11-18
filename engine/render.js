@@ -319,9 +319,9 @@ function stairWidths(S){
   for(const o of STAIRS)for(const q of o.qs)q.w=Math.min(q.w,o.w);}
 // Dégagement des portillons (propriétaire, OzIris, 2026-11-18, issue #19, générique) : le bord d'une allée de file visible (pas un couloir couvert) qui longe le quai
 // d'embarquement reste à QGATE_CLR au moins de la ligne des portillons (PGATE) ; sinon l'allée est rétrécie à cet endroit, jusqu'à QGATE_WMIN au plus étroit (axe OSM
-// conservé : si cela ne suffit pas, l'allée reste à QGATE_WMIN). QGATE_CLR = 1,2 m, ESTIMÉ (premier visiteur qui attend devant son portillon, à PGATE + 0,7 m, plus
-// une marge) ; QGATE_WMIN = 0,6 m, ESTIMÉ (une personne de face). Aucune mesure : à confirmer.
-const QGATE_CLR=1.2,QGATE_WMIN=.6;
+// conservé : si cela ne suffit pas, l'allée reste à QGATE_WMIN). QGATE_CLR = profondeur des travées d'attente
+// GDEPTH + 0,2 m, ESTIMÉ (aucune allée ne touche la zone des portillons) ; QGATE_WMIN = 0,6 m, ESTIMÉ (une personne de face). Aucune mesure : à confirmer.
+const QGATE_CLR=GDEPTH+.2,QGATE_WMIN=.6; // 2e demande (2026-11-18) : dégagement = profondeur des travées d'attente (GDEPTH, engine/garage.js) + 0,2 m, ESTIMÉ
 function gateClear(S){for(const q of S){for(const b of BAYS){const dx=q.x-b.x,dz=q.z-b.z,u=dx*b.tx+dz*b.tz;if(Math.abs(u)>CAR/2+.3)continue;
   const lat=dx*b.rx+dz*b.rz;if(lat<PGATE||COV.some(P=>dPl(q.x,q.z,P)<.3))break;const m=2*(lat-PGATE-QGATE_CLR);if(q.w>m)q.w=Math.max(QGATE_WMIN,Math.min(q.w,m));break;}}}
 const FORKP=LOOPS.flatMap(l=>[l.loop.P[0],l.loop.P[l.loop.P.length-1],l.short.P[0],l.short.P[l.short.P.length-1]]);
@@ -833,7 +833,7 @@ function leaf(g,t){if(g.off)return; // vantail métallique : pivot h en bordure,
 }
 function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gatesPer:'row', GUNITS) ; ligne des portillons à PGATE du rail, près du bord du quai
   ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
-  for(let u=0;u<=NGATES;u++){const g=GUNITS[Math.min(u,NGATES-1)],b=BAYS[g.k],e=u<NGATES?g.c+g.h:g.c-g.h,cx=b.x+b.tx*e,cz=b.z+b.tz*e;ctx.moveTo(cx+b.rx*(PGATE-.05),cz+b.rz*(PGATE-.05));ctx.lineTo(cx+b.rx*(PGATE+2.15),cz+b.rz*(PGATE+2.15));}
+  for(let u=0;u<=NGATES;u++){const g=GUNITS[Math.min(u,NGATES-1)],b=BAYS[g.k],e=u<NGATES?g.c+g.h:g.c-g.h,cx=b.x+b.tx*e,cz=b.z+b.tz*e;ctx.moveTo(cx+b.rx*(PGATE-.05),cz+b.rz*(PGATE-.05));ctx.lineTo(cx+b.rx*(PGATE+GDEPTH),cz+b.rz*(PGATE+GDEPTH));}
   ctx.stroke();
   // un vantail par portillon, articulé sur le séparateur avant ; il pivote vers le train
   // Propriétaire (Zeus, 2026-11-17) : les portillons s'ouvrent vers le train sans jamais dépasser le bord du quai. Vantail = largeur du portillon,

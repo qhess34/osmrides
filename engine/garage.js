@@ -133,6 +133,7 @@ const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BA
 // Bob (propriétaire, issue #6) : dans la gare la gouttière est rétrécie au gabarit du wagon (engine/render.js TRF), demi-largeur = SITE.car.w/2 + BOB_RIM ;
 // le quai suit : PEDGE = demi-largeur du wagon + rebord + 8 cm. BOB_RIM = 0,10 m, ESTIMÉ (épaisseur du rebord de la gouttière de gare, non mesurée).
 const BOB_RIM=.1;
+const PLT0=SITE.plat||{};
 const PEDGE=(SITE.plat&&SITE.plat.edge)||+((SITE.car.w||1.24)/2+(SITE.kind==='wood'?.2:SITE.kind==='steel'?.12:SITE.kind==='bob'?BOB_RIM:0)+.08).toFixed(2);
 const PGATE=+(PEDGE+((SITE.plat&&SITE.plat.gateGap)||.8)).toFixed(2),POPL=(PEDGE+PGATE)/2;
 // Portillons : un par wagon (défaut) ou un par rangée de places (SITE.plat.gatesPer:'row', Goudurix, propriétaire, lot 6) ; deux visiteurs par portillon pour des rangées de 2.
@@ -154,7 +155,17 @@ const STATION_GROW=(()=>{const P=SITE.stationPoly;if(!P||P.length<3)return null;
   for(const p of pts.slice().reverse()){while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
   const H=lo.slice(0,-1).concat(hi.slice(0,-1)).map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);return H.concat([H[0]]);})();
 if(STATION_GROW)SITE.stationPoly=STATION_GROW;
-const slotPos=i=>{const s=seatUnit(i),q=unitAt(s.u,PGATE+.7+s.j*.8);return [q[0],0,q[1]];}; // une place d'attente par siège, en file derrière son portillon
+// Travées d'attente (propriétaire, OzIris, 2026-11-18, issue #19, générique : toutes les attractions ont le même défaut) : visiteurs COLLÉS à leur portillon,
+// deux de front quand le portillon fait au moins 1,1 m (deux par portillon), rangées suivantes derrière. Premier rang à SLOT0 = 0,4 m de la ligne des portillons,
+// rangs espacés de SLOT_P = 0,6 m (une personne debout, pas plus serré) ; profondeur de la travée GDEPTH = dernier rang + 0,4 m (séparateurs, engine/render.js
+// drawGates). Couloir d'attente BWALK ramené juste derrière les travées (GDEPTH + 0,6 m) si SITE.board.walk est plus loin. Toutes ces valeurs sont ESTIMÉES
+// (aucun relevé) ; SITE.plat.slot = {first, pitch} les force par attraction.
+const SLOT0=(PLT0.slot&&PLT0.slot.first)||.4,SLOT_P=(PLT0.slot&&PLT0.slot.pitch)||.6;
+const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
+const GDEPTH=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
+const BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
+const slotPos=i=>{const s=seatUnit(i),c=GCOLS(s.u),g=GUNITS[s.u],b=BAYS[g.k],row=Math.floor(s.j/c),off=c>1?(s.j%c-.5)*Math.min(.6,g.h):0,q=unitAt(s.u,PGATE+SLOT0+row*SLOT_P);
+  return [q[0]+b.tx*off,0,q[1]+b.tz*off];}; // places d'attente collées au portillon, deux de front
 // Couloirs des visiteurs sur les quais (jamais en ligne droite à travers la gare, la voie ou les portillons) :
 //  embarquement : file → SITE.board.via → couloir d'attente (SITE.board.walk m de la voie, derrière les portillons) → place d'attente de la travée → (portillon ouvert seulement) → siège ;
 //  débarquement : siège → quai de débarquement, côté opposé aux portillons (couloir à SITE.plat.walkU m de la voie, par défaut au milieu du quai) → travée de la porte → SITE.exit.door → SITE.exit.path.
@@ -165,7 +176,7 @@ function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des t
   const pts=[[x,0,z],bayAt(k,ULAT)],st=k<DOORK?-1:1;for(let j=k;j!==DOORK;j-=st)pts.push(bayAt(j-st,ULAT));
   if(DOOR)pts.push([DOOR[0],0,DOOR[1]]);return pts;
 }
-const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,SITE.board.walk),bayAt(NCARS-1,SITE.board.walk)]]; // couloirs de quai (contrôle offpath)
+const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,BWALK),bayAt(NCARS-1,BWALK)]]; // couloirs de quai (contrôle offpath)
 // Deux opérateurs de quai (moitié avant, moitié arrière) ferment les sécurités wagon par wagon après le verrouillage au pupitre, les vérifient, puis valident chacun sur un bouton
 const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*POPL,b.z+b.tz*e*1.7+b.rz*POPL];}; // dans le couloir entre le bord du quai et les portillons
 const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});
