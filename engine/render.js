@@ -367,14 +367,7 @@ let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=n
   // ... ni sous le vantail d'une barrière de file (positions A et B, poteau ; lot 5 : rien qui ressemble à une barrière fixe sur une barrière qui pivote)
   {const GS=allGates().filter(g=>g&&g.h&&g.a&&g.b),dSeg=(m,h,e)=>{const dx=e[0]-h[0],dz=e[1]-h[1],l=dx*dx+dz*dz||1e-9,t=clamp(((m[0]-h[0])*dx+(m[1]-h[1])*dz)/l,0,1);return Math.hypot(h[0]+dx*t-m[0],h[1]+dz*t-m[1]);};
     for(const q of S)if(q.mid&&GS.some(g=>Math.hypot(q.mid[0]-g.h[0],q.mid[1]-g.h[1])<.6||dSeg(q.mid,g.h,g.a)<.35||dSeg(q.mid,g.h,g.b)<.35))q.mid=null;}
-  // barrière continue entre deux allées de file parallèles et proches (propriétaire, 2026-11-16) : main courante sur poteaux, tracée à mi-distance des axes
-  {const runs=[];let r=null;for(let i=0;i<S.length;i++){const q=S[i];if(!q.mid){r=null;continue;}const pr=S[i-1];if(r&&pr&&pr.mid&&pr.pi===q.pi&&Math.hypot(pr.mid[0]-q.mid[0],pr.mid[1]-q.mid[1])<1.2)r.push(q.mid);else runs.push(r=[q.mid]);}
-    for(const R of runs){if(R.length<4)continue;R.forEach((m,j)=>{if(j)QRAIL.lineTo(m[0],m[1]);else QRAIL.moveTo(m[0],m[1]);if(j%4===0)QRAILP.push(m);QMIDS.push(m);});}} // tronçons de moins de 1,5 m ignorés (pas de bout de main courante isolé)
-  // une seule clôture entre deux allées collées : la main courante de délimitation (QSIDE, zones piétonnes et gare) du côté de la clôture de séparation n'est pas dessinée
-  for(const q of S)if(q.side)for(const e of [1,-1])if(QMIDS.some(m=>{const dx=m[0]-q.x,dz=m[1]-q.z;return Math.abs(dx)<1.6&&Math.abs(dz)<1.6&&Math.abs(dx*q.tx+dz*q.tz)<.4&&(-q.tz*dx+q.tx*dz)*e>0&&Math.hypot(dx,dz)<1.6;}))(q.nf||(q.nf={}))[e]=1;
-  for(const q of S)q.cv=COV.some(P=>dPl(q.x,q.z,P)<.3); // tronçon couvert : dessiné seulement avec le couloir (gare masquée)
-  for(const [k,Pa,Pp] of [[1,QSIDE,QSIDEP],[2,QSIDE2,QSIDEP2]])for(const e of [1,-1]){let on=false;for(let i=0;i<S.length;i++){const q=S[i],ok=q.side===k&&!q.cv&&!(q.nf&&q.nf[e])&&(!on||S[i-1].pi===q.pi),d=e*(q.w/2+.05),x=q.x-q.tz*d,z=q.z+q.tx*d;
-    if(!ok){on=false;continue;}if(on){Pa.lineTo(x,z);if(i%3===0)Pp.push([x,z]);}else{Pa.moveTo(x,z);Pp.push([x,z]);on=true;}}} // 2 : sur le plancher de la gare (dessinées après lui)
+  for(const q of S)q.cv=COV.some(P=>dPl(q.x,q.z,P)<.3); // tronçon couvert : dessiné seulement avec le couloir (gare masquée) ; garde-corps : buildRails (après les escaliers)
   const by=new Map;for(let i=1;i<S.length;i++){const a=S[i-1],b=S[i];if(a.pi!==b.pi||a.cv&&b.cv)continue;const w=Math.round(Math.min(a.w,b.w)*10)/10;if(!by.has(w))by.set(w,new Path2D);const P=by.get(w);P.moveTo(a.x,a.z);P.lineTo(b.x,b.z);}
   return [...by.entries()].sort((a,b)=>b[0]-a[0]);})();
 const JOBSITE=SITE.jobsites;
@@ -522,6 +515,44 @@ const MOUTHS=STAIRS.filter(o=>o.cv&&o.top>=0&&o.p.length>1).map(o=>{const P=o.to
     x0:Math.min(a[0],T[0])-h,x1:Math.max(a[0],T[0])+h,z0:Math.min(a[1],T[1])-h,z1:Math.max(a[1],T[1])+h};}).filter(Boolean);
 for(const m of MOUTHS)m.o.mouth=m;
 const inMouth=(x,z)=>MOUTHS.some(m=>x>m.x0&&x<m.x1&&z>m.z0&&z<m.z1&&dPl(x,z,m.P)<m.w/2);
+// Garde-corps des files (QRAIL entre allées collées, QSIDE / QSIDE2 de délimitation dans les zones piétonnes et la gare). Propriétaire, OzIris, 2026-11-18, issue #19,
+// générique : aucun garde-corps à l'intérieur d'une AUTRE allée de file (coin intérieur d'un lacet, jambe voisine, jonction), d'un palier (LANDC, LANDS, LANDG),
+// d'une fin d'escalier (MOUTHS), d'un escalier ou d'une travée d'attente (BAYS : de PGATE à PGATE + GDEPTH). Deux allées parallèles trop proches pour garder
+// chacune son garde-corps (bords à moins de QR_GAP = 1 m, ESTIMÉ : couloir trop étroit pour servir) partagent UN garde-corps à mi-distance des axes, même sur un tronçon court : pas de bord sans garde-corps.
+// Allées souterraines (COVD.ug) : aucun garde-corps (ni clôture QRAIL, ni délimitation) ; autres allées couvertes (q.cv) : pas de délimitation QSIDE, comme avant.
+const QR_GAP=1;
+function buildRails(){const S=QWS;if(!S.length)return;
+  const UG=COV.filter((P,i)=>COVD[i].ug),SEG=[];for(const q of S)q.ug=UG.some(P=>dPl(q.x,q.z,P)<.3); // allées souterraines : sous le plancher, ignorées
+  for(let i=1;i<S.length;i++){const a=S[i-1],b=S[i];if(a.pi!==b.pi||a.ug||b.ug)continue;const dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1e-9;
+    SEG.push({a,b,dx,dz,l,tx:dx/l,tz:dz/l,h:Math.min(a.w,b.w)/2,x0:Math.min(a.x,b.x)-1.2,x1:Math.max(a.x,b.x)+1.2,z0:Math.min(a.z,b.z)-1.2,z1:Math.max(a.z,b.z)+1.2});}
+  const inAlley=(x,z,skip,s2)=>{for(const g of SEG){if(x<g.x0||x>g.x1||z<g.z0||z>g.z1||skip&&(g.a===skip||g.b===skip)||s2&&(g.a===s2.a||g.b===s2.b||g.a===s2.b||g.b===s2.a))continue;const t=clamp(((x-g.a.x)*g.dx+(z-g.a.z)*g.dz)/(g.l*g.l),0,1);
+    if(Math.hypot(g.a.x+g.dx*t-x,g.a.z+g.dz*t-z)<g.h-.02)return g;}return null;};
+  // jambe parallèle du côté e dont le bord est à moins de QR_GAP du bord de q (QR_GAP = 1 m, ESTIMÉ : couloir trop étroit pour servir) : {ad = écart des axes, k}
+  const partner=(q,nx,nz)=>{let best=null;for(const g of SEG){if(q.x<g.x0-2||q.x>g.x1+2||q.z<g.z0-2||q.z>g.z1+2||g.a.pi===q.pi&&Math.abs(g.a.k-q.k)<4||Math.abs(g.tx*q.tx+g.tz*q.tz)<.7)continue;
+      const t=((q.x-g.a.x)*g.dx+(q.z-g.a.z)*g.dz)/(g.l*g.l);if(t<-.05||t>1.05)continue;const fx=g.a.x+g.dx*t-q.x,fz=g.a.z+g.dz*t-q.z,ad=fx*nx+fz*nz;
+      if(ad<.6||Math.abs(fx*q.tx+fz*q.tz)>.35*ad||ad>q.w/2+g.h+QR_GAP)continue;if(!best||ad<best.ad)best={ad,k:g.a.k,g};}return best;};
+  const polys=LANDS.concat(LANDG.map(L=>L.p)),SDR=STAIRS.filter(o=>o.p.length>1);
+  const blocked=(x,z)=>inLand([x,z],0)||polys.some(P=>pipXZ(P,x,z))||inMouth(x,z)||SDR.some(o=>dPl(x,z,o.p)<(o.w||1)/2)||
+    BAYS.some(b=>{const dx=x-b.x,dz=z-b.z,u=dx*b.tx+dz*b.tz,lat=dx*b.rx+dz*b.rz;return Math.abs(u)<CAR/2&&lat>PGATE-.05&&lat<PGATE+GDEPTH+.05;});
+  const emit=(R,Pa,Pp,every)=>R.forEach((m,j)=>{if(j)Pa.lineTo(m[0],m[1]);else Pa.moveTo(m[0],m[1]);if(j%every===0||j===R.length-1)Pp.push(m);});
+  // clôture entre deux allées collées (propriétaire, 2026-11-16) : main courante sur poteaux, tracée à mi-distance des axes ; hors allées souterraines (COVD.ug), paliers, escaliers, travées
+  {const runs=[];let r=null;for(let i=0;i<S.length;i++){const q=S[i];if(!q.mid||q.ug||q.bo.ug||blocked(q.mid[0],q.mid[1])){r=null;continue;}const pr=S[i-1];
+      if(r&&pr&&pr.mid&&pr.pi===q.pi&&Math.hypot(pr.mid[0]-q.mid[0],pr.mid[1]-q.mid[1])<1.2)r.push(q.mid);else runs.push(r=[q.mid]);}
+    for(const R of runs){if(R.length<4)continue;emit(R,QRAIL,QRAILP,4);QMIDS.push(...R);}} // tronçons de moins de 1,5 m ignorés (pas de bout de main courante isolé)
+  // une seule clôture entre deux allées collées : la main courante de délimitation (QSIDE, zones piétonnes et gare) du côté de la clôture de séparation n'est pas dessinée
+  for(const q of S)if(q.side)for(const e of [1,-1])if(QMIDS.some(m=>{const dx=m[0]-q.x,dz=m[1]-q.z;return Math.abs(dx)<1.6&&Math.abs(dz)<1.6&&Math.abs(dx*q.tx+dz*q.tz)<.4&&(-q.tz*dx+q.tx*dz)*e>0&&Math.hypot(dx,dz)<1.6;}))(q.nf||(q.nf={}))[e]=1;
+  // délimitation des deux côtés (1 : zones piétonnes ; 2 : sur le plancher de la gare, dessinée après lui)
+  for(const [k,Pa,Pp] of [[1,QSIDE,QSIDEP],[2,QSIDE2,QSIDEP2]])for(const e of [1,-1]){let R=null,mode=0;const out=()=>{if(R&&R.length>1)emit(R,Pa,Pp,3);R=null;};
+    for(let i=0;i<S.length;i++){const q=S[i],nx=-q.tz*e,nz=q.tx*e;
+      if(q.side!==k||q.cv||q.nf&&q.nf[e]||R&&S[i-1].pi!==q.pi){out();continue;}
+      let d=q.w/2+.05,x=q.x+nx*d,z=q.z+nz*d,md=1,p=partner(q,nx,nz);
+      if(p&&inAlley(q.x+nx*p.ad/2,q.z+nz*p.ad/2,q,p.g))p=null; // milieu dans une troisième allée (coin d'un lacet très court) : pas de garde-corps partagé
+      if(p){if(q.k<p.k){d=p.ad/2;x=q.x+nx*d;z=q.z+nz*d;md=2;}else md=0;} // jambe parallèle voisine : garde-corps partagé, dessiné par l'allée la première dans la file
+      else if(inAlley(x,z,q))md=0; // dans une autre allée (coin intérieur, jonction) : rien
+      if(!md||blocked(x,z)){out();continue;}
+      if(R&&md!==mode)out();mode=md;(R||(R=[])).push([x,z]);}
+    out();}}
+buildRails();
 function drawMouths(st){if(!MOUTHS.length||hideA<=.5)return;ctx.save();ctx.globalAlpha=Math.min(1,(hideA-.5)*2);ctx.lineCap='butt';
   for(const m of MOUTHS){if(!!m.inSt!==!!st)continue;const gr=ctx.createLinearGradient(m.g[0],m.g[1],m.g[2],m.g[3]);gr.addColorStop(0,'#141311');gr.addColorStop(.35,'#3a362f');gr.addColorStop(1,'#8a8275'); // trémie : sombre en bas
     ctx.strokeStyle='#2e2a24';ctx.lineWidth=m.w+.3;ctx.stroke(m.base); // murs de la trémie
