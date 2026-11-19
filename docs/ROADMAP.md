@@ -61,11 +61,13 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 ### Lot 4 — Corrections locales des objets OSM
 
 - **Objectif** : modifier, ajouter, supprimer un objet d'origine OSM (chemin, bâtiment, nœud) en gardant avant / après et l'identifiant.
+- **Avant de commencer** : `docs/OSM-LIMITES.md` (issue #30) : ce qui se corrige directement dans OSM, ce qui reste local ; proposition de lot réduit.
 - **Tâches** : format `sites/<site>.osmfix.json` (opérations par id + version d'origine) ; application au chargement (moteur) et dans l'éditeur ; affichage des objets corrigés. — Opus (format), Sonnet (outils), élevée.
 
 ### Lot 5 — Files d'attente complètes
 
 - **Objectif** : définir dans l'éditeur les tronçons, les fourches, les raccords et la bouche de file (aujourd'hui `SITE.queue.parts`, écrit à la main), avec validation (visiteurs uniquement sur des chemins).
+- Avant de commencer : `docs/OSM-LIMITES.md` (issue #30) : tronçons, boucles et raccourcis probablement déductibles d'OSM (chemins à sens unique, barrières de même `ref`).
 - Sonnet, moyenne ; dépend du lot 1 (barrières liées aux fourches).
 
 ### Lot 6 — Contribution OSM

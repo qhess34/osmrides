@@ -8,6 +8,7 @@ Il dit quels objets et quels tags le jeu lit déjà, et lesquels il pourrait lir
 - **Utile** : pas lu aujourd'hui, mais il remplacerait une estimation.
 
 Règle générale : n'ajoute dans OSM que ce qui est vrai sur le terrain. N'invente pas de tag propre au jeu ; les tags de ce guide sont tous des tags OSM existants.
+Ce qui ne peut pas aller dans OSM, et la liste des corrections OSM proposées par attraction : `docs/OSM-LIMITES.md` (issue #30).
 Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu retrouve tes changements du jour par l'historique des changesets (`docs/NOUVELLE-ATTRACTION.md` §4).
 
 ## 1. Voie du circuit
