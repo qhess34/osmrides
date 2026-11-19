@@ -44,32 +44,31 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-19 par la session de pilotage n° 4._
+_Mis à jour le 2026-11-19 (soir) par la session de pilotage n° 5._
 
-**Orientation (propriétaire, 17/11)** : moteur d'attractions générique + éditeur WYSIWYG local sous Docker, création d'attraction sans IA. Lire `docs/ROADMAP.md` (lots 0–10) et `docs/ARCHITECTURE.md` (décisions D1–D7). Historique : `docs/JOURNAL.md`, journal de `docs/NOUVELLE-ATTRACTION.md`.
+**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** (19/11) : ne rien éditer hors OSM qui puisse y être ; voir `docs/OSM-LIMITES.md` (#30). Lire `docs/ROADMAP.md`, `docs/ARCHITECTURE.md` (D1–D9).
 
-**Publié sur `main` pendant la session n° 4 (18–19/11)** :
-- #19 OzIris : réimports de la file souterraine (changesets 192117430, 192118796), raccourci B2 supprimé ; chemins de niveau -1/-2 masqués dans la gare tant qu'elle est affichée ; fin d'escalier -1 → 0 ; travées d'attente raccourcies (visiteurs collés au portillon) ; allées écartées des portillons ; garde-corps sans chevauchement (`buildRails`) ; allée 1580105935 jusqu'à la porte ; point « couvert / souterrain » seulement s'il longe le couloir (`onPl`) ; clôture de séparation prolongée (`qrailEnd`).
-- #20 coaster inversé : plancher galvanisé pleine largeur (3,2 m sur OzIris, validé) ; supports dès 1,5 m au-dessus du sol (Goudurix en reçoit aussi, voulu).
-- #21 (fermée) : chemin couvert sous un simple toit effaçable montré au zoom (escalier de Zeus) ; évacuation des travées d'attente par l'entrée de la file (validé).
-- #22 éditeur : zone d'attente du quai en polygone (`GAME.boardAreas`, D7) ; le propriétaire en a dessiné une pour Zeus. Files souterraines : mêmes garde-corps que les autres, visibles gare masquée.
-- #23 Zeus : garde-corps de la voie en bois retirés de la gare et des quais (`NORAIL`) ; opérateurs bornés au quai (`OPLIM`).
-- Lot 2 fait : `id` / `v` OSM dans les données, `OSM.src`, catégories lues dans `docs/OSM-GUIDE.md` §7.
-- Réimport de Zeus, Hourra, Goudurix (19/11) : `natural=bare_rock` = rocher (relation r22083041 de Hourra), 8 tronçons de voie de Goudurix retouchés, niveaux `lv`.
+**Publié sur `main` pendant la session n° 5 (19/11)** :
+- #24 éditeur : fin de file visible et aimant des sommets de la zone d'attente ; zone qui se remplit (réserve `BRES`, pas 2,4 m à la demande du propriétaire, `slot.res`).
+- #26 évacuation : passagers assis d'un train à quai descendus par la sortie si sécurités ouvertes.
+- #27 éditeur : profondeur des travées (`GAME.board.depth`, D8).
+- #28 file : plus aucun chevauchement (`QPW`, `segSpots`, `qBehind`, `qBlocked`, mesure `overlapQ`).
+- #29 OzIris : visiteurs visibles sur l'allée w1580105935 (`inCovQ`).
+- #25 renommage en **OSMrides** (dépôt `qhess34/osmrides`, Pages https://qhess34.github.io/osmrides/) ; clés `t2z.*` gardées volontairement (sauvegardes).
+- Logo `img/logo/` (carte pliée + montagnes russes de profil, choix du propriétaire), icônes par `tools/make_icons.js`, logo sur l'écran titre.
+- #30 inventaire `docs/OSM-LIMITES.md` (analyse seule).
+- #31 lot 3 fait : `GAME.site` (D9), section « Attraction » de l'éditeur (boutons « Origine », pas de pictogramme).
 
-**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos, captures dépassées), #5 (valeurs estimées), #18 (niveaux OSM d'OzIris), #19, #20, #22, #23 (faites, à valider puis fermer par le propriétaire).
+**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos à refaire, dont le nouveau nom et le logo), #5, #18 ; #19 à #29 et #31 faites, à valider puis fermer par le propriétaire ; **#30 : 8 questions au propriétaire en attente** (freins `waiting` → `brake_run`, garage du Hourra absent d'OSM, barrières de Zeus, quais `railway=platform`, salle de contrôle de Zeus depuis OSM, `roller_coaster:element`, périmètre des lots 4/5, réimport complet de Zeus).
 
-**Décisions du propriétaire (18–19/11)** : pas de barrière B2 sur OzIris ; couloir d'attente de Zeus à 3,1 m de la voie validé ; poteaux toujours présents sur voie surélevée ; `bare_rock` est un rocher ; files souterraines avec les mêmes garde-corps ; évacués des portillons repartent par l'entrée de la file.
+**Prochaine tâche** : attendre les réponses à #30 avant tout développement des lots 4 et 5 (lot 5 peut-être presque automatique : files `oneway=yes`, barrières de même `ref` aux pointes). Sinon #4 (vignettes / tutos) ou corrections demandées.
 
-**Prochaine tâche recommandée** : lot 3 (paramètres d'instance éditables, Sonnet) ou lot 4 (corrections locales OSM, Opus) ; #4 (vignettes / tutos) en fin de grande étape.
+**Décisions du propriétaire (19/11)** : OSM reste la référence ; nom OSMrides ; logo en profil ; réserve de la zone d'attente 4× plus espacée (2,4 m) ; « profondeur des portillons » = profondeur des travées.
 
 **Points de vigilance** :
-- Le dépôt GitHub a été renommé `qhess34/osmrides` (redirection active depuis `qhess34/t2z`) ; mettre à jour l'URL du remote et les mentions du nom quand le propriétaire le confirme.
-- Le propriétaire publie lui-même des `sites/*.game.js` sur `main` (éditeur) : toujours `git fetch origin main` et fusionner avant de pousser ; ne jamais réécrire ses réglages.
-- `editor-test.js --check` échoue sur `gatesMove` pour Hourra et OzIris (barrières ajoutées par le test lui-même ; déjà le cas avant #22) : à corriger dans le test.
-- Tests lancés en parallèle par deux agents : échecs de clic sous la charge, relancer seul.
-- Deux agents en même temps : le second en worktree (`isolation: worktree`), sans pousser ; le pilote fusionne puis supprime le worktree. `.claude/worktrees/` est ignoré via `.git/info/exclude` (local).
-- Quota hebdomadaire Opus atteint le 18/11 au soir (remis à zéro le 19/11, 11 h UTC) : reprendre l'agent avec SendMessage après la remise à zéro.
-- `check.js`, `save.js`, `mobile.js`, `sound.js` ignorent l'erreur de chargement attendue de `game.js` absent.
-- Docker utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d`.
-- Les sessions cloud ne peuvent pas ouvrir github.io ni Wikimedia ; `api.openstreetmap.org` fonctionne.
+- Le remote git local pointe encore sur `qhess34/t2z` (redirection, poussées OK) ; les outils GitHub acceptent `qhess34/t2z`.
+- Le propriétaire publie lui-même des `sites/*.game.js` sur `main` : toujours `git fetch origin main` et fusionner avant de pousser ; ne jamais réécrire ses réglages.
+- Quota Opus : les agents Opus ont été coupés par la limite de 5 h (reprise par SendMessage après la remise à zéro) ; lot 3 fait avec Sonnet sans problème.
+- Deux agents en même temps : le second en worktree (`isolation: worktree`), le pilote fusionne puis supprime le worktree. `.claude/worktrees/` exclu via `.git/info/exclude` (local).
+- Tests en parallèle : échecs de clic sous la charge, relancer seul.
+- Docker utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d`. github.io et le wiki OSM inaccessibles d'ici ; `api.openstreetmap.org` fonctionne.
