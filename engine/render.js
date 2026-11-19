@@ -468,6 +468,11 @@ COVD.forEach((c,i)=>{const P=COV[i];if(COVLV[i]<0)return;const S=[];for(let j=1;
   if(c.rf){const m=M[Math.floor(M.length/2)];c.stp=STAIRS.some(o=>dPl(m[0],m[1],o.p)<.3);}}); // c.stp : le couloir est un escalier, dessiné par drawSteps (pas de sol de couloir par-dessus)
 const covH=c=>c.rf?Math.min(hideA,roofA):hideA; // 1 = couloir caché, 0 = montré
 const inCov=(x,z)=>COVB.some((o,i)=>x>o.x0&&x<o.x1&&z>o.z0&&z<o.z1&&dPl(x,z,o.P)<o.r&&covH(COVD[i])>=.5); // personne dans un couloir couvert encore caché
+// visiteur de la file (issue #29, OzIris 1580105935) : dans un couloir couvert seulement si le tronçon de son allée où il se tient EST un morceau de ce couloir (ses deux
+// bouts à moins de 0,3 m du couloir : mêmes nœuds OSM) ; une allée de niveau 0 qui passe au-dessus d'un couloir souterrain, même presque parallèle, garde ses visiteurs dessinés
+const segCov=e=>e._cv||(e._cv=e.P.map((b,i)=>{if(!i)return [];const a=e.P[i-1];return COV.map((P,k)=>dPl(a[0],a[1],P)<.3&&dPl(b[0],b[1],P)<.3&&dPl((a[0]+b[0])/2,(a[1]+b[1])/2,P)<.3?k:-1).filter(k=>k>=0);}));
+const inCovQ=v=>{const e=v.e;if(!e||!e.C||e.P.length<2)return inCov(v.x,v.z);const d=e.len-v.r;let i=1;while(i<e.C.length-1&&e.C[i]<d)i++;
+  return segCov(e)[i].some(k=>covH(COVD[k])>=.5);};
 const COVL=[];for(const P of COV){let acc=1.2;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]);for(;acc<=l;acc+=3.5)COVL.push([a[0]+(b[0]-a[0])*acc/l,a[1]+(b[1]-a[1])*acc/l]);acc-=l;}} // plafonniers des couloirs couverts
 // Hauteur ESTIMÉE du rocher : voie en tunnel dessous (OSM.tunnels / SITE.tunnels, prolongés jusqu'aux bords du rocher) la plus haute + 2,2 m ; si une voie SANS tunnel
 // le traverse, elle passe PAR-DESSUS : rocher = voie du dessus la plus basse − 0,9 m (au moins voie du dessous + 1,6 m) ; sans voie : 3 m ; SITE.rocks[k]={h} force.
@@ -1019,7 +1024,7 @@ function drawWorld(dt){
     for(const q of COVL){const g=ctx.createRadialGradient(q[0],q[1],0,q[0],q[1],1.3);g.addColorStop(0,'rgba(255,232,170,.42)');g.addColorStop(1,'rgba(255,232,170,0)');ctx.fillStyle=g;ctx.fillRect(q[0]-1.3,q[1]-1.3,2.6,2.6);} // éclairage discret (plafonniers)
     ctx.restore();}
   // personnages
-  {for(const v of G.queue)if(!inCov(v.x,v.z)||inMouth(v.x,v.z))person(v.x,v.z,v.ci,v.ph,v.mv); // fin d'escalier (MOUTHS) : visiteurs visibles // visiteurs d'un couloir couvert : seulement gare masquée
+  {for(const v of G.queue)if(!inCovQ(v)||inMouth(v.x,v.z))person(v.x,v.z,v.ci,v.ph,v.mv); // fin d'escalier (MOUTHS) : visiteurs visibles // visiteurs d'un couloir couvert : seulement gare masquée
   for(const k of G.walkers)if(!onPlat(k)&&!inCov(k.x,k.z))person(k.x,k.z,k.ci,k.ph,true);}
   for(const p of strollers){p.d+=p.v*dt*G.speed;if(p.d>p.f.len||p.d<0){p.v=-p.v;p.d=clamp(p.d,0,p.f.len);}pathPos(p.f.P,p.f.C,p.d,p,p.side);if(p.x>x0-1&&p.x<x1+1&&p.z>z0-1&&p.z<z1+1)person(p.x,p.z,p.ci,p.ph,G.speed>0);}
   if(G.job){const p=JOBSITE[G.job.type];person(p[0],p[1],C_TECH,.5,true,'#fff3b0');person(p[0]+1.1,p[1]+.5,C_TECH,2,true,'#fff3b0');}
