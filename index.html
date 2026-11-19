@@ -23,6 +23,8 @@ body{padding:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
 .screen.off{opacity:0;visibility:hidden;pointer-events:none;transform:scale(.985);transition:opacity .35s ease,transform .35s ease,visibility 0s linear .35s}
 .hero{text-align:center}
 .hero h1{margin:0;color:var(--gold);font-size:clamp(54px,15vh,104px);line-height:1;letter-spacing:.14em;padding-left:.14em;text-shadow:0 3px 0 #0008,0 8px 28px #000a}
+.hero h1{display:flex;align-items:center}.hero h1 .logo{height:1.05em;width:1.05em;margin-right:.3em;flex:none;filter:drop-shadow(0 6px 18px #000a)}
+@media(max-width:700px){.hero h1{font-size:11.5vw;letter-spacing:.06em;padding-left:0;white-space:nowrap;justify-content:center}}
 .hero p{margin:8px 0 0;color:#c4cde2;font-size:clamp(13px,2.2vh,16px);letter-spacing:.06em;text-shadow:0 1px 8px #000}
 .menu{width:min(360px,100%);display:flex;flex-direction:column;gap:9px}
 .menu .lcd{margin-bottom:3px;min-height:46px}
@@ -64,7 +66,7 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
 <main>
 <section id="home" class="screen" aria-label="Écran titre">
   <div class="hero">
-    <h1>OSMrides</h1>
+    <h1><img class="logo" src="img/logo/logo.svg" alt="">OSMrides</h1>
     <p>Simulateurs d'exploitation du Parc Astérix</p>
   </div>
   <nav class="menu desk" aria-label="Menu principal">
