@@ -377,7 +377,7 @@ const root = path.resolve(__dirname, '..');
     act('speed', 0); G.wx.next = 1e6; __opStroll();
     if (!G.open) act('open');
     let it = 0, opened = null, gp = 0;
-    let rp = 0, ev = null, evN = 0, zMax = 0; const evBad = [];
+    let rp = 0, ev = null, evN = 0, zMax = 0, ovQ = 0, ovA = 0; const ovEx = []; const evBad = [];
     const press = () => { ui(); $('bGate').click(); gp++; }; // le joueur ouvre et ferme les portillons au bouton du pupitre
     const pressRes = () => { ui(); $('bRes').click(); rp++; }; // et les sécurités : ouvrir à l'arrivée, verrouiller portillons fermés (les opérateurs les ferment et les vérifient)
     const p0 = G.played; let tPrev = G.time, wraps = 0; // jeu continu : 9 h de jeu simulées (ancienne journée 10:00-19:00)
@@ -391,6 +391,10 @@ const root = path.resolve(__dirname, '..');
         const left = ev.plat.filter(r => G.plat.includes(r)).length + ev.res.filter(r => (G.platR || []).includes(r)).length + ev.wait.filter(k => G.walkers.includes(k)).length + ev.w.filter(k => G.walkers.includes(k) && k.i <= k.pe).length;
         if (left) evBad.push(ev.it + ':' + left + '/' + ev.n0); ev = null; }
       if (it === 14000) for (const v of G.queue) if (Math.random() < .5) v.pat = 0; // abandons dans toute la file
+      if (it % 200 === 0 && it > 4000) { // overlapQ (issue #28) : paires de visiteurs de file (allées, fourches, escaliers, passerelles ; même niveau) et des travées / réserve à moins d'une épaisseur dessinée (QPW)
+        const W = G.queue.filter(v => v.mode === 'q').map(v => [v.x, v.z, v.lv | 0]); G.plat.forEach((r, i) => { if (r && r.on) { const q = slotPos(i); W.push([q[0], q[2], 'p']); } }); (G.platR || []).forEach((r, j) => { if (r && r.on && BRES[j]) W.push([BRES[j][0], BRES[j][2], 'p']); });
+        for (let a = 0; a < W.length; a++) for (let b = a + 1; b < W.length; b++) if (W[a][2] === W[b][2] && Math.hypot(W[a][0] - W[b][0], W[a][1] - W[b][1]) < QPW) { ovQ++; if (ovEx.length < 4) ovEx.push([+W[a][0].toFixed(1), +W[a][1].toFixed(1)]); }
+        const A = G.queue.filter(v => v.mode === 'app' && !v.mv); for (let a = 0; a < A.length; a++) for (let b = a + 1; b < A.length; b++) if (Math.hypot(A[a].x - A[b].x, A[a].z - A[b].z) < QPW) ovA++; } // arrivants arrêtés devant la barrière d'entrée : relevé seulement
       if (it % 40) continue;
       if (BAREA) zMax = Math.max(zMax, G.plat.filter(r => r && r.on).length + G.platR.filter(r => r && r.on).length); // zone d'attente éditée : visiteurs qui y attendent (issue #24)
       const u = trains.find(t => t.st === 'station' && t.phase === 'unload' && count(t));
@@ -407,15 +411,15 @@ const root = path.resolve(__dirname, '..');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.played - p0 >= 540 && !G.over && $('mBil').classList.contains('hidden'), wraps, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6), evN, evBad, zMax, zSeats: SEATS, zRes: BAREA ? BRES.length : 0 };
+    return { done: G.played - p0 >= 540 && !G.over && $('mBil').classList.contains('hidden'), wraps, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6), evN, evBad, zMax, ovQ, ovA, ovEx, zSeats: SEATS, zRes: BAREA ? BRES.length : 0 };
   });
   await page.evaluate(() => { cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
-  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0 && !r.evBad.length;
+  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0 && !r.evBad.length && r.ovQ === 0;
   console.log(`site ${site}${build ? ' (build)' : ''}: 9h done=${r.done} (clock wraps=${r.wraps}) after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
-  console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ} evacPlat=${r.evBad.length ? 'FAIL ' + r.evBad.join(',') : 'ok'} (${r.evN} aux portillons)` + (r.zRes ? ` zone=${r.zMax} (${r.zSeats} places aux portillons + réserve ${r.zRes})` : '') + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
+  console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ} overlapQ=${r.ovQ}${r.ovQ ? ' ex ' + JSON.stringify(r.ovEx) : ''} (arrivants ${r.ovA}) evacPlat=${r.evBad.length ? 'FAIL ' + r.evBad.join(',') : 'ok'} (${r.evN} aux portillons)` + (r.zRes ? ` zone=${r.zMax} (${r.zSeats} places aux portillons + réserve ${r.zRes})` : '') + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);
   console.log(`page errors=${errors.length}` + (errors.length ? ' -> ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(ok ? 'PASS' : 'FAIL');

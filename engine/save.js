@@ -53,7 +53,7 @@
       else{v.mode='app';v.i=a[8];v.x=a[9];v.z=a[10];v.pts=[];for(let j=0;j<a[11].length;j+=2)v.pts.push([a[11][j],0,a[11][j+1]]);}
       return v;});
     SEGS.forEach((e,k)=>{e.list.length=0;for(const i of d.sl[k]){const v=G.queue[i];v.e=e;e.list.push(v);}});
-    for(const v of G.queue)if(v.mode==='q'){pathPos(v.e.P,v.e.C,v.e.len-v.r,_qp,v.side*.36);v.x=_qp.x;v.z=_qp.z;}
+    for(const v of G.queue)if(v.mode==='q'){qPlace(v);}
     G.walkers=d.walkers.map(o=>{const pts=[[o.x,0,o.z]];for(let j=0;j<o.p.length;j+=2)pts.push([o.p[j],0,o.p[j+1]]);
       const k={kind:o.k,pts,i:1,x:o.x,y:0,z:o.z,ci:o.ci,done:null,sp:o.sp,ph:o.ph};
       if(o.res!=null){const j=o.res;k.done=()=>{const r=(G.platR||[])[j];if(r)r.on=true;};}
