@@ -311,7 +311,10 @@ function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniqu
 function queueTail(){const st=STAGES[STAGES.length-1];if(!st)return [];const e=st.seg||(st.fork.on?st.fork.loop:st.fork.short);return backPath({mode:'q',e,r:0,x:e.P[e.P.length-1][0],z:e.P[e.P.length-1][1]},true);}
 function platEvac(){const out=[],T=queueTail(),via=SITE.board.via.slice().reverse().map(q=>[q[0],0,q[1]]);
   for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i];if(k.kind!=='wait')continue;G.walkers.splice(i,1); // en chemin vers sa place : demi-tour par où il est venu (file → via → couloir → travée)
-    out.push({pts:[[k.x,0,k.z]].concat(k.pts.slice(1,k.i).reverse().map(p=>[p[0],0,p[2]]),T.slice(1)),ci:k.ci,nv:k.i});}
+    const back=[[k.x,0,k.z]].concat(k.pts.slice(1,k.i).reverse().map(p=>[p[0],0,p[2]])),e=k.pts[0]; // parti de la réserve (zone d'attente éditée) : du polygone à la file
+    if(BAREA&&pipA(BAREA,e[0],e[2])){const w=boardOutP([e[0],0,e[2]]).slice(1);out.push({pts:back.concat(w,T.slice(1)),ci:k.ci,nv:back.length+w.length});}
+    else out.push({pts:back.concat(T.slice(1)),ci:k.ci,nv:k.i});}
+  (G.platR||[]).forEach((r,j)=>{if(r&&r.on&&BRES[j]){const w=boardOutP(BRES[j]);out.push({pts:w.concat(T.slice(1)),ci:r.ci,nv:w.length});}});if(G.platR)G.platR.fill(null); // réserve (issue #24)
   G.plat.forEach((r,i)=>{if(!r||!r.on)return;const s=seatUnit(i),g=GUNITS[s.u],b=BAYS[g.k],p=slotPos(i); // à sa place : recule dans la travée jusqu'au couloir d'attente
     if(BAREA){const w=boardOut(i);out.push({pts:w.concat(T.slice(1)),ci:r.ci,nv:w.length});return;} // zone d'attente éditée (GAME.boardAreas) : dans le polygone jusqu'à la file
     out.push({pts:[p,[b.x+b.rx*BWALK+b.tx*g.c,0,b.z+b.rz*BWALK+b.tz*g.c]].concat(via,T.slice(1)),ci:r.ci,nv:2+via.length});});

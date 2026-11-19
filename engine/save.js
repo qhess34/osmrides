@@ -21,7 +21,7 @@
     const walkers=G.walkers.map(k=>{
       const o={k:k.kind,x:R(k.x,2),z:R(k.z,2),ci:k.ci,sp:R(k.sp,2),ph:R(k.ph,1),p:flat(k.pts,k.i)};
       if(k.done){
-        if(k.kind==='wait'){const e=k.pts[k.pts.length-1];const i=G.plat.findIndex((r,j)=>{if(!r||r.on)return false;const p=slotPos(j);return Math.hypot(p[0]-e[0],p[2]-e[2])<.02;});if(i>=0)o.slot=i;}
+        if(k.kind==='wait'){const e=k.pts[k.pts.length-1];const i=G.plat.findIndex((r,j)=>{if(!r||r.on)return false;const p=slotPos(j);return Math.hypot(p[0]-e[0],p[2]-e[2])<.02;});if(i>=0)o.slot=i;else{const j=(G.platR||[]).findIndex((r,j)=>r&&!r.on&&BRES[j]&&Math.hypot(BRES[j][0]-e[0],BRES[j][2]-e[2])<.02);if(j>=0)o.res=j;}}
         else if(k.kind==='board'){const e=k.pts[0];for(const t of trains){const i=t.seats.findIndex((s,j)=>{if(!s||s.on)return false;const p=slotPos(j);return Math.hypot(p[0]-e[0],p[2]-e[2])<.02;});if(i>=0){o.slot=i;o.tr=t.i;break;}}}
       }
       return o;});
@@ -56,10 +56,12 @@
     for(const v of G.queue)if(v.mode==='q'){pathPos(v.e.P,v.e.C,v.e.len-v.r,_qp,v.side*.36);v.x=_qp.x;v.z=_qp.z;}
     G.walkers=d.walkers.map(o=>{const pts=[[o.x,0,o.z]];for(let j=0;j<o.p.length;j+=2)pts.push([o.p[j],0,o.p[j+1]]);
       const k={kind:o.k,pts,i:1,x:o.x,y:0,z:o.z,ci:o.ci,done:null,sp:o.sp,ph:o.ph};
+      if(o.res!=null){const j=o.res;k.done=()=>{const r=(G.platR||[])[j];if(r)r.on=true;};}
       if(o.slot!=null){const s=o.slot;k.done=o.k==='wait'?()=>{const r=G.plat[s];if(r)r.on=true;}:()=>{const q=trains[o.tr].seats[s];if(q)q.on=true;};}
       return k;});
     // visiteurs qui attendaient la fin d'un trajet perdu : jamais bloqués
     const tgt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.slot!=null).map(o=>o.slot));G.plat.forEach((r,i)=>{if(r&&!r.on&&!tgt.has(i))r.on=true;});
+    if(!Array.isArray(G.platR))G.platR=[];G.platR=G.platR.slice(0,BAREA?BRES.length:0);const rt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.res!=null).map(o=>o.res));G.platR.forEach((r,j)=>{if(r&&!r.on&&!rt.has(j))r.on=true;}); // réserve de la zone d'attente (issue #24)
     const bt=new Set(d.walkers.filter(o=>o.k==='board'&&o.slot!=null).map(o=>o.tr+':'+o.slot));trains.forEach(t=>t.seats.forEach((s,i)=>{if(s&&!s.on&&!bt.has(t.i+':'+i))s.on=true;}));
     LOOPS.forEach((l,i)=>{l.on=!!d.loops[i][0];l.t=d.loops[i][1];});ENTRY_GATE.t=d.gate;buildQueue();
     resetOps();for(const t of trains)if(t.st==='station'&&t.phase==='check')startCheck(t);

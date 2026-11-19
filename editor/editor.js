@@ -4,7 +4,7 @@
    stable, D2) ; salle de contrôle : GAME.controlRooms (0 ou 1 salle, D3) ; zone d'attente du quai d'embarquement : GAME.boardAreas (un polygone, D7). Écriture : seulement par le serveur (editor/server.js), après diff et validation. */
 (function () {
   const S = window.T2ZSchema, $ = id => document.getElementById(id), fr = $('fr'), ov = $('ov'), oc = ov.getContext('2d');
-  let W = null, E = null, site = '', orig = { exists: false, text: '' }, sel = null, drag = null, ready = false, adding = null; // adding : nom du tronçon de la fourche où poser une barrière (clic du pivot)
+  let W = null, E = null, site = '', orig = { exists: false, text: '' }, sel = null, drag = null, ready = false, adding = null, snapped = null; // adding : nom du tronçon de la fourche où poser une barrière (clic du pivot)
   const deg = r => r * 180 / Math.PI, rad = d => d * Math.PI / 180, R2 = v => Math.round(v * 100) / 100, R1 = v => Math.round(v * 10) / 10;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const api = (u, o) => fetch(u, Object.assign({ cache: 'no-store' }, o)).then(r => r.json());
@@ -52,6 +52,12 @@
   const areaPts = () => E('boardArea()'), areaEd = () => Array.isArray(GM().boardAreas) && GM().boardAreas.length > 0;
   const pipE = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > z) !== (P[j][1] > z) && x < (P[j][0] - P[i][0]) * (z - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
   const mids = P => P.map((q, i) => { const r = P[(i + 1) % P.length]; return [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2]; });
+  // fin de la file à raccorder (issue #24) : boardViaEnd() du moteur ; aimant : un sommet glissé ou créé se colle au point de fin de file (ou à un bord de l'allée au bout
+  // de la file) à moins de SNAP_PX pixels écran, sauf Alt maintenue. SNAP_PX = 11 px (demande du propriétaire : 10-12 px).
+  const SNAP_PX = 11, viaEnd = () => { try { return E('boardViaEnd()'); } catch (e) { return null; } };
+  function snap(q, alt) { if (alt) return null; const V = viaEnd(); if (!V) return null; const s = E('cam').s; let best = null, bd = SNAP_PX;
+    for (const [t, k] of [[V.end, 'end'], [V.edges[0], 'edge'], [V.edges[1], 'edge']]) { const d = Math.hypot(q[0] - t[0], q[1] - t[1]) * s; if (d < bd) { bd = d; best = { p: [t[0], t[1]], k }; } if (best && best.k === 'end') break; } // le point de fin de file l'emporte sur les bords
+    return best; }
 
   // ── données éditées ──
   function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; return g; }
@@ -107,7 +113,7 @@
       if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(adding, p); return; }
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
-      if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i]; A.pts.splice(i + 1, 0, [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); E('reBoard()'); } // milieu d'un bord : nouveau sommet
+      if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i], sn = snap(q, e.altKey); A.pts.splice(i + 1, 0, sn ? sn.p : [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); snapped = sn; E('reBoard()'); } // milieu d'un bord : nouveau sommet (aimanté)
       sel = h.t === 'gate' ? { t: 'gate', key: h.key } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
       if (h.t === 'room' && !migrated()) migrate(); // première modification de la salle : reprise de SITE.booth
       const r = h.t === 'room' ? GM().controlRooms[0] : null;
@@ -129,7 +135,7 @@
         E('reGates()');
       } else if (drag.t === 'area') {
         const A = areaOvr();
-        if (drag.m === 'move') A.pts = drag.a0.map(q => [R2(q[0] + dx), R2(q[1] + dz)]); else { const i = +drag.m.slice(1); A.pts[i] = [R2(drag.a0[i][0] + dx), R2(drag.a0[i][1] + dz)]; }
+        if (drag.m === 'move') A.pts = drag.a0.map(q => [R2(q[0] + dx), R2(q[1] + dz)]); else { const i = +drag.m.slice(1), q = [drag.a0[i][0] + dx, drag.a0[i][1] + dz], sn = snap(q, e.altKey); snapped = sn; A.pts[i] = sn ? sn.p : [R2(q[0]), R2(q[1])]; } // sommet aimanté à la fin de la file (Alt : libre)
         E('reBoard()');
       } else {
         const r = GM().controlRooms[0], r0 = drag.r0; if (!r) return;
@@ -141,7 +147,7 @@
       }
       panelLite();
     }, true);
-    const up = e => { if (!drag) return; e.stopImmediatePropagation(); e.preventDefault(); drag = null; panel(); };
+    const up = e => { if (!drag) return; e.stopImmediatePropagation(); e.preventDefault(); drag = null; snapped = null; panel(); };
     W.addEventListener('pointerup', up, true); W.addEventListener('pointercancel', up, true);
   }
 
@@ -157,6 +163,14 @@
     oc.setLineDash([5, 5]); oc.strokeStyle = 'rgba(255,255,255,.55)'; oc.lineWidth = 1.2; // axe des tronçons de file
     for (const L of segs) { oc.beginPath(); L.forEach((q, i) => { const a = P(q[0], q[1]); i ? oc.lineTo(a[0], a[1]) : oc.moveTo(a[0], a[1]); }); oc.stroke(); }
     oc.setLineDash([]);
+    { const V = viaEnd(); if (V) { // fin de la file à raccorder (issue #24) : dernière portion du trajet vers le quai (vert d'eau épais), bords de l'allée (losanges creux), point d'extrémité (losange plein cerclé)
+        const L = V.pts.map(q => P(q[0], q[1])); oc.strokeStyle = 'rgba(11,17,32,.7)'; oc.lineWidth = 6; oc.lineCap = 'round'; oc.beginPath(); L.forEach((q, i) => i ? oc.lineTo(q[0], q[1]) : oc.moveTo(q[0], q[1])); oc.stroke();
+        oc.strokeStyle = '#3ee0b0'; oc.lineWidth = 3; oc.stroke(); oc.lineCap = 'butt';
+        const dia = (q, r, fill) => { oc.beginPath(); oc.moveTo(q[0], q[1] - r); oc.lineTo(q[0] + r, q[1]); oc.lineTo(q[0], q[1] + r); oc.lineTo(q[0] - r, q[1]); oc.closePath(); if (fill) { oc.fillStyle = fill; oc.fill(); } oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.stroke(); };
+        const E2 = V.edges.map(q => P(q[0], q[1])); oc.strokeStyle = '#3ee0b0'; oc.lineWidth = 1.5; oc.setLineDash([3, 3]); oc.beginPath(); oc.moveTo(E2[0][0], E2[0][1]); oc.lineTo(E2[1][0], E2[1][1]); oc.stroke(); oc.setLineDash([]);
+        for (const q of E2) { dia(q, 5); oc.strokeStyle = '#3ee0b0'; oc.lineWidth = 1.5; oc.beginPath(); oc.moveTo(q[0], q[1] - 3); oc.lineTo(q[0] + 3, q[1]); oc.lineTo(q[0], q[1] + 3); oc.lineTo(q[0] - 3, q[1]); oc.closePath(); oc.stroke(); }
+        const en = P(V.end[0], V.end[1]); oc.strokeStyle = snapped && snapped.k === 'end' ? '#fff' : '#3ee0b0'; oc.lineWidth = 2; oc.beginPath(); oc.arc(en[0], en[1], SNAP_PX, 0, 7); oc.stroke(); dia(en, 7, '#3ee0b0');
+        oc.font = '600 11px system-ui'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 3; oc.fillStyle = '#3ee0b0'; oc.strokeText('fin de file', en[0] + 12, en[1] + 14); oc.fillText('fin de file', en[0] + 12, en[1] + 14); } }
     { const AP = areaPts().map(q => P(q[0], q[1])), on = sel && sel.t === 'area'; // zone d'attente : tirets = calculée, trait plein = éditée (GAME.boardAreas)
       oc.fillStyle = 'rgba(242,193,78,.13)'; oc.strokeStyle = '#f2c14e'; oc.lineWidth = on ? 2.5 : 1.5; oc.setLineDash(areaEd() ? [] : [6, 4]);
       oc.beginPath(); AP.forEach((q, i) => i ? oc.lineTo(q[0], q[1]) : oc.moveTo(q[0], q[1])); oc.closePath(); oc.fill(); oc.stroke(); oc.setLineDash([]);
@@ -198,7 +212,7 @@
     }
     if (sel.t === 'area') {
       const Ps = areaPts(), v = sel.v != null && sel.v < Ps.length ? sel.v : null;
-      return `<div><b>Zone d'attente du quai</b> ${areaEd() ? '<span class="tag t-ovr">éditée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${Ps.length} sommets. Glisser un sommet (carré) pour le déplacer, un rond (milieu d'un bord) pour ajouter un sommet, l'intérieur pour tout déplacer.</div>
+      return `<div><b>Zone d'attente du quai</b> ${areaEd() ? '<span class="tag t-ovr">éditée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${Ps.length} sommets. Glisser un sommet (carré) pour le déplacer, un rond (milieu d'un bord) pour ajouter un sommet, l'intérieur pour tout déplacer. Un sommet se colle (aimant) au point de fin de file (losange vert plein, cercle) ou aux bords de l'allée au bout de la file (losanges creux) ; maintenir <b>Alt</b> pour le poser librement.</div>
         ${v != null ? `<div class="grid" style="margin-top:6px"><span>Sommet ${v + 1} x, z (m)</span><span>${inp('vx', R2(Ps[v][0]))} ${inp('vz', R2(Ps[v][1]))}</span></div>` : ''}
         <div class="row">${v != null ? `<button id="bDelVtx" class="bad" ${Ps.length > 3 ? '' : 'disabled'}>Supprimer le sommet</button>` : ''}<button id="bAreaAuto" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
     }
@@ -231,7 +245,7 @@
         : '<p class="note">Aucune salle (ni pupitre dessiné, ni gyrophare).</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>';
     if ($('bNewRoom')) $('bNewRoom').onclick = createRoom;
     if ($('bDelRoom')) $('bDelRoom').onclick = deleteRoom;
-    $('areaBox').innerHTML = `<p class="note">${areaEd() ? `Zone éditée (<code>game.js</code>) : ${GM().boardAreas[0].pts.length} sommets. Les visiteurs y attendent derrière les portillons.` : 'Zone calculée (travées et couloir d\'attente, en tirets). La première modification la reprend dans <code>game.js</code>.'}</p><div class="row"><button id="bSelArea">Sélectionner</button><button id="bAreaAuto2" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
+    $('areaBox').innerHTML = `<p class="note">${areaEd() ? `Zone éditée (<code>game.js</code>) : ${GM().boardAreas[0].pts.length} sommets. Les visiteurs y attendent derrière les portillons.` : 'Zone calculée (travées et couloir d\'attente, en tirets). La première modification la reprend dans <code>game.js</code>.'} Trait vert : fin de la file (losange plein = point où les visiteurs entrent dans la zone) ; un sommet glissé s'y colle (Alt : sans aimant). La zone se remplit : places des portillons, puis réserve dans tout le polygone.</p><div class="row"><button id="bSelArea">Sélectionner</button><button id="bAreaAuto2" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
     $('bSelArea').onclick = () => { sel = { t: 'area' }; const Q = areaPts(); focus(Q.reduce((a, q) => a + q[0], 0) / Q.length, Q.reduce((a, q) => a + q[1], 0) / Q.length); panel(); };
     $('bAreaAuto2').onclick = revertArea;
     if ($('bSelRoom')) $('bSelRoom').onclick = () => { sel = { t: 'room' }; const r = rooms()[0]; focus(r.x, r.z); panel(); };
@@ -282,6 +296,6 @@
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
+  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
   loadSites();
 })();

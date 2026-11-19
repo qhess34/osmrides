@@ -95,6 +95,11 @@ const ed = (page, s) => page.evaluate(s);
         ok(await ed(page, `ED.sel().key===${JSON.stringify(nk)}&&ED.gates().find(g=>g.key===${JSON.stringify(nk)}).fork===ED.E('forkList()').find(f=>f.name===${JSON.stringify(nf)}).fork`), 'sélection suivie, fourche changée');
         ak = nk; fk = nf; ab = after;
       }
+      // check.js (gatesMove) exige qu'aucune barrière ne pivote sur une main courante fixe : la barrière ajoutée (posée ci-dessus à un endroit quelconque) reprend la
+      // géométrie d'une barrière calculée de sa fourche (champ de saisie équivalent du panneau « Sélection »), pour que --check reste significatif
+      ab = await ed(page, `(()=>{const k=${JSON.stringify(ak)},a=ED.gates().find(g=>g.key===k),c=ED.gates().find(g=>g.kind==='fork'&&g.fork===a.fork&&!g.add&&!g.off)||ED.gates().find(g=>g.fork===a.fork&&!g.add);if(!c)return ED.draft().barriers[k];
+        const h=c.g.h,P=e=>({ang:+(Math.atan2(e[1]-h[1],e[0]-h[0])*180/Math.PI).toFixed(1),len:+Math.hypot(e[0]-h[0],e[1]-h[1]).toFixed(2)});
+        ED.E('GM').barriers[k]={x:+h[0].toFixed(2),z:+h[1].toFixed(2),a:P(c.g.a),b:P(c.g.b)};ED.E('reGates()');return ED.draft().barriers[k];})()`);
       // ── salle de contrôle ──
       await page.click('#bSelRoom'); await sleep(150);
       const r0 = await ed(page, `ED.rooms()[0]`), s1 = await ed(page, `ED.E('cam.s')`);
@@ -142,6 +147,33 @@ const ed = (page, s) => page.evaluate(s);
       ok(!(await ed(page, `'boardAreas' in ED.draft()`)) && !(await ed(page, `ED.areaEd()`)) && JSON.stringify(await ed(page, `ED.area()`)) === JSON.stringify(A0), 'retour au calcul auto (clé retirée de GAME)');
       q0 = await dragV(); A1 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(await ed(page, `ED.E('BSLOTS.length===SEATS&&BSLOTS.every(s=>inA(s[0],s[2],.19))')`), 'éditeur : places d\'attente recalculées dans le polygone');
+      // ── fin de file et aimant (issue #24) : repère de fin de file, sommet créé au milieu du bord le plus proche puis glissé près du point de fin de file (collé
+      //    exactement), Alt maintenue (pas d'aimant), relâché de nouveau près du point (collé) ; ce polygone est écrit et vérifié dans le jeu (entrée sans saut)
+      const V = await ed(page, `ED.viaEnd()`), via = await ed(page, `ED.E('(SITE.board.via||[]).slice(-1)[0]||null')`);
+      ok(V && V.pts.length >= 2 && V.edges.length === 2 && (!via || Math.hypot(V.end[0] - via[0], V.end[1] - via[1]) < .01), `fin de file affichée (${V && V.end}, ${V && V.pts.length} points, allée ${V && V.w} m)`);
+      const sPx = await ed(page, `ED.snapPx`);
+      const em = await ed(page, `(()=>{const P=ED.area(),e=${JSON.stringify(V.end)};let i=0,m=1e9;P.forEach((q,j)=>{const r=P[(j+1)%P.length],d=Math.hypot((q[0]+r[0])/2-e[0],(q[1]+r[1])/2-e[1]);if(d<m){m=d;i=j;}});const r=P[(i+1)%P.length];return {i,s:ED.toScr((P[i][0]+r[0])/2,(P[i][1]+r[1])/2)};})()`);
+      let es = await ed(page, `ED.toScr(${V.end[0]},${V.end[1]})`);
+      await drag(page, em.s, [es[0] + 5, es[1] - 4]);
+      let A3 = await ed(page, `ED.draft().boardAreas[0]`), vi = em.i + 1;
+      ok(A3.pts.length === A1.pts.length + 1 && A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1], `aimant : sommet créé collé au point de fin de file à 6 px (${A3.pts[vi]})`);
+      es = await ed(page, `ED.toScr(${V.end[0]},${V.end[1]})`); const s3 = await ed(page, `ED.E('cam.s')`);
+      await page.keyboard.down('Alt'); await drag(page, es, [es[0] + 6, es[1]]); await page.keyboard.up('Alt');
+      A3 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(Math.abs(A3.pts[vi][0] - V.end[0] - 6 / s3) < .03 && A3.pts[vi][1] === V.end[1], `Alt maintenue : sommet posé librement à 6 px (${A3.pts[vi]})`);
+      es = await ed(page, `ED.toScr(${A3.pts[vi][0]},${A3.pts[vi][1]})`); const far = await ed(page, `ED.toScr(${V.end[0]},${V.end[1]})`);
+      await drag(page, es, [far[0] + sPx + 6, far[1]]); A3 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(!(A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1]), `au-delà de ${sPx} px : pas d'aimant`);
+      es = await ed(page, `ED.toScr(${A3.pts[vi][0]},${A3.pts[vi][1]})`);
+      await drag(page, es, [far[0] - 3, far[1] + 7]); A3 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1], `sommet glissé collé de nouveau au point de fin de file (${A3.pts[vi]})`);
+      const eg = V.edges[0], egs = await ed(page, `ED.toScr(${eg[0]},${eg[1]})`), es2 = await ed(page, `ED.toScr(${V.end[0]},${V.end[1]})`);
+      const egOk = Math.hypot(egs[0] - es2[0], egs[1] - es2[1]) > 2 * sPx + 4; // bord de l'allée assez loin du point de fin pour un test sans ambiguïté
+      if (egOk) { await drag(page, es2, [egs[0] + 4, egs[1] + 4]); const A4 = await ed(page, `ED.draft().boardAreas[0]`);
+        ok(A4.pts[vi][0] === eg[0] && A4.pts[vi][1] === eg[1], `aimant : bord de l'allée au bout de la file (${A4.pts[vi]})`);
+        const eb = await ed(page, `ED.toScr(${eg[0]},${eg[1]})`); await drag(page, eb, [es2[0] + 2, es2[1] + 2]); }
+      A3 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1], 'polygone raccordé à la fin de file (écrit)');
       if (SHOT) { await page.click(`#gList .it[data-key="${g0.key}"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); }
       // ── diff puis sauvegarde ──
       await page.click('#bDiff'); await page.waitForSelector('#diff .a', { timeout: 5000 });
@@ -202,7 +234,7 @@ const ed = (page, s) => page.evaluate(s);
       await jp.close();
       if (CHECK) {
         const r = (() => { try { return execFileSync(process.execPath, [path.join(ROOT, 'tools/check.js'), id], { encoding: 'utf8', env: process.env }); } catch (e) { return String(e.stdout || '') + 'FAIL'; } })();
-        const last = r.trim().split('\n'), line = last.find(l => /offpath=/.test(l)) || '', gm = (r.match(/gatesMove=\S+/) || [''])[0];
+        const last = r.trim().split('\n'), line = last.find(l => /offpath=/.test(l)) || '', gm = (r.match(/gatesMove=(FAIL [^|\n]*|\S+)/) || [''])[0];
         ok(/\nPASS\s*$/.test('\n' + r.trim().split('\n').pop() + '\n') || /^PASS$/m.test(r), `check.js ${id} avec game.js : ${r.trim().split('\n').pop()} ${line.split(' (')[0]} ${line.match(/strollQ=\d+/) || ''} ${gm}`);
       }
       // zone d'attente appliquée : polygone, visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone
@@ -213,13 +245,16 @@ const ed = (page, s) => page.evaluate(s);
       const za = await jp2.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
         let n=0,out=0,wout=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.plat.forEach((r,j)=>{if(r&&r.on){n++;const s=slotPos(j);if(!pipA(BAREA,s[0],s[2]))out++;}});
           for(const k of G.walkers)if(k.kind==='wait'&&k.i>BVIA.pre.length+1&&!pipA(BAREA,k.x,k.z))wout++;}
-        const per=GUNITS.map((_,u)=>G.plat.filter((r,j)=>r&&r.on&&seatUnit(j).u===u).length),on=G.plat.filter(r=>r&&r.on).length;
-        act('evac');const ev=G.walkers.filter(k=>k.kind==='evac'&&k.pe>0&&pipA(BAREA,k.pts[0][0],k.pts[0][2])).length;
-        return {pts:BAREA,n,out,wout,per,on,ev,cap:GPR>1?S_COLS:CSEATS,left:G.plat.filter(r=>r).length};})()`);
+        const per=GUNITS.map((_,u)=>G.plat.filter((r,j)=>r&&r.on&&seatUnit(j).u===u).length),on=G.plat.filter(r=>r&&r.on).length+G.platR.filter(r=>r&&r.on).length;
+        const res=G.platR.filter(r=>r&&r.on).length,resOut=BRES.filter(p=>!inA(p[0],p[2],.19)).length,V=boardViaEnd(),eJump=BVIA.e?Math.hypot(BVIA.e[0]-V.end[0],BVIA.e[1]-V.end[1]):-1;
+        const wIn=G.walkers.filter(k=>k.kind==='wait'&&pipA(BAREA,k.x,k.z)).length;act('evac');const ev=G.walkers.filter(k=>k.kind==='evac'&&k.pe>0&&pipA(BAREA,k.pts[0][0],k.pts[0][2])).length;
+        return {pts:BAREA,n,out,wout,per,on:on+wIn,ev,cap:GPR>1?S_COLS:CSEATS,left:G.plat.filter(r=>r).length+G.platR.filter(r=>r).length,res,nres:BRES.length,resOut,eJump};})()`);
       ok(JSON.stringify(za.pts) === JSON.stringify(exp.boardAreas[0].pts), 'jeu : zone d\'attente appliquée (polygone de game.js)');
       ok(za.n > 0 && za.out === 0 && za.wout === 0, `jeu : visiteurs dans le polygone (${za.n} relevés à leur place, ${za.out} hors du polygone ; en marche : ${za.wout} hors)`);
       ok(za.per.every(c => c <= za.cap) && za.on > 0, `jeu : visiteurs par portillon ${za.per.join(' ')} (au plus ${za.cap})`);
       ok(za.ev === za.on && za.left === 0, `jeu : évacuation depuis le polygone (${za.ev} / ${za.on})`);
+      ok(za.nres > 0 && za.res > 0 && za.resOut === 0, `jeu : la zone d'attente se remplit (réserve : ${za.res} visiteurs sur ${za.nres} places, toutes dans le polygone)`);
+      ok(za.eJump >= 0 && za.eJump < .45, `jeu : entrée dans le polygone au point de fin de file (écart ${za.eJump.toFixed(2)} m)`);
       await jp2.close();
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));

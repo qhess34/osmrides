@@ -327,10 +327,17 @@ function updateRun(t,dt){
 }
 // Quai et portillons : les visiteurs se rangent par travée, puis embarquent quand les portillons s'ouvrent
 function updatePlatform(dt){
-  G.platT-=dt;const fr=SEG_OUT.list[0];
+  G.platT-=dt;G.platRT-=dt;const fr=SEG_OUT.list[0];
+  const pick=()=>{let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
+    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r])return kb*CSEATS+r;return -1;};
+  // réserve de la zone d'attente éditée (BRES, engine/garage.js, issue #24) : un visiteur arrivé avance à une place de portillon libérée (le plus proche d'elle)
+  const NR=BAREA?BRES.length:0;if(!Array.isArray(G.platR))G.platR=[];if(G.platR.length!==NR){G.platR.length=NR;for(let j=0;j<NR;j++)if(!G.platR[j])G.platR[j]=null;}
+  if(NR&&G.platRT<=0){const i=pick();if(i>=0){const p=slotPos(i);let j=-1,bd=1e9;G.platR.forEach((r,k)=>{if(r&&r.on){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;}}});
+    if(j>=0){const o=G.platR[j],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.platR[j]=null;G.plat[i]=r;G.platRT=.3;walker(resTo(j,i),r.ci,()=>{r.on=true;},3.2,0,'wait');}}}
   if(G.platT<=0&&fr&&fr.r<.4){
-    let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
-    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let i=-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r]){i=kb*CSEATS+r;break;}
+    let i=pick();const rb=NR&&G.platR.some(r=>r);
+    if(rb||(i<0&&NR)){i=-1;const j=G.platR.findIndex(r=>!r); // places des portillons prises, ou d'autres attendent déjà : dans la réserve (la plus proche des portillons)
+      if(j>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.platR[j]=r;G.platT=.22;walker([[fr.x,0,fr.z]].concat(boardInP(BRES[j])),fr.ci,()=>{r.on=true;},4.2,0,'wait');}}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);
       if(BAREA)walker([[fr.x,0,fr.z]].concat(boardIn(i)),fr.ci,()=>{r.on=true;},4.2,0,'wait'); // zone d'attente éditée (GAME.boardAreas, engine/garage.js) : dans le polygone jusqu'à la place
       else{const g=GUNITS[seatUnit(i).u],b=BAYS[g.k],W=BWALK,j=g.c+rnd(-.2,.2)*g.h/(CAR/2);walker([[fr.x,0,fr.z]].concat(SITE.board.via.map(q=>[q[0],0,q[1]]),[[b.x+b.rx*W+b.tx*j,0,b.z+b.rz*W+b.tz*j],p]),fr.ci,()=>{r.on=true;},4.2,0,'wait');}}
@@ -424,7 +431,7 @@ function act(a,arg){
   else if(a==='closeBil'){if(G.over){location.reload();return;}$('mBil').classList.add('hidden');}
   else if(a==='open'){if(!G.open&&G.over)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
-  else if(a==='evac'){const nq=G.queue.length;if(!nq&&!G.plat.some(r=>r)&&!G.walkers.some(k=>k.kind==='wait'))return;
+  else if(a==='evac'){const nq=G.queue.length;if(!nq&&!G.plat.some(r=>r)&&!(G.platR||[]).some(r=>r)&&!G.walkers.some(k=>k.kind==='wait'))return;
     for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');
     clearQueue();const n=nq+platEvac();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs (file et portillons) ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();

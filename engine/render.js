@@ -948,7 +948,7 @@ function drawGateLeaves(){const a=G.gate*1.45,ca=Math.cos(a),sa=Math.sin(a),GL=g
   ctx.stroke();ctx.lineCap='butt';
 }
 function drawStationPeople(){drawGateLeaves();
-  G.plat.forEach((r,i)=>{if(r&&r.on){const p=slotPos(i);person(p[0],p[2],r.ci,r.ph,false);}});
+  G.plat.forEach((r,i)=>{if(r&&r.on){const p=slotPos(i);person(p[0],p[2],r.ci,r.ph,false);}});(G.platR||[]).forEach((r,j)=>{if(r&&r.on&&BRES[j])person(BRES[j][0],BRES[j][2],r.ci,r.ph,false);}); // réserve de la zone d'attente (issue #24)
   for(const k of G.walkers)if(onPlat(k))person(k.x,k.z,k.ci,k.ph,true);
   for(const o of OPS)person(o.x,o.z,3,o.i+.6,o.mv,'#1d2b4f');
 }

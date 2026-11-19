@@ -27,7 +27,7 @@ function ui(){
   $('hSat').textContent=Math.round(G.sat)+' %';
   const active=trains.filter(t=>t.st!=='garage').length;
   $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);
-  $('hWait').textContent=active?Math.round(G.queue.length/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
+  $('hWait').textContent=active?Math.round((G.queue.length+(G.platR||[]).filter(r=>r).length)/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
   $('hRiders').textContent=G.stats.riders;
   for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
   $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.over;

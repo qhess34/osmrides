@@ -218,7 +218,7 @@ Lift et zones de freinage surélevées ont une passerelle de service (coaster in
 
 « Évacuer la file » (`act('evac')`) fait ressortir tous les visiteurs de la file par l'entrée, au plus court, barrières franchies, **et** ceux qui attendent derrière les portillons : à leur place dans la travée (`G.plat`) ou en chemin vers elle (marcheurs `wait`, couloir d'attente `SITE.board.walk`). Trajet (`engine/queue.js` `platEvac`) : travée → couloir d'attente → `SITE.board.via` à rebours → toute la file à rebours → entrée ; le quai de débarquement, de l'autre côté de la voie, n'est jamais traversé. Les visiteurs assis ou qui franchissent le portillon pour embarquer restent. Commun à toutes les attractions, rien à écrire par site.
 
-Zone d'attente éditée (issue #22, `GAME.boardAreas`) : les visiteurs qui attendent dans le polygone en ressortent par le même chemin intérieur, puis `board.via` à rebours et la file (`boardOut`).
+Zone d'attente éditée (issue #22, `GAME.boardAreas`) : les visiteurs qui attendent dans le polygone en ressortent par le même chemin intérieur, puis `board.via` à rebours et la file (`boardOut`). La zone se remplit (issue #24) : places des portillons d'abord, puis **réserve** `BRES` (rangs successifs au pas de 0,6 m ESTIMÉ, dans tout le polygone derrière les places des portillons, 400 au plus) ; un visiteur de la réserve avance à une place de portillon libérée (`G.platR`, `resTo`) ; l'évacuation vide aussi la réserve.
 
 ## Exploitation continue (propriétaire, 2026-11-17)
 
