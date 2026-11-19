@@ -161,7 +161,7 @@ if(STATION_GROW)SITE.stationPoly=STATION_GROW;
 // drawGates). Couloir d'attente BWALK ramené juste derrière les travées (GDEPTH + 0,6 m) si SITE.board.walk est plus loin. Toutes ces valeurs sont ESTIMÉES
 // (aucun relevé) ; SITE.plat.slot = {first, pitch} les force par attraction.
 const SLOT0=(PLT0.slot&&PLT0.slot.first)||.4,SLOT_P=(PLT0.slot&&PLT0.slot.pitch)||.6;
-const RES_P=(PLT0.slot&&PLT0.slot.res)||4*SLOT_P; // pas de la réserve de la zone d'attente (propriétaire, 2026-11-19 : « 4x plus espacé ») : 2,4 m ESTIMÉ, SITE.plat.slot.res pour forcer
+const RES_P=(PLT0.slot&&PLT0.slot.res)||1.5*SLOT_P; // pas de la réserve de la zone d'attente (propriétaire, 2026-11-19 : « 4x plus espacé ») : 2,4 m ESTIMÉ, SITE.plat.slot.res pour forcer
 const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
 const GDEPTH_CALC=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
 /* Profondeur des travées réglée (propriétaire, issue #27, éditeur : GAME.board={depth}, en m depuis la ligne des portillons ; repli SITE.plat.depth ; priorité GAME > SITE >
