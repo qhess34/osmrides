@@ -1,6 +1,9 @@
 'use strict';
 /* ══════════ VISITEURS (chemins réels : accès, file, sortie) ══════════ */
 const SP=.42,QS=SITE.queue;
+// Écart entre visiteurs de la file (propriétaire, issue #28, générique) : un visiteur est dessiné comme une ellipse de 0,54 x 0,34 m (engine/render.js person),
+// tourné face à sa marche dans la file (v.hd : épaules en travers) ; QPW = épaisseur dessinée (0,34 m) = écart minimal centre à centre exigé (mesure overlapQ de
+// tools/check.js) ; QD = garde appliquée par le moteur (0,40 m, marge). Pas le long du chemin SP = 0,42 m.
 // RÈGLE DES BARRIÈRES DE FILE (propriétaire, issue #12, décision du 17/11, toutes les attractions ; ce que le propriétaire met dans OSM : docs/OSM-GUIDE.md §5) :
 //  - position    = nœud OSM barrier=swing_gate | gate | lift_gate posé sur le chemin de file (OSM.barriers = [[x, z, ref, hinge, tx, tz, bout]], tools/make_site.py) ;
 //  - orientation = perpendiculaire à l'axe du chemin au droit du nœud (gateAt) ;
@@ -45,7 +48,7 @@ function osmGates(p){if(!p.loop||!p.short)return null;const S=p.short,J=[S[0],S[
 function pathPos(P,C,d,o,side){
   d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;
   const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1),dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
-  o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;return o;
+  o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;o.a=Math.atan2(dz,dx);return o;
 }
 // Distance d'un point à une polyligne [[x,z]…].
 // point q d'une allée de file SUR le chemin P (à moins de r m d'un tronçon de P à peu près parallèle à q) : une allée qui CROISE P en plan (passe au-dessus d'un couloir
@@ -171,7 +174,7 @@ const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):((
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
 // Deux pointes très proches (lacets d'OzIris, raccourci de 1 à 2 m) : on garde DEUX barrières (propriétaire, 2026-11-17 : « je devrais avoir deux barrières ici »),
 // plus de fusion : forkGate écarte leurs pivots (g.short) ; filet de sécurité : surcharge, ajout ou suppression dans l'éditeur (GAME.barriers).
-function reGates(){for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
+function reGates(){QHW_OK=0;for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
     l.g=l.gs[0];}
   if(OSM_ENTRY||QS.gateMoved||ENTRY_EST){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
   gameGates();
