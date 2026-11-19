@@ -501,7 +501,7 @@ function drawBridge(b){
   ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=b.w*.5;ctx.stroke(b.deck);
   ctx.strokeStyle='#3d4148';lw(.12,.7);ctx.stroke(b.rl);ctx.stroke(b.rr); // garde-corps
   ctx.strokeStyle='rgba(220,224,228,.45)';lw(.05,.4);ctx.stroke(b.rl);ctx.stroke(b.rr);
-  if(b.over){for(const v of G.queue)if(dPoly(v.x,v.z,b.P)<b.w/2+.2)person(v.x,v.z,v.ci,v.ph,v.mv); // visiteurs sur la passerelle, au-dessus de la voie
+  if(b.over){for(const v of G.queue)if(dPoly(v.x,v.z,b.P)<b.w/2+.2)person(v.x,v.z,v.ci,v.ph,v.mv,0,v.hd); // visiteurs sur la passerelle, au-dessus de la voie
     for(const k of G.walkers)if(dPoly(k.x,k.z,b.P)<b.w/2+.2)person(k.x,k.z,k.ci,k.ph,true);}
 }
 const STSP=STATION_GROW||SITE.stationPoly||[]; // escaliers dans l'emprise de la gare (file qui monte au quai) : dessinés par-dessus le plancher (drawSteps(true))
@@ -620,9 +620,9 @@ ctx.strokeStyle=o.q?'#4a3a28':'#a89a78';ctx.lineWidth=o.w+.3;ctx.stroke(o.base);
     if(cam.s>3){lw(.07,.4);for(const t of o.tr){const c=Math.round(110+70*t[4]);ctx.strokeStyle=`rgb(${c},${c-4},${c-12})`;ctx.beginPath();ctx.moveTo(t[0],t[1]);ctx.lineTo(t[2],t[3]);ctx.stroke();}} // nez de marche, plus clairs vers le haut
 }
 }
-function person(x,z,ci,ph,mv,helmet){
+function person(x,z,ci,ph,mv,helmet,hd){ // hd : orientation des épaules (visiteurs de la file face à leur marche, engine/queue.js qPlace), sinon ph
   if(cam.s<4.2){ctx.fillStyle=PAL[ci];const k=Math.max(.45,1.2/cam.s);ctx.fillRect(x-k/2,z-k/2,k,k);return;}
-  const a=ph+(mv?Math.sin(clock*7+ph)*.3:0);
+  const a=(hd!=null?hd:ph)+(mv?Math.sin(clock*7+ph)*.3:0);
   ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x+.3,z+.24,.27,.19,a,0,7);ctx.fill();
   ctx.fillStyle=PAL[ci];ctx.beginPath();ctx.ellipse(x,z,.27,.17,a,0,7);ctx.fill();
   ctx.fillStyle=helmet||HAIR[(ph*7|0)%HAIR.length];ctx.beginPath();ctx.arc(x,z,.115,0,7);ctx.fill();
@@ -1024,7 +1024,7 @@ function drawWorld(dt){
     for(const q of COVL){const g=ctx.createRadialGradient(q[0],q[1],0,q[0],q[1],1.3);g.addColorStop(0,'rgba(255,232,170,.42)');g.addColorStop(1,'rgba(255,232,170,0)');ctx.fillStyle=g;ctx.fillRect(q[0]-1.3,q[1]-1.3,2.6,2.6);} // éclairage discret (plafonniers)
     ctx.restore();}
   // personnages
-  {for(const v of G.queue)if(!inCovQ(v)||inMouth(v.x,v.z))person(v.x,v.z,v.ci,v.ph,v.mv); // fin d'escalier (MOUTHS) : visiteurs visibles // visiteurs d'un couloir couvert : seulement gare masquée
+  {for(const v of G.queue)if(!inCovQ(v)||inMouth(v.x,v.z))person(v.x,v.z,v.ci,v.ph,v.mv,0,v.hd); // fin d'escalier (MOUTHS) : visiteurs visibles // visiteurs d'un couloir couvert : seulement gare masquée
   for(const k of G.walkers)if(!onPlat(k)&&!inCov(k.x,k.z))person(k.x,k.z,k.ci,k.ph,true);}
   for(const p of strollers){p.d+=p.v*dt*G.speed;if(p.d>p.f.len||p.d<0){p.v=-p.v;p.d=clamp(p.d,0,p.f.len);}pathPos(p.f.P,p.f.C,p.d,p,p.side);if(p.x>x0-1&&p.x<x1+1&&p.z>z0-1&&p.z<z1+1)person(p.x,p.z,p.ci,p.ph,G.speed>0);}
   if(G.job){const p=JOBSITE[G.job.type];person(p[0],p[1],C_TECH,.5,true,'#fff3b0');person(p[0]+1.1,p[1]+.5,C_TECH,2,true,'#fff3b0');}

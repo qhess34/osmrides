@@ -1,6 +1,15 @@
 'use strict';
 /* ══════════ VISITEURS (chemins réels : accès, file, sortie) ══════════ */
 const SP=.42,QS=SITE.queue;
+// Écart entre visiteurs de la file (propriétaire, issue #28, générique) : un visiteur est dessiné comme une ellipse de 0,54 x 0,34 m (engine/render.js person),
+// tourné face à sa marche dans la file (v.hd : épaules en travers) ; QPW = épaisseur dessinée (0,34 m) = écart minimal centre à centre exigé (mesure overlapQ de
+// tools/check.js) ; QD = garde appliquée par le moteur (0,40 m, marge). Pas le long du chemin SP = 0,42 m.
+// Causes des chevauchements relevées (issue #28) : décalage latéral fixe de 0,36 m même sur une allée étroite (lacets voisins, corps hors de l'allée), coins
+// intérieurs des virages (deux visiteurs à 0,42 m le long du chemin, 0,1 m à vol d'oiseau), jonctions de tronçons et fourche (branche fermée qui se vide),
+// arrivants empilés au même point devant la barrière d'entrée. Remèdes : décalage borné par la largeur dessinée (segSpots) et garde de proximité (qBlocked) :
+// un visiteur n'avance pas à moins de QD d'un visiteur qui le précède dans l'ordre de la file (rang v.rk = reste à parcourir jusqu'à la gare ; arrivants
+// après toute la file, par distance à la barrière d'entrée) ; écart le long du chemin agrandi là où il se replie (qBehind) ; le premier de la file n'est jamais retenu : aucun blocage mutuel. Les arrivants attendent ainsi en ligne sur l'accès.
+const QPW=.34,QD=.4;var QHW_OK=0;
 // RÈGLE DES BARRIÈRES DE FILE (propriétaire, issue #12, décision du 17/11, toutes les attractions ; ce que le propriétaire met dans OSM : docs/OSM-GUIDE.md §5) :
 //  - position    = nœud OSM barrier=swing_gate | gate | lift_gate posé sur le chemin de file (OSM.barriers = [[x, z, ref, hinge, tx, tz, bout]], tools/make_site.py) ;
 //  - orientation = perpendiculaire à l'axe du chemin au droit du nœud (gateAt) ;
@@ -45,7 +54,7 @@ function osmGates(p){if(!p.loop||!p.short)return null;const S=p.short,J=[S[0],S[
 function pathPos(P,C,d,o,side){
   d=clamp(d,0,C[C.length-1]);let i=1;while(i<C.length-1&&C[i]<d)i++;
   const a=P[i-1],b=P[i],k=(d-C[i-1])/((C[i]-C[i-1])||1),dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
-  o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;return o;
+  o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;o.a=Math.atan2(dz,dx);return o;
 }
 // Distance d'un point à une polyligne [[x,z]…].
 // point q d'une allée de file SUR le chemin P (à moins de r m d'un tronçon de P à peu près parallèle à q) : une allée qui CROISE P en plan (passe au-dessus d'un couloir
@@ -171,7 +180,7 @@ const resolveGate=(g,p)=>{if(g.h)return g;const r=g.on==='fork'?forkGate(g,p):((
 // appelé par engine/render.js quand les largeurs dessinées sont connues : barrières posées par le moteur recalées sur les bordures réelles
 // Deux pointes très proches (lacets d'OzIris, raccourci de 1 à 2 m) : on garde DEUX barrières (propriétaire, 2026-11-17 : « je devrais avoir deux barrières ici »),
 // plus de fusion : forkGate écarte leurs pivots (g.short) ; filet de sécurité : surcharge, ajout ou suppression dans l'éditeur (GAME.barriers).
-function reGates(){for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
+function reGates(){QHW_OK=0;for(const g of allGates())unGate(g);for(const l of LOOPS){l.gs=l.gs.map(g=>g.cfg?resolveGate(g.cfg,g.part):g);
     l.g=l.gs[0];}
   if(OSM_ENTRY||QS.gateMoved||ENTRY_EST){const P=QS.parts[0].pts;Object.assign(ENTRY_GATE,gateAt(P,0,false,0,OSM_ENTRY?OSM_ENTRY.side:1));} // barrière d'entrée OSM (ou déplacée au bout du prolongement, SITE.queue.gateAtMouth) : au départ de la file, à la largeur dessinée
   gameGates();
@@ -293,7 +302,42 @@ buildQueue();
 const settled=l=>l.t===(l.on?1:0);
 function nextSeg(s){const st=STAGES[s.si+1];if(!st)return null;if(st.seg)return st.seg;return settled(st.fork)?(st.fork.on?st.fork.loop:st.fork.short):null;}
 function prevSeg(s,evac){const st=STAGES[s.si-1];if(!st)return null;if(st.seg)return st.seg;return evac||!st.fork.on?st.fork.short:st.fork.loop;}
-const room=e=>!e.list.length||e.len-e.list[e.list.length-1].r>=SP;
+// Places de la file (tous les 0,25 m, interpolées entre deux : déplacement continu) : deux de front (±0,36 m) si l'allée le permet, corps (demi-largeur 0,27 m)
+// toujours dans l'allée dessinée (0,06 m de marge), seul au milieu si elle est étroite ; ramené vers l'axe à l'approche d'un coude (au plus (distance au sommet - 0,3 m)
+// / tan(angle/2)) et aux deux bouts du tronçon (jonctions, barrière d'entrée : sur l'axe, sans saut) : pas de visiteurs tassés à l'intérieur d'un virage ni de demi-tour en épingle qui revient en arrière. Recalculées après reGates (largeurs dessinées).
+const QSTEP=.25;
+// niveau : layer / level OSM d'une allée souterraine (COVD.ug, COVLV, engine/render.js), sinon 0 ; deux visiteurs de niveaux différents (allée qui passe au-dessus d'un couloir) ne se gênent pas
+function segSpots(e){if(!QHW_OK){const o={},UGP=typeof COVD==='undefined'?[]:COV.map((P,i)=>[P,COVLV[i]]).filter((c,i)=>COVD[i].ug);for(const g of SEGS){const V=[];for(let i=1;i<g.P.length-1;i++){const a=g.P[i-1],b=g.P[i],c=g.P[i+1],t=Math.abs(Math.atan2((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]),(b[0]-a[0])*(c[0]-b[0])+(b[1]-a[1])*(c[1]-b[1])));
+      if(t>.05)V.push([g.C[i],Math.tan(Math.min(t,3.1)/2)]);}
+    const dir=(P,end)=>{const a=end?P[P.length-2]:P[0],b=end?P[P.length-1]:P[1];return Math.atan2(b[1]-a[1],b[0]-a[0]);},turn=(x,y)=>Math.abs(Math.atan2(Math.sin(y-x),Math.cos(y-x))),
+      cand=st=>!st?[]:st.seg?[st.seg]:[st.fork.loop,st.fork.short]; // jonctions avec le tronçon suivant / précédent (fourche : les deux branches) comptées comme des coudes
+    for(const [nb,end] of [[cand(STAGES[g.si+1]),1],[cand(STAGES[g.si-1]),0]])for(const h of nb){const t=end?turn(dir(g.P,1),dir(h.P,0)):turn(dir(h.P,1),dir(g.P,0));
+      if(t>.05)V.push([end?g.len:0,Math.tan(Math.min(t,3.1)/2)]);}
+    const n=Math.ceil(g.len/QSTEP);g.sp=[];for(let k=0;k<=n;k++){const d=Math.min(k*QSTEP,g.len);pathPos(g.P,g.C,d,o,0);let m=clamp(qwAt(o.x,o.z)/2-.33,0,.36);m=Math.min(m,d,g.len-d);for(const v of V)m=Math.min(m,Math.max(0,Math.abs(d-v[0])-.3)/v[1]);
+      const nx=-Math.sin(o.a),nz=Math.cos(o.a);o.tx=nz;o.tz=-nx;g.sp.push([o.x,o.z,nx*m,nz*m,o.a,(UGP.find(c=>onPl(o,c[0],.3))||[0,0])[1]]);}
+    // écart à garder derrière celui qui précède : au moins SP, plus là où le chemin se replie (épingle, virage serré) pour que celui-ci, en avançant, ne revienne
+    // jamais à moins de QD (quels que soient les côtés) ; g.reach[k] = abscisse minimale du précédent pour un visiteur à la place k
+    const S=g.sp,W=Math.round(3/QSTEP),dd=(A,a,B,b)=>Math.hypot(A[0]+A[2]*a-B[0]-B[2]*b,A[1]+A[3]*a-B[1]-B[3]*b);g.reach=[];
+    for(let k=0;k<S.length;k++){let gk=Math.round(SP/QSTEP);for(let q=k+gk;q<=Math.min(S.length-1,k+W);q++){const A=S[k],B=S[q];if(A[5]===B[5]&&Math.min(dd(A,1,B,1),dd(A,1,B,-1),dd(A,-1,B,1),dd(A,-1,B,-1))<QD)gk=q-k+1;}
+      g.reach.push(Math.min(k,S.length-1)*QSTEP+gk*QSTEP);}}QHW_OK=1;}
+  return e.sp;}
+// place la plus avancée (reste r) permise derrière un visiteur au reste rp sur le tronçon e
+function qBehind(e,rp){segSpots(e);const dl=e.len-rp,R=e.reach;let k=Math.floor((dl-SP)/QSTEP+1e-9);if(k<0)return Math.max(rp+SP,0);
+  if(k>=R.length)k=R.length-1;while(k>0&&R[k]>dl+1e-9)k--;return Math.max(rp+SP,e.len-k*QSTEP);}
+const _qo={x:0,y:0,z:0,a:0};
+function qSpot(v,e,r){const S=segSpots(e),d=clamp(e.len-r,0,e.len),k=Math.min(S.length-2,Math.floor(d/QSTEP)),f=S.length<2?0:clamp(d/QSTEP-k,0,1),A=S[Math.max(0,k)],B=S[Math.min(S.length-1,k+1)],sd=v.side||0;
+  _qo.x=A[0]+(B[0]-A[0])*f+(A[2]+(B[2]-A[2])*f)*sd;_qo.z=A[1]+(B[1]-A[1])*f+(A[3]+(B[3]-A[3])*f)*sd;_qo.a=f<.5?A[4]:B[4];_qo.lv=f<.5?A[5]:B[5];return _qo;}
+function qPlace(v){qSpot(v,v.e,v.r);v.x=_qo.x;v.z=_qo.z;v.lv=_qo.lv;v.hd=_qo.a+Math.PI/2+(v.jt||0);} // v.hd : épaules en travers de la marche (engine/render.js)
+const QAFT=new Map(),QGRID=new Map(),QC=1.5,qk=(x,z)=>(Math.floor(x/QC)+4096)*8192+Math.floor(z/QC)+4096;
+function qRanks(){QENT.length=0;for(const o of SEG_IN.list.slice(-3).concat(G.queue.filter(o=>o.mode==='app')))if(Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<.6)QENT.push(o);let acc=0;for(let k=STAGES.length-1;k>=0;k--){const st=STAGES[k];if(st.seg)QAFT.set(st.seg,acc);else{QAFT.set(st.fork.loop,acc);QAFT.set(st.fork.short,acc);}
+    acc+=st.seg?st.seg.len:(st.fork.on?st.fork.loop:st.fork.short).len;}
+  QGRID.clear();G.queue.forEach((v,i)=>{v.rk=(v.mode==='q'&&v.e?v.r+(QAFT.get(v.e)||0):1e5+Math.hypot(v.x-ENTRY0[0],v.z-ENTRY0[1]))+i*1e-7;const k=qk(v.x,v.z);let c=QGRID.get(k);if(!c)QGRID.set(k,c=[]);c.push(v);});}
+// v peut-il aller en (x, z) ? non (renvoie le gêneur) s'il s'y rapprocherait à moins de QD d'un visiteur qui le précède dans la file (s'en éloigner reste permis) ;
+// un arrivant ne bouscule pas non plus un arrivant arrêté devant la barrière d'entrée (arrêté sans être retenu par un autre visiteur : o.bk nul, aucun cycle)
+function qBlocked(v,x,z){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(!c)continue;
+    for(const o of c){if(o===v||(o.lv|0)!==(v.lv|0)||!(o.rk<v.rk||v.mode==='app'&&o.mode==='app'&&!o.mv&&!o.bk))continue;
+      const dn=Math.hypot(o.x-x,o.z-z);if(dn<QD&&dn<Math.hypot(o.x-v.x,o.z-v.z)-1e-6)return o;}}return null;}
+const room=e=>!e.list.length||qBehind(e,e.list[e.list.length-1].r)<=e.len+1e-9; // place libre au début du tronçon (écart SP, plus dans un repli : qBehind)
 function removeVisitor(v){const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1);if(v.e){const l=v.e.list,j=l.indexOf(v);if(j>=0)l.splice(j,1);}}
 function clearQueue(){G.queue.length=0;for(const s of SEGS)s.list.length=0;}
 const P3=(a,j)=>a.map(p=>[p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)]);
@@ -331,10 +375,15 @@ function moveAlong(k,dt){
 }
 function joinQueue(){
   if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.01,0,100);G.stats.turned++;return;}
-  const pts=P3(approach().concat(QS.lead||[]),.7);pts.push([ENTRY0[0],0,ENTRY0[1]]);
-  G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',side:Math.random()<.5?-1:1,sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
+  const pts=approach().concat(QS.lead||[]).map(p=>{const j=.7*clamp(Math.hypot(p[0]-ENTRY0[0],p[1]-ENTRY0[1])/3,0,1);return [p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)];});pts.push([ENTRY0[0],0,ENTRY0[1]]); // écart aléatoire nul près de la barrière : les arrivants attendent en ligne sur l'accès, pas sur la file (issue #28)
+  G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',side:Math.random()<.5?-1:1,jt:rnd(-.25,.25),sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
 const _qp={x:0,y:0,z:0,side:0};
+// barrière d'entrée occupée (dernier entré ou arrivant à moins de 0,6 m, QENT) : les arrivants attendent à 1 m, sans gêner celui qui s'engage dans la file
+const QENT=[];
+function qWalk(v,dt){if(v.i>=v.pts.length){v.mv=false;v.bk=null;return true;}const ox=v.x,oy=v.y,oz=v.z,oi=v.i,end=moveAlong(v,dt),nx=v.x,nz=v.z; // arrivant : avance sur l'accès sans rattraper celui qui le précède
+  v.x=ox;v.z=oz;const de=Math.hypot(nx-ENTRY0[0],nz-ENTRY0[1]);let dO;const bk=qBlocked(v,nx,nz);v.bk=bk;if(bk||de<1&&de<(dO=Math.hypot(ox-ENTRY0[0],oz-ENTRY0[1]))&&QENT.some(o=>o!==v&&(o.mode==='q'||Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<dO))){v.y=oy;v.i=oi;v.mv=false;return false;}
+  if(nx!==ox||nz!==oz){v.hd=Math.atan2(nz-oz,nx-ox)+Math.PI/2+(v.jt||0);v.rk-=Math.hypot(nx-ox,nz-oz);}v.x=nx;v.z=nz;v.mv=true;return end;}
 function updateVisitors(dt){
   const w=G.wx.type,Q=G.queue;
   for(const l of LOOPS)l.t=clamp(l.t+(l.on?dt:-dt)/.9,0,1);
@@ -345,11 +394,11 @@ function updateVisitors(dt){
     const rate=.42*G.crowd*hourF*wxF*(.5+G.sat/100)*Math.max(.1,1-Q.length*SP/QLEN/Math.max(1,G.crowd*G.crowd))*dt;
     for(let n=Math.floor(rate)+(Math.random()<rate%1?1:0);n>0;n--)joinQueue();
   }
-  const imp=w==='storm'?3:w==='rain'?1.5:1;
+  const imp=w==='storm'?3:w==='rain'?1.5:1;qRanks();
   for(let i=Q.length-1;i>=0;i--){
     const v=Q[i];v.w+=dt*imp;
     if(v.w>v.pat*PAT_M[G.patL]){const p=backPath(v);removeVisitor(v);G.stats.quits++;G.sat=clamp(G.sat-.35,0,100);walker(p,C_GREY,null,3,0,'quit');continue;}
-    if(v.mode==='app'&&moveAlong(v,dt)){ // arrivé devant la barrière d'entrée : seul passage vers la file
+    if(v.mode==='app'&&qWalk(v,dt)){ // arrivé devant la barrière d'entrée : seul passage vers la file
       if(!G.open){Q.splice(i,1);G.stats.turned++;walker(leavePath(v),v.ci,null,3,0,'turn');continue;}
       if(ENTRY_GATE.t>.02&&!ENTRY_GATE.off)continue; // barrière d'entrée supprimée par l'éditeur : ignorée par la logique
       if(!room(SEG_IN))continue; // patiente devant la barrière le temps que la file avance
@@ -358,8 +407,10 @@ function updateVisitors(dt){
   }
   // avance dans la file : chacun reste derrière celui qui le précède et ne franchit une fourche que par la barrière ouverte
   for(const e of SEGS){
-    const l=e.list;
-    for(let j=0;j<l.length;j++){const v=l[j],nr=Math.max(j?l[j-1].r+SP:0,v.r-4.5*dt*stepK(v.x,v.z));v.mv=v.r-nr>1e-4;v.r=nr;pathPos(e.P,e.C,e.len-nr,_qp,v.side*.36);v.x=_qp.x;v.z=_qp.z;}
+    const l=e.list,n0=l.length?nextSeg(e):null,t0=n0&&n0.list[n0.list.length-1],h0=t0?Math.max(0,SP-(n0.len-t0.r)):0; // premier du tronçon : écart SP avec le dernier du tronçon suivant
+    for(let j=0;j<l.length;j++){const v=l[j],nr=Math.max(j?qBehind(e,l[j-1].r):h0,v.r-4.5*dt*stepK(v.x,v.z));v.mv=v.r-nr>1e-4;
+      if(v.mv){qSpot(v,e,nr);if(qBlocked(v,_qo.x,_qo.z)){v.mv=false;qPlace(v);continue;}v.rk-=v.r-nr;}
+      v.r=nr;qPlace(v);}
     const h=l[0],nk=h&&h.r<=1e-3?nextSeg(e):null;
     if(nk&&room(nk)){l.shift();h.e=nk;h.r=nk.len;nk.list.push(h);}
   }
