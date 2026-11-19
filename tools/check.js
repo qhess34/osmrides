@@ -314,6 +314,27 @@ const root = path.resolve(__dirname, '..');
     rs.push(await u4(`trains[${T0}].phase==='ready'`, 4000) && await p4.evaluate(i => trains[i].rc.every(v => v < .05) && OPS.every(o => o.ok), T0) ? 'validated' : 'validated:FAIL');
     await p4.click('#bGo'); rs.push(await u4(`trains[${T0}].st==='run'`, 200) ? 'depart' : 'depart:FAIL');
     man += ' | res: ' + rs.join(' '); await p4.close();
+    // évacuation d'un train à quai (issue #26) : sécurités verrouillées = passagers assis, rien ne change ; sécurités ouvertes = ils descendent par la sortie (quai de débarquement, SITE.exit), train vide en gare
+    const p6 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+    p6.on('pageerror', e => errors.push(String(e.message || e)));
+    await p6.goto(url); await p6.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p6.click('[data-act=closeHelp]');
+    await p6.evaluate(INSTALL);
+    const u6 = (c, m = 4000) => p6.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); if (i % 5 === 0) for (const k of G.walkers) if (k.ev) __opPt(k.x, k.z, k.kind, 'trainEvac'); } ui(); return f(); }, [c, m]);
+    const es = [], ek = (n, v) => es.push(n + (v ? '' : ':FAIL'));
+    const E = await p6.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.wear.track = 0; __op.bad = 0; const t = trains.find(o => o.st === 'station'); if (!t) return -1;
+      t.phase = 'board'; G.resOpen = false; t.seats = t.seats.map((_, i) => i < Math.min(4, SEATS) ? { ci: 2, w: 60, on: true } : null); return t.i; });
+    if (E >= 0) {
+      const T = `trains[${E}]`, n0 = await p6.evaluate(T => count(eval(T)), T);
+      await u6('false', 2); const dis = await p6.evaluate(() => G.queue.length || $('bEvac').disabled); await p6.evaluate(() => act('evac')); await u6('false', 300);
+      ek('lockedStay', dis && await p6.evaluate(([T, n0]) => count(eval(T)) === n0 && !eval(T).evq && eval(T).st === 'station' && !G.walkers.some(k => k.ev), [T, n0]));
+      await p6.click('#bRes'); await u6(`${T}.rc.every(v=>v>.98)`, 400);
+      const m0 = await p6.evaluate(() => [G.stats.riders, Math.round(G.money)]);
+      await p6.click('#bEvac'); ek('emptied', await u6(`count(${T})===0&&!${T}.evq`, 2000) && await p6.evaluate(T => eval(T).st === 'station' && G.walkers.filter(k => k.ev).length > 0, T));
+      ek('outByExit', await u6(`!G.walkers.some(k=>k.ev&&k.i<=k.pe)`, 4000));
+      ek('noIncome', await p6.evaluate(m0 => G.stats.riders === m0[0] && Math.round(G.money) <= m0[1], m0));
+      const ob = await p6.evaluate(() => __op.bad); ek('onPaths' + (ob ? '=' + ob : ''), ob === 0);
+    } else es.push('noTrainInStation');
+    man += ' | trainEvac: ' + es.join(' '); await p6.close();
     // règle de départ (propriétaire, 2026-11-15) : appareil de voie hors de P, départ autorisé seulement si une zone de freinage peut retenir le train avant l'appareil
     const p5 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     p5.on('pageerror', e => errors.push(String(e.message || e)));

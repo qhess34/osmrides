@@ -31,7 +31,7 @@ function ui(){
   $('hRiders').textContent=G.stats.riders;
   for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
   $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.over;
-  $('bEvac').disabled=!G.queue.length;
+  $('bEvac').disabled=!evacCan();
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
   {const s=trains.find(o=>o.st==='station'),op=G.resOpen||!!(s&&s.rcT),mv=!!s&&s.rc.some((v,k)=>v>.02&&v<.98); // sécurités : bouton allumé = ouvertes ; voyant vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement

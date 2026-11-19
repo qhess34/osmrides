@@ -234,6 +234,8 @@ function zoneCmd(z,c){
   if(/^B\d/.test(z)){const i=+z.slice(1)-1;if(t.st!=='run'||t.v!==0||t.bgo)return refuse(N+' : aucun train arrêté au frein.');if(occupied(BLK[i],blkEnd(i),t))return refuse('Canton suivant occupé : '+t.name+' reste au frein de bloc '+(i+1)+'.');if(devHoldAt(i))return refuse(DEVN+' hors de P : '+t.name+' reste au frein de bloc '+(i+1)+'.');t.bgo=i+1;log(t.name+' repart du frein de bloc '+(i+1)+' (roues de propulsion).');return true;}
   return false;
 }
+const evacTrains=()=>G.resOpen?trains.filter(o=>o.st==='station'&&o.phase==='board'&&!o.evq&&count(o)):[]; // évacuation : train à quai, sécurités ouvertes, ses passagers descendent aussi (issue #26)
+const evacCan=()=>!!(G.queue.length||evacTrains().length||G.plat.some(r=>r)||(G.platR||[]).some(r=>r)||G.walkers.some(k=>k.kind==='wait')); // quelque chose à évacuer (bouton bEvac)
 function updateStation(t,dt){
   t.pt-=dt;
   if(t.phase==='unload'){
@@ -247,6 +249,11 @@ function updateStation(t,dt){
       }else if(count(t)===0){t.phase='board';t.idle=0;}
     }
   }else if(t.phase==='board'){
+    if(t.evq){if(!G.resOpen)t.evq=false; // évacuation (issue #26) : sécurités verrouillées, on n'y touche plus
+      else if(t.pt<=0){const i=t.seats.findIndex(s=>s&&s.on);
+        if(i>=0){const v=t.seats[i];t.seats[i]=null;t.pt=.12;t.idle=0;seatBase(t,i,_v);const w=alightWalk(Math.floor(i/CSEATS),_v.x,_v.z);
+          walker(exitPath(w),v.ci,null,2.8,0,'alight');const k=G.walkers[G.walkers.length-1];k.ev=1;k.pe=w.length;} // descend par la sortie, comme au débarquement (ni recette, ni passager compté)
+        else if(!count(t))t.evq=false;}if(t.evq)return;} // places réservées par un visiteur qui monte (on:false) : il descend dès qu'il est assis
     const n=count(t),waiting=G.plat.some((r,i)=>r&&!t.seats[i]),shut=!G.gatesOpen&&G.gate<.05&&seated(t)===n&&resShut(t);
     if(G.auto&&!t.depReq){t.idle+=dt;
       if((n>0&&seated(t)===n&&(n===SEATS||(!waiting&&t.idle>(G.open?(G.queue.length?45:12):4))))||(t.idle>5&&!G.queue.length&&!waiting&&trains.some(held))||(t.hs&&n===0&&t.idle>2))t.depReq=true;} // un train hors service repart à vide
@@ -344,7 +351,7 @@ function updatePlatform(dt){
   }
   const t=trains.find(o=>o.st==='station'&&o.phase==='board'&&!o.hs&&!o.depReq); // portillons : ouverts et fermés seulement au pupitre
   G.gate=clamp(G.gate+(G.gatesOpen||G.walkers.some(k=>k.kind==='board')?dt:-dt)/.7,0,1); // un portillon ne se referme pas sur un visiteur qui le franchit
-  if(t&&G.gate>.9)for(let i=0;i<SEATS;i++){const r=G.plat[i]; // embarquement : sécurités du wagon ouvertes
+  if(t&&!t.evq&&G.gate>.9)for(let i=0;i<SEATS;i++){const r=G.plat[i]; // embarquement (pas pendant l'évacuation du train, issue #26) : sécurités du wagon ouvertes
     if(r&&r.on&&!t.seats[i]&&t.rc[Math.floor(i/CSEATS)]>.95){G.plat[i]=null;const seat={ci:r.ci,w:r.w,on:false};t.seats[i]=seat;t.idle=0;seatBase(t,i,_v);walker([slotPos(i),[_v.x,0,_v.z]],r.ci,()=>{seat.on=true;},2.2,0,'board');}}
 }
 function updateTrains(dt){
@@ -431,9 +438,10 @@ function act(a,arg){
   else if(a==='closeBil'){if(G.over){location.reload();return;}$('mBil').classList.add('hidden');}
   else if(a==='open'){if(!G.open&&G.over)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
-  else if(a==='evac'){const nq=G.queue.length;if(!nq&&!G.plat.some(r=>r)&&!(G.platR||[]).some(r=>r)&&!G.walkers.some(k=>k.kind==='wait'))return;
+  else if(a==='evac'){const nq=G.queue.length,tv=evacTrains();if(!evacCan())return;
     for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');
-    clearQueue();const n=nq+platEvac();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs (file et portillons) ressortent par l\'entrée.','warn');}
+    let nt=0;for(const o of tv){o.evq=true;o.depReq=false;nt+=count(o);}
+    clearQueue();const n=nq+platEvac();G.sat=clamp(G.sat-Math.min(8,(n+nt)*.03),0,100);log('File évacuée : '+n+' visiteurs (file et portillons) ressortent par l\'entrée'+(nt?', '+nt+' passager'+(nt>1?'s':'')+' du train à quai descendent par la sortie.':'.'),'warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
   else if(a==='syn')toggleSyn();
