@@ -1,7 +1,7 @@
 'use strict';
 /* Éditeur T2Z — couche d'édition au-dessus du VRAI jeu (docs/ARCHITECTURE.md D4) : l'attraction est ouverte dans jeu.html (bac à sable, simulation figée) dans un
    cadre de même origine ; le moteur lit l'objet GAME (GM) que l'éditeur modifie en place, le rendu est donc celui du jeu. Barrières : GAME.barriers (surcharges par clé
-   stable, D2) ; salle de contrôle : GAME.controlRooms (0 ou 1 salle, D3). Écriture : seulement par le serveur (editor/server.js), après diff et validation. */
+   stable, D2) ; salle de contrôle : GAME.controlRooms (0 ou 1 salle, D3) ; zone d'attente du quai d'embarquement : GAME.boardAreas (un polygone, D7). Écriture : seulement par le serveur (editor/server.js), après diff et validation. */
 (function () {
   const S = window.T2ZSchema, $ = id => document.getElementById(id), fr = $('fr'), ov = $('ov'), oc = ov.getContext('2d');
   let W = null, E = null, site = '', orig = { exists: false, text: '' }, sel = null, drag = null, ready = false, adding = null; // adding : nom du tronçon de la fourche où poser une barrière (clic du pivot)
@@ -26,7 +26,7 @@
   fr.addEventListener('load', () => {
     W = fr.contentWindow; E = s => W.eval(s);
     const t0 = Date.now(), wait = () => {
-      let ok = false; try { ok = E("typeof gateList==='function'&&typeof ctlRooms==='function'&&typeof cam==='object'"); } catch (e) { }
+      let ok = false; try { ok = E("typeof gateList==='function'&&typeof ctlRooms==='function'&&typeof reBoard==='function'&&typeof cam==='object'"); } catch (e) { }
       if (!ok) { if (Date.now() - t0 < 20000) return setTimeout(wait, 60); $('valBox').innerHTML = '<span class="err">Le jeu ne s\'est pas chargé.</span>'; return; }
       const st = W.document.createElement('style'); // seulement la carte : pupitre, en-tête, journal masqués
       st.textContent = 'header,#side,#log,#tabs,#fsBar,#hint,#cams{display:none!important}#view{min-height:0!important}';
@@ -48,9 +48,13 @@
   const dSeg = (p, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], l = dx * dx + dz * dz || 1e-9, t = clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / l, 0, 1); return Math.hypot(a[0] + dx * t - p[0], a[1] + dz * t - p[1]); };
   const CORNERS = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
   const rotH = r => roomPt(r, [0, r.d / 2 + 1.4]);
+  // zone d'attente (D7) : polygone édité (GAME.boardAreas[0]) ou polygone calculé (boardAreaCalc, en tirets) ; la première modification le reprend dans GAME
+  const areaPts = () => E('boardArea()'), areaEd = () => Array.isArray(GM().boardAreas) && GM().boardAreas.length > 0;
+  const pipE = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > z) !== (P[j][1] > z) && x < (P[j][0] - P[i][0]) * (z - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+  const mids = P => P.map((q, i) => { const r = P[(i + 1) % P.length]; return [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2]; });
 
   // ── données éditées ──
-  function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; return g; }
+  function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; return g; }
   function ovrOf(g) { // surcharge d'une barrière, créée depuis sa géométrie actuelle au premier changement
     const M = GM(); if (!M.barriers) M.barriers = {};
     if (!M.barriers[g.key] || M.barriers[g.key].off) { const p = q => ({ ang: R1(deg(Math.atan2(q[1] - g.h[1], q[0] - g.h[0]))), len: R2(Math.hypot(q[0] - g.h[0], q[1] - g.h[1])) }); M.barriers[g.key] = { x: R2(g.h[0]), z: R2(g.h[1]), a: p(g.a), b: p(g.b) }; }
@@ -74,6 +78,10 @@
   function moveGate(key, name) { const M = GM(), m = /^add:(.+):(\d+)$/.exec(key); if (!m || !M.barriers || !M.barriers[key] || m[1] === name) return key;
     let n = 1; while (M.barriers['add:' + name + ':' + n]) n++; const nk = 'add:' + name + ':' + n; M.barriers[nk] = M.barriers[key]; delete M.barriers[key];
     if (sel && sel.t === 'gate' && sel.key === key) sel.key = nk; applied(); return nk; }
+  function areaOvr() { const M = GM(); if (!areaEd()) M.boardAreas = [{ id: 'quai', pts: areaPts().map(q => [R2(q[0]), R2(q[1])]) }]; return M.boardAreas[0]; }
+  const areaApplied = () => { E('reBoard()'); panel(); };
+  function revertArea() { delete GM().boardAreas; sel = sel && sel.t === 'area' ? { t: 'area' } : sel; areaApplied(); }
+  function delVertex(i) { const A = areaOvr(); if (A.pts.length <= 3) return; A.pts.splice(i, 1); sel = { t: 'area' }; areaApplied(); }
   function createRoom() { migrate(); const M = GM(); if (M.controlRooms.length) return; const c = E('cam'); M.controlRooms.push({ id: 'poste', x: R2(c.x), z: R2(c.z), angle: 0, w: 3.75, d: 1.7, main: true }); sel = { t: 'room' }; panel(); }
   function deleteRoom() { migrate(); GM().controlRooms.length = 0; sel = null; panel(); }
 
@@ -82,10 +90,13 @@
     const s = E('cam').s, tol = Math.max(.35, 9 / s);
     if (sel && sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); if (g) { if (Math.hypot(p[0] - g.g.a[0], p[1] - g.g.a[1]) < tol) return { t: 'gate', key: g.key, m: 'a' }; if (Math.hypot(p[0] - g.g.b[0], p[1] - g.g.b[1]) < tol) return { t: 'gate', key: g.key, m: 'b' }; } }
     if (sel && sel.t === 'room') { const r = rooms()[0]; if (r) { if (Math.hypot(p[0] - rotH(r)[0], p[1] - rotH(r)[1]) < tol) return { t: 'room', m: 'rot' }; for (let i = 0; i < 4; i++) { const q = roomPt(r, [CORNERS[i][0] * r.w / 2, CORNERS[i][1] * r.d / 2]); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'room', m: 'c' + i }; } } }
+    if (sel && sel.t === 'area') { const P = areaPts(); for (let i = 0; i < P.length; i++) if (Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) < tol) return { t: 'area', m: 'v' + i };
+      const M = mids(P); for (let i = 0; i < M.length; i++) if (Math.hypot(p[0] - M[i][0], p[1] - M[i][1]) < tol * .8) return { t: 'area', m: 'm' + i }; }
     let best = null, bd = tol;
     for (const g of gates()) { if (g.off) continue; const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
     if (best) return best;
     const r = rooms()[0]; if (r) { const l = toLocal(r, p); if (Math.abs(l[0]) <= r.w / 2 + .2 && Math.abs(l[1]) <= r.d / 2 + .2) return { t: 'room', m: 'move' }; }
+    if (pipE(areaPts(), p[0], p[1])) return { t: 'area', m: 'move' };
     return null;
   }
   function hook() {
@@ -96,11 +107,13 @@
       if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(adding, p); return; }
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
-      sel = h.t === 'gate' ? { t: 'gate', key: h.key } : { t: 'room' };
+      if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i]; A.pts.splice(i + 1, 0, [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); E('reBoard()'); } // milieu d'un bord : nouveau sommet
+      sel = h.t === 'gate' ? { t: 'gate', key: h.key } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
       if (h.t === 'room' && !migrated()) migrate(); // première modification de la salle : reprise de SITE.booth
       const r = h.t === 'room' ? GM().controlRooms[0] : null;
       drag = Object.assign({ p0: p, id: e.pointerId, moved: false, r0: r && Object.assign({}, r) }, h);
       if (h.t === 'gate') { const o = (GM().barriers || {})[h.key]; drag.o0 = o ? JSON.parse(JSON.stringify(o)) : null; }
+      if (h.t === 'area') drag.a0 = JSON.parse(W.JSON.stringify(areaPts()));
       panel();
     }, true);
     W.addEventListener('pointermove', e => {
@@ -114,6 +127,10 @@
         if (drag.m === 'move') { o.x = R2(drag.o0.x + dx); o.z = R2(drag.o0.z + dz); }
         else { const q = o[drag.m]; q.ang = R1(deg(Math.atan2(p[1] - o.z, p[0] - o.x))); q.len = R2(clamp(Math.hypot(p[0] - o.x, p[1] - o.z), .2, 20)); }
         E('reGates()');
+      } else if (drag.t === 'area') {
+        const A = areaOvr();
+        if (drag.m === 'move') A.pts = drag.a0.map(q => [R2(q[0] + dx), R2(q[1] + dz)]); else { const i = +drag.m.slice(1); A.pts[i] = [R2(drag.a0[i][0] + dx), R2(drag.a0[i][1] + dz)]; }
+        E('reBoard()');
       } else {
         const r = GM().controlRooms[0], r0 = drag.r0; if (!r) return;
         if (drag.m === 'move') { r.x = R2(r0.x + dx); r.z = R2(r0.z + dz); }
@@ -140,6 +157,11 @@
     oc.setLineDash([5, 5]); oc.strokeStyle = 'rgba(255,255,255,.55)'; oc.lineWidth = 1.2; // axe des tronçons de file
     for (const L of segs) { oc.beginPath(); L.forEach((q, i) => { const a = P(q[0], q[1]); i ? oc.lineTo(a[0], a[1]) : oc.moveTo(a[0], a[1]); }); oc.stroke(); }
     oc.setLineDash([]);
+    { const AP = areaPts().map(q => P(q[0], q[1])), on = sel && sel.t === 'area'; // zone d'attente : tirets = calculée, trait plein = éditée (GAME.boardAreas)
+      oc.fillStyle = 'rgba(242,193,78,.13)'; oc.strokeStyle = '#f2c14e'; oc.lineWidth = on ? 2.5 : 1.5; oc.setLineDash(areaEd() ? [] : [6, 4]);
+      oc.beginPath(); AP.forEach((q, i) => i ? oc.lineTo(q[0], q[1]) : oc.moveTo(q[0], q[1])); oc.closePath(); oc.fill(); oc.stroke(); oc.setLineDash([]);
+      if (on) { oc.lineWidth = 1.5; for (const q of mids(AP)) { oc.fillStyle = 'rgba(242,193,78,.85)'; oc.beginPath(); oc.arc(q[0], q[1], 3.5, 0, 7); oc.fill(); oc.strokeStyle = '#0b1120'; oc.stroke(); }
+        AP.forEach((q, i) => { oc.fillStyle = sel.v === i ? '#f2c14e' : '#fff'; oc.fillRect(q[0] - 5, q[1] - 5, 10, 10); oc.strokeStyle = '#0b1120'; oc.strokeRect(q[0] - 5, q[1] - 5, 10, 10); }); } }
     for (const g of gates()) {
       if (g.off) { const h = P(g.g.h[0], g.g.h[1]); oc.strokeStyle = '#e5484d'; oc.lineWidth = 2; oc.beginPath(); oc.moveTo(h[0] - 5, h[1] - 5); oc.lineTo(h[0] + 5, h[1] + 5); oc.moveTo(h[0] + 5, h[1] - 5); oc.lineTo(h[0] - 5, h[1] + 5); oc.stroke(); continue; }
       const col = g.kind === 'entry' ? '#f0a23b' : '#5fd3e6', on = sel && sel.t === 'gate' && sel.key === g.key, h = P(g.g.h[0], g.g.h[1]), a = P(g.g.a[0], g.g.a[1]), b = P(g.g.b[0], g.g.b[1]);
@@ -161,7 +183,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const inp = (k, v, st) => `<input data-k="${k}" type="number" step="${st || .05}" value="${v}">`;
   function selHTML() {
-    if (!sel) return '<span class="note">Cliquer une barrière ou la salle de contrôle sur la carte. Glisser : déplacer ; poignées A / B : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
+    if (!sel) return '<span class="note">Cliquer une barrière, la salle de contrôle ou la zone d\'attente sur la carte. Glisser : déplacer ; poignées A / B : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
     if (sel.t === 'gate') {
       const g = gates().find(x => x.key === sel.key); if (!g) return '<span class="err">Barrière introuvable.</span>';
       if (g.off) return `<div><b>${esc(g.key)}</b></div><div class="note">Barrière <span class="tag t-orph">supprimée</span> : ignorée par le dessin, le clic et la logique du jeu (surcharge <code>{"off": true}</code>, le calcul reste).</div><div class="row"><button id="bAuto">Rétablir la barrière</button></div>`;
@@ -174,6 +196,12 @@
         <span>B : angle °, long. m</span><span>${inp('b.ang', an(G.b), 1)} ${inp('b.len', ln(G.b))}</span></div>
         ${fsel}<div class="row">${g.add ? '' : `<button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button>`}<button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
+    if (sel.t === 'area') {
+      const Ps = areaPts(), v = sel.v != null && sel.v < Ps.length ? sel.v : null;
+      return `<div><b>Zone d'attente du quai</b> ${areaEd() ? '<span class="tag t-ovr">éditée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${Ps.length} sommets. Glisser un sommet (carré) pour le déplacer, un rond (milieu d'un bord) pour ajouter un sommet, l'intérieur pour tout déplacer.</div>
+        ${v != null ? `<div class="grid" style="margin-top:6px"><span>Sommet ${v + 1} x, z (m)</span><span>${inp('vx', R2(Ps[v][0]))} ${inp('vz', R2(Ps[v][1]))}</span></div>` : ''}
+        <div class="row">${v != null ? `<button id="bDelVtx" class="bad" ${Ps.length > 3 ? '' : 'disabled'}>Supprimer le sommet</button>` : ''}<button id="bAreaAuto" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
+    }
     const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>';
     return `<div><b>Salle de contrôle</b> ${migrated() ? '' : '<span class="tag t-est">SITE.booth (repli)</span>'}</div>
       <div class="grid" style="margin-top:6px"><span>Centre x, z (m)</span><span>${inp('x', r.x)} ${inp('z', r.z)}</span><span>Angle (°)</span><span>${inp('angle', r.angle, 1)}</span>
@@ -183,12 +211,15 @@
   function bindSel() {
     for (const el of $('selBox').querySelectorAll('input[data-k]')) el.addEventListener('change', () => {
       const v = +el.value, k = el.dataset.k; if (!isFinite(v)) return;
-      if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); if (k.includes('.')) { const [s, f] = k.split('.'); o[s][f] = f === 'len' ? clamp(v, .2, 20) : v; } else o[k] = v; applied(); }
+      if (sel.t === 'area') { const A = areaOvr(); A.pts[sel.v] = k === 'vx' ? [v, A.pts[sel.v][1]] : [A.pts[sel.v][0], v]; areaApplied(); }
+      else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); if (k.includes('.')) { const [s, f] = k.split('.'); o[s][f] = f === 'len' ? clamp(v, .2, 20) : v; } else o[k] = v; applied(); }
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
     });
     const b = $('bAuto'); if (b) b.onclick = () => revertGate(sel.key);
     const sf = $('selFork'); if (sf) sf.onchange = () => moveGate(sel.key, sf.value);
     const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
+    const bv = $('bDelVtx'); if (bv) bv.onclick = () => delVertex(sel.v);
+    const ba = $('bAreaAuto'); if (ba) ba.onclick = revertArea;
   }
   function panel() {
     if (!ready) return;
@@ -200,6 +231,9 @@
         : '<p class="note">Aucune salle (ni pupitre dessiné, ni gyrophare).</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>';
     if ($('bNewRoom')) $('bNewRoom').onclick = createRoom;
     if ($('bDelRoom')) $('bDelRoom').onclick = deleteRoom;
+    $('areaBox').innerHTML = `<p class="note">${areaEd() ? `Zone éditée (<code>game.js</code>) : ${GM().boardAreas[0].pts.length} sommets. Les visiteurs y attendent derrière les portillons.` : 'Zone calculée (travées et couloir d\'attente, en tirets). La première modification la reprend dans <code>game.js</code>.'}</p><div class="row"><button id="bSelArea">Sélectionner</button><button id="bAreaAuto2" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
+    $('bSelArea').onclick = () => { sel = { t: 'area' }; const Q = areaPts(); focus(Q.reduce((a, q) => a + q[0], 0) / Q.length, Q.reduce((a, q) => a + q[1], 0) / Q.length); panel(); };
+    $('bAreaAuto2').onclick = revertArea;
     if ($('bSelRoom')) $('bSelRoom').onclick = () => { sel = { t: 'room' }; const r = rooms()[0]; focus(r.x, r.z); panel(); };
     const L = gates(), keys = new Set(L.map(g => g.key));
     $('gList').innerHTML = L.map(g => { const est = g.g.est || (g.g.cfg && g.g.cfg.est); return `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.kind === 'entry' ? 't-entry">entrée' : 't-fork">fourche'}</span><span class="k" title="${esc(g.key)}">${esc(g.kind === 'entry' ? 'Entrée de la file' : (g.name || '') + ' · ' + g.key.split(':').pop())}</span>${g.off ? '<span class="tag t-orph">supprimée</span>' : g.add ? '<span class="tag t-ovr">ajoutée</span>' : g.g.ovr ? '<span class="tag t-ovr">corrigée</span>' : est ? '<span class="tag t-est">estimée</span>' : ''}</div>`; }).join('');
@@ -219,12 +253,12 @@
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
     const orph = Object.keys(d.barriers || {}).filter(k => !new Set(gates().map(g => g.key)).has(k)).length;
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
-      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'SITE.booth (repli)'}.</div>`;
+      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'}.</div>`;
     window.ED.dirty = dirty;
   }
 
   // ── diff et sauvegarde ──
-  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'SITE.booth (repli)'}`;
+  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'}`;
   async function showDiff() {
     if (!ready) return;
     const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g }) });
@@ -248,6 +282,6 @@
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
+  window.ED = { ready: false, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
   loadSites();
 })();

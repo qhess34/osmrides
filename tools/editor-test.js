@@ -1,8 +1,10 @@
 // Test de l'éditeur (lot 1) : node tools/editor-test.js [goudurix zeus] [--check] [--shot=f.jpg]
 // (NODE_PATH=$(npm root -g) pour Playwright). Pour chaque attraction : serveur editor/server.js lancé ici, éditeur ouvert, une barrière déplacée, orientée
 // et allongée à la souris, salle de contrôle reprise de SITE.booth, déplacée, redimensionnée, tournée, supprimée puis recréée, diff, sauvegarde ; serveur redémarré,
-// relecture identique ; barrière calculée supprimée ({off:true}), barrière ajoutée à une fourche, supprimée puis rajoutée ('add:<tronçon>:1') ; puis jeu.html (file://) :
-// barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent.
+// relecture identique ; zone d'attente du quai (GAME.boardAreas, issue #22) : polygone calculé affiché, sommet déplacé, sommet ajouté (milieu d'un bord) puis supprimé, retour au calcul
+// auto, sommet déplacé de nouveau (écrit) ; barrière calculée supprimée ({off:true}), barrière ajoutée à une fourche, supprimée puis rajoutée ('add:<tronçon>:1') ; puis jeu.html (file://) :
+// barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent,
+// zone d'attente appliquée (visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone).
 // --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, gatesMove). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
 const { chromium } = require('playwright');
@@ -121,6 +123,25 @@ const ed = (page, s) => page.evaluate(s);
       await drag(page, rh, [rc[0] + (rh[0] - rc[0]) * .2 + 60, rc[1] + (rh[1] - rc[1]) * .2]);
       const ra = await ed(page, `ED.rooms()[0]`);
       ok(Math.abs(ra.angle - rw.angle) > 20, `salle tournée (${rw.angle}° -> ${ra.angle}°)`);
+      // ── zone d'attente du quai (GAME.boardAreas) ──
+      await page.click('#bSelArea'); await sleep(150);
+      const A0 = await ed(page, `ED.area()`);
+      ok(A0.length >= 3 && !(await ed(page, `ED.areaEd()`)) && await ed(page, `ED.sel().t==='area'`), `zone d'attente calculée affichée (${A0.length} sommets)`);
+      const back = await ed(page, `(()=>{const P=ED.area();let i=0,m=-1e9;P.forEach((q,j)=>{const l=ED.E('latA('+q[0]+','+q[1]+')');if(l>m){m=l;i=j;}});const b=ED.E('BAYS[0]');return {i,rx:b.rx,rz:b.rz};})()`);
+      const s2 = await ed(page, `ED.E('cam.s')`), mv = [back.rx * 1.5 * s2, back.rz * 1.5 * s2];
+      const dragV = async () => { const q = (await ed(page, `ED.area()`))[back.i], v = await ed(page, `ED.toScr(${q[0]},${q[1]})`); await drag(page, v, [v[0] + mv[0], v[1] + mv[1]]); return q; };
+      let q0 = await dragV(), A1 = await ed(page, `ED.draft().boardAreas&&ED.draft().boardAreas[0]`);
+      ok(A1 && A1.pts.length === A0.length && Math.abs(A1.pts[back.i][0] - q0[0] - back.rx * 1.5) < .15 && Math.abs(A1.pts[back.i][1] - q0[1] - back.rz * 1.5) < .15, `sommet ${back.i + 1} déplacé à la souris (${A1 && A1.pts[back.i]})`);
+      const mid = await ed(page, `(()=>{const P=ED.area(),i=${back.i},r=P[(i+1)%P.length];return ED.toScr((P[i][0]+r[0])/2,(P[i][1]+r[1])/2);})()`);
+      await drag(page, mid, [mid[0] + mv[0] * .4, mid[1] + mv[1] * .4]);
+      let A2 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(A2.pts.length === A0.length + 1 && await ed(page, `ED.sel().v===${back.i + 1}`), `sommet ajouté au milieu d'un bord (${A2.pts.length} sommets)`);
+      await page.click('#bDelVtx'); await sleep(80); A2 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(A2.pts.length === A0.length, 'sommet supprimé (bouton Supprimer le sommet)');
+      await page.click('#bAreaAuto'); await sleep(80);
+      ok(!(await ed(page, `'boardAreas' in ED.draft()`)) && !(await ed(page, `ED.areaEd()`)) && JSON.stringify(await ed(page, `ED.area()`)) === JSON.stringify(A0), 'retour au calcul auto (clé retirée de GAME)');
+      q0 = await dragV(); A1 = await ed(page, `ED.draft().boardAreas[0]`);
+      ok(await ed(page, `ED.E('BSLOTS.length===SEATS&&BSLOTS.every(s=>inA(s[0],s[2],.19))')`), 'éditeur : places d\'attente recalculées dans le polygone');
       if (SHOT) { await page.click(`#gList .it[data-key="${g0.key}"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); }
       // ── diff puis sauvegarde ──
       await page.click('#bDiff'); await page.waitForSelector('#diff .a', { timeout: 5000 });
@@ -184,6 +205,22 @@ const ed = (page, s) => page.evaluate(s);
         const last = r.trim().split('\n'), line = last.find(l => /offpath=/.test(l)) || '', gm = (r.match(/gatesMove=\S+/) || [''])[0];
         ok(/\nPASS\s*$/.test('\n' + r.trim().split('\n').pop() + '\n') || /^PASS$/m.test(r), `check.js ${id} avec game.js : ${r.trim().split('\n').pop()} ${line.split(' (')[0]} ${line.match(/strollQ=\d+/) || ''} ${gm}`);
       }
+      // zone d'attente appliquée : polygone, visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone
+      const jp2 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+      jp2.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
+      await jp2.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp2.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
+      const za = await jp2.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
+        let n=0,out=0,wout=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.plat.forEach((r,j)=>{if(r&&r.on){n++;const s=slotPos(j);if(!pipA(BAREA,s[0],s[2]))out++;}});
+          for(const k of G.walkers)if(k.kind==='wait'&&k.i>BVIA.pre.length+1&&!pipA(BAREA,k.x,k.z))wout++;}
+        const per=GUNITS.map((_,u)=>G.plat.filter((r,j)=>r&&r.on&&seatUnit(j).u===u).length),on=G.plat.filter(r=>r&&r.on).length;
+        act('evac');const ev=G.walkers.filter(k=>k.kind==='evac'&&k.pe>0&&pipA(BAREA,k.pts[0][0],k.pts[0][2])).length;
+        return {pts:BAREA,n,out,wout,per,on,ev,cap:GPR>1?S_COLS:CSEATS,left:G.plat.filter(r=>r).length};})()`);
+      ok(JSON.stringify(za.pts) === JSON.stringify(exp.boardAreas[0].pts), 'jeu : zone d\'attente appliquée (polygone de game.js)');
+      ok(za.n > 0 && za.out === 0 && za.wout === 0, `jeu : visiteurs dans le polygone (${za.n} relevés à leur place, ${za.out} hors du polygone ; en marche : ${za.wout} hors)`);
+      ok(za.per.every(c => c <= za.cap) && za.on > 0, `jeu : visiteurs par portillon ${za.per.join(' ')} (au plus ${za.cap})`);
+      ok(za.ev === za.on && za.left === 0, `jeu : évacuation depuis le polygone (${za.ev} / ${za.on})`);
+      await jp2.close();
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));
     }

@@ -4,8 +4,8 @@
 (function (root) {
   const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (sites/<site>.js).\n'
     + '// Le corps est du JSON strict : à modifier de préférence avec l\'éditeur (docker compose up -d, http://127.0.0.1:8787/).\n';
-  const KNOWN = ['version', 'barriers', 'controlRooms'];
-  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500 };
+  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas'];
+  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64] };
 
   // Valeurs arrondies (cm, dixième de degré) pour un fichier lisible et un diff stable.
   const r2 = v => Math.round(v * 100) / 100, r1 = v => Math.round(v * 10) / 10;
@@ -20,6 +20,8 @@
         }
       } else if (k === 'controlRooms') {
         o.controlRooms = g.controlRooms.map(r => ({ id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }));
+      } else if (k === 'boardAreas') {
+        o.boardAreas = g.boardAreas.map(a => ({ id: a.id, pts: a.pts.map(p => [r2(p[0]), r2(p[1])]) }));
       } else o[k] = g[k]; // clé inconnue (lot futur) : conservée telle quelle
     }
     return o;
@@ -77,7 +79,36 @@
         });
       }
     }
+    if ('boardAreas' in g) { // zone d'attente du quai d'embarquement (issue #22) : un polygone simple par quai ; le jeu n'a qu'un quai d'embarquement
+      const A = g.boardAreas;
+      if (!Array.isArray(A)) E.push('boardAreas : liste attendue');
+      else {
+        if (A.length > LIM.areas) E.push('boardAreas : un seul polygone (un seul quai d\'embarquement par attraction)');
+        A.forEach((a, i) => {
+          const p = 'boardAreas[' + i + ']';
+          if (!a || typeof a !== 'object' || Array.isArray(a)) { E.push(p + ' : objet attendu'); return; }
+          for (const k of Object.keys(a)) if (!['id', 'pts'].includes(k)) E.push(p + ' : clé inconnue ' + k);
+          if (typeof a.id !== 'string' || !/^[A-Za-z0-9_-]{1,40}$/.test(a.id)) E.push(p + '.id : lettres, chiffres, - ou _');
+          const P = a.pts;
+          if (!Array.isArray(P) || P.length < LIM.pts[0] || P.length > LIM.pts[1]) { E.push(p + '.pts : de ' + LIM.pts[0] + ' à ' + LIM.pts[1] + ' sommets [x, z]'); return; }
+          if (!P.every(q => Array.isArray(q) && q.length === 2 && num(q[0], -LIM.xz, LIM.xz) && num(q[1], -LIM.xz, LIM.xz))) { E.push(p + '.pts : sommets [x, z] (m) attendus, dans les bornes'); return; }
+          let ar = 0; for (let i2 = 0, j = P.length - 1; i2 < P.length; j = i2++) ar += P[j][0] * P[i2][1] - P[i2][0] * P[j][1];
+          if (Math.abs(ar) / 2 < 0.5) E.push(p + ' : surface trop petite (0,5 m² au moins)');
+          if (selfCross(P)) E.push(p + ' : bords qui se croisent (polygone simple attendu)');
+        });
+      }
+    }
     return { errors: E, warnings: W };
+  }
+  // deux bords non voisins qui se coupent
+  function selfCross(P) {
+    const n = P.length, cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+      const a = P[i], b = P[(i + 1) % n], c = P[j], d = P[(j + 1) % n];
+      if (cr(a, b, c) * cr(a, b, d) < 0 && cr(c, d, a) * cr(c, d, b) < 0) return true;
+    }
+    return false;
   }
 
   const text = g => HEAD + 'const GAME = ' + JSON.stringify(normalize(g), null, 2) + ';\n';
@@ -99,6 +130,6 @@
     return out;
   }
 
-  const api = { HEAD, KNOWN, LIM, normalize, validate, text, parse, diff };
+  const api = { HEAD, KNOWN, LIM, normalize, validate, text, parse, diff, selfCross };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.T2ZSchema = api;
 })(this);

@@ -164,8 +164,60 @@ const SLOT0=(PLT0.slot&&PLT0.slot.first)||.4,SLOT_P=(PLT0.slot&&PLT0.slot.pitch)
 const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
 const GDEPTH=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
 const BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
-const slotPos=i=>{const s=seatUnit(i),c=GCOLS(s.u),g=GUNITS[s.u],b=BAYS[g.k],row=Math.floor(s.j/c),off=c>1?(s.j%c-.5)*Math.min(.6,g.h):0,q=unitAt(s.u,PGATE+SLOT0+row*SLOT_P);
-  return [q[0]+b.tx*off,0,q[1]+b.tz*off];}; // places d'attente collées au portillon, deux de front
+const slotAt=(u,row,col)=>{const c=GCOLS(u),g=GUNITS[u],b=BAYS[g.k],off=c>1?(col-.5)*Math.min(.6,g.h):0,q=unitAt(u,PGATE+SLOT0+row*SLOT_P);return [q[0]+b.tx*off,0,q[1]+b.tz*off];};
+const slotCalc=i=>{const s=seatUnit(i),c=GCOLS(s.u);return slotAt(s.u,Math.floor(s.j/c),s.j%c);}; // places d'attente collées au portillon, deux de front
+const slotPos=i=>BSLOTS?BSLOTS[i]:slotCalc(i); // zone d'attente éditée (GAME.boardAreas) : places recalculées dans le polygone (reBoard)
+/* Zone d'attente d'embarquement éditée (propriétaire, issue #22, éditeur : GAME.boardAreas=[{id, pts:[[x,z],…]}], un polygone par quai d'embarquement ; le jeu n'a qu'un quai,
+   le premier polygone sert). Priorité GAME > calcul : sans GAME.boardAreas, rien ne change (travées et couloir d'attente ci-dessus). Avec un polygone :
+   - places : celles des travées (deux par portillon, un portillon par wagon ou par rangée, premier rang à SLOT0 de la ligne des portillons, rangs à SLOT_P), mais seulement
+     dans le polygone, à BA_IN au moins de son bord ; une place hors du polygone est remplacée par le rang suivant de la même travée (plus loin des portillons), sinon (polygone
+     trop court) par le point du polygone le plus proche de la place calculée ; jamais devant la ligne des portillons ;
+   - trajet : SITE.board.via jusqu'au premier point situé dans le polygone (sinon jusqu'au bout, puis point du polygone le plus proche : le polygone doit toucher la fin de la
+     file), puis plus court chemin DANS le polygone (sommets ramenés de BA_IN vers l'intérieur) jusqu'à la place ; évacuation (platEvac) : le même chemin à rebours ;
+   - sol dessiné comme le quai (engine/render.js drawStationFloor), surface praticable (tools/offpath.js), aucun garde-corps de file dedans (buildRails, au chargement).
+   BA_IN = 0,2 m, ESTIMÉ (une demi-personne). L'éditeur part du polygone calculé boardAreaCalc() : de la ligne des portillons au couloir d'attente (BWALK) + 0,4 m. */
+const BA_IN=.2;let BAREA=null,BSLOTS=null,BVIA=null,BNODES=[];
+const pipA=(P,x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
+const nearEdgeA=(P,x,z)=>{let m=1e9,q=null,n=null;for(let i=0,j=P.length-1;i<P.length;j=i++){const a=P[j],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l,0,1),px=a[0]+dx*t,pz=a[1]+dz*t,d=Math.hypot(px-x,pz-z);
+  if(d<m){m=d;q=[px,pz];const ll=Math.sqrt(l);n=[-dz/ll,dx/ll];}}return {d:m,q,n};};
+const latA=(x,z)=>{let bk=BAYS[0],bd=1e9;for(const b of BAYS){const d=Math.hypot(x-b.x,z-b.z);if(d<bd){bd=d;bk=b;}}return (x-bk.x)*bk.rx+(z-bk.z)*bk.rz;}; // distance latérale à la voie (côté embarquement > 0)
+const inA=(x,z,m)=>pipA(BAREA,x,z)&&nearEdgeA(BAREA,x,z).d>=m;
+function intoA(x,z){ // point du polygone (à BA_IN du bord, derrière les portillons) le plus proche de (x, z)
+  if(inA(x,z,BA_IN)&&latA(x,z)>=PGATE+.2)return [x,z];const e=nearEdgeA(BAREA,x,z);
+  for(const k of [1,2,4,8])for(const s of [1,-1]){const p=[e.q[0]+e.n[0]*s*BA_IN*k,e.q[1]+e.n[1]*s*BA_IN*k];if(inA(p[0],p[1],BA_IN*.9)&&latA(p[0],p[1])>=PGATE+.2)return p;}
+  let best=null,bd=1e9;for(const p of BNODES){const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;best=p;}}return best||e.q;}
+function boardAreaCalc(){ // polygone de départ de l'éditeur : travées et couloir d'attente, de l'avant du premier portillon à l'arrière du dernier
+  const l0=PGATE+.05,l1=Math.max(BWALK,PGATE+GDEPTH)+.4,F=[],B=[];
+  for(let k=0;k<=NCARS;k++){const b=BAYS[Math.min(k,NCARS-1)],e=k<NCARS?CAR/2:-CAR/2;F.push([b.x+b.tx*e+b.rx*l0,b.z+b.tz*e+b.rz*l0]);B.push([b.x+b.tx*e+b.rx*l1,b.z+b.tz*e+b.rz*l1]);}
+  const P=F.concat(B.reverse()),out=[]; // sommets alignés (gare droite) retirés : polygone simple à éditer
+  for(let i=0;i<P.length;i++){const a=P[(i+P.length-1)%P.length],b=P[i],c=P[(i+1)%P.length],cr=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);if(Math.abs(cr)/(Math.hypot(c[0]-a[0],c[1]-a[1])||1)>.05)out.push(b);}
+  return out.map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);}
+const boardArea=()=>BAREA||boardAreaCalc();
+function segInA(a,b){ // segment a-b entièrement dans le polygone (aucun bord coupé, milieu dedans)
+  const P=BAREA,cr=(o,p,q)=>(p[0]-o[0])*(q[1]-o[1])-(p[1]-o[1])*(q[0]-o[0]);
+  for(let i=0,j=P.length-1;i<P.length;j=i++){const c=P[j],d=P[i],d1=cr(a,b,c),d2=cr(a,b,d),d3=cr(c,d,a),d4=cr(c,d,b);if(d1*d2<0&&d3*d4<0)return false;}
+  for(const t of [.25,.5,.75])if(!pipA(P,a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t))return false;return true;}
+function routeA(a,b){ // plus court chemin de a à b dans le polygone (sommets intérieurs BNODES) : liste des points après a, b compris
+  if(segInA(a,b))return [b];const N=[a].concat(BNODES,[b]),n=N.length,D=new Array(n).fill(1e9),pr=new Array(n).fill(-1),done=new Array(n).fill(false);D[0]=0;
+  for(;;){let u=-1;for(let i=0;i<n;i++)if(!done[i]&&D[i]<1e9&&(u<0||D[i]<D[u]))u=i;if(u<0||u===n-1)break;done[u]=true;
+    for(let v=0;v<n;v++){if(done[v]||v===u)continue;const w=D[u]+Math.hypot(N[v][0]-N[u][0],N[v][1]-N[u][1]);if(w<D[v]&&segInA(N[u],N[v])){D[v]=w;pr[v]=u;}}}
+  if(pr[n-1]<0)return [b];const out=[];for(let v=n-1;v>0;v=pr[v])out.unshift(N[v]);return out;}
+function reBoard(){ // (re)lit GAME.boardAreas : polygone, places, entrée depuis la file (appelé au chargement et par l'éditeur)
+  const A=Array.isArray(GM.boardAreas)&&GM.boardAreas[0];BAREA=A&&Array.isArray(A.pts)&&A.pts.length>=3?A.pts.map(p=>[+p[0],+p[1]]):null;BSLOTS=null;BVIA=null;BNODES=[];if(!BAREA)return;
+  const P=BAREA,n=P.length;let ar=0;for(let i=0,j=n-1;i<n;j=i++)ar+=P[j][0]*P[i][1]-P[i][0]*P[j][1];const sg=ar>0?1:-1; // orientation : normale intérieure des bords
+  for(let i=0;i<n;i++){const a=P[(i+n-1)%n],b=P[i],c=P[(i+1)%n],n1=[-(b[1]-a[1]),b[0]-a[0]],n2=[-(c[1]-b[1]),c[0]-b[0]],l1=Math.hypot(...n1)||1,l2=Math.hypot(...n2)||1;
+    let m=[(n1[0]/l1+n2[0]/l2)*sg,(n1[1]/l1+n2[1]/l2)*sg];const ml=Math.hypot(m[0],m[1]);if(ml<.1)continue;m=[m[0]/ml,m[1]/ml];
+    for(const k of [1.5,3]){const q=[b[0]+m[0]*BA_IN*k,b[1]+m[1]*BA_IN*k];if(inA(q[0],q[1],BA_IN*.9)&&latA(q[0],q[1])>=PGATE+.2){BNODES.push(q);break;}}}
+  BSLOTS=new Array(SEATS);
+  for(let u=0;u<NGATES;u++){const ids=[];for(let i=0;i<SEATS;i++)if(seatUnit(i).u===u)ids.push(i);ids.sort((p,q)=>seatUnit(p).j-seatUnit(q).j);
+    const c=GCOLS(u),got=[];for(let row=0;row<60&&got.length<ids.length;row++)for(let col=0;col<c&&got.length<ids.length;col++){const p=slotAt(u,row,col);if(inA(p[0],p[2],BA_IN))got.push(p);}
+    ids.forEach((i,j)=>{if(got[j])BSLOTS[i]=got[j];else{const s=seatUnit(i),q=slotAt(u,Math.floor(s.j/c),s.j%c),r=intoA(q[0],q[2]);BSLOTS[i]=[r[0],0,r[1]];}});}
+  const V=(SITE.board.via||[]).map(q=>[q[0],q[1]]),k=V.findIndex(q=>pipA(P,q[0],q[1]));
+  BVIA=k>=0?{pre:V.slice(0,k).map(q=>[q[0],0,q[1]]),e:intoA(V[k][0],V[k][1])}:{pre:V.map(q=>[q[0],0,q[1]]),e:V.length?intoA(V[V.length-1][0],V[V.length-1][1]):null};}
+// trajet dans la zone éditée : de la file à la place i (sans le point de départ) ; à rebours pour l'évacuation
+function boardIn(i){const p=slotPos(i),e=BVIA.e||[p[0],p[2]];return BVIA.pre.concat([[e[0],0,e[1]]],routeA(e,[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}
+function boardOut(i){const p=slotPos(i),e=BVIA.e||[p[0],p[2]];return [p].concat(routeA([p[0],p[2]],e).map(q=>[q[0],0,q[1]]),BVIA.pre.slice().reverse());}
+reBoard();
 // Couloirs des visiteurs sur les quais (jamais en ligne droite à travers la gare, la voie ou les portillons) :
 //  embarquement : file → SITE.board.via → couloir d'attente (SITE.board.walk m de la voie, derrière les portillons) → place d'attente de la travée → (portillon ouvert seulement) → siège ;
 //  débarquement : siège → quai de débarquement, côté opposé aux portillons (couloir à SITE.plat.walkU m de la voie, par défaut au milieu du quai) → travée de la porte → SITE.exit.door → SITE.exit.path.

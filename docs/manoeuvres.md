@@ -218,6 +218,8 @@ Lift et zones de freinage surélevées ont une passerelle de service (coaster in
 
 « Évacuer la file » (`act('evac')`) fait ressortir tous les visiteurs de la file par l'entrée, au plus court, barrières franchies, **et** ceux qui attendent derrière les portillons : à leur place dans la travée (`G.plat`) ou en chemin vers elle (marcheurs `wait`, couloir d'attente `SITE.board.walk`). Trajet (`engine/queue.js` `platEvac`) : travée → couloir d'attente → `SITE.board.via` à rebours → toute la file à rebours → entrée ; le quai de débarquement, de l'autre côté de la voie, n'est jamais traversé. Les visiteurs assis ou qui franchissent le portillon pour embarquer restent. Commun à toutes les attractions, rien à écrire par site.
 
+Zone d'attente éditée (issue #22, `GAME.boardAreas`) : les visiteurs qui attendent dans le polygone en ressortent par le même chemin intérieur, puis `board.via` à rebours et la file (`boardOut`).
+
 ## Exploitation continue (propriétaire, 2026-11-17)
 
 Pas de journée ni de remise à zéro : l'horloge boucle sur la plage d'ouverture (10:00–19:00, puis 10:00), les trains, la file, le quai, les zones et la météo gardent leur état. L'entrée de la file ne ferme qu'au bouton `#bOpen` du joueur (aucune fermeture à 18:00). Salaires prélevés en continu ; bilan cumulé au bouton `#bBil` ; budget sous −2 000 € en carrière : fin de partie (Recommencer).

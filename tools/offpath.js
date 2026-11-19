@@ -19,7 +19,8 @@ const SRC = () => {
   for (const k in (OSM.paths || {})) add(OSM.paths[k], HW.foot);
   for (const p of SITE.paths || []) add(p, HW.foot);
   for (const s of SEGS) add(s.P, HW.queue, 1);
-  for (const Lp of (typeof LANDS !== 'undefined' ? LANDS : [])) areas.push({ p: Lp, q: 1 }); // paliers rectangulaires au sommet des escaliers en applique (engine/render.js)
+  for (const Lp of (typeof LANDS !== 'undefined' ? LANDS : [])) areas.push({ p: Lp, q: 1 });
+  if (typeof BAREA !== 'undefined' && BAREA) areas.push({ p: BAREA, q: 1 }); // zone d'attente éditée (GAME.boardAreas, engine/garage.js) : sol du quai, praticable // paliers rectangulaires au sommet des escaliers en applique (engine/render.js)
   for (const a of SITE.approach) add(a.pts, HW.app);
   add(SITE.exit.path, HW.exit, 1); for (const t of SITE.exit.tails) add(t, HW.exit);
   add(SITE.board.via, HW.exit, 1); for (const w of (typeof WALKS !== "undefined" ? WALKS : [])) add(w, 1.1, 1);
