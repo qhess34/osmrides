@@ -343,7 +343,7 @@ function stairWidths(S){
 // d'embarquement reste à QGATE_CLR au moins de la ligne des portillons (PGATE) ; sinon l'allée est rétrécie à cet endroit, jusqu'à QGATE_WMIN au plus étroit (axe OSM
 // conservé : si cela ne suffit pas, l'allée reste à QGATE_WMIN). QGATE_CLR = profondeur des travées d'attente
 // GDEPTH + 0,2 m, ESTIMÉ (aucune allée ne touche la zone des portillons) ; QGATE_WMIN = 0,6 m, ESTIMÉ (une personne de face). Aucune mesure : à confirmer.
-const QGATE_CLR=GDEPTH+.2,QGATE_WMIN=.6; // 2e demande (2026-11-18) : dégagement = profondeur des travées d'attente (GDEPTH, engine/garage.js) + 0,2 m, ESTIMÉ
+const QGATE_CLR=GDEPTH+.2,QGATE_WMIN=.6; // 2e demande (2026-11-18) : dégagement = profondeur des travées d'attente (GDEPTH, engine/garage.js) + 0,2 m, ESTIMÉ, GDEPTH réglable (GAME.board.depth, issue #27, lu au chargement)
 function gateClear(S){for(const q of S){for(const b of BAYS){const dx=q.x-b.x,dz=q.z-b.z,u=dx*b.tx+dz*b.tz;if(Math.abs(u)>CAR/2+.3)continue;
   const lat=dx*b.rx+dz*b.rz;if(lat<PGATE||COV.some(P=>onPl(q,P,.3)))break;const m=2*(lat-PGATE-QGATE_CLR);if(q.w>m)q.w=Math.max(QGATE_WMIN,Math.min(q.w,m));break;}}}
 const FORKP=LOOPS.flatMap(l=>[l.loop.P[0],l.loop.P[l.loop.P.length-1],l.short.P[0],l.short.P[l.short.P.length-1]]);

@@ -4,8 +4,8 @@
 (function (root) {
   const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (sites/<site>.js).\n'
     + '// Le corps est du JSON strict : à modifier de préférence avec l\'éditeur (docker compose up -d, http://127.0.0.1:8787/).\n';
-  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas'];
-  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64] };
+  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board'];
+  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], depth: [0.5, 6] }; // depth : profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
 
   // Valeurs arrondies (cm, dixième de degré) pour un fichier lisible et un diff stable.
   const r2 = v => Math.round(v * 100) / 100, r1 = v => Math.round(v * 10) / 10;
@@ -22,6 +22,8 @@
         o.controlRooms = g.controlRooms.map(r => ({ id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }));
       } else if (k === 'boardAreas') {
         o.boardAreas = g.boardAreas.map(a => ({ id: a.id, pts: a.pts.map(p => [r2(p[0]), r2(p[1])]) }));
+      } else if (k === 'board') {
+        o.board = { depth: r2(g.board.depth) };
       } else o[k] = g[k]; // clé inconnue (lot futur) : conservée telle quelle
     }
     return o;
@@ -96,6 +98,14 @@
           if (Math.abs(ar) / 2 < 0.5) E.push(p + ' : surface trop petite (0,5 m² au moins)');
           if (selfCross(P)) E.push(p + ' : bords qui se croisent (polygone simple attendu)');
         });
+      }
+    }
+    if ('board' in g) { // quai d'embarquement (issue #27) : profondeur des travées d'attente derrière les portillons, en m depuis la ligne des portillons
+      const B = g.board;
+      if (!B || typeof B !== 'object' || Array.isArray(B)) E.push('board : objet {depth} attendu');
+      else {
+        for (const k of Object.keys(B)) if (k !== 'depth') E.push('board : clé inconnue ' + k);
+        if (!num(B.depth, LIM.depth[0], LIM.depth[1])) E.push('board.depth : profondeur des travées de ' + LIM.depth[0] + ' à ' + LIM.depth[1] + ' m');
       }
     }
     return { errors: E, warnings: W };

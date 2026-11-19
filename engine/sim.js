@@ -338,11 +338,14 @@ function updatePlatform(dt){
   const pick=()=>{let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
     const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r])return kb*CSEATS+r;return -1;};
   // réserve de la zone d'attente éditée (BRES, engine/garage.js, issue #24) : un visiteur arrivé avance à une place de portillon libérée (le plus proche d'elle)
-  const NR=BAREA?BRES.length:0;if(!Array.isArray(G.platR))G.platR=[];if(G.platR.length!==NR){G.platR.length=NR;for(let j=0;j<NR;j++)if(!G.platR[j])G.platR[j]=null;}
-  if(NR&&G.platRT<=0){const i=pick();if(i>=0){const p=slotPos(i);let j=-1,bd=1e9;G.platR.forEach((r,k)=>{if(r&&r.on){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;}}});
-    if(j>=0){const o=G.platR[j],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.platR[j]=null;G.plat[i]=r;G.platRT=.3;walker(resTo(j,i),r.ci,()=>{r.on=true;},3.2,0,'wait');}}}
+  // travées réglées sans zone éditée (GAME.board.depth, issue #27) : rangs supplémentaires = réserve de leur portillon ; on n'avance que dans sa travée
+  const NR=BRES.length,sameU=(k,i)=>BAREA||BRES[k].u===seatUnit(i).u;if(!Array.isArray(G.platR))G.platR=[];if(G.platR.length!==NR){G.platR.length=NR;for(let j=0;j<NR;j++)if(!G.platR[j])G.platR[j]=null;}
+  if(NR&&G.platRT<=0){let i=pick(),j=-1;
+    if(!BAREA){i=-1;for(let s=0;s<SEATS&&j<0;s++)if(!G.plat[s]){let bd=1e9;const p=slotPos(s);G.platR.forEach((r,k)=>{if(r&&r.on&&sameU(k,s)){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;i=s;}}});}}
+    else if(i>=0){const p=slotPos(i);let bd=1e9;G.platR.forEach((r,k)=>{if(r&&r.on){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;}}});}
+    if(i>=0&&j>=0){const o=G.platR[j],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.platR[j]=null;G.plat[i]=r;G.platRT=.3;walker(resTo(j,i),r.ci,()=>{r.on=true;},3.2,0,'wait');}}
   if(G.platT<=0&&fr&&fr.r<.4){
-    let i=pick();const rb=NR&&G.platR.some(r=>r);
+    let i=pick();const rb=NR&&(BAREA?G.platR.some(r=>r):i>=0&&G.platR.some((r,k)=>r&&sameU(k,i)));
     if(rb||(i<0&&NR)){i=-1;const j=G.platR.findIndex(r=>!r); // places des portillons prises, ou d'autres attendent déjà : dans la réserve (la plus proche des portillons)
       if(j>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.platR[j]=r;G.platT=.22;walker([[fr.x,0,fr.z]].concat(boardInP(BRES[j])),fr.ci,()=>{r.on=true;},4.2,0,'wait');}}
     if(i>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.plat[i]=r;G.platT=.22;const p=slotPos(i);

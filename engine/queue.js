@@ -312,7 +312,7 @@ function queueTail(){const st=STAGES[STAGES.length-1];if(!st)return [];const e=s
 function platEvac(){const out=[],T=queueTail(),via=SITE.board.via.slice().reverse().map(q=>[q[0],0,q[1]]);
   for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i];if(k.kind!=='wait')continue;G.walkers.splice(i,1); // en chemin vers sa place : demi-tour par où il est venu (file → via → couloir → travée)
     const back=[[k.x,0,k.z]].concat(k.pts.slice(1,k.i).reverse().map(p=>[p[0],0,p[2]])),e=k.pts[0]; // parti de la réserve (zone d'attente éditée) : du polygone à la file
-    if(BAREA&&pipA(BAREA,e[0],e[2])){const w=boardOutP([e[0],0,e[2]]).slice(1);out.push({pts:back.concat(w,T.slice(1)),ci:k.ci,nv:back.length+w.length});}
+    if(BAREA&&pipA(BAREA,e[0],e[2])||!BAREA&&BRES.length&&resUnit(e)!=null){const w=boardOutP([e[0],0,e[2]]).slice(1);out.push({pts:back.concat(w,T.slice(1)),ci:k.ci,nv:back.length+w.length});}
     else out.push({pts:back.concat(T.slice(1)),ci:k.ci,nv:k.i});}
   (G.platR||[]).forEach((r,j)=>{if(r&&r.on&&BRES[j]){const w=boardOutP(BRES[j]);out.push({pts:w.concat(T.slice(1)),ci:r.ci,nv:w.length});}});if(G.platR)G.platR.fill(null); // réserve (issue #24)
   G.plat.forEach((r,i)=>{if(!r||!r.on)return;const s=seatUnit(i),g=GUNITS[s.u],b=BAYS[g.k],p=slotPos(i); // à sa place : recule dans la travée jusqu'au couloir d'attente

@@ -163,8 +163,24 @@ if(STATION_GROW)SITE.stationPoly=STATION_GROW;
 const SLOT0=(PLT0.slot&&PLT0.slot.first)||.4,SLOT_P=(PLT0.slot&&PLT0.slot.pitch)||.6;
 const RES_P=(PLT0.slot&&PLT0.slot.res)||4*SLOT_P; // pas de la réserve de la zone d'attente (propriétaire, 2026-11-19 : « 4x plus espacé ») : 2,4 m ESTIMÉ, SITE.plat.slot.res pour forcer
 const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
-const GDEPTH=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
-const BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
+const GDEPTH_CALC=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
+/* Profondeur des travées réglée (propriétaire, issue #27, éditeur : GAME.board={depth}, en m depuis la ligne des portillons ; repli SITE.plat.depth ; priorité GAME > SITE >
+   calcul GDEPTH_CALC). Sans valeur, rien ne change. Bornes ESTIMÉES : un rang au moins (SLOT0 + 0,4 m), DEPTH_MAX = 6 m au plus. Le moteur en déduit :
+   - GROWS = nombre de rangs des travées (premier rang à SLOT0, pas SLOT_P, 0,4 m derrière le dernier) et GDEPTH (séparateurs, engine/render.js drawGates) ;
+   - les places des portillons ne changent pas (deux par portillon, premier rang collé) ; travée plus courte que ces places : les rangs en trop attendent juste derrière ;
+   - travée plus longue : les rangs supplémentaires (jusqu'à GROWS) deviennent des places de réserve de leur portillon (BRES, `t:1`, `u` = portillon), remplies quand
+     les places du portillon sont prises, avec ou sans zone d'attente éditée ; le visiteur avance à la place du portillon libérée ;
+   - BWALK (couloir d'attente) juste derrière la travée (GDEPTH + 0,6 m), plus loin que SITE.board.walk si besoin mais pas au-delà du quai (plat.load - 0,3 m) ;
+   - QGATE_CLR (engine/render.js, au chargement) = GDEPTH + 0,2 m ; réserve de la zone d'attente éditée : premier rang derrière le dernier rang des travées. */
+const DEPTH_MIN=+(SLOT0+.4).toFixed(2),DEPTH_MAX=6;
+let GDEPTH=GDEPTH_CALC,GROWS=1,BDEPTH=null,BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
+function reDepth(){const B=GM.board&&typeof GM.board==='object'?GM.board:null,v=B&&B.depth!=null?+B.depth:PLT0.depth!=null?+PLT0.depth:NaN;
+  BDEPTH=isFinite(v)&&v>0?clamp(v,DEPTH_MIN,DEPTH_MAX):null;GDEPTH=BDEPTH!=null?BDEPTH:GDEPTH_CALC;GROWS=Math.max(1,Math.floor((GDEPTH-SLOT0-.4)/SLOT_P+1e-6)+1);
+  const wl=BDEPTH!=null?Math.max(SITE.board.walk,(PLT0.load||7.9)-.3):SITE.board.walk;BWALK=Math.min(wl,PGATE+Math.max(GDEPTH,GDEPTH_CALC)+.6);
+  try{WALKS[2]=[bayAt(0,BWALK),bayAt(NCARS-1,BWALK)];}catch(e){} // couloir de quai (contrôle offpath) : WALKS est défini plus bas (premier appel : pas encore)
+}
+const boardDepth=()=>({calc:+GDEPTH_CALC.toFixed(2),depth:+GDEPTH.toFixed(2),set:BDEPTH!=null,game:!!(GM.board&&GM.board.depth!=null),min:DEPTH_MIN,max:DEPTH_MAX,rows:GROWS,pgate:PGATE,
+  u:(()=>{const u=NGATES>>1,g=GUNITS[u],b=BAYS[g.k];return {o:[b.x+b.tx*g.c+b.rx*PGATE,b.z+b.tz*g.c+b.rz*PGATE],r:[b.rx,b.rz]};})()}); // éditeur : valeur, bornes, poignée
 const slotAt=(u,row,col)=>{const c=GCOLS(u),g=GUNITS[u],b=BAYS[g.k],off=c>1?(col-.5)*Math.min(.6,g.h):0,q=unitAt(u,PGATE+SLOT0+row*SLOT_P);return [q[0]+b.tx*off,0,q[1]+b.tz*off];};
 const slotCalc=i=>{const s=seatUnit(i),c=GCOLS(s.u);return slotAt(s.u,Math.floor(s.j/c),s.j%c);}; // places d'attente collées au portillon, deux de front
 const slotPos=i=>BSLOTS?BSLOTS[i]:slotCalc(i); // zone d'attente éditée (GAME.boardAreas) : places recalculées dans le polygone (reBoard)
@@ -203,8 +219,16 @@ function routeA(a,b){ // plus court chemin de a à b dans le polygone (sommets i
   for(;;){let u=-1;for(let i=0;i<n;i++)if(!done[i]&&D[i]<1e9&&(u<0||D[i]<D[u]))u=i;if(u<0||u===n-1)break;done[u]=true;
     for(let v=0;v<n;v++){if(done[v]||v===u)continue;const w=D[u]+Math.hypot(N[v][0]-N[u][0],N[v][1]-N[u][1]);if(w<D[v]&&segInA(N[u],N[v])){D[v]=w;pr[v]=u;}}}
   if(pr[n-1]<0)return [b];const out=[];for(let v=n-1;v>0;v=pr[v])out.unshift(N[v]);return out;}
-function reBoard(){ // (re)lit GAME.boardAreas : polygone, places, entrée depuis la file (appelé au chargement et par l'éditeur)
-  const A=Array.isArray(GM.boardAreas)&&GM.boardAreas[0];BAREA=A&&Array.isArray(A.pts)&&A.pts.length>=3?A.pts.map(p=>[+p[0],+p[1]]):null;BSLOTS=null;BVIA=null;BNODES=[];if(!BAREA)return;
+function resRows(keep){ // rangs supplémentaires des travées réglées (issue #27) : places de réserve de chaque portillon, du rang des places du portillon jusqu'à GROWS
+  const out=[];if(BDEPTH==null)return out;
+  for(let u=0;u<NGATES;u++){const c=GCOLS(u),n0=Math.ceil((GPR>1?S_COLS:CSEATS)/c);for(let row=n0;row<GROWS;row++)for(let col=0;col<c;col++){const p=slotAt(u,row,col);
+    if(keep(p)){p.u=u;p.t=1;out.push(p);}}}return out;}
+function reBoard(){ // (re)lit GAME.boardAreas et GAME.board : polygone, places, entrée depuis la file, profondeur des travées (appelé au chargement et par l'éditeur)
+  reDepth();
+  const A=Array.isArray(GM.boardAreas)&&GM.boardAreas[0];BAREA=A&&Array.isArray(A.pts)&&A.pts.length>=3?A.pts.map(p=>[+p[0],+p[1]]):null;BSLOTS=null;BVIA=null;BNODES=[];BRES=[];
+  if(!BAREA){ // travées calculées : réserve = rangs supplémentaires des travées (sur le quai : en deçà du couloir d'attente)
+    const V=(SITE.board.via||[]).slice(-1)[0]||[0,0];BRES=resRows(p=>latA(p[0],p[2])<=BWALK-.4);
+    BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-V[0],p[2]-V[1])-Math.hypot(q[0]-V[0],q[2]-V[1])));return;}
   const P=BAREA,n=P.length;let ar=0;for(let i=0,j=n-1;i<n;j=i++)ar+=P[j][0]*P[i][1]-P[i][0]*P[j][1];const sg=ar>0?1:-1; // orientation : normale intérieure des bords
   for(let i=0;i<n;i++){const a=P[(i+n-1)%n],b=P[i],c=P[(i+1)%n],n1=[-(b[1]-a[1]),b[0]-a[0]],n2=[-(c[1]-b[1]),c[0]-b[0]],l1=Math.hypot(...n1)||1,l2=Math.hypot(...n2)||1;
     let m=[(n1[0]/l1+n2[0]/l2)*sg,(n1[1]/l1+n2[1]/l2)*sg];const ml=Math.hypot(m[0],m[1]);if(ml<.1)continue;m=[m[0]/ml,m[1]/ml];
@@ -220,16 +244,22 @@ function reBoard(){ // (re)lit GAME.boardAreas : polygone, places, entrée depui
   // wagons de tête et de queue tant que le polygone le permet), triées de la plus proche des portillons à la plus lointaine ; BR_MAX = 400 places au plus (garde-fou).
   // Les visiteurs y entrent quand toutes les places des portillons sont prises (ou que d'autres attendent déjà dans la réserve), puis avancent à une place de portillon
   // libérée (engine/sim.js updatePlatform). Pas RES_P = 4 × SLOT_P = 2,4 m (propriétaire : visiteurs 4x plus espacés), rangs et places dans le rang : ESTIMÉ.
-  BRES=[];const RD=RES_P*.75,lmax=Math.max(...BSLOTS.map(p=>latA(p[0],p[2])))+Math.max(.5,RES_P/2),far=p=>BSLOTS.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<Math.max(.45,RES_P*.45))||BRES.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<RD);
+  // Travées réglées (issue #27, GAME.board.depth) : rangs supplémentaires des travées d'abord (places de réserve de leur portillon, dans le polygone), puis la réserve
+  // espacée commence derrière le dernier rang des travées.
+  const BT=resRows(p=>inA(p[0],p[2],BA_IN)&&!BSLOTS.some(q=>Math.hypot(q[0]-p[0],q[2]-p[2])<.3)),TS=BSLOTS.concat(BT);
+  BRES=[];const RD=RES_P*.75,lmax=Math.max(...TS.map(p=>latA(p[0],p[2])),BDEPTH!=null?PGATE+GDEPTH-.4:-1e9)+Math.max(.5,RES_P/2),far=p=>TS.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<Math.max(.45,RES_P*.45))||BRES.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<RD);
   for(let row=0;row<80&&BRES.length<BR_MAX;row++){const lat=lmax+row*RES_P; // premier rang à RES_P/2 (0,5 m au moins) derrière le dernier rang des portillons
     BAYS.forEach((b,i)=>{const ext=(i===0||i===BAYS.length-1)?12:0;for(let u=-CAR/2-ext+RES_P/2;u<=CAR/2+ext&&BRES.length<BR_MAX;u+=RES_P){const p=[b.x+b.tx*u+b.rx*lat,b.z+b.tz*u+b.rz*lat];
       if(inA(p[0],p[1],BA_IN)&&latA(p[0],p[1])>=lmax-.05&&!far(p))BRES.push([p[0],0,p[1]]);}});}
-  const e0=BVIA.e||[0,0];BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-e0[0],p[2]-e0[1])-Math.hypot(q[0]-e0[0],q[2]-e0[1])));}
+  BRES=BT.concat(BRES);const e0=BVIA.e||[0,0];BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-e0[0],p[2]-e0[1])-Math.hypot(q[0]-e0[0],q[2]-e0[1])));}
 // trajet dans la zone éditée : de la file au point p ([x,0,z] : place i d'un portillon ou place de réserve) (sans le point de départ) ; à rebours pour l'évacuation
-function boardInP(p){const e=BVIA.e||[p[0],p[2]];return BVIA.pre.concat([[e[0],0,e[1]]],routeA(e,[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}
-function boardOutP(p){const e=BVIA.e||[p[0],p[2]];return [p].concat(routeA([p[0],p[2]],e).map(q=>[q[0],0,q[1]]),BVIA.pre.slice().reverse());}
+// travées calculées (pas de zone éditée) : place de réserve p d'une travée réglée (p.u = portillon) atteinte comme une place de portillon, par via et le couloir d'attente
+const bwalkAt=u=>{const g=GUNITS[u||0],b=BAYS[g.k];return [b.x+b.rx*BWALK+b.tx*g.c,0,b.z+b.rz*BWALK+b.tz*g.c];};
+const resUnit=p=>{if(p.u!=null)return p.u;const q=BRES.find(r=>Math.hypot(r[0]-p[0],r[2]-p[2])<.02);return q?q.u:null;}; // après une reprise de sauvegarde : retrouvée par position
+function boardInP(p){if(!BAREA)return (SITE.board.via||[]).map(q=>[q[0],0,q[1]]).concat([bwalkAt(resUnit(p)),p]);const e=BVIA.e||[p[0],p[2]];return BVIA.pre.concat([[e[0],0,e[1]]],routeA(e,[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}
+function boardOutP(p){if(!BAREA)return [p,bwalkAt(resUnit(p))].concat((SITE.board.via||[]).slice().reverse().map(q=>[q[0],0,q[1]]));const e=BVIA.e||[p[0],p[2]];return [p].concat(routeA([p[0],p[2]],e).map(q=>[q[0],0,q[1]]),BVIA.pre.slice().reverse());}
 const boardIn=i=>boardInP(slotPos(i)),boardOut=i=>boardOutP(slotPos(i));
-const resTo=(j,i)=>{const a=BRES[j],p=slotPos(i);return [a].concat(routeA([a[0],a[2]],[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}; // de la réserve j à la place i
+const resTo=(j,i)=>{const a=BRES[j],p=slotPos(i);if(!BAREA)return [a,p];return [a].concat(routeA([a[0],a[2]],[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}; // de la réserve j à la place i
 /* Fin de la file à raccorder à la zone d'attente (issue #24, éditeur) : dernière portion du trajet des visiteurs vers le quai (8 m de la fin du dernier tronçon de file,
    puis SITE.board.via), point d'extrémité `end` (dernier point de board.via, sinon fin de la file : c'est là que les visiteurs quittent le chemin pour la zone), et bords
    de l'allée au bout de la file (`edges`, largeur dessinée qwAt, engine/render.js). Coordonnées arrondies au cm : un sommet aimanté y est posé exactement. */
