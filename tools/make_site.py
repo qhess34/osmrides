@@ -27,6 +27,7 @@ Le fichier de spécification (JSON) décrit :
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
   base, skip    mode « décor seul » : base = fichier de données existant dont la voie (cps), la file et la gare sont gardées (Tonnerre 2 Zeus) ; skip = clés non exportées
   (barrières)   nœuds barrier=swing_gate | gate | lift_gate -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] : barrières de file du jeu (engine/queue.js, à la place des barrières posées par le moteur)
+  (traçabilité) chaque objet garde son id OSM (w123 / n456 / r789) et sa version : champs id, v (feats, stairs), fin de tableau (doors, barriers, pois, widths), OSM.src (track, others, trees, paths, polys) — docs/OSM-GUIDE.md §7
   (multipolygones) anneaux assemblés à partir de plusieurs tronçons (ex. rocher natural=rock en relation)
 OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
 """
@@ -41,6 +42,12 @@ NODE = {n.get('id'): (float(n.get('lat')), float(n.get('lon'))) for n in root.it
 NTAG = {n.get('id'): {t.get('k'): t.get('v') for t in n.findall('tag')} for n in root.iter('node') if n.find('tag') is not None}
 WAY = {w.get('id'): w for w in root.iter('way')}
 tags = lambda e: {t.get('k'): t.get('v') for t in e.findall('tag')}
+# traçabilité (lot 2) : origine de chaque objet importé = id OSM préfixé (w123 tronçon, n456 nœud, r789 relation) + version de l'objet dans l'extrait.
+#   champs « id » et « v » (objets) ou fin de tableau (positionnels) ; structures sans place pour un champ : OSM.src (voir docs/OSM-GUIDE.md §6).
+ver = lambda e: int(e.get('version') or 0)
+WSRC = lambda m: ['w' + str(m), ver(WAY[str(m)])]            # tronçon (way) de l'extrait
+NSRC = lambda i: ['n' + str(i), ver(NODEL[str(i)])]          # nœud
+NODEL = {n.get('id'): n for n in root.iter('node')}
 nds = lambda w: [x.get('ref') for x in w.findall('nd') if x.get('ref') in NODE]
 kx = 111320 * math.cos(math.radians(lat0))
 def xy(i, r=2):
@@ -73,6 +80,7 @@ else:
         chain += n[1:]; last = n[-1]; ewy += [m] * (len(n) - 1)
     assert len(used) == len(track), 'tronçons non reliés : %s' % [m for m in track if m not in used]
     assert chain[0] == chain[-1], 'le circuit ne se referme pas'
+    chain_ways = [m for k, m in enumerate(ewy) if k == 0 or ewy[k - 1] != m]  # tronçons du circuit dans l'ordre de marche (traçabilité, OSM.src.track)
     raw = [xy(i) for i in chain[:-1]]
     L0 = sum(dist(raw[i], raw[(i + 1) % len(raw)]) for i in range(len(raw)))
     # tronçons du circuit en tunnel (OSM tunnel=yes, ou covered=yes avec layer<0) : intervalles [s0, s1] le long de la voie
@@ -360,7 +368,7 @@ def chain_pts(v):  # chemin de la spec : un tronçon OSM, ou une liste de tronç
 SPATHS = {str(i) for v in spec.get('paths', {}).values() for i in (v if isinstance(v, list) else [v])}
 drop = set(track) | {str(i) for i in spec.get('drop_ways', [])} | {str(i) for i in spec.get('paths', {}).values()}
 KEYS = ('building', 'highway', 'natural', 'landuse', 'leisure', 'water', 'waterway', 'barrier', 'amenity', 'tourism', 'man_made', 'railway')
-feats = []; others = []
+feats = []; others = []; others_src = []
 def area(p): return sum(p[i][0] * p[(i + 1) % len(p)][1] - p[(i + 1) % len(p)][0] * p[i][1] for i in range(len(p))) / 2
 def inside(pt, P):
     c = False; j = len(P) - 1
@@ -391,10 +399,11 @@ def wnum(t):  # largeur OSM (width) en m, None si absente ou illisible
     except ValueError: return None
 # chemin couvert (sous un bâtiment, un auvent, en souterrain) : dessiné sous le toit, qui s'efface au zoom (moteur)
 iscov = lambda t: t.get('tunnel') in TUNV or t.get('covered') == 'yes' or t.get('indoor') in ('yes', 'corridor') or lay(t) < 0
-def add(t, p, closed, holes=None):
+def add(t, p, closed, holes=None, src=None):
     kind = 'highway=pedestrian' if isped(t) else next((k + '=' + t[k] for k in KEYS if k in t), None)
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
+        if src: f['id'], f['v'] = src
         if kind.startswith('highway=') and not closed and iscov(t): f['cv'] = 1
         if kind.startswith('highway=') and not closed and lvl(t) < 0: f['lv'] = lvl(t)  # niveau souterrain (-1, -2…) : caché dans l'emprise de la gare tant qu'elle est affichée (moteur)
         if kind.startswith('building') and bheight(t): f['bh'] = bheight(t)  # hauteur du bâtiment (voie qui le survole : bâtiment dessiné sous la voie, moteur)
@@ -408,10 +417,10 @@ for wid, w in WAY.items():
     if not t or not n_: continue
     p = [list(xy(i, 1)) for i in n_]
     if t.get('roller_coaster'):
-        if BASE is None and wid not in track and wid not in drop and any(inb(q) for q in p): others.append(p)  # drop_ways / paths : tronçons exportés à part (ex. voie de garage), pas dessinés comme voie voisine
+        if BASE is None and wid not in track and wid not in drop and any(inb(q) for q in p): others.append(p); others_src.append(WSRC(wid))  # drop_ways / paths : tronçons exportés à part (ex. voie de garage), pas dessinés comme voie voisine
         continue
     if wid in drop and not (wid in SPATHS and t.get('highway') and (iscov(t) or t.get('bridge') not in (None, 'no'))): continue  # chemin de la spec couvert ou en passerelle : gardé dans le décor (f.cv, f.br)  # chemin de la spec couvert : gardé dans le décor (f.cv) pour effacer le toit qui le recouvre
-    add(t, p, n_[0] == n_[-1])
+    add(t, p, n_[0] == n_[-1], src=WSRC(wid))
 def rings_of(ids):  # anneaux fermés assemblés à partir des tronçons d'un multipolygone
     segs = [nds(WAY[m]) for m in ids if m in WAY and len(nds(WAY[m])) > 1]; out = []
     while segs:
@@ -426,20 +435,20 @@ def rings_of(ids):  # anneaux fermés assemblés à partir des tronçons d'un mu
         if cur[0] == cur[-1] and len(cur) > 3: out.append([list(xy(i, 1)) for i in cur])
     return out
 for r in root.iter('relation'):
-    t = tags(r)
+    t = tags(r); RS = ['r' + r.get('id'), ver(r)]
     if t.get('type') == 'multipolygon' and isped(t):
         mem = [(m.get('ref'), m.get('role')) for m in r.findall('member') if m.get('type') == 'way']
         inner = rings_of([m for m, ro in mem if ro == 'inner'])
-        for ring in rings_of([m for m, ro in mem if ro != 'inner']): add(t, ring, True, inner)
+        for ring in rings_of([m for m, ro in mem if ro != 'inner']): add(t, ring, True, inner, src=RS)
     elif t.get('type') == 'multipolygon':  # anneaux extérieurs assemblés à partir de leurs tronçons (ex. rocher fait de plusieurs ways) ; tronçons non refermables : lignes
         mem = [(m.get('ref'), m.get('role')) for m in r.findall('member') if m.get('type') == 'way' and m.get('ref') in WAY]
         holes = rings_of([m for m, ro in mem if ro == 'inner'])
         outs = [m for m, ro in mem if ro != 'inner']; rings = rings_of(outs)
-        for ring in rings: add(t, ring, True, holes)
+        for ring in rings: add(t, ring, True, holes, src=RS)
         used_ = {tuple(q) for ring in rings for q in ring}
         for m in outs:
             n_ = nds(WAY[m])
-            if n_ and n_[0] != n_[-1] and not all(tuple(xy(i, 1)) in used_ for i in n_): add(t, [list(xy(i, 1)) for i in n_], False, holes)
+            if n_ and n_[0] != n_[-1] and not all(tuple(xy(i, 1)) in used_ for i in n_): add(t, [list(xy(i, 1)) for i in n_], False, holes, src=RS)
 # chemins à l'intérieur d'une zone piétonne : fondus dans la zone (non dessinés, f.in = 1 ; les promeneurs peuvent encore les suivre)
 PED = [f for f in feats if f['k'] == 'highway=pedestrian' and f['c']]
 def in_ped(q): return any(inside(q, f['p']) and not any(inside(q, h) for h in f.get('h', [])) for f in PED)
@@ -451,7 +460,7 @@ NODE_WAYS_ALL = collections.defaultdict(list)
 for w in WAY.values():
     if tags(w).get('highway'):
         for i in nds(w): NODE_WAYS_ALL[i].append(w)
-doors = [[*xy(i, 1), t['entrance'], t.get('name')] for i, t in NTAG.items() if 'entrance' in t and inb(xy(i))]
+doors = [[*xy(i, 1), t['entrance'], t.get('name'), *NSRC(i)] for i, t in NTAG.items() if 'entrance' in t and inb(xy(i))]
 # barrières de file (nœuds barrier=swing_gate | gate | lift_gate posés sur un chemin) -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] :
 #   ref = barrières liées (même ref : bougent ensemble), hinge = swing_gate:hinge (left / right vu dans le sens du chemin, '' inconnu),
 #   (tx, tz) = direction du chemin au nœud (sens de dessin OSM), bout = 1 si le nœud termine un chemin (barrière de bifurcation).
@@ -464,7 +473,7 @@ for i, t in NTAG.items():
         n_ = nds(w); k = n_.index(i); a, b = xy(n_[max(0, k - 1)], 2), xy(n_[min(len(n_) - 1, k + 1)], 2); l = dist(a, b) or 1
         if not tx and not tz: tx, tz = round((b[0] - a[0]) / l, 3), round((b[1] - a[1]) / l, 3)
         if k in (0, len(n_) - 1): end = 1
-    barriers.append([*xy(i, 1), t.get('ref', ''), t.get('swing_gate:hinge', ''), tx, tz, end])
+    barriers.append([*xy(i, 1), t.get('ref', ''), t.get('swing_gate:hinge', ''), tx, tz, end, *NSRC(i)])  # [7] = id du nœud, [8] = version
 # escaliers (highway=steps), y compris ceux de la file et de la sortie : [[x,z]…], sens de montée (incline up = dans le sens du tronçon : 1, down : -1, inconnu : 0), couvert
 steps = []
 NODE_WAYS = collections.defaultdict(list)
@@ -479,7 +488,7 @@ for wid, w in WAY.items():
     if not any(inb(q) for q in p): continue
     inc = t.get('incline', ''); up = 1 if inc in ('up', 'yes') or inc.endswith('%') and not inc.startswith('-') else -1 if inc in ('down',) or inc.startswith('-') else 0
     wd = wnum(t) or min([wnum(tags(o)) for i in (n_[0], n_[-1]) for o in NODE_WAYS[i] if o is not w and wnum(tags(o))] or [0]) or None  # largeur : escalier, sinon chemin raccordé
-    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'lv': lvl(t)} if lvl(t) < 0 else {}), **({'w': wd} if wd else {})})
+    steps.append({'p': p, 'up': up, **({'cv': 1} if iscov(t) else {}), **({'lv': lvl(t)} if lvl(t) < 0 else {}), **({'w': wd} if wd else {}), 'id': 'w' + wid, 'v': ver(w)})
 print('escaliers : %d ; passerelles : %d ; rochers : %d' % (len(steps), sum(1 for f in feats if f.get('br')), sum(1 for f in feats if f['k'] in ('natural=rock', 'natural=stone') and f['c'])))
 # chemins à largeur OSM (highway non fermé avec width=*) : [w, [[x,z]…]] — le moteur dessine la file à cette largeur là où elle les suit (engine/render.js QWP)
 widths = []
@@ -487,13 +496,20 @@ for wid, w in WAY.items():
     t = tags(w); n_ = nds(w)
     if t.get('highway') and wnum(t) and len(n_) > 1 and n_[0] != n_[-1]:
         p = [list(xy(i, 1)) for i in n_]
-        if any(inb(q) for q in p): widths.append([wnum(t), p])
+        if any(inb(q) for q in p): widths.append([wnum(t), p, *WSRC(wid)])
 print('chemins à largeur OSM : %d' % len(widths))
 res = {'cps': cps, **({'widths': widths} if widths else {}), **({'stairs': steps} if steps else {}), **({'doors': doors} if doors else {}), **({'barriers': barriers} if barriers else {}), **({'tunnels': tunnels} if tunnels else {}), **({'inversions': inversions} if inversions else {}), 'feats': feats, 'others': others,
        'paths': {k: chain_pts(v) for k, v in spec.get('paths', {}).items()},
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
        'trees': [list(xy(i, 1)) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))],
-       'pois': [[list(xy(i, 1)), t.get('name')] for i, t in NTAG.items() if t.get('name') and inb(xy(i))]}
+       'pois': [[list(xy(i, 1)), t.get('name'), *NSRC(i)] for i, t in NTAG.items() if t.get('name') and inb(xy(i))]}
+# OSM.src : origine des objets qui n'ont pas de place pour un champ (tableaux de points, dictionnaires lus par clé) ; mêmes indices que la structure décrite
+SRC = {'track': [WSRC(m) for m in (chain_ways if BASE is None else track)]}
+if others_src: SRC['others'] = others_src                                                    # même ordre que OSM.others
+if res['paths']: SRC['paths'] = {k: [WSRC(m) for m in (v if isinstance(v, list) else [v])] for k, v in spec['paths'].items()}  # tronçons de chaque chemin de la spec
+if res['polys']: SRC['polys'] = {k: [WSRC(v)] for k, v in spec['polys'].items()}
+SRC['trees'] = [NSRC(i) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))]  # même ordre que OSM.trees
+res['src'] = SRC
 if BASE is not None:  # décor seul : voie, file et gare du fichier de base, décor relu dans OSM
     res = dict(BASE, **{k: v for k, v in res.items() if k not in ('cps', 'tunnels', 'inversions', 'others') and k not in spec.get('skip', [])})
     if not spec.get('paths'): res.pop('paths', None)

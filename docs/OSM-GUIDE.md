@@ -98,3 +98,40 @@ Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; c
 7. Si tu connais des hauteurs (lift, figures, rocher, passerelle), ajoute `height=*`.
 
 Ce qui reste estimé après import est signalé dans `docs/<attraction>-notes.md` et dans `docs/plans/QUESTIONS.md`.
+
+## 7. Traçabilité à l'import et catégories lues (lot 2)
+
+Chaque objet importé garde son origine : **id OSM** préfixé (`w123` tronçon, `n456` nœud, `r789` relation) et **version** dans l'extrait (entier). C'est la base du réimport sélectif (lot 7) et des corrections locales (lot 4). Le moteur ignore ces champs (aucun conflit : vérifié par grep dans `engine/` et `editor/`).
+
+| Donnée de `OSM.*` | Où est l'origine |
+|---|---|
+| `feats[]`, `stairs[]` (objets) | champs `id` et `v` ; un multipolygone assemblé (rocher, zone piétonne) porte l'id de la **relation** (`r…`), son anneau n'est pas rattaché à un tronçon |
+| `doors[]`, `barriers[]`, `pois[]`, `widths[]` (tableaux positionnels) | **fin de tableau**, indices existants inchangés : `doors` `[x,z,type,nom, id, v]`, `barriers` `[x,z,ref,hinge,tx,tz,bout, id, v]`, `pois` `[[x,z],nom, id, v]`, `widths` `[w,pts, id, v]` |
+| `others[]`, `trees[]`, `paths{}`, `polys{}`, voie `cps` (listes de points ou dictionnaires parcourus par le moteur) | **`OSM.src`** : `track` = tronçons du circuit dans l'ordre de marche `[[id, v]…]` ; `others` et `trees` = même ordre que `OSM.others` / `OSM.trees` ; `paths` = `{nom: [[id, v]…]}` (tronçons mis bout à bout) ; `polys` = `{nom: [[id, v]]}` |
+
+Une version `null` (ou un objet sans `id`) veut dire « origine connue, version d'import inconnue » : donnée reprise d'un import plus ancien dont l'objet OSM a été modifié depuis. Un réimport complet les remplace.
+
+### Catégories lues par `tools/make_site.py` (tirées du code)
+
+| Catégorie | Objets OSM | Tags lus | Sortie |
+|---|---|---|---|
+| Voie et tronçons | tronçons listés dans la spec (`track_ways`) | `roller_coaster:track` = `station`, `lift_hill`, `brake_run`, `waiting`, `block_brake`, `storage`, `transfer` (autre = parcours) ; `tunnel` (`yes`, `true`, `1`, `building_passage`, `culvert`), `covered=yes` avec `layer<0`, `layer>0` (galerie couverte `'roof'`) ; la hauteur, le profil, les dévers sont ESTIMÉS (spec) | `cps`, `tunnels`, `inversions`, `src.track` |
+| Autres voies voisines | tronçons `roller_coaster=*` hors circuit, hors `drop_ways`/`paths` | `roller_coaster` | `others`, `src.others` |
+| Gare, file, sortie, garage | tronçons et polygones nommés par la spec (`paths`, `polys`) | géométrie seule (+ `highway`, `layer`, `covered`, `bridge` si le chemin reste aussi dans le décor) | `paths`, `polys`, `src.paths`, `src.polys` |
+| Bâtiments et abris | ways / multipolygones fermés | `building` (dont `roof`), `height`, `building:levels` (×3 m), `name` | `feats` (`k=building=…`, `bh`) |
+| Chemins | `highway=*` non fermés | `highway`, `name`, `layer`, `level` (souterrain `lv`), `tunnel`, `covered`, `indoor` (couvert `cv`), `bridge` + `layer` (passerelle `br`), `width` | `feats` (`cv`, `lv`, `br`, `w`, `in` : fondu dans une zone piétonne), `widths` |
+| Zones piétonnes | `highway=pedestrian`+`area=yes`, `area:highway=*`, `place=square`, multipolygones `highway=pedestrian` (anneaux `inner` en trous) | idem | `feats` (`k=highway=pedestrian`, fermé, `h`) |
+| Escaliers | `highway=steps` | `incline` (up / down / pente), `width` (sinon chemin raccordé), `layer`, `level`, `covered`, `tunnel`, `indoor` | `stairs` |
+| Entrées / sorties | nœuds | `entrance=*`, `name` | `doors` |
+| Barrières de file | nœuds posés sur un chemin | `barrier` = `swing_gate`, `gate`, `lift_gate` ; `ref`, `swing_gate:hinge` ; direction du chemin au nœud | `barriers` |
+| Eau | ways / multipolygones | `natural=water`, `water`, `waterway` | `feats` |
+| Végétation | ways / multipolygones ; nœuds | `landuse` (forêt, herbe…), `natural` (bois…), `leisure` ; nœuds `natural=tree` | `feats`, `trees`, `src.trees` |
+| Rochers | ways / multipolygones (anneaux assemblés) | `natural=rock`, `natural=stone` ; `natural=bare_rock` n'est PAS un rocher pour le moteur (sol nu) | `feats` |
+| Autres éléments de décor | ways / multipolygones | première clé présente parmi `building highway natural landuse leisure water waterway barrier amenity tourism man_made railway` (`landuse=commercial` ignoré) | `feats` |
+| Lieux nommés | nœuds | `name` | `pois` |
+
+Hors de ces listes, un tag n'est pas lu. Toute évolution de `make_site.py` qui lit un nouveau tag met à jour ce tableau.
+
+### Réimport et dérive
+
+`make_site.py` régénère tout le fichier `sites/<site>.data.js` ; il n'y a pas encore de réimport sélectif (lot 7). Avant d'accepter un réimport : comparer à l'ancien fichier (ids et versions), signaler au propriétaire tout objet dont la géométrie ou le tag a changé (exemple 19/11/2026 : rocher d'Hourra retagué `natural=bare_rock`, voie de Goudurix retouchée de 0,5 m au plus le 18/11).
