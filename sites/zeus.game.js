@@ -120,5 +120,8 @@ const GAME = {
         ]
       ]
     }
-  ]
+  ],
+  "board": {
+    "depth": 2.29
+  }
 };
