@@ -58,7 +58,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Eau | `natural=water`, `water=*`, `waterway=*` | Lu | Bassins, lacs, tunnel sous l'eau. |
 | Forêt, pelouse | `landuse=forest`, `natural=wood`, `landuse=grass`, `leisure=park` | Lu | Textures du sol. |
 | Arbres | nœud `natural=tree` | Lu | Arbres isolés. |
-| Rochers | `natural=rock` / `stone` (way fermé ou relation multipolygone) | Lu | Massif en relief, tunnels de voie et de file dessous. Un rocher en relation est assemblé à partir de ses tronçons. |
+| Rochers | `natural=rock` / `stone` / `bare_rock` (way fermé ou relation multipolygone, trous compris) | Lu | Massif en relief (`bare_rock` compris depuis le 19/11 : `make_site.py` l'écrit `natural=rock`), tunnels de voie et de file dessous. Un rocher en relation est assemblé à partir de ses tronçons. |
 | Bâtiments | `building=*` | Lu | Toits, avec `name` affiché. |
 | Hauteur des bâtiments | `height=*`, sinon `building:levels=*` (× 3 m) | Lu | Longueur de l'ombre ; un bâtiment que la voie survole plus haut que lui est dessiné sous la voie (sans hauteur : 7 m estimé). |
 
@@ -126,7 +126,7 @@ Une version `null` (ou un objet sans `id`) veut dire « origine connue, version 
 | Barrières de file | nœuds posés sur un chemin | `barrier` = `swing_gate`, `gate`, `lift_gate` ; `ref`, `swing_gate:hinge` ; direction du chemin au nœud | `barriers` |
 | Eau | ways / multipolygones | `natural=water`, `water`, `waterway` | `feats` |
 | Végétation | ways / multipolygones ; nœuds | `landuse` (forêt, herbe…), `natural` (bois…), `leisure` ; nœuds `natural=tree` | `feats`, `trees`, `src.trees` |
-| Rochers | ways / multipolygones (anneaux assemblés) | `natural=rock`, `natural=stone` ; `natural=bare_rock` n'est PAS un rocher pour le moteur (sol nu) | `feats` |
+| Rochers | ways / multipolygones (anneaux assemblés) | `natural=rock`, `natural=stone` ; `natural=bare_rock` EST un rocher (décision du propriétaire 19/11 ; `make_site.py` l'écrit `natural=rock`) | `feats` |
 | Autres éléments de décor | ways / multipolygones | première clé présente parmi `building highway natural landuse leisure water waterway barrier amenity tourism man_made railway` (`landuse=commercial` ignoré) | `feats` |
 | Lieux nommés | nœuds | `name` | `pois` |
 

@@ -23,7 +23,7 @@ Le fichier de spécification (JSON) décrit :
   (décor)       zones piétonnes (aires et multipolygones, anneaux assemblés, trous) -> feats highway=pedestrian fermés ; chemins à l'intérieur : f.in=1 ;
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
                 passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; chemins à width OSM -> OSM.widths=[[w, pts]…] ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, lv, w}] ; niveau souterrain (layer / level < 0) : f.lv, lv
-                (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone : feats (moteur)
+                (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone|bare_rock (bare_rock devient natural=rock) : feats (moteur)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
   base, skip    mode « décor seul » : base = fichier de données existant dont la voie (cps), la file et la gare sont gardées (Tonnerre 2 Zeus) ; skip = clés non exportées
   (barrières)   nœuds barrier=swing_gate | gate | lift_gate -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] : barrières de file du jeu (engine/queue.js, à la place des barrières posées par le moteur)
@@ -401,6 +401,7 @@ def wnum(t):  # largeur OSM (width) en m, None si absente ou illisible
 iscov = lambda t: t.get('tunnel') in TUNV or t.get('covered') == 'yes' or t.get('indoor') in ('yes', 'corridor') or lay(t) < 0
 def add(t, p, closed, holes=None, src=None):
     kind = 'highway=pedestrian' if isped(t) else next((k + '=' + t[k] for k in KEYS if k in t), None)
+    if kind == 'natural=bare_rock': kind = 'natural=rock'  # décision du propriétaire 19/11 : bare_rock est un rocher (relief, tunnels dessous), y compris en multipolygone avec trous
     if kind and kind != 'landuse=commercial' and any(inb(q) for q in p):
         f = {'k': kind, 'n': t.get('name'), 'c': 1 if closed else 0, 'p': p}
         if src: f['id'], f['v'] = src
