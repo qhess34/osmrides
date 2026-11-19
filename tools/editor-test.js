@@ -6,6 +6,7 @@
 // barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent,
 // zone d'attente appliquée (visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone) ; profondeur des travées (GAME.board, issue #27) :
 // calcul affiché, poignée glissée, valeur saisie, bornes, retour au calcul, valeur écrite ; dans le jeu, avec et sans zone éditée : visiteurs dans les rangs ajoutés.
+// paramètres de l'attraction (lot 3, GAME.site) : couleur d'un train, nombre de trains, sous-type, physique, hors bornes refusé, sauvegarde, relecture, effet dans le jeu.
 // --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, gatesMove). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
 const { chromium } = require('playwright');
@@ -285,6 +286,71 @@ const ed = (page, s) => page.evaluate(s);
         return {gd:GDEPTH,rows:GROWS,nres:BRES.length,n,mx,bad,on,left:G.plat.filter(r=>r).length+G.platR.filter(r=>r).length+G.walkers.filter(k=>k.kind==='wait').length};})()`);
       ok(zc.gd === exp.board.depth && zc.nres > 0 && zc.n > 0 && zc.bad === 0 && zc.left === 0, `jeu sans zone éditée : ${zc.rows} rangs, réserve dans les travées (${zc.n} relevés, ${zc.mx.toFixed(2)} m au plus, ${zc.bad} hors travée), évacuation (${zc.left} restant)`);
       await jp3.close();
+      // ── paramètres de l'attraction (lot 3, D9) : GAME.site ──
+      //    formulaire : couleur d'un train, nombre de trains (retrait puis ajout), sous-type ; brouillon conservé au rechargement du jeu en cadre ; valeur hors bornes
+      //    signalée et refusée par le serveur, ↺ ; sauvegarde, relecture après redémarrage, effet dans jeu.html (SITE fusionné) ; clé hors liste refusée
+      {
+        await startServer();
+        const ps = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        ps.on('pageerror', e => errors.push('site: ' + String(e.message || e)));
+        await ps.goto(BASE + '/editor/?site=' + id);
+        // jeu en cadre rechargé et stable (un champ peut déclencher deux rechargements rapprochés) : prêt, puis toujours prêt 700 ms plus tard
+        const rdy = async () => { for (;;) { await ps.waitForFunction(() => window.ED && window.ED.ready && window.ED.isReady(), null, { timeout: 60000 }); await sleep(700); if (await ps.evaluate(() => window.ED.ready && window.ED.isReady())) return; } };
+        await rdy();
+        const base = await ed(ps, `JSON.parse(ED.E('JSON.stringify(SITE_BASE)'))`), n0 = base.trains.length;
+        const prior = await ed(ps, `JSON.stringify(ED.draft())`), hadSite = 'site' in JSON.parse(prior);
+        ok(!hadSite && await ed(ps, `document.querySelectorAll('#siteBox .fld.mod').length`) === 0, 'attraction : formulaire sans surcharge au départ (valeurs de SITE)');
+        // brouillon non enregistré (profondeur des travées) : doit survivre au rechargement du cadre
+        const dmax = await ed(ps, `ED.depth().max`), d0 = await ed(ps, `ED.depth().depth`), dnew = Math.round((d0 > 1 ? d0 - 0.2 : d0 + 0.2) * 100) / 100;
+        await ps.fill('#depth', String(dnew)); await ps.dispatchEvent('#depth', 'change'); await sleep(100);
+        // couleur du premier train
+        await ps.fill('.trow[data-i="0"] [data-tf="col"]', '#123456'); await rdy();
+        ok(await ed(ps, `ED.E('SITE.trains[0].col')`) === '#123456' && await ed(ps, `ED.E('trains[0].col')`) === '#123456', 'attraction : couleur du train 1 appliquée au jeu en cadre (SITE et train)');
+        ok(await ed(ps, `ED.draft().site.trains.length`) === n0 && await ed(ps, `ED.draft().board.depth`) === dnew, 'attraction : brouillon (travées) conservé au rechargement du jeu');
+        ok(await ed(ps, `document.querySelectorAll('#siteBox .fld.mod').length`) === 1, 'attraction : champ modifié mis en évidence (liste des trains)');
+        // nombre de trains : un de moins, puis un de plus (copie du dernier)
+        await ps.click(`[data-tdel="${n0 - 1}"]`); await rdy();
+        ok(await ed(ps, `ED.E('trains.length')`) === n0 - 1 && await ed(ps, `ED.draft().site.trains[0].col`) === '#123456', `attraction : ${n0 - 1} train(s) dans le jeu`);
+        await ps.click('#bTAdd'); await rdy();
+        const nAddT = await ed(ps, `ED.E('trains.length')`);
+        ok(nAddT === n0 || (nAddT === n0 - 1 && (await ed(ps, `document.getElementById('bUndoSite')`)) === null), `attraction : train ajouté (${nAddT} trains)`);
+        // sous-type
+        const k1 = base.kind === 'steel' ? 'wood' : 'steel';
+        await ps.selectOption('#siteBox select[data-p="kind"]', k1); await rdy();
+        ok(await ed(ps, `ED.E('SITE.kind')`) === k1 && await ed(ps, `ED.draft().site.kind`) === k1 && await ed(ps, `ED.E('BOB===(SITE.kind==="bob")&&STL===(SITE.kind==="steel")')`), `attraction : sous-type ${base.kind} -> ${k1} appliqué`);
+        // valeur hors bornes : signalée dans le formulaire, refusée par le serveur
+        await ps.fill('#siteBox input[data-p="phys.roll"]', '5'); await ps.dispatchEvent('#siteBox input[data-p="phys.roll"]', 'change'); await rdy();
+        ok(/phys\.roll/.test(await ed(ps, `document.getElementById('valBox').textContent`)), 'attraction : valeur hors bornes signalée (validation)');
+        const bad = await ed(ps, `fetch('/api/game/${id}',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:ED.draft()})}).then(r=>r.status)`);
+        const bad2 = await ed(ps, `fetch('/api/diff/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{kind:'wood',segs:[1]}}})}).then(r=>r.json()).then(j=>j.ok===false&&/segs/.test(j.errors.join()))`);
+        const bad3 = await ed(ps, `fetch('/api/diff/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{trains:[{name:'x',col:'rouge',col2:'#000000',wear:3}],car:{n:99}}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=2)`);
+        ok(bad === 422 && bad2 === true && bad3 === true, `attraction : serveur refuse hors bornes (${bad}), clé hors liste, couleur invalide`);
+        await ps.click('#siteBox [data-rev="phys.roll"]'); await rdy();
+        ok(await ed(ps, `'phys' in (ED.draft().site||{})`) === false && await ed(ps, `ED.E('PH.roll')`) === (base.phys.roll), 'attraction : ↺ revient à la valeur d\'origine (surcharge retirée)');
+        // valeur valable : traînée
+        const dr1 = Math.round(base.phys.drag * 1.5 * 1e5) / 1e5;
+        await ps.fill('#siteBox input[data-p="phys.drag"]', String(dr1)); await ps.dispatchEvent('#siteBox input[data-p="phys.drag"]', 'change'); await rdy();
+        ok(await ed(ps, `ED.E('PH.drag')`) === dr1, `attraction : physique modifiée (traînée ${dr1})`);
+        await ps.click('#bDiff'); await ps.waitForSelector('#diff .a', { timeout: 30000 }).catch(async e => { throw new Error(errors.join(' ; ') + out.slice(-1).join(' // ') + await ed(ps, `' ready='+ED.ready+document.getElementById('mMsg').textContent`)); });
+        ok(/"site"/.test(await ed(ps, `document.getElementById('diff').textContent`)), 'attraction : diff lisible (clé site)');
+        await ps.click('#bSave'); await ps.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 30000 });
+        const expS = await ed(ps, `ED.draft()`), txt = fs.readFileSync(gp(id), 'utf8');
+        ok(txt === S.text(expS) && S.parse(txt).site.trains[0].col === '#123456' && S.parse(txt).site.kind === k1, 'attraction : sites/' + id + '.game.js écrit avec "site"');
+        await ps.close(); await stopServer(); await startServer();
+        const p3 = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        p3.on('pageerror', e => errors.push('site: ' + String(e.message || e)));
+        await p3.goto(BASE + '/editor/?site=' + id); await p3.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 40000 });
+        ok(JSON.stringify(S.normalize(await p3.evaluate(`ED.draft()`))) === JSON.stringify(S.normalize(expS)) && !(await p3.evaluate('ED.dirty')) && await p3.evaluate(`document.querySelectorAll('#siteBox .fld.mod').length`) >= 2, 'attraction : relecture identique après redémarrage, champs modifiés en évidence');
+        await p3.close(); await stopServer();
+        // jeu.html (file://) : SITE fusionné
+        const jq = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+        jq.on('pageerror', e => errors.push('jeu site: ' + String(e.message || e)));
+        await jq.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+        await jq.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
+        const jg = await jq.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<400;i++)step(.05);render(.05);return {kind:SITE.kind,c:SITE.trains[0].col,n:SITE.trains.length,nt:trains.length,tc:trains[0].col,drag:PH.drag,car:SITE.car.len};})()`);
+        ok(jg.kind === k1 && jg.c === '#123456' && jg.tc === '#123456' && jg.n === jg.nt && jg.drag === dr1 && jg.car === base.car.len, `attraction : SITE fusionné dans le jeu (kind ${jg.kind}, ${jg.n} trains, train 1 ${jg.c}, traînée ${jg.drag})`);
+        await jq.close();
+      }
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));
     }
