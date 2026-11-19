@@ -230,7 +230,12 @@ function alightWalk(k,x,z){ // du siège au quai de débarquement, le long des t
 }
 const WALKS=[[bayAt(DOORK,ULAT),DOOR||bayAt(DOORK,ULAT)],[bayAt(0,ULAT),bayAt(NCARS-1,ULAT)],[bayAt(0,BWALK),bayAt(NCARS-1,BWALK)]]; // couloirs de quai (contrôle offpath)
 // Deux opérateurs de quai (moitié avant, moitié arrière) ferment les sécurités wagon par wagon après le verrouillage au pupitre, les vérifient, puis valident chacun sur un bouton
-const opHome=i=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*1.7+b.rx*POPL,b.z+b.tz*e*1.7+b.rz*POPL];}; // dans le couloir entre le bord du quai et les portillons
+// Poste d'attente et poste de validation (bouton) de chaque opérateur, au bout de SON quai (issue #23, propriétaire, Zeus : « un opérateur est en dehors de la gare ») :
+// 1,7 m au-delà du milieu du wagon d'extrémité au plus, ramené dans le quai (arrière : CAR/2 + plat.back, avant : plat.front, comme drawStationFloor), poste 0,7 m plus loin
+// ou au bout du quai moins 0,3 m ; à défaut de place, à côté du wagon d'extrémité. Toujours dans le couloir entre le bord du quai et les portillons (POPL).
+const OPLIM=i=>i?CAR/2+(PLT0.back!=null?PLT0.back:1.5):(PLT0.front!=null?PLT0.front:1.6),OPD=i=>clamp(OPLIM(i)-1,0,1.7),OPPD=i=>Math.max(OPD(i)+.3,Math.min(OPD(i)+.7,OPLIM(i)-.3));
+const opAt=(i,d)=>{const b=i?BAYS[NCARS-1]:BAYS[0],e=i?-1:1;return [b.x+b.tx*e*d+b.rx*POPL,b.z+b.tz*e*d+b.rz*POPL];};
+const opHome=i=>opAt(i,OPD(i)),opPost=i=>opAt(i,OPPD(i)); // dans le couloir entre le bord du quai et les portillons
 const OPS=[0,1].map(i=>{const h=opHome(i);return {i,x:h[0],z:h[1],ok:false,st:'idle',k:0,w:0,mv:false};});
 function startCheck(t){t.phase='check';for(const o of OPS){o.ok=false;o.st='go';o.k=o.i?NGATES-1:0;o.w=0;}} // o.k : portillon (wagon, ou rangée avec gatesPer:'row') vérifié
 function resetOps(){for(const o of OPS){o.ok=false;if(o.st!=='idle')o.st='back';}}

@@ -138,10 +138,18 @@ const inSweep=(x,z,r,pit)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*
    tombe dans l'espace balayé, une voie de garage ou sur une voie plus basse), aucun si les deux côtés sont pris. Bois et bob : inchangés. */
 const STPL=STATION_GROW||SITE.stationPoly||[],poleFree=(x,z,y,s,low)=>{if(STPL.length>2&&pipXZ(STPL,x,z)||inSweep(x,z,.3))return false;if(!low)return true;
   for(let j=0;j<N;j+=2){const q=TR[j].p;if(q.y>y-1||Math.abs(((j*DS-s)%L+L*1.5)%L-L/2)<14)continue;if(Math.abs(q.x-x)<1.8&&Math.abs(q.z-z)<1.8&&Math.hypot(q.x-x,q.z-z)<1.8)return false;}return true;};
+/* Emprise de la gare et des quais (issue #23, propriétaire, Zeus : « les garde-corps du coaster sont visibles en station ») : aucun garde-corps ni longeron
+   de charpente de la voie (bois : lignes à ±1,5 m et ±wid, traverses de structure) dans le bâtiment de gare (STPL), sur les quais (de l'arrière du dernier wagon + plat.back
+   à l'avant du premier + plat.front, de −plat.exit à plat.load ; côté sans quai de débarquement : jusqu'au gabarit de la charpente) ni dans la zone d'attente éditée (BAREA).
+   Générique, tous les kinds (acier et inversé : supports déjà exclus de la gare par poleFree ; bob : gouttière rétrécie au gabarit en gare, TRF). */
+const NORAIL=(()=>{const P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2,lo=-(P.exit||2.2)-.3,hi=P.load+.3; // repère de la travée la plus proche (gare courbe)
+  return (x,z)=>{if(STPL.length>2&&pipXZ(STPL,x,z))return true;if(BAREA&&pipXZ(BAREA,x,z))return true;
+    let k=0,d=1e9;BAYS.forEach((b,j)=>{const e=Math.hypot(x-b.x,z-b.z);if(e<d){d=e;k=j;}});const b=BAYS[k],dx=x-b.x,dz=z-b.z,u=dx*b.tx+dz*b.tz,v=dx*b.rx+dz*b.rz;
+    return u>(k===NCARS-1?-bk:-CAR)&&u<(k===0?P.front:CAR)&&v>lo&&v<hi;};})();
 function strip(sm){
   const o={h:0,sw:0,deck:new Path2D,spine:new Path2D,rail:new Path2D,hand:new Path2D,ties:new Path2D,str:new Path2D,sh:new Path2D,shb:new Path2D,rp:null,ch:null,bu:[],x0:1e9,x1:-1e9,z0:1e9,z1:-1e9},n=sm.length;
   const yg=q=>q.y-roofH(q.x,q.z),SB=q=>roofH(q.x,q.z); // yg : hauteur au-dessus du sol ou du toit d'un bâtiment survolé (ROOFB) ; SB : hauteur du pied du poteau (son ombre part de là)
-  const side=(path,off,fn)=>sm.forEach((q,i)=>{const k=fn?fn(yg(q))*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;i?path.lineTo(x,z):path.moveTo(x,z);});
+  const side=(path,off,fn,mk)=>{let pen=false;sm.forEach(q=>{const k=fn?fn(yg(q))*off:off,x=q.x+q.nx*k,z=q.z+q.nz*k;if(mk&&NORAIL(x,z)){pen=false;return;}pen?path.lineTo(x,z):path.moveTo(x,z);pen=true;});}; // mk : interrompu dans la gare et sur les quais (NORAIL)
   let hs=0,uy=0;
   sm.forEach((q,i)=>{
     const sx=q.x+q.y*SHX,sz=q.z+q.y*SHZ;hs+=q.y;uy+=q.uy==null?1:q.uy;
@@ -158,7 +166,7 @@ function strip(sm){
         o.hand.moveTo(q.x-q.nx*sp*.7,q.z-q.nz*sp*.7);o.hand.lineTo(q.x+q.nx*sp*.7,q.z+q.nz*sp*.7);}}
     if(STL){}else if(INV){let e=(q.i/13)%2?1:-1;if(i<n-1&&q.i%13===0&&!sm.dev&&yg(q)>1.5&&(poleFree(q.x+q.nx*SUPW*e,q.z+q.nz*SUPW*e,q.y,q.i*DS,1)||poleFree(q.x-q.nx*SUPW*e,q.z-q.nz*SUPW*e,q.y,q.i*DS,1)&&(e=-e))){const w=SUPW*e,tx=q.nz,tz=-q.nx,bx=q.x+q.nx*w,bz=q.z+q.nz*w; // support en potence : poteau d'un côté (alterné), bras au-dessus de la voie
       o.str.moveTo(bx,bz);o.str.lineTo(q.x-q.nx*.6*e,q.z-q.nz*.6*e);o.hand.moveTo(bx-tx*.35,bz-tz*.35);o.hand.lineTo(bx+tx*.35,bz+tz*.35);o.shb.moveTo(bx+SB(q)*SHX,bz+SB(q)*SHZ);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
-    else if(i<n-1&&q.i%(BOB?12:6)===0){const w=wid(yg(q))*(BOB?sm.trk?TRF(q.i*DS):TRFN:1);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
+    else if(i<n-1&&q.i%(BOB?12:6)===0&&(BOB||!NORAIL(q.x,q.z))){const w=wid(yg(q))*(BOB?sm.trk?TRF(q.i*DS):TRFN:1);o.str.moveTo(q.x-q.nx*w,q.z-q.nz*w);o.str.lineTo(q.x+q.nx*w,q.z+q.nz*w);
       if(!BOB&&q.y>7.5&&i+6<n){const b=sm[i+6],w2=wid(yg(b)),e=(q.i/6)%2?1:-1;o.str.moveTo(q.x-q.nx*w*e,q.z-q.nz*w*e);o.str.lineTo(b.x+b.nx*w2*e,b.z+b.nz*w2*e);}
       for(const sg of (BOB?[0]:[-1.25,1.25])){const bx=q.x+q.nx*sg,bz=q.z+q.nz*sg,gb=SB(q);o.shb.moveTo(bx+gb*SHX,bz+gb*SHZ);o.shb.lineTo(bx+q.y*SHX,bz+q.y*SHZ);}}
   });
@@ -170,7 +178,7 @@ function strip(sm){
     else{side(o.rail,-1.02);side(o.rail,1.02);}} // bords de la gouttière
   else if(INV){side(o.rail,-.5);side(o.rail,.5);} // rails de roulement de part et d'autre de la poutre caisson
   else if(STL){side(o.rail,-.62);side(o.rail,.62);} // deux rails tubulaires
-  else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5);side(o.hand,1.5);side(o.str,-1,wid);side(o.str,1,wid);}
+  else{side(o.rail,-.6);side(o.rail,.6);side(o.hand,-1.5,0,1);side(o.hand,1.5,0,1);side(o.str,-1,wid,1);side(o.str,1,wid,1);} // bois : garde-corps et longerons interrompus dans la gare et sur les quais (NORAIL, issue #23)
   o.h=hs/n;o.inv=uy/n<0;const k=clamp(o.h/30,0,1); // o.inv : tronçon tête en bas (la poutre passe au-dessus des rails)o.col=BOB?`rgb(${lerp(TRO.lo[0],TRO.hi[0],k)|0},${lerp(TRO.lo[1],TRO.hi[1],k)|0},${lerp(TRO.lo[2],TRO.hi[2],k)|0})`:`rgb(${lerp(172,198,k)|0},${lerp(146,170,k)|0},${lerp(104,124,k)|0})`;
   return o;
 }
@@ -923,7 +931,7 @@ function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gates
   ctx.stroke();
   ctx.fillStyle='#2b2e33';for(const g of GUNITS){const b=BAYS[g.k],hx=g.c+g.h-.12,px=b.x+b.tx*hx+b.rx*PGATE,pz=b.z+b.tz*hx+b.rz*PGATE;ctx.fillRect(px-.1,pz-.1,.2,.2);}
   // postes de validation des lapbars (les opérateurs et les visiteurs du quai : drawStationPeople)
-  for(const o of OPS){const h=opHome(o.i),b=o.i?BAYS[NCARS-1]:BAYS[0],e=o.i?-1:1,qx=h[0]+b.tx*e*.7,qz=h[1]+b.tz*e*.7;
+  for(const o of OPS){const [qx,qz]=opPost(o.i);
     ctx.fillStyle='#30353c';ctx.fillRect(qx-.28,qz-.28,.56,.56);
     ctx.fillStyle=o.ok?'#4fc27a':o.st==='idle'?'#59606a':'#d0a03a';ctx.beginPath();ctx.arc(qx,qz,.15,0,7);ctx.fill();}
 }
