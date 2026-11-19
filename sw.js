@@ -4,14 +4,14 @@
    la liste est vide et les fichiers sont mis en cache à la volée. */
 const VERSION = /*SW_VERSION*/'dev';
 const FILES = /*SW_FILES*/[];
-const CACHE = 't2z-' + VERSION;
+const CACHE = 'osmrides-' + VERSION;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(ks => Promise.all(ks.filter(k => k.startsWith('t2z-') && k !== CACHE).map(k => caches.delete(k))))
+    .then(ks => Promise.all(ks.filter(k => (k.startsWith('t2z-') || k.startsWith('osmrides-')) && k !== CACHE).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {

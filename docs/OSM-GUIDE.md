@@ -1,4 +1,4 @@
-# Guide OpenStreetMap pour T2Z
+# Guide OpenStreetMap pour OSMrides
 
 À quoi sert ce guide : préparer OpenStreetMap (OSM) **avant** d'importer une attraction, pour que le jeu lise les données au lieu de les estimer.
 Il dit quels objets et quels tags le jeu lit déjà, et lesquels il pourrait lire si on les ajoutait.

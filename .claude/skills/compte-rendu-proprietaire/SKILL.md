@@ -1,6 +1,6 @@
 ---
 name: compte-rendu-proprietaire
-description: Rédiger le compte rendu court en français au propriétaire ou au chef de projet (fait, testé, non testé, estimé). À utiliser à la fin de toute tâche sur T2Z.
+description: Rédiger le compte rendu court en français au propriétaire ou au chef de projet (fait, testé, non testé, estimé). À utiliser à la fin de toute tâche sur OSMrides.
 ---
 Format, 10 lignes au plus, en français :
 - Fait : fichiers et comportements changés, avec chemins (captures : `docs/plans/…`).

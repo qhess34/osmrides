@@ -1,6 +1,6 @@
 ---
 name: corriger-attraction
-description: Corriger ou ajuster une attraction existante de T2Z d'après une remarque du propriétaire (profil, file, garage, couleurs, zones). À utiliser pour toute correction sur zeus, hourra, oziris, goudurix.
+description: Corriger ou ajuster une attraction existante de OSMrides d'après une remarque du propriétaire (profil, file, garage, couleurs, zones). À utiliser pour toute correction sur zeus, hourra, oziris, goudurix.
 ---
 1. Relire la remarque mot pour mot ; la noter comme décision du propriétaire dans `docs/<id>-notes.md` (questions ouvertes comprises).
 2. Lire `docs/ROADMAP.md` puis seulement le fichier concerné : `sites/<id>.js` d'abord (réglages `SITE`), `tools/specs/<id>.json` pour le profil ou le tracé. Ne jamais éditer `sites/<id>.data.js` : le régénérer avec `tools/make_site.py`.

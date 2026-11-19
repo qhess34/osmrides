@@ -1,6 +1,6 @@
 ---
 name: verifier-attraction
-description: Lancer les tests du jeu T2Z (check, mobile, save) sur une ou toutes les attractions et résumer en quelques lignes. À utiliser après toute modification d'une attraction ou du moteur.
+description: Lancer les tests du jeu OSMrides (check, mobile, save) sur une ou toutes les attractions et résumer en quelques lignes. À utiliser après toute modification d'une attraction ou du moteur.
 ---
 Prérequis : `NODE_PATH=$(npm root -g)`. Lancer en arrière-plan (certains tests dépassent 2 min) et ne lire que les lignes PASS / FAIL / `offpath=` / `page errors=`.
 

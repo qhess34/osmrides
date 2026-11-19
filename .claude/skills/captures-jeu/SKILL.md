@@ -1,6 +1,6 @@
 ---
 name: captures-jeu
-description: Produire des captures du jeu T2Z (vignettes d'attractions, captures de tutoriels, plans) avec Playwright. À utiliser pour illustrer un changement ou régénérer des images.
+description: Produire des captures du jeu OSMrides (vignettes d'attractions, captures de tutoriels, plans) avec Playwright. À utiliser pour illustrer un changement ou régénérer des images.
 ---
 - **Règle du propriétaire (lot 6)** : aucune capture pour un changement de logique ; une seule petite capture (≈ 600×450, échelle 1, JPEG ≈ 70) par point visuel modifié, regardée une fois, jamais refaite sauf correction de ce point ; un seul montage final `docs/plans/lot-<n>.jpg` (< 200 Ko) ; pas d'avant / après sauf bug signalé en image ; vignettes et tutos seulement à la fin d'une grande étape ou sur demande.
 - Vignettes de l'écran de choix : `NODE_PATH=$(npm root -g) node tools/thumbs.js` (630x360, `img/accueil/<id>.jpg` ; ajouter l'id d'une nouvelle attraction à la liste du script).

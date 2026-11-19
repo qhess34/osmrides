@@ -101,7 +101,7 @@ Toute modification du moteur doit être revérifiée sur chaque attraction. Anno
 
 ## Git
 
-- Dépôt `qhess34/t2z`, branche `main`, commits directs. Messages en anglais, à l'impératif.
+- Dépôt `qhess34/osmrides`, branche `main`, commits directs. Messages en anglais, à l'impératif.
 - Ne rien pousser ailleurs sans demande explicite. Pas de pull request sauf demande.
 
 ## Skills du dépôt (`.claude/skills/`)

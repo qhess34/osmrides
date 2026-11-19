@@ -1,5 +1,5 @@
 'use strict';
-/* Éditeur T2Z — serveur local (Node 22, sans dépendance npm). docs/ARCHITECTURE.md D4, editor/README.md.
+/* Éditeur OSMrides — serveur local (Node 22, sans dépendance npm). docs/ARCHITECTURE.md D4, editor/README.md.
    - sert le dépôt en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) ;
    - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site> ;
    - n'écrit QUE sites/<site>.game.js (liste blanche : <site> = un sites/<site>.js existant), après validation (editor/schema.js) ; aucune opération Git.
@@ -87,5 +87,5 @@ const server = http.createServer(async (req, res) => {
     });
   } catch (e) { send(res, 400, { error: e.message }); }
 });
-server.listen(PORT, HOST, () => console.log('Éditeur T2Z : http://127.0.0.1:' + PORT + '/ (dépôt ' + ROOT + ')'));
+server.listen(PORT, HOST, () => console.log('Éditeur OSMrides : http://127.0.0.1:' + PORT + '/ (dépôt ' + ROOT + ')'));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => server.close(() => process.exit(0)));

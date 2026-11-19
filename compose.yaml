@@ -1,4 +1,4 @@
-# Éditeur T2Z en local (editor/README.md, docs/ARCHITECTURE.md D5).
+# Éditeur OSMrides en local (editor/README.md, docs/ARCHITECTURE.md D5).
 #   export T2Z_UID=$(id -u) T2Z_GID=$(id -g)   # propriétaire des fichiers écrits (défaut 1000:1000)
 #   docker compose up -d                        # puis http://127.0.0.1:8787/
 #   docker compose down

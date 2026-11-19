@@ -1,6 +1,6 @@
 {
-  "name": "T2Z — Parc Astérix, chef d'attraction",
-  "short_name": "T2Z",
+  "name": "OSMrides — Parc Astérix, chef d'attraction",
+  "short_name": "OSMrides",
   "description": "Simulateurs d'exploitation d'attractions du Parc Astérix (jeu de fan non officiel).",
   "lang": "fr",
   "start_url": "./index.html",

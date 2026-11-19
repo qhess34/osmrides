@@ -1,4 +1,4 @@
-# Éditeur T2Z (local, Docker)
+# Éditeur OSMrides (local, Docker)
 
 Éditeur WYSIWYG des données **du jeu** d'une attraction (lot 1 : barrières de file et salle de contrôle ; issue #22 : zone d'attente du quai d'embarquement ; issue #27 : profondeur des travées d'attente). Il ouvre la vraie page `jeu.html` (bac à sable, simulation figée) et ajoute une couche d'édition par-dessus : ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier : `sites/<site>.game.js`. Décisions : `docs/ARCHITECTURE.md` (D1 à D8).
 

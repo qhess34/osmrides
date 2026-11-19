@@ -1,4 +1,4 @@
-# Architecture T2Z — état actuel, modèle cible, décisions
+# Architecture OSMrides — état actuel, modèle cible, décisions
 
 Document de référence pour les sessions de développement (court, à tenir à jour). Feuille de route : `docs/ROADMAP.md`.
 

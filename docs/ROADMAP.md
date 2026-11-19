@@ -1,4 +1,4 @@
-# Feuille de route T2Z — moteur d'attractions générique et éditeur WYSIWYG
+# Feuille de route OSMrides — moteur d'attractions générique et éditeur WYSIWYG
 
 Vision : un moteur de simulation d'attractions réutilisable (plusieurs parcs, plusieurs familles), et un éditeur local (Docker) qui permet de créer, corriger et configurer intégralement une attraction à partir d'OSM, **sans IA**. Les fichiers du dépôt sont la seule source de vérité ; Git versionne ; GitHub Pages publie le jeu ; OSM reste la référence géographique et reçoit, sur validation explicite, les corrections proposées.
 

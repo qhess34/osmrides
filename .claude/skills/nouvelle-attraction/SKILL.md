@@ -1,6 +1,6 @@
 ---
 name: nouvelle-attraction
-description: Ajouter une nouvelle attraction au jeu T2Z (données OSM, SITE, écran de choix, tutoriels, docs). À utiliser dès que le propriétaire demande une nouvelle attraction.
+description: Ajouter une nouvelle attraction au jeu OSMrides (données OSM, SITE, écran de choix, tutoriels, docs). À utiliser dès que le propriétaire demande une nouvelle attraction.
 ---
 Règles complètes : `docs/NOUVELLE-ATTRACTION.md` (à lire, ne pas réécrire). Ne jamais lire `sites/*.data.js` ni `parc/parc.data.js` en entier.
 
