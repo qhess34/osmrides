@@ -288,7 +288,7 @@ const ed = (page, s) => page.evaluate(s);
       await jp3.close();
       // ── paramètres de l'attraction (lot 3, D9) : GAME.site ──
       //    formulaire : couleur d'un train, nombre de trains (retrait puis ajout), sous-type ; brouillon conservé au rechargement du jeu en cadre ; valeur hors bornes
-      //    signalée et refusée par le serveur, ↺ ; sauvegarde, relecture après redémarrage, effet dans jeu.html (SITE fusionné) ; clé hors liste refusée
+      //    signalée et refusée par le serveur, Origine ; sauvegarde, relecture après redémarrage, effet dans jeu.html (SITE fusionné) ; clé hors liste refusée
       {
         await startServer();
         const ps = await browser.newPage({ viewport: { width: 1200, height: 760 } });
@@ -326,7 +326,7 @@ const ed = (page, s) => page.evaluate(s);
         const bad3 = await ed(ps, `fetch('/api/diff/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{trains:[{name:'x',col:'rouge',col2:'#000000',wear:3}],car:{n:99}}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=2)`);
         ok(bad === 422 && bad2 === true && bad3 === true, `attraction : serveur refuse hors bornes (${bad}), clé hors liste, couleur invalide`);
         await ps.click('#siteBox [data-rev="phys.roll"]'); await rdy();
-        ok(await ed(ps, `'phys' in (ED.draft().site||{})`) === false && await ed(ps, `ED.E('PH.roll')`) === (base.phys.roll), 'attraction : ↺ revient à la valeur d\'origine (surcharge retirée)');
+        ok(await ed(ps, `'phys' in (ED.draft().site||{})`) === false && await ed(ps, `ED.E('PH.roll')`) === (base.phys.roll), 'attraction : Origine revient à la valeur d\'origine (surcharge retirée)');
         // valeur valable : traînée
         const dr1 = Math.round(base.phys.drag * 1.5 * 1e5) / 1e5;
         await ps.fill('#siteBox input[data-p="phys.drag"]', String(dr1)); await ps.dispatchEvent('#siteBox input[data-p="phys.drag"]', 'change'); await rdy();
