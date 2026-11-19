@@ -61,7 +61,7 @@
       return k;});
     // visiteurs qui attendaient la fin d'un trajet perdu : jamais bloqués
     const tgt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.slot!=null).map(o=>o.slot));G.plat.forEach((r,i)=>{if(r&&!r.on&&!tgt.has(i))r.on=true;});
-    if(!Array.isArray(G.platR))G.platR=[];G.platR=G.platR.slice(0,BAREA?BRES.length:0);const rt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.res!=null).map(o=>o.res));G.platR.forEach((r,j)=>{if(r&&!r.on&&!rt.has(j))r.on=true;}); // réserve de la zone d'attente (issue #24)
+    if(!Array.isArray(G.platR))G.platR=[];G.platR=G.platR.slice(0,BRES.length);const rt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.res!=null).map(o=>o.res));G.platR.forEach((r,j)=>{if(r&&!r.on&&!rt.has(j))r.on=true;}); // réserve de la zone d'attente (issue #24)
     const bt=new Set(d.walkers.filter(o=>o.k==='board'&&o.slot!=null).map(o=>o.tr+':'+o.slot));trains.forEach(t=>t.seats.forEach((s,i)=>{if(s&&!s.on&&!bt.has(t.i+':'+i))s.on=true;}));
     LOOPS.forEach((l,i)=>{l.on=!!d.loops[i][0];l.t=d.loops[i][1];});ENTRY_GATE.t=d.gate;buildQueue();
     resetOps();for(const t of trains)if(t.st==='station'&&t.phase==='check')startCheck(t);

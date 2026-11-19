@@ -4,7 +4,8 @@
 // relecture identique ; zone d'attente du quai (GAME.boardAreas, issue #22) : polygone calculé affiché, sommet déplacé, sommet ajouté (milieu d'un bord) puis supprimé, retour au calcul
 // auto, sommet déplacé de nouveau (écrit) ; barrière calculée supprimée ({off:true}), barrière ajoutée à une fourche, supprimée puis rajoutée ('add:<tronçon>:1') ; puis jeu.html (file://) :
 // barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent,
-// zone d'attente appliquée (visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone).
+// zone d'attente appliquée (visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone) ; profondeur des travées (GAME.board, issue #27) :
+// calcul affiché, poignée glissée, valeur saisie, bornes, retour au calcul, valeur écrite ; dans le jeu, avec et sans zone éditée : visiteurs dans les rangs ajoutés.
 // --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, gatesMove). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
 const { chromium } = require('playwright');
@@ -128,6 +129,21 @@ const ed = (page, s) => page.evaluate(s);
       await drag(page, rh, [rc[0] + (rh[0] - rc[0]) * .2 + 60, rc[1] + (rh[1] - rc[1]) * .2]);
       const ra = await ed(page, `ED.rooms()[0]`);
       ok(Math.abs(ra.angle - rw.angle) > 20, `salle tournée (${rw.angle}° -> ${ra.angle}°)`);
+      // ── profondeur des travées d'attente (GAME.board, issue #27) : calcul affiché, poignée glissée, valeur saisie, bornes, retour au calcul, réglée de nouveau (écrite) ──
+      const D0 = await ed(page, `ED.depth()`), dTxt = async () => +(await page.inputValue('#depth'));
+      ok(!D0.game && D0.depth === D0.calc && await page.isDisabled('#bDepthAuto') && Math.abs(await dTxt() - D0.calc) < .01, `travées : calcul affiché (${D0.calc} m, ${D0.rows} rang(s))`);
+      const dH = d => [D0.u.o[0] + D0.u.r[0] * d, D0.u.o[1] + D0.u.r[1] * d];
+      await ed(page, `ED.E('cam.g=null;cam.follow=-1;cam.key="";cam.x=${dH(D0.depth)[0]};cam.z=${dH(D0.depth)[1]};cam.s=22;0')`); await sleep(100);
+      await drag(page, await ed(page, `ED.toScr(${dH(D0.depth).join(',')})`), await ed(page, `ED.toScr(${dH(D0.depth + 1.5).join(',')})`));
+      let D1 = await ed(page, `ED.depth()`);
+      ok(D1.game && Math.abs(D1.depth - D0.depth - 1.5) < .15 && (await ed(page, `ED.draft().board.depth`)) === D1.depth && D1.rows > D0.rows && await ed(page, `ED.sel().t==='depth'`), `travées : poignée glissée (${D0.depth} -> ${D1.depth} m, ${D1.rows} rangs)`);
+      const setD = async v => { await page.fill('#depth', String(v)); await page.$eval('#depth', e => e.dispatchEvent(new Event('change'))); await sleep(80); return ed(page, `ED.depth()`); };
+      D1 = await setD(20); ok(D1.depth === D1.max && (await ed(page, `ED.draft().board.depth`)) === D1.max, `travées : borne haute (${D1.depth} m)`);
+      D1 = await setD(.1); ok(D1.depth === D1.min && D1.rows === 1, `travées : borne basse, un rang (${D1.depth} m)`);
+      await page.click('#bDepthAuto'); await sleep(80); D1 = await ed(page, `ED.depth()`);
+      ok(!(await ed(page, `'board' in ED.draft()`)) && D1.depth === D0.calc && !D1.game, 'travées : retour au calcul auto (clé retirée de GAME)');
+      const DT = Math.round((D0.calc + 1.9) * 100) / 100; D1 = await setD(DT);
+      ok(D1.depth === DT && D1.rows === Math.floor((DT - D1.min) / .6 + 1e-6) + 1 && await ed(page, `ED.E('GDEPTH===${DT}&&BWALK>=PGATE+GDEPTH+.5-.31')`), `travées : profondeur saisie ${DT} m, ${D1.rows} rangs (écrite)`);
       // ── zone d'attente du quai (GAME.boardAreas) ──
       await page.click('#bSelArea'); await sleep(150);
       const A0 = await ed(page, `ED.area()`);
@@ -246,16 +262,29 @@ const ed = (page, s) => page.evaluate(s);
         let n=0,out=0,wout=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.plat.forEach((r,j)=>{if(r&&r.on){n++;const s=slotPos(j);if(!pipA(BAREA,s[0],s[2]))out++;}});
           for(const k of G.walkers)if(k.kind==='wait'&&k.i>BVIA.pre.length+1&&!pipA(BAREA,k.x,k.z))wout++;}
         const per=GUNITS.map((_,u)=>G.plat.filter((r,j)=>r&&r.on&&seatUnit(j).u===u).length),on=G.plat.filter(r=>r&&r.on).length+G.platR.filter(r=>r&&r.on).length;
+        const travOn=G.platR.filter((r,j)=>r&&r.on&&BRES[j].t).length,travMax=Math.max(0,...BRES.filter((p,j)=>p.t&&G.platR[j]&&G.platR[j].on).map(p=>latA(p[0],p[2])-PGATE));
         const res=G.platR.filter(r=>r&&r.on).length,resOut=BRES.filter(p=>!inA(p[0],p[2],.19)).length,V=boardViaEnd(),eJump=BVIA.e?Math.hypot(BVIA.e[0]-V.end[0],BVIA.e[1]-V.end[1]):-1;
         const wIn=G.walkers.filter(k=>k.kind==='wait'&&pipA(BAREA,k.x,k.z)).length;act('evac');const ev=G.walkers.filter(k=>k.kind==='evac'&&k.pe>0&&pipA(BAREA,k.pts[0][0],k.pts[0][2])).length;
-        return {pts:BAREA,n,out,wout,per,on:on+wIn,ev,cap:GPR>1?S_COLS:CSEATS,left:G.plat.filter(r=>r).length+G.platR.filter(r=>r).length,res,nres:BRES.length,resOut,eJump};})()`);
+        return {pts:BAREA,n,out,wout,per,on:on+wIn,ev,cap:GPR>1?S_COLS:CSEATS,left:G.plat.filter(r=>r).length+G.platR.filter(r=>r).length,res,nres:BRES.length,resOut,eJump,gd:GDEPTH,trav:BRES.filter(p=>p.t).length,travOn,travMax};})()`);
       ok(JSON.stringify(za.pts) === JSON.stringify(exp.boardAreas[0].pts), 'jeu : zone d\'attente appliquée (polygone de game.js)');
       ok(za.n > 0 && za.out === 0 && za.wout === 0, `jeu : visiteurs dans le polygone (${za.n} relevés à leur place, ${za.out} hors du polygone ; en marche : ${za.wout} hors)`);
       ok(za.per.every(c => c <= za.cap) && za.on > 0, `jeu : visiteurs par portillon ${za.per.join(' ')} (au plus ${za.cap})`);
       ok(za.ev === za.on && za.left === 0, `jeu : évacuation depuis le polygone (${za.ev} / ${za.on})`);
       ok(za.nres > 0 && za.res > 0 && za.resOut === 0, `jeu : la zone d'attente se remplit (réserve : ${za.res} visiteurs sur ${za.nres} places, toutes dans le polygone)`);
       ok(za.eJump >= 0 && za.eJump < .45, `jeu : entrée dans le polygone au point de fin de file (écart ${za.eJump.toFixed(2)} m)`);
+      ok(za.gd === exp.board.depth && za.trav > 0 && za.travOn > 0 && za.travMax <= exp.board.depth - .4 + .01, `jeu : travées de ${za.gd} m, visiteurs dans les rangs ajoutés (${za.travOn} sur ${za.trav} places, ${za.travMax.toFixed(2)} m des portillons au plus)`);
       await jp2.close();
+      // travées réglées sans zone éditée (GAME.boardAreas retiré dans la page) : rangs supplémentaires remplis, visiteurs à la profondeur choisie, évacuation
+      const jp3 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+      jp3.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
+      await jp3.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp3.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
+      const zc = await jp3.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;delete GM.boardAreas;reBoard();if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
+        let mx=0,n=0,bad=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.platR.forEach((r,j)=>{if(r&&r.on){n++;const l=latA(BRES[j][0],BRES[j][2])-PGATE;mx=Math.max(mx,l);if(!BRES[j].t||l>GDEPTH-.39)bad++;}});}
+        const on=G.platR.filter(r=>r&&r.on).length;act('evac');for(let i=0;i<800;i++)step(.05);
+        return {gd:GDEPTH,rows:GROWS,nres:BRES.length,n,mx,bad,on,left:G.plat.filter(r=>r).length+G.platR.filter(r=>r).length+G.walkers.filter(k=>k.kind==='wait').length};})()`);
+      ok(zc.gd === exp.board.depth && zc.nres > 0 && zc.n > 0 && zc.bad === 0 && zc.left === 0, `jeu sans zone éditée : ${zc.rows} rangs, réserve dans les travées (${zc.n} relevés, ${zc.mx.toFixed(2)} m au plus, ${zc.bad} hors travée), évacuation (${zc.left} restant)`);
+      await jp3.close();
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));
     }
