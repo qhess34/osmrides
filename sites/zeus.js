@@ -52,9 +52,8 @@ const SITE=(()=>{
     // Moteurs (pneus) par zone : gare, frein final, voie de garage = freins + moteurs (défaut du moteur, ESTIMÉ, à confirmer par le propriétaire) ; SITE.zones pour changer.
     helpGarage:'<b>Garage</b> : manœuvre manuelle, commandée par zones au pupitre. Pour garer un train : train vide à quai, portillons fermés, aiguillage sur 1 (attendre qu\'il soit en place), puis Dispatch de la voie : le train avance jusqu\'au fond du garage et s\'arrête avant le butoir. Remettez l\'aiguillage sur P. Pour le sortir : gare libre (au besoin, frein final en MANU et serré pour retenir l\'autre train), aiguillage sur 1, puis Dispatch : il recule jusqu\'en gare ; aiguillage sur P. Dispatch choisit seul le sens (entrée si un train vide attend à quai et que la voie a de la place, sinon sortie) ; il refuse, avec la raison au journal, si l\'aiguillage n\'est pas sur la voie. L\'aiguillage ne bouge pas si un train est dessus ou tout près, et un train avec passagers ne quitte jamais le circuit.',
     draw:{
-      floor(ctx,s,{lw}){ // garde-corps des quais et escalier d'accès
+      floor(ctx,s,{lw}){ // garde-corps des quais (l'escalier d'accès est l'escalier OSM couvert, dessiné par le moteur quand son toit s'efface, issue #21)
         ctx.strokeStyle='#4d525a';lw(.1,.6);ctx.beginPath();ctx.moveTo(-8.8,-3);ctx.lineTo(-1.7,-3);ctx.moveTo(.3,-3);ctx.lineTo(9,-2.7);ctx.moveTo(-8.9,7.6);ctx.lineTo(-6,7.7);ctx.moveTo(-1.9,7.8);ctx.lineTo(12.4,8.1);ctx.stroke();
-        if(s>5){ctx.fillStyle='#a8a296';ctx.fillRect(-5.7,8,3.4,6.8);ctx.strokeStyle='rgba(60,56,50,.6)';lw(.06,.5);ctx.beginPath();for(let z=8.3;z<14.8;z+=.43){ctx.moveTo(-5.6,z);ctx.lineTo(-2.4,z);}ctx.stroke();}
       },
       shadows(ctx,dry){ // ombre portée de la statue
         ctx.lineCap='round';ctx.strokeStyle=`rgba(12,28,14,${.32*dry})`;ctx.lineWidth=4.2;ctx.beginPath();ctx.moveTo(-29,-.7);ctx.lineTo(-23.5,3.5);ctx.stroke();

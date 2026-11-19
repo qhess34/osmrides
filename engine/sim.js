@@ -423,9 +423,9 @@ function act(a,arg){
   else if(a==='closeBil'){if(G.over){location.reload();return;}$('mBil').classList.add('hidden');}
   else if(a==='open'){if(!G.open&&G.over)return;G.open=!G.open;
     log(G.open?'Entrée ouverte : les visiteurs entrent dans la file.':'Entrée fermée : plus personne n\'entre. Les '+G.queue.filter(v=>v.mode==='q').length+' visiteurs déjà dans la file continuent d\'embarquer.',G.open?'good':'warn');}
-  else if(a==='evac'){const n=G.queue.length;if(!n)return;
+  else if(a==='evac'){const nq=G.queue.length;if(!nq&&!G.plat.some(r=>r)&&!G.walkers.some(k=>k.kind==='wait'))return;
     for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');
-    clearQueue();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs ressortent par l\'entrée.','warn');}
+    clearQueue();const n=nq+platEvac();G.sat=clamp(G.sat-Math.min(8,n*.03),0,100);log('File évacuée : '+n+' visiteurs (file et portillons) ressortent par l\'entrée.','warn');}
   else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
     log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
   else if(a==='syn')toggleSyn();

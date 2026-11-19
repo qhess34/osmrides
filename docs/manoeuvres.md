@@ -214,6 +214,10 @@ Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=
 
 Lift et zones de freinage surélevées ont une passerelle de service (coaster inversé : plancher pleine largeur sous la voie, issue #20) et un escalier jusqu'au sol (`SITE.catwalks`, voir `docs/NOUVELLE-ATTRACTION.md` §3). Appareil de voie : ni passerelle ni poteau de voie sur le tronçon qu'il porte ni dans l'espace qu'il balaie (`inSweep`, `engine/render.js`) ; ailleurs, toute voie surélevée a ses poteaux. Pour l'instant **décor seulement** : l'équipe technique reste dessinée à `SITE.jobsites` et il n'existe pas d'évacuation d'un train arrêté en parcours. Suite possible : faire marcher les techniciens et les passagers évacués par ces passerelles (itinéraire déjà calculé : `CATW.walks[].segs`, `CATW.towers`).
 
+## Évacuation de la file (issue #21, 2026-11-19)
+
+« Évacuer la file » (`act('evac')`) fait ressortir tous les visiteurs de la file par l'entrée, au plus court, barrières franchies, **et** ceux qui attendent derrière les portillons : à leur place dans la travée (`G.plat`) ou en chemin vers elle (marcheurs `wait`, couloir d'attente `SITE.board.walk`). Trajet (`engine/queue.js` `platEvac`) : travée → couloir d'attente → `SITE.board.via` à rebours → toute la file à rebours → entrée ; le quai de débarquement, de l'autre côté de la voie, n'est jamais traversé. Les visiteurs assis ou qui franchissent le portillon pour embarquer restent. Commun à toutes les attractions, rien à écrire par site.
+
 ## Exploitation continue (propriétaire, 2026-11-17)
 
 Pas de journée ni de remise à zéro : l'horloge boucle sur la plage d'ouverture (10:00–19:00, puis 10:00), les trains, la file, le quai, les zones et la météo gardent leur état. L'entrée de la file ne ferme qu'au bouton `#bOpen` du joueur (aucune fermeture à 18:00). Salaires prélevés en continu ; bilan cumulé au bouton `#bBil` ; budget sous −2 000 € en carrière : fin de partie (Recommencer).

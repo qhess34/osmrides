@@ -305,6 +305,16 @@ function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniqu
   while(e){for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);e=prevSeg(e,evac);ds=1e9;}
   return pts.concat(P3((QS.lead||[]).slice().reverse().concat(approach().slice().reverse()),.7));
 }
+// Évacuation de la file (propriétaire, issue #21, générique) : les visiteurs qui attendent derrière les portillons (G.plat, travées) ou qui s'y rendent (marcheurs 'wait',
+// couloir d'attente SITE.board.walk) partent aussi : de la travée au couloir d'attente, SITE.board.via à rebours, puis toute la file à rebours jusqu'à l'entrée, comme
+// les autres visiteurs évacués (le quai de débarquement est de l'autre côté de la voie : on ne la traverse pas). Les visiteurs assis ou qui embarquent restent.
+function queueTail(){const st=STAGES[STAGES.length-1];if(!st)return [];const e=st.seg||(st.fork.on?st.fork.loop:st.fork.short);return backPath({mode:'q',e,r:0,x:e.P[e.P.length-1][0],z:e.P[e.P.length-1][1]},true);}
+function platEvac(){const out=[],T=queueTail(),via=SITE.board.via.slice().reverse().map(q=>[q[0],0,q[1]]);
+  for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i];if(k.kind!=='wait')continue;G.walkers.splice(i,1); // en chemin vers sa place : demi-tour par où il est venu (file → via → couloir → travée)
+    out.push({pts:[[k.x,0,k.z]].concat(k.pts.slice(1,k.i).reverse().map(p=>[p[0],0,p[2]]),T.slice(1)),ci:k.ci,nv:k.i});}
+  G.plat.forEach((r,i)=>{if(!r||!r.on)return;const s=seatUnit(i),g=GUNITS[s.u],b=BAYS[g.k],p=slotPos(i); // à sa place : recule dans la travée jusqu'au couloir d'attente
+    out.push({pts:[p,[b.x+b.rx*BWALK+b.tx*g.c,0,b.z+b.rz*BWALK+b.tz*g.c]].concat(via,T.slice(1)),ci:r.ci,nv:2+via.length});});
+  G.plat.fill(null);for(const o of out){walker(o.pts,o.ci,null,rnd(2.6,3.2),0,'evac');G.walkers[G.walkers.length-1].pe=o.nv;}return out.length;}
 function exitPath(pre){const X=SITE.exit,t=X.tails[Math.floor(Math.random()*X.tails.length)];return pre.concat(P3(X.path,.35).slice(X.door?1:0),P3(t,.7));} // pre : trajet jusqu'à la porte (alightWalk) ; X.path commence à la porte
 function walker(pts,ci,done,sp,emo,kind){G.walkers.push({kind,pts,i:1,x:pts[0][0],y:pts[0][1],z:pts[0][2],ci,done,sp:sp||2.6,ph:rnd(0,6)});if(emo)emote(emo,pts[0]);}
 function moveAlong(k,dt){
