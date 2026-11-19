@@ -161,6 +161,7 @@ if(STATION_GROW)SITE.stationPoly=STATION_GROW;
 // drawGates). Couloir d'attente BWALK ramené juste derrière les travées (GDEPTH + 0,6 m) si SITE.board.walk est plus loin. Toutes ces valeurs sont ESTIMÉES
 // (aucun relevé) ; SITE.plat.slot = {first, pitch} les force par attraction.
 const SLOT0=(PLT0.slot&&PLT0.slot.first)||.4,SLOT_P=(PLT0.slot&&PLT0.slot.pitch)||.6;
+const RES_P=(PLT0.slot&&PLT0.slot.res)||4*SLOT_P; // pas de la réserve de la zone d'attente (propriétaire, 2026-11-19 : « 4x plus espacé ») : 2,4 m ESTIMÉ, SITE.plat.slot.res pour forcer
 const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
 const GDEPTH=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
 const BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
@@ -218,10 +219,10 @@ function reBoard(){ // (re)lit GAME.boardAreas : polygone, places, entrée depui
   // successifs derrière les places des portillons (BSLOTS), pas SLOT_P le long de la voie et en profondeur, dans tout le polygone (à BA_IN du bord, prolongé au-delà des
   // wagons de tête et de queue tant que le polygone le permet), triées de la plus proche des portillons à la plus lointaine ; BR_MAX = 400 places au plus (garde-fou).
   // Les visiteurs y entrent quand toutes les places des portillons sont prises (ou que d'autres attendent déjà dans la réserve), puis avancent à une place de portillon
-  // libérée (engine/sim.js updatePlatform). Pas de 0,6 m : ESTIMÉ (une personne debout, comme SLOT_P).
-  BRES=[];const lmax=Math.max(...BSLOTS.map(p=>latA(p[0],p[2])))+.5,far=p=>BSLOTS.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<.45)||BRES.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<.45);
-  for(let row=0;row<80&&BRES.length<BR_MAX;row++){const lat=PGATE+SLOT0+row*SLOT_P;if(lat<lmax)continue;
-    BAYS.forEach((b,i)=>{const ext=(i===0||i===BAYS.length-1)?12:0;for(let u=-CAR/2-ext+SLOT_P/2;u<=CAR/2+ext&&BRES.length<BR_MAX;u+=SLOT_P){const p=[b.x+b.tx*u+b.rx*lat,b.z+b.tz*u+b.rz*lat];
+  // libérée (engine/sim.js updatePlatform). Pas RES_P = 4 × SLOT_P = 2,4 m (propriétaire : visiteurs 4x plus espacés), rangs et places dans le rang : ESTIMÉ.
+  BRES=[];const RD=RES_P*.75,lmax=Math.max(...BSLOTS.map(p=>latA(p[0],p[2])))+Math.max(.5,RES_P/2),far=p=>BSLOTS.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<Math.max(.45,RES_P*.45))||BRES.some(q=>Math.hypot(q[0]-p[0],q[2]-p[1])<RD);
+  for(let row=0;row<80&&BRES.length<BR_MAX;row++){const lat=lmax+row*RES_P; // premier rang à RES_P/2 (0,5 m au moins) derrière le dernier rang des portillons
+    BAYS.forEach((b,i)=>{const ext=(i===0||i===BAYS.length-1)?12:0;for(let u=-CAR/2-ext+RES_P/2;u<=CAR/2+ext&&BRES.length<BR_MAX;u+=RES_P){const p=[b.x+b.tx*u+b.rx*lat,b.z+b.tz*u+b.rz*lat];
       if(inA(p[0],p[1],BA_IN)&&latA(p[0],p[1])>=lmax-.05&&!far(p))BRES.push([p[0],0,p[1]]);}});}
   const e0=BVIA.e||[0,0];BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-e0[0],p[2]-e0[1])-Math.hypot(q[0]-e0[0],q[2]-e0[1])));}
 // trajet dans la zone éditée : de la file au point p ([x,0,z] : place i d'un portillon ou place de réserve) (sans le point de départ) ; à rebours pour l'évacuation
