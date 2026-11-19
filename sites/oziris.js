@@ -56,7 +56,7 @@ const SITE=(()=>{
         // fin de la file (OSM 2026-11-18, changeset 192117430) : chemin 1580105930, file souterraine sous la gare (1580105922 / 1580105931 / escalier 1580105924 au niveau -2,
         // couloir 1580105925 au niveau -1 ; visibles seulement avec « Masquer la gare »), escalier 1580105926 qui remonte au niveau 0 (fin d'escalier visible gare affichée),
         // allées 1580105937 / 1580105923 / 1580105936 / 1580105935 jusqu'à l'entrée du quai ouest (entrance=main)
-        {pts:Q.slice(F1B).concat(QIN.slice(1,-1))}]},
+        {pts:Q.slice(F1B).concat(QIN.slice(1))}]},   // jusqu'au nœud de la porte (dernier point de 1580105935) : allée dessinée et clôturée jusqu'au bout
     approach:[{w:.5,pts:[[57.4,-2.3],[50.4,21.4],[38.1,26.5]]},{w:.5,pts:[[-5.3,19.5],[34.4,27.3],[38.1,26.5]]}],
     paths:[PROM,QL,XO],
     // Entrée de la gare (OSM entrance=main, (-7.4, 4.3)) puis couloir d'attente côté est

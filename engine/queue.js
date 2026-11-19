@@ -48,6 +48,10 @@ function pathPos(P,C,d,o,side){
   o.x=a[0]+dx*k-dz/l*side;o.z=a[1]+dz*k+dx/l*side;o.y=0;return o;
 }
 // Distance d'un point à une polyligne [[x,z]…].
+// point q d'une allée de file SUR le chemin P (à moins de r m d'un tronçon de P à peu près parallèle à q) : une allée qui CROISE P en plan (passe au-dessus d'un couloir
+// souterrain, issue #19, OzIris 1580105935) n'en fait pas partie
+const onPl=(q,P,r)=>{for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((q.x-a[0])*dx+(q.z-a[1])*dz)/l,0,1);
+  if(Math.hypot(a[0]+dx*t-q.x,a[1]+dz*t-q.z)<r&&Math.abs(dx*q.tx+dz*q.tz)/Math.sqrt(l)>.5)return true;}return false;};
 const dPl=(x,z,P)=>{let m=1e9;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-a[0])*dx+(z-a[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(a[0]+dx*t-x,a[1]+dz*t-z));}return m;};
 // Passerelles OSM (f.br, tools/make_site.py) : largeur (width OSM + garde-corps, sinon 2,4 m), hauteur ESTIMÉE (voie franchie + 2,9 m ; voie à plus de 7 m : la passerelle passe
 // dessous, 2,4 m ; sans voie : 0,3 m ; SITE.bridges[k]={h} force la hauteur, k = rang OSM). Dessin : engine/render.js (drawBridge).
