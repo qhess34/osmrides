@@ -51,6 +51,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 - **Objectif** : chaque objet importé garde son origine.
 - **Tâches** : `make_site.py` ajoute l'id OSM (`w123`, `n456`) et la version aux `feats`, `others`, `stairs`, `doors`, `barriers` ; liste des catégories réellement lues, tirée du code de l'importeur (base du réimport sélectif) ; réimport des 4 sites sans changement de géométrie.
 - **Validation** : diff des `data.js` limité aux nouveaux champs ; `check.js` ×4 PASS. — Sonnet, faible.
+- **Fait (19/11/2026)** : champs `id` / `v` (+ `OSM.src`), catégories lues dans `docs/OSM-GUIDE.md` §7, 4 sites réimportés avec géométrie inchangée (diff = champs de traçabilité seuls) ; changements OSM détectés depuis le dernier import (rocher d'Hourra retagué `bare_rock`, voie de Goudurix retouchée, `lv` des chemins souterrains) **non repris**, à décider avec le propriétaire (lot 7).
 
 ### Lot 3 — Paramètres d'instance éditables
 
