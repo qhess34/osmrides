@@ -44,38 +44,32 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-17 (soir) par la session de pilotage n° 3._
+_Mis à jour le 2026-11-19 par la session de pilotage n° 4._
 
-**Nouvelle orientation (propriétaire, 17/11)** : moteur d'attractions générique + éditeur WYSIWYG local sous Docker, création d'attraction sans IA. Lire d'abord `docs/ROADMAP.md` (lots 0–10, modèles) et `docs/ARCHITECTURE.md` (couches de données, décisions D1–D6, écarts OSM / jeu). L'ancienne feuille de route est `docs/JOURNAL.md`.
+**Orientation (propriétaire, 17/11)** : moteur d'attractions générique + éditeur WYSIWYG local sous Docker, création d'attraction sans IA. Lire `docs/ROADMAP.md` (lots 0–10) et `docs/ARCHITECTURE.md` (décisions D1–D7). Historique : `docs/JOURNAL.md`, journal de `docs/NOUVELLE-ATTRACTION.md`.
 
-**Publié sur `main`** :
-- Lots 10–12 du jeu : toits des abris effaçables, freins et pneus des voies de garage, rail du chariot continu (Hourra), train suspendu sous la poutre (OzIris), portillons ouverts vers le train sans dépasser le quai, réglage de patience (jusqu'à infinie), aide seulement au bouton « ? », barrières de file normalisées (#12) puis une barrière pivotante par pointe de fourche (#17), réimport OSM d'OzIris (#18).
-- Lot 0 : nettoyage (45 images obsolètes supprimées), audit, roadmap.
-- **Lot 1 fait** : éditeur `editor/` (Node sans dépendance, `compose.yaml`, port 127.0.0.1:8787), barrières (surcharges par clé stable `GAME.barriers`) et salle de contrôle unique (`GAME.controlRooms`, 0 ou 1) dans `sites/<site>.game.js` (facultatif, chargé par `jeu.html` et `build.py`). Test `tools/editor-test.js`. Aucun `game.js` réel encore : au propriétaire de corriger dans l'éditeur.
+**Publié sur `main` pendant la session n° 4 (18–19/11)** :
+- #19 OzIris : réimports de la file souterraine (changesets 192117430, 192118796), raccourci B2 supprimé ; chemins de niveau -1/-2 masqués dans la gare tant qu'elle est affichée ; fin d'escalier -1 → 0 ; travées d'attente raccourcies (visiteurs collés au portillon) ; allées écartées des portillons ; garde-corps sans chevauchement (`buildRails`) ; allée 1580105935 jusqu'à la porte ; point « couvert / souterrain » seulement s'il longe le couloir (`onPl`) ; clôture de séparation prolongée (`qrailEnd`).
+- #20 coaster inversé : plancher galvanisé pleine largeur (3,2 m sur OzIris, validé) ; supports dès 1,5 m au-dessus du sol (Goudurix en reçoit aussi, voulu).
+- #21 (fermée) : chemin couvert sous un simple toit effaçable montré au zoom (escalier de Zeus) ; évacuation des travées d'attente par l'entrée de la file (validé).
+- #22 éditeur : zone d'attente du quai en polygone (`GAME.boardAreas`, D7) ; le propriétaire en a dessiné une pour Zeus. Files souterraines : mêmes garde-corps que les autres, visibles gare masquée.
+- #23 Zeus : garde-corps de la voie en bois retirés de la gare et des quais (`NORAIL`) ; opérateurs bornés au quai (`OPLIM`).
+- Lot 2 fait : `id` / `v` OSM dans les données, `OSM.src`, catégories lues dans `docs/OSM-GUIDE.md` §7.
+- Réimport de Zeus, Hourra, Goudurix (19/11) : `natural=bare_rock` = rocher (relation r22083041 de Hourra), 8 tronçons de voie de Goudurix retouchés, niveaux `lv`.
 
-**Ajouts du 17/11 soir (session n° 3, après le lot 1), publiés sur `main`** :
-- Éditeur : boutons Ajouter / Supprimer une barrière (`add:<tronçon>:<n>`, `{off:true}`), choix « Fourche » pour une barrière ajoutée ; le propriétaire a commencé ses réglages (`sites/*.game.js`, commits « add fixes », « fix »).
-- Fourches à raccourci court : deux barrières distinctes (`g.short`, plus de fusion `g.merged`).
-- Trace du Hourra : passerelle plus posée sur le rail mobile, gouttière étroite entre zones proches (`TRGAP` 10 m ESTIMÉ), passagers du bob collés (`pitch` 0,56).
-- Jeu continu : plus de journées (horloge 10:00–19:00 qui boucle, salaires horaires, fin de partie budget à tout moment, bouton Bilan `#bBil`) ; tests sur 9 h (`G.played`).
-- Freins de bloc : roues de propulsion, `drive:'fwd'`, bouton AV sans AR ; en MANU il faut AV pour repartir (à confirmer par le propriétaire).
-- Pont transbordeur : train sur le chariot compté dans le dernier canton seulement chariot en ligne (`yardBlocks`) ; retour en ligne refusé seulement si un train ROULE dans le dernier canton (`anchorFree`) ; train arrêté au frein final retenu tant que le rail du pont est occupé (OzIris corrigé).
-- Files : garde-corps des deux côtés, une seule clôture entre allées collées, jusqu'aux fourches (`QRAIL`) ; OzIris réimporté (B2).
+**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos, captures dépassées), #5 (valeurs estimées), #18 (niveaux OSM d'OzIris), #19, #20, #22, #23 (faites, à valider puis fermer par le propriétaire).
 
-**En attente du propriétaire** :
-- Lacets sud d'OzIris : ses deux barrières corrigées dans l'éditeur ne sont plus sur les nœuds B2 (proposé : « Revenir au calcul auto ») ; il modifie le petit chemin B2 dans OSM → réimporter OzIris ensuite.
-- Confirmer : AV obligatoire en MANU sur les freins de bloc.
-- Captures des tutoriels dépassées (« Jour 1 », pupitre des freins de bloc) : issue #4.
+**Décisions du propriétaire (18–19/11)** : pas de barrière B2 sur OzIris ; couloir d'attente de Zeus à 3,1 m de la voie validé ; poteaux toujours présents sur voie surélevée ; `bare_rock` est un rocher ; files souterraines avec les mêmes garde-corps ; évacués des portillons repartent par l'entrée de la file.
 
-**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos), #5 (valeurs estimées), #18 (corrections de niveaux OSM d'OzIris à faire par le propriétaire, puis réimport).
-
-**Décisions du propriétaire** : barrières = jeu (nœud OSM = position initiale) ; une seule salle de contrôle (pupitre), aiguillage plus tard.
-
-**Prochaine tâche recommandée** : lot 2 (traçabilité OSM à l'import, Sonnet), puis lot 3 ou 5 en parallèle.
+**Prochaine tâche recommandée** : lot 3 (paramètres d'instance éditables, Sonnet) ou lot 4 (corrections locales OSM, Opus) ; #4 (vignettes / tutos) en fin de grande étape.
 
 **Points de vigilance** :
+- Le dépôt GitHub a été renommé `qhess34/osmrides` (redirection active depuis `qhess34/t2z`) ; mettre à jour l'URL du remote et les mentions du nom quand le propriétaire le confirme.
+- Le propriétaire publie lui-même des `sites/*.game.js` sur `main` (éditeur) : toujours `git fetch origin main` et fusionner avant de pousser ; ne jamais réécrire ses réglages.
+- `editor-test.js --check` échoue sur `gatesMove` pour Hourra et OzIris (barrières ajoutées par le test lui-même ; déjà le cas avant #22) : à corriger dans le test.
+- Tests lancés en parallèle par deux agents : échecs de clic sous la charge, relancer seul.
+- Deux agents en même temps : le second en worktree (`isolation: worktree`), sans pousser ; le pilote fusionne puis supprime le worktree. `.claude/worktrees/` est ignoré via `.git/info/exclude` (local).
+- Quota hebdomadaire Opus atteint le 18/11 au soir (remis à zéro le 19/11, 11 h UTC) : reprendre l'agent avec SendMessage après la remise à zéro.
 - `check.js`, `save.js`, `mobile.js`, `sound.js` ignorent l'erreur de chargement attendue de `game.js` absent.
-- Docker est utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d` (tester sur une copie appartenant à 1000:1000, le dépôt cloud appartient à root).
-- Les sous-agents du dépôt (`moteur`, `attraction`) ne peuvent pas lancer `testeur` : ils testent eux-mêmes ; le pilote relance `check.js` ×4.
-- Quotas : en cas de limite, reprendre l'agent (SendMessage) après la remise à zéro.
+- Docker utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d`.
 - Les sessions cloud ne peuvent pas ouvrir github.io ni Wikimedia ; `api.openstreetmap.org` fonctionne.
