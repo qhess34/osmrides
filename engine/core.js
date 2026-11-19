@@ -2,7 +2,13 @@
 /* Moteur du simulateur d'exploitation (jeu de fan, non officiel). L'attraction est décrite par OSM (données générées) et SITE (configuration), chargés avant ce fichier. Unités : mètres, secondes. */
 const $=id=>document.getElementById(id);
 // Données du jeu écrites par l'éditeur (sites/<site>.game.js, `const GAME={…}`, facultatif, docs/ARCHITECTURE.md D1) : priorité GAME > SITE > calcul du moteur.
-const GM=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAME:{};
+// Aperçu de l'éditeur (cadre `?editeur=`) : le brouillon complet voyage dans window.name (`t2z-draft:<JSON>`), pour que les modifications non enregistrées survivent au rechargement du jeu.
+const GM=(()=>{let g=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAME:{};try{if(/[?&]editeur=/.test(location.search)&&/^t2z-draft:/.test(window.name)){const d=JSON.parse(window.name.slice(10));if(d&&typeof d==='object')g=d;}}catch(e){}return g;})();
+// GAME.site (docs/ARCHITECTURE.md D9) : surcharges partielles de SITE, liste blanche, fusionnées ICI avant tout calcul (objets fusionnés en profondeur, tableaux remplacés). Clé hors liste : ignorée (l'éditeur la refuse, editor/schema.js).
+const SITE_OVR=['kind','car','trains','track','trough','phys'];
+const SITE_BASE={};SITE_OVR.forEach(k=>{if(typeof SITE!=='undefined'&&SITE[k]!==undefined)SITE_BASE[k]=JSON.parse(JSON.stringify(SITE[k]));}); // valeurs d'origine de SITE (affichées par l'éditeur)
+if(GM.site&&typeof GM.site==='object'&&typeof SITE!=='undefined'){const mg=(a,b)=>{for(const k of Object.keys(b)){const v=b[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))mg(a[k],v);else a[k]=JSON.parse(JSON.stringify(v));}};
+  SITE_OVR.forEach(k=>{if(k in GM.site){const v=GM.site[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&SITE[k]&&typeof SITE[k]==='object'&&!Array.isArray(SITE[k]))mg(SITE[k],v);else SITE[k]=JSON.parse(JSON.stringify(v));}});}
 class V3{
   constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z;}
   set(x,y,z){this.x=x;this.y=y;this.z=z;return this;}

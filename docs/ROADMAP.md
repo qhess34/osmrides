@@ -57,6 +57,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 
 - **Objectif** : régler dans l'éditeur ce qui est aujourd'hui écrit à la main dans `SITE` sans code : nombre et couleurs des trains, couleurs de voie et supports, sous-type (`kind`), wagons, physique de base.
 - **Tâches** : schéma de validation par clé ; lecture `GAME` > `SITE` pour ces clés ; panneau de formulaire dans l'éditeur. — Sonnet, moyenne.
+- **Fait (19/11/2026)** : `GAME.site` (D9, `docs/ARCHITECTURE.md`), section « Attraction » de l'éditeur, validation clé par clé, tests `tools/editor-test.js` ×4 ; capture `docs/plans/lot-3.jpg`.
 
 ### Lot 4 — Corrections locales des objets OSM
 
