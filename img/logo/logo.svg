@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="OSMrides">
+  <!-- Logo OSMrides : carte pliée (plis, courbes de niveau, quadrillage) et voie de montagnes russes vue du dessus (rails et traverses), couleurs de site.css -->
+  <defs>
+    <clipPath id="c"><rect width="100" height="100" rx="18"/></clipPath>
+    <path id="t" d="M14 86 C 22 70, 18 54, 30 46 S 52 44, 58 34 S 60 14, 74 14 S 92 26, 86 38 S 66 46, 64 34 S 72 22, 80 28"/>
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="100" height="100" fill="#0f1626"/>
+    <!-- plis de la carte -->
+    <path d="M33 0 L33 100 L0 100 L0 0Z" fill="#131c32"/>
+    <path d="M67 0 L67 100 L33 100 L33 0Z" fill="#17213a"/>
+    <path d="M67 0 L100 0 L100 100 L67 100Z" fill="#121a2f"/>
+    <g stroke="#0b111e" stroke-width=".8"><path d="M33 0V100M67 0V100"/></g>
+    <!-- quadrillage -->
+    <g stroke="#1f2b47" stroke-width=".5"><path d="M0 25H100M0 50H100M0 75H100M16.5 0V100M50 0V100M83.5 0V100"/></g>
+    <!-- courbes de niveau -->
+    <g fill="none" stroke="#32426a" stroke-width=".9">
+      <path d="M-4 62 C 14 54, 26 66, 44 60 S 70 70, 104 58"/>
+      <path d="M-4 72 C 16 64, 30 78, 48 70 S 76 80, 104 70"/>
+      <path d="M8 104 C 20 86, 40 92, 52 84 S 84 90, 96 104"/>
+      <ellipse cx="22" cy="24" rx="13" ry="8" transform="rotate(-18 22 24)"/>
+      <ellipse cx="22" cy="24" rx="7" ry="4" transform="rotate(-18 22 24)"/>
+    </g>
+    <!-- voie : ombre, traverses, rails -->
+    <use href="#t" fill="none" stroke="#070b14" stroke-opacity=".55" stroke-width="10" stroke-linecap="round" transform="translate(1.6 2.2)"/>
+    <use href="#t" fill="none" stroke="#8a6f35" stroke-width="8.5" stroke-dasharray="1.1 2.8"/>
+    <use href="#t" fill="none" stroke="#f2c14e" stroke-width="6" stroke-linecap="round"/>
+    <use href="#t" fill="none" stroke="#17213a" stroke-width="3" stroke-linecap="round"/>
+    <!-- gare au départ de la voie -->
+    <rect x="6" y="80" width="16" height="9" rx="1" fill="#9aa7c4" transform="rotate(-62 14 84.5)"/>
+  </g>
+</svg>
