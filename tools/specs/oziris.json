@@ -225,13 +225,9 @@
   "brakehall": 420016978
  },
  "png_scale": 5,
- "osm_brakes": [
-  "brk",
-  "tr",
-  "pre"
- ],
  "note_osm": "Repères lus dans OSM (2026-11-16) : gare 937048122 (station, 21,2 m), lift 541161843 (lift_hill), zones 'waiting' : frein final 1580105919, rail du pont transbordeur 541161847 (tr), zone d'attente avant gare 1330192627 (pre). Aucun frein de bloc en parcours dans OSM : B1 estimé retiré. Tunnels : 1580105918 (layer 2, galerie couverte) et 421460641 (sous l'eau). Mise à jour du 2026-11-17 (changeset 192068079) : gare 937048122 découpée en 1580412873 / 937048122 / 1580412872, les deux bouts étiquetés 'moving' : gardés dans la gare (roles), quai inchangé. Issue #13 (changeset 192070575) : entrée de la gare déplacée (entrance=main (-14,9 ; -13,6)), ways 1580105933 / 1580105934 supprimés ; arrêt du train à la fin du tronçon station 937048122 (repère stp, 17 m) au lieu de la fin des tronçons moving.",
  "note_file": "File (propriétaire, changesets 192031122 / 192031244 du 2026-11-16, 192117430 du 2026-11-18) : 1580173577 depuis l'entrée jusqu'à la fourche (-15,5 ; 57,4), boucle ouest 1580173578 + 1580173579 (retour à la fourche), 1073325805 vers la gare avec ses lacets sud (raccourci 1580173580 et barrières B2 supprimés le 2026-11-18 : lacets obligatoires), puis 1580105930 et la file souterraine (1580105922 / 1580105931 / escalier 1580105924 au niveau -2, couloir 1580105925 au niveau -1, escalier 1580105926 qui monte au niveau 0) jusqu'à l'entrée du quai.",
+ "note_osm_33b": "Réimport du 2026-11-20 (issue #33, suite) : osm_brakes retiré, la règle par position (dernière zone avant le tronçon mobile = frein final) redonne brk / tr / pre.",
  "roles": {
   "1580412872": "station",
   "1580412873": "station"
