@@ -4,12 +4,22 @@ Ce document est la référence unique pour tout ce qui déplace un train hors du
 Chaque attraction décrit son installation dans `SITE.yard` (configuration) ; le moteur applique les règles ci-dessous sans rien savoir de l'attraction.
 Une nouvelle attraction ne réécrit pas ces règles : elle déclare ses voies et ses positions.
 
+## Modèle : zones toutes équivalentes (propriétaire, 20/11, issue #36)
+
+- Le circuit est une suite de **zones d'attente** dans l'ordre de marche : gare `St`, freins de bloc `B1…Bn`, frein final `Fin`, frein avant gare `Pre` (s'il existe) ; chacune a un **point d'arrêt** de l'avant du train (`zStop(z)`, `engine/garage.js` : `S_ST`, `BLK[k-1]`, `S_HOLD`, `S_PSB`). La **gare est une zone d'attente comme les autres** ; le lift retient en haut le train qui en sort.
+- Entre deux zones d'attente consécutives, **un canton ordinaire** : une zone ne relâche son train que si le canton suivant est libre (frein de bloc → bloc suivant, dernier bloc → frein final, frein final → frein avant gare ou gare, frein avant gare → gare). « Frein final » n'est plus qu'un **nom affiché** ; les ids de zones et de boutons (`Fin`, `#zFin_…`) ne changent pas.
+- Le **garage** (aiguillage, plaque, pont transbordeur) est branché sur **une zone d'attente quelconque**, `SITE.yard.at` = `'St'`, `'B<k>'`, `'Fin'` ou `'Pre'` (alias compatibles : `'station'` = `St`, `'brake'` = `Fin`) : zone de raccordement `YZ`, point de raccordement `ANCH` = son point d'arrêt, zone porteuse `CARR` = `YZ` (pont droit : `RB`). Les règles ci-dessous (entrée, sortie, cantonnement, retenue) ne dépendent que de cette zone.
+- **Cantonnement du garage** : un train du garage qui occupe ou va occuper le raccordement (`yardBusy`) occupe **le canton qui mène à la zone de raccordement** (`yardBlocks(self, b)`, fin de canton `Y_CEND` : point d'arrêt d'un frein de bloc, ou fin du circuit pour `Fin` / `Pre`) ; raccordement en gare : il occupe la gare (`stationBusy`).
+- **Sortie du garage** (`anchorFree`) : la place d'arrivée est libre si aucun train ne roule dans le canton qui mène à la zone (depuis le point d'arrêt de la zone d'attente précédente, `prevStop` ; haut du lift pour `B1`) et si aucun train n'est arrêté sur la place ; un train arrêté à la zone précédente y est retenu par le cantonnement et ne bloque pas. Raccordement en gare : gare vide, aucun train qui y entre. Le train sorti est posé arrêté au point d'arrêt de la zone, dans l'état de cette zone (`placeAt`, `engine/state.js`, le même que pour les places de départ `TRAIN_SPOTS`), puis la zone le relâche selon ses règles.
+- **Entrée au garage** : train **vide** arrêté au point d'arrêt de la zone de raccordement (`atAnchor`) ; en gare, portillons fermés et sécurités verrouillées en plus.
+- **Limites** : pont transbordeur droit (`traverser`) seulement sur le frein final (sa géométrie suit le rail de transfert OSM) ; aiguillage en amont (`back`) seulement en gare. Un garage branché en hauteur garde des voies dessinées au niveau de la gare (`ST_Y`) : à revoir le jour où une attraction en a besoin. Essai : `node tools/yard-zone.js <site> <zone>` (aiguillage ESTIMÉ posé en mémoire sur un frein de bloc ou le frein final, entrée et sortie d'un train, aucune collision).
+
 ## Vocabulaire
 
 | Terme | Sens dans le jeu |
 |---|---|
 | Circuit | La boucle principale (gare → lift → parcours → frein final → gare). Abscisse `s`. |
-| Point de raccordement | Endroit du circuit où l'on peut quitter la boucle : gare (`at: 'station'`) ou frein final (`at: 'brake'`). |
+| Point de raccordement | Point d'arrêt de la zone d'attente où l'on peut quitter la boucle (`at` : `'St'` gare, `'B<k>'`, `'Fin'`, `'Pre'` ; alias `'station'`, `'brake'`). |
 | Appareil de voie | Ce qui relie le circuit aux voies de garage : aiguillage (2 positions) ou pont transbordeur / rampe coulissante (N positions). |
 | Position | Une valeur de l'appareil : `P` (circuit, voie principale) ou `1…n` (voie de garage n°k). |
 | Tronçon de liaison | Voie courte entre le point de raccordement et l'appareil. |
@@ -21,7 +31,7 @@ Une nouvelle attraction ne réécrit pas ces règles : elle déclare ses voies e
 
 ```
 yard: {
-  at: 'station' | 'brake',        // point de raccordement sur le circuit
+  at: 'St' | 'B<k>' | 'Fin' | 'Pre', // zone d'attente de raccordement (alias 'station' = 'St', 'brake' = 'Fin')
   device: 'switch' | 'table',     // aiguillage à 2 positions ou pont transbordeur à N+1 positions (P, 1…n)
   a, b,                           // l'appareil occupe le circuit de raccordement+a à raccordement+b (m)
   slide, side, len,               // course du chariot (m), côté du garage (-1/1), longueur dessinée du chariot
@@ -115,16 +125,16 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`
 - **Relance à la vitesse d'entrée** (propriétaire, issue #33, 20/11 : « les waiting freinent aussi, ils font repartir le train à la même vitesse si arrêté » ; `waiting`, `brake_run` et `moving` sont toutes des zones d'attente qui freinent) : un train **arrêté** à un frein de bloc qui en repart (AUTO quand le canton se libère, MANU au bouton AV) est poussé par la zone jusqu'à la vitesse qu'il avait **en entrant** dans la zone (`t.bvin`, relevée au début de zone `BZ0`), ramenée à `trim.v` si la zone ralentit les trains, au moins `VPROP` ; accélération des roues v² / 2 `TLEN` entre 2 et 5 m/s² (ESTIMÉ), jusqu'à ce que la queue ait passé le point de frein, puis gravité (`blkRelaunch`, `engine/sim.js`). Un train qui passe sans s'arrêter n'est pas concerné. Frein final, rail du pont et frein avant gare : vitesse d'approche de la gare inchangée.
 - **AUTO / MANU** (zones de freinage) : en AUTO (défaut) le cantonnement serre et relâche seul ; en MANU, `k` serre / relâche et les moteurs obéissent au pupitre. Passer en MANU serre les freins si un train y est arrêté. `#zAuto` remet toutes les zones en AUTO. En MANU, freins relâchés, le cantonnement reste actif (sécurité).
 - **Anti-collision** : relâcher les freins d'une zone qui retient un train est refusé si la section suivante est occupée (canton suivant, chariot, gare).
-- **Gare `f`** : le train **vide** quitte la gare (appareil hors de `P` : règle de départ ; le garage se commande au Dispatch de la voie) (départ à vide ; avec passagers, bouton Départ après les lapbars). Les freins de gare sont liés au départ : fermés tant qu'un train est à quai, ouverts uniquement par la séquence Départ (portillons fermés, lapbars validés).
+- **Gare `f`** : le train **vide** quitte la gare (appareil hors de `P` : règle de retenue ; le garage se commande au Dispatch de la voie) (départ à vide ; avec passagers, bouton Départ après les lapbars). Les freins de gare sont liés au départ : fermés tant qu'un train est à quai, ouverts uniquement par la séquence Départ (portillons fermés, lapbars validés).
 - **Frein final `f`** : pont droit, rail du chariot en ligne : conduit le train **vide** arrêté avant le pont sur le rail du chariot (il s'y arrête) ; appareil sur une voie (raccordement au frein final) : refusé, l'entrée se commande au Dispatch de la voie ; sinon vers la gare. Frein final serré (MANU) : le train est retenu avant le pont (pont droit) ou au point d'arrêt (sinon). C'est ce qui remplace « Retenir pour le garage ».
 - **Rail du chariot `f`** : rail du chariot en ligne : le train part vers la gare (jamais automatiquement) ; train porté face à une voie : refusé (Dispatch de la voie).
 - **Dispatch des voies** (propriétaire, issue #11, remplace la poussée par la zone porteuse du 2026-11-15) : chaque voie `L<k>` n'a qu'un bouton, **Dispatch** (`#zL<k>_d`, `act('zone','L<k>:d')`, `laneDispatch` dans `engine/sim.js`). Le moteur décide :
   0. freins forcés de la voie serrés : refus (« … freins forcés serrés, relâchez-les ») ;
   1. appareil en mouvement ou pas en place sur la voie k : refus (« … n'est pas en place sur cette voie : positionnez-le d'abord sur k ») ; train de la voie déjà en mouvement : refus ;
   2. train de la voie arrêté pendant son entrée (arrêt d'urgence, Arrêt de la zone porteuse, freins forcés) : il reprend l'entrée ; arrêté pendant sa sortie (freins forcés) : il reprend la sortie ;
-  3. train prêt sur la zone porteuse (`CARR` : `St` train vide à quai, portillons fermés, sécurités verrouillées ; `Fin` train arrêté sur le frein final ; `RB` train porté par le chariot) **et** place dans la voie (capacité ; pont droit : voie vide) : il **entre** (marche avant, ou arrière avec `rev` / `back`) ; freins de la zone porteuse serrés : refus ;
+  3. train prêt sur la zone porteuse (`CARR` = zone de raccordement : `St` train vide à quai, portillons fermés, sécurités verrouillées ; frein de bloc, frein final ou frein avant gare : train vide arrêté à son point d'arrêt ; `RB` train porté par le chariot) **et** place dans la voie (capacité ; pont droit : voie vide) : il **entre** (marche avant, ou arrière avec `rev` / `back`) ; freins de la zone porteuse serrés : refus ;
   4. **zone porteuse à un seul train** (propriétaire, issue #11 : « sur la voie chariot il n'y a la place que pour un train ») : si elle porte déjà un train (train prêt sans place dans la voie, ou, pont droit, tout train sur le chariot / rail du pont), le Dispatch ne fait **jamais** sortir le train garé : refus « … porte déjà un train (…), voie pleine … ». Le pont droit refuse déjà de porter un train face à une voie occupée (`yardPos` : « … ne peut pas y être porté ») ; cette garde couvre tout autre cas ;
-  5. sinon, train dans la voie : le **train de tête** (le plus proche de l'appareil) **sort** vers l'appareil (rail du chariot / du pont, ou jusqu'en gare / sur le frein final ; arrière, ou avant avec `rev` / `back`), si la place d'arrivée est libre (`anchorFree`, rail du chariot libre, `maxRun`) ;
+  5. sinon, train dans la voie : le **train de tête** (le plus proche de l'appareil) **sort** vers l'appareil (rail du chariot / du pont, ou jusqu'au point d'arrêt de la zone de raccordement ; arrière, ou avant avec `rev` / `back`), si la place d'arrivée est libre (`anchorFree`, rail du chariot libre, `maxRun`) ;
   6. sinon : refus (aucun train à faire entrer ni à sortir).
   Les refus de `yardFwd` / `yardBack` (passagers, portillons, sécurités, voie pleine, gare occupée…) sont repris tels quels au journal. Les freins des voies sont automatiques ; l'arrêt en fin de mouvement est automatique.
 - **Freins forcés d'une voie** (propriétaire, issue #11 : « on peut forcer l'arrêt d'un brake manuellement ») : bouton **F** `#zL<k>_k` (`act('zone','L<k>:k')`, `G.zk.L<k>`, `zK`), bascule Serrer / Relâcher. Serrer arrête aussitôt le train qui entre dans la voie ou en sort (y compris la partie encore sur le chariot / la zone porteuse, `updateYard`) ; le Dispatch est refusé tant qu'ils sont serrés (raison au journal). Relâcher libère seulement : la reprise se fait au Dispatch. Bouton allumé = serrés ; voyant de voie orange si un train y est retenu, jamais vert. L'Arrêt `x` de la zone porteuse arrête encore le train qui entre. Avancer / Reculer de la zone porteuse ne poussent plus dans une voie (refus qui renvoie au Dispatch).
@@ -174,23 +184,25 @@ Bouton **Sécurités** du pupitre (`#bRes`, `act('res')`, voyant `#lRes` : vert 
 - L'appareil ne bouge pas si un train est dessus ou à moins d'une longueur de train de lui (train du garage sur le circuit, la liaison ou l'appareil ; train du circuit qui le franchit). Pas de nouvelle commande pendant qu'il bouge.
 - Un train ne franchit l'appareil que si celui-ci est en place sur la voie qu'il vise.
 - Un train n'entre pas sur une voie déjà occupée au-delà de sa capacité (`cap`).
-- Appareil hors de `P` : l'entrée en gare (raccordement au frein final) est bloquée ; les départs (raccordement en gare) suivent la **règle de départ** ci-dessous.
+- Appareil hors de `P` : la dernière zone d'attente avant l'appareil retient les trains (**règle de retenue** ci-dessous ; gare : départ refusé).
 - Un train avec passagers ne quitte jamais le circuit.
 - Au plus `SITE.maxRun` trains sur le circuit : au-delà, la sortie du garage est refusée (Trace du Hourra : 5 sur 6).
-- Raccordement au frein final : le train qui sort du garage occupe le dernier canton ; les trains du parcours sont retenus au dernier frein de bloc. Serrer un frein de bloc au pupitre (zone `B<n>` en MANU, `#zB<n>_k`) aide à libérer le dernier canton avant une sortie.
+- Le train qui sort du garage occupe le canton qui mène à la zone de raccordement ; les trains du parcours sont retenus à la zone d'attente précédente (frein final : dernier frein de bloc). Serrer un frein de bloc au pupitre (zone `B<n>` en MANU, `#zB<n>_k`) aide à libérer le dernier canton avant une sortie.
 - L'arrêt d'urgence immobilise aussi les manœuvres (moteurs de zone arrêtés, il faut redonner l'ordre) et fige l'appareil.
 
 Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », « Pont en mouvement »…).
 
-## Règle de départ (propriétaire, 2026-11-15)
+## Règle de retenue avant l'appareil (propriétaire, 2026-11-15 ; uniforme, issue #36)
 
 « Le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre en attente avant. »
 
-- Appareil hors de `P` (ou manœuvre de garage en cours), raccordement en gare : le départ est **autorisé** si au moins une zone de freinage se trouve sur le trajet entre la gare et l'appareil ; le train y est alors **retenu automatiquement** (zone en AUTO ou MANU) tant que l'appareil n'est pas revenu sur `P` (journal : « Départ avec l'aiguillage hors de P : … sera retenu au frein de bloc n », puis « … retenu au frein de bloc n »). Relâcher cette zone au pupitre est refusé avec la même raison.
-- Sinon (aucune zone de freinage avant l'appareil : aiguillage juste après le quai, Tonnerre 2 Zeus) : départ refusé, raison au journal (« … aiguillage hors de P, aucune zone de freinage entre la gare et l'aiguillage pour retenir le train »), au bouton Départ comme à Gare AV (le garage se commande au Dispatch de la voie).
-- Moteur : `DEV_HOLD` (`engine/garage.js`) = dernier frein de bloc entre la gare et l'appareil (`yard.back`, aiguillage en amont : Goudurix, B1), `-1` sinon ; `devHoldAt(i)` retient le train dans `updateRun` ; `blockReason` ne refuse plus que si `DEV_HOLD<0`. L'appareil est verrouillé dès qu'un train a passé ce frein et roule vers lui. Avec l'aiguillage en amont (`yard.back`) et un frein de retenue, Gare AV fait partir le train à vide au lieu d'être refusé.
-- Raccordement au frein final (Trace du Hourra, OzIris) : déjà le cas — le frein final / le rail du circuit retiennent le train avant le pont ; départ toujours autorisé.
-- Vérifié par `tools/check.js <site>`, ligne `dep:` (`refuseNoBrake` pour Zeus ; `departOk heldBefore stillHeld released` pour les trois autres).
+- Appareil hors de `P` (ou manœuvre de garage en cours) : la **dernière zone d'attente avant l'appareil** (`HOLD_Z`, `engine/garage.js`) retient le train, quelle qu'elle soit. Candidates : la zone de raccordement, puis toute zone d'attente dont le point d'arrêt est après le sien (gare : une fois le train sorti du quai) et à plus de 0,5 m avant l'appareil (un train arrêté plus près verrouillerait l'appareil).
+- Frein de bloc, frein final, frein avant gare : le train y est **retenu automatiquement** (AUTO ou MANU) tant que l'appareil n'est pas revenu sur `P` ; relâcher la zone au pupitre est refusé (« … hors de P ») ; AV de la zone de raccordement : « entre au garage au bouton Dispatch de la voie ». Journal au départ : « Départ avec l'aiguillage hors de P : … sera retenu au frein de bloc n ».
+- Gare (aucune autre zone avant l'appareil : aiguillage juste après le quai, Tonnerre 2 Zeus) : « retenir » = **départ refusé**, raison au journal (« … aiguillage hors de P, aucune zone de freinage entre la gare et l'aiguillage pour retenir le train »), au bouton Départ comme à Gare AV.
+- Pont transbordeur droit (Trace du Hourra, OzIris) : le train est retenu avant le chariot quand aucun rail n'est en ligne (`S_PRE`, `circIn`) ; départ toujours autorisé.
+- Exemples : Zeus → gare (départ refusé) ; Goudurix (aiguillage en amont de la gare) → B1 (le frein final s'arrête à 0,4 m de l'appareil, trop près) ; garage branché sur `B2` → B2 lui-même.
+- Moteur : `HOLD_Z`, `HOLD_S`, `devHoldIn(z)` (`updateRun`, `nextBusy`, `zoneCmd`), `DEV_HOLD` = indice du frein de bloc `HOLD_Z` sinon `-1` (compatibilité) ; `blockReason` refuse seulement si `HOLD_Z` est la gare. L'appareil est verrouillé dès qu'un train a quitté `HOLD_Z` vers lui.
+- Vérifié par `tools/check.js <site>`, ligne `dep:` (`refuseNoBrake` pour Zeus ; `departOk heldBefore stillHeld released` pour les trois autres) et par `tools/yard-zone.js`.
 
 ## Hypothèses à signaler
 

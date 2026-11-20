@@ -34,7 +34,7 @@ const root = path.resolve(__dirname, '..');
     const steps = [];
     const ok = (name, v) => { steps.push(name + (v ? '' : ':FAIL')); return v; };
     const hasYard = await page.evaluate(() => typeof LANES !== 'undefined' && trains.length > 1 && trains[1].st === 'garage');
-    const brake = hasYard && await page.evaluate(() => YD.at === 'brake');
+    const brake = hasYard && await page.evaluate(() => YZ === 'Fin'); // zone de raccordement du garage (engine/garage.js YZ, issue #36)
     const trav = hasYard && await page.evaluate(() => TRAV);
     const gates = async () => { // portillons : ouverture et fermeture uniquement au bouton
       await click('#bGate'); ok('gateOpen', await page.evaluate(() => G.gatesOpen));
@@ -342,15 +342,15 @@ const root = path.resolve(__dirname, '..');
     const u5 = (c, m = 4000) => p5.evaluate(([c, m]) => { const f = new Function('return ' + c); act('speed', 0); G.wx.next = 1e6; for (let i = 0; i < m; i++) { if (f()) break; step(.025); } ui(); return f(); }, [c, m]);
     const log5 = re => p5.evaluate(r => new RegExp(r).test($('log').textContent), re);
     const ds = [], dk = (n, v) => ds.push(n + (v ? '' : ':FAIL'));
-    const D = await p5.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.wear.track = 0; return { ra: TRAV && RA, at: YD.at, hold: DEV_HOLD, trav: TRAV, k: trains.findIndex(t => t.st === 'station') }; });
+    const D = await p5.evaluate(() => { G.wear.chain = 0; G.wear.brake = 0; G.wear.track = 0; return { ra: TRAV && RA, at: HOLD_Z, trav: TRAV, k: trains.findIndex(t => t.st === 'station') }; });
     if (D.k >= 0) {
       const off = D.ra ? '#yA1' : '#y1', on = D.ra ? '#yA0' : '#yP', T = `trains[${D.k}]`;
       await p5.click(off); dk('devOff', await u5(D.ra ? 'raOut()' : 'devOn(0)', 800));
       await p5.click('#bGo');
-      if (D.at === 'station' && D.hold < 0) { await u5('false', 400); dk('refuseNoBrake', await log5('ne peut pas partir : .* hors de P, aucune zone de freinage') && await p5.evaluate(T => eval(T).st === 'station', T)); }
+      if (D.at === 'St') { /* la gare est la dernière zone d'attente avant l'appareil (HOLD_Z) : départ refusé */ await u5('false', 400); dk('refuseNoBrake', await log5('ne peut pas partir : .* hors de P, aucune zone de freinage') && await p5.evaluate(T => eval(T).st === 'station', T)); }
       else {
         dk('departOk', await u5(`${T}.st==='run'&&${T}.s>S_ST+TLEN`, 4000));
-        const hs = D.at === 'station' ? `BLK[DEV_HOLD]` : D.trav ? 'S_PRE' : 'S_HOLD';
+        const hs = D.trav ? 'S_PRE' : 'HOLD_S'; /* retenu avant le chariot (pont droit) ou à la dernière zone d'attente avant l'appareil */
         dk('heldBefore', await u5(`${T}.v===0&&Math.abs(${T}.s-${hs})<.6`, 30000) && await p5.evaluate(T => eval(T).st === 'run', T));
         await u5('false', 200); dk('stillHeld', await p5.evaluate(([T, hs]) => eval(T).v === 0 && Math.abs(eval(T).s - eval(hs)) < .6, [T, hs]));
         await p5.click(on); dk('released', await u5(`${T}.st==='station'||${T}.s>${hs}+3`, 12000));

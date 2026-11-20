@@ -17,6 +17,10 @@ function mkTrain(i,name,col,col2,wear,st){
 /* Places d'attente des trains au départ (issue #32) : la gare (train 1), les voies de garage (cap), puis, sur le circuit, le frein avant gare (Pre), le frein final
    (Fin, S_HOLD) et les freins de bloc du dernier au premier. TRAIN_MAX = nombre de ces places : SITE.trains (ou GAME.site.trains) est ramené à TRAIN_MAX
    (l'éditeur refuse au-delà, editor/schema.js validate(g, {trainMax})). Les tronçons OSM waiting / brake_run / moving / block_brake donnent ces zones. */
+/* Retour d'un train sur le circuit, arrêté au point d'arrêt d'une zone d'attente (sortie de garage, places de départ TRAIN_SPOTS) : état de la zone (frein final :
+   déjà passé ses freins ; frein de bloc : arrêté au frein, roues de propulsion) ; la zone le relâche ensuite selon ses règles (cantonnement, appareil). */
+function placeAt(t,z){t.st='run';t.s=zStop(z);t.v=0;t.entering=false;t.toPre=false;t.fdrive=0;t.bgo=0;t.brs=0;t.bst=0;t.blk=false;
+  if(z==='Fin'){t.inBrake=true;t.hold=1;}else if(z==='Pre'){t.hold=0;}else{const i=+z.slice(1)-1;t.blk=true;if(BDRV[i])t.bst=i+1;}}
 const TRAIN_SPOTS=[].concat(PSB?[{s:S_PSB,z:'Pre'}]:[],[{s:S_HOLD,z:'Fin'}],BLK.map((b,i)=>({s:b,z:'B'+(i+1),i})).reverse());
 const TRAIN_MAX=1+LANES.reduce((n,l)=>n+(l.cap||1),0)+TRAIN_SPOTS.length;
 if(SITE.trains.length>TRAIN_MAX){console.warn('SITE.trains : '+SITE.trains.length+' trains pour '+TRAIN_MAX+' places d\'attente, les suivants sont ignorés');SITE.trains=SITE.trains.slice(0,TRAIN_MAX);}
@@ -25,8 +29,7 @@ const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'gara
 {const n=LANES.map(()=>0);let k=0;trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,free=j=>j>=0&&j<LANES.length&&n[j]<(LANES[j].cap||1);
   const j=free(c-1)?c-1:LANES.findIndex((l,q)=>free(q));
   if(j>=0){t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;return;}
-  const P=TRAIN_SPOTS[k++];t.st='run';t.s=P.s;t.v=0;t.lane=0;t.g=0; // arrêté à son point de freinage, freins serrés
-  if(P.z==='Fin'){t.inBrake=true;t.hold=1;}else if(P.z!=='Pre'){t.blk=true;if(BDRV[P.i])t.bst=P.i+1;}});}
+  const P=TRAIN_SPOTS[k++];placeAt(t,P.z);t.lane=0;t.g=0;});} // arrêté à son point de freinage, freins serrés
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){
@@ -119,7 +122,7 @@ const sfx=(()=>{
 
 /* ══════════ BLOCS, DÉPARTS, MAINTENANCE ══════════ */
 function stationBusy(self){
-  return trains.some(o=>o!==self&&(o.st==='station'||(YD.at!=='brake'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
+  return trains.some(o=>o!==self&&(o.st==='station'||(YZ==='St'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
 }
 // Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
 const LIFT_NEXT=BLK.length?BLK[0]:L; // fin de la zone qui suit le lift : 1er frein de bloc, sinon le frein final (fin du circuit) ; le train arrivé en haut du lift y est retenu tant que cette zone est occupée (SITE.singleCourse : ancien réglage, ignoré, devenu le comportement par défaut)
@@ -132,14 +135,14 @@ const aheadBusy=t=>PSB?preBusy(t):stationBusy(t); // section après le frein fin
 function occupied(a,b,self){
   if(b>=L&&(RA||PSB)){ // dernier canton : frein final, rail mobile et frein avant gare stockent un train chacun (le suivant attend au frein final)
     const z=trains.filter(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN);
-    return z.some(o=>!onRaSt(o)&&!onPsb(o))||yardBlocks(self);}
-  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||(b>=L&&yardBlocks(self)); // train porté par le chariot : seulement chariot en ligne (yardBlocks, engine/garage.js)
+    return z.some(o=>!onRaSt(o)&&!onPsb(o))||yardBlocks(self,b);}
+  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||yardBlocks(self,b); // canton qui mène à la zone de raccordement du garage (issue #36) ; train porté par le chariot : seulement chariot en ligne (yardBlocks, engine/garage.js)
 }
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
   if(G.liftOff)return 'lift à l\'arrêt';
-  if(YD.at!=='brake'&&devOff()&&DEV_HOLD<0)return DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de départ (DEV_HOLD, engine/garage.js)
-  if(YD.at!=='brake'&&trains.some(yardBusy)&&DEV_HOLD<0)return 'manœuvre au garage';
+  if(HOLD_Z==='St'&&devOff())return DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de retenue : la gare est la dernière zone d'attente avant l'appareil (HOLD_Z, engine/garage.js)
+  if(HOLD_Z==='St'&&trains.some(yardBusy))return 'manœuvre au garage';
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';
   if(G.wear.track>=100)return 'voie hors service';

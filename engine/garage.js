@@ -1,6 +1,6 @@
 'use strict';
 /* Gare de triage générique (SITE.yard) — règles communes : docs/manoeuvres.md.
-   Point de raccordement sur le circuit (gare ou frein final), appareil de voie (aiguillage à 2 positions ou pont transbordeur
+   Point de raccordement sur le circuit (zone d'attente quelconque : gare, frein de bloc, frein final, frein avant gare ; issue #36), appareil de voie (aiguillage à 2 positions ou pont transbordeur
    à N positions), voies de garage. Chaque voie k a son propre chemin : circuit jusqu'à SW_A, tronçon de transfert (courbe
    en S de SW_A jusqu'au début de la voie), puis la voie. Un train hors circuit (st==='garage') a une voie t.lane et une
    abscisse t.g (avant du train, 0 = point de raccordement), t.mv = +1 avance, -1 recule, 0 arrêté.
@@ -32,9 +32,24 @@ const R0=TRAV?(YD.pre==null&&TAG.tr0!=null&&TAG.tr0<S_HOLD-TLEN?TAG.tr0:S_HOLD-T
    train = recul depuis la gare) ; seule la géométrie change (carFrame) : le wagon k est à q=(k+.5)·CAR+g en amont de l'arrêt, orienté vers l'avant du circuit ; la voie de garage
    recopie d'abord le circuit sur la longueur de l'appareil (b−a), puis suit yard.lanes[].pts (le premier point est remplacé par la pointe).
    yard.rotary : appareil rotatif (un rail qui tourne sur lui-même autour de l'axe du tube) au lieu du tronçon coulissant : vue du dessus, le tronçon se resserre puis s'ouvre (largeur ∝ cos θ). */
+/* Frein avant gare (SITE.preBrake:{back, len, name}) : zone de freinage de stockage juste avant l'entrée en gare, un train de long, avec pneus.
+   Arrêt de l'avant du train à S_PSB = L - back (back : distance au début de la gare, s=0) ; zone de PSB_A à S_PSB. Le train qui quitte
+   le frein final (ou le rail mobile du parcours) va s'y arrêter et y attend que la gare soit libre. */
+// Repères OSM pre0/pre1 (tools/make_site.py) : utilisés si back / len ne sont pas donnés.
+const PSB=SITE.preBrake||null,S_PSB=PSB?(PSB.back==null&&TAG.pre1!=null?Math.min(TAG.pre1,L-.5):L-(PSB.back!=null?PSB.back:1)):L,
+  PSB_A=PSB?(PSB.len==null&&TAG.pre0!=null&&TAG.pre0<S_PSB-TLEN?TAG.pre0:S_PSB-(PSB.len||TLEN+.5)):L;
+if(PSB&&PSB_A<S_HOLD+1)throw new Error('SITE.preBrake : pas de place entre le frein final et la gare');
+/* Zones toutes équivalentes (propriétaire, issue #36) : la gare est une zone d'attente comme les autres ; entre deux zones d'attente consécutives, un canton ordinaire ;
+   le garage est branché sur une zone d'attente quelconque du circuit, YZ = SITE.yard.at : 'St' (gare), 'B<k>' (frein de bloc k), 'Fin' (frein final), 'Pre' (frein avant gare) ;
+   alias compatibles 'station' = 'St', 'brake' = 'Fin'. ANCH = point d'arrêt de l'avant du train dans cette zone (point de raccordement). « Frein final » n'est plus qu'un nom.
+   Pont transbordeur droit : seulement sur le frein final (sa géométrie suit le rail de transfert OSM, S_HOLD). Aiguillage en amont (yard.back) : seulement en gare. */
+const YZ=(a=>a==null||a==='station'?'St':a==='brake'?'Fin':String(a))(YD.at);
+if(!/^(St|Fin|Pre|B\d+)$/.test(YZ)||(YZ==='Pre'&&!PSB)||(YZ[0]==='B'&&!(+YZ.slice(1)>=1&&+YZ.slice(1)<=BLK.length)))throw new Error('SITE.yard.at : zone d\'attente inconnue « '+YD.at+' » (St, B1…B'+BLK.length+', Fin'+(PSB?', Pre':'')+', ou les alias station / brake)');
 const LBK=!TRAV&&!!YD.back,ROT=!TRAV&&!!YD.rotary;
-if(LBK&&YD.at!=='station')throw new Error('SITE.yard.back : seulement avec at:\'station\'');
-const ANCH=YD.at==='brake'?S_HOLD:S_ST,SW_A=TRAV?R0:LBK?S_ST-YD.b+L:ANCH+YD.a,SW_B=TRAV?R1:LBK?S_ST-YD.a+L:ANCH+YD.b,SW_D=YD.slide||0;
+if(LBK&&YZ!=='St')throw new Error('SITE.yard.back : seulement avec at:\'station\'');
+if(TRAV&&YZ!=='Fin')throw new Error('SITE.yard : pont transbordeur droit seulement sur le frein final (at:\'brake\')');
+const zStop=z=>z==='St'?S_ST:z==='Fin'?S_HOLD:z==='Pre'?S_PSB:BLK[+z.slice(1)-1]; // point d'arrêt de l'avant du train dans une zone d'attente
+const ANCH=zStop(YZ),SW_A=TRAV?R0:LBK?S_ST-YD.b+L:ANCH+YD.a,SW_B=TRAV?R1:LBK?S_ST-YD.a+L:ANCH+YD.b,SW_D=YD.slide||0;
 const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=f.T.x,tz=f.T.z;
   if(TRAV){const b=frameAt(SW_B,mkF()).p,d=Math.hypot(b.x-f.p.x,b.z-f.p.z);tx=(b.x-f.p.x)/d;tz=(b.z-f.p.z)/d;} // rail droit : corde du circuit
   return {x:f.p.x,z:f.p.z,tx,tz,vx:-YD.side*f.R.x/l,vz:-YD.side*f.R.z/l};})(); // (vx,vz) : sens de coulissement du chariot (à l'opposé du garage)
@@ -76,13 +91,6 @@ const LANES=TRAV?YD.lanes.map((ln,j)=>{
 });
 // Point d'arrêt du train de tête dans chaque voie (avant du train) : BUF avant le butoir, sinon au moins 0,2 m au-delà de l'appareil ; capacité recalculée avec ce point.
 LANES.forEach((l,j)=>{l.stop=Math.max(Math.min(l.end,l.dev+TLEN+.2),l.end-BUF);if(!YD.lanes[j].cap)l.cap=Math.max(1,Math.floor((l.stop-l.dev-TLEN)/GSTEP)+1);});
-/* Frein avant gare (SITE.preBrake:{back, len, name}) : zone de freinage de stockage juste avant l'entrée en gare, un train de long, avec pneus.
-   Arrêt de l'avant du train à S_PSB = L - back (back : distance au début de la gare, s=0) ; zone de PSB_A à S_PSB. Le train qui quitte
-   le frein final (ou le rail mobile du parcours) va s'y arrêter et y attend que la gare soit libre. */
-// Repères OSM pre0/pre1 (tools/make_site.py) : utilisés si back / len ne sont pas donnés.
-const PSB=SITE.preBrake||null,S_PSB=PSB?(PSB.back==null&&TAG.pre1!=null?Math.min(TAG.pre1,L-.5):L-(PSB.back!=null?PSB.back:1)):L,
-  PSB_A=PSB?(PSB.len==null&&TAG.pre0!=null&&TAG.pre0<S_PSB-TLEN?TAG.pre0:S_PSB-(PSB.len||TLEN+.5)):L;
-if(PSB&&PSB_A<S_HOLD+1)throw new Error('SITE.preBrake : pas de place entre le frein final et la gare');
 const PG=TRAV&&!SG?LANES.length+1:-1,PC=SG?0:PG; // position G du pont droit : rail B en ligne avec le circuit ; PC : position où le rail porteur raccorde le circuit (P si rail unique)
 /* Rail A escamotable (traverser + YD.retract) : le rail A n'est pas porté par le chariot ; il a deux positions, sur le circuit
    (G.ra.pos 0, v=0) ou retiré (1, v=RET, du côté opposé au garage). Le chariot ne porte que le rail B : positions G et voies 1…n
@@ -109,22 +117,29 @@ function trFrame(t,k,o){ // pont droit : voiture k d'un train sur le chariot ou 
   const u=LREV?2*G_B-t.g-(k+.5)*CAR:t.g-(k+.5)*CAR,v=t.lane>=0&&(LREV?u<=laneU(U_LANE)+.3:u>=U_LANE-.3)?-LANES[t.lane].d:devC()-GAP;
   o.p.set(SW0.x+SW0.tx*u+SW0.vx*v,ST_Y,SW0.z+SW0.tz*u+SW0.vz*v);o.T.set(SW0.tx,0,SW0.tz);o.U.set(0,1,0);o.R.crossVectors(o.T,o.U);return o;
 }
-/* Règle de départ (propriétaire, 2026-11-15 : « le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre en attente avant ») :
-   raccordement en gare, appareil hors de P : départ autorisé seulement si une zone de freinage se trouve sur le trajet entre la gare et l'appareil ; le train y est alors
-   retenu automatiquement tant que l'appareil n'est pas revenu sur P (ou qu'une manœuvre de garage est en cours). DEV_HOLD = indice du dernier frein de bloc avant l'appareil,
-   -1 s'il n'y en a pas (ex. aiguillage juste après le quai : départ refusé). Raccordement au frein final (et pont droit) : le frein final / le rail du circuit retiennent déjà le train avant l'appareil. */
-const DEV_HOLD=YD.at==='brake'||TRAV?-1:BLK.reduce((h,b,i)=>b>S_ST+TLEN&&b<SW_A-.5?i:h,-1);
-const devHoldOn=()=>DEV_HOLD>=0&&(devOff()||trains.some(o=>yardBusy(o))),devHoldAt=i=>i===DEV_HOLD&&devHoldOn();
+/* Règle de retenue avant l'appareil (propriétaire, 2026-11-15 : « le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre
+   en attente avant » ; issue #36 : règle uniforme, quelle que soit la zone) : appareil hors de P, ou manœuvre de garage en cours, la DERNIÈRE zone d'attente avant
+   l'appareil (HOLD_Z) retient le train. Candidates : la zone de raccordement YZ, puis chaque zone d'attente (WZ, ordre du circuit) dont le point d'arrêt est après celui
+   de YZ (gare : après que le train l'a quittée, ANCH + TLEN) et à plus de 0,5 m avant l'appareil (SW_A). Si HOLD_Z est la gare, « retenir » = refuser le départ
+   (blockReason) ; sinon la zone garde le train freiné (frein de bloc : cantonnement, frein final / frein avant gare : leur attente). Pont transbordeur droit : le
+   train est retenu avant le chariot quand aucun rail n'est en ligne (S_PRE, circIn), HOLD_Z = null. DEV_HOLD : indice du frein de bloc HOLD_Z, sinon -1 (compatibilité). */
+const WZ=['St'].concat(BLK.map((_,i)=>'B'+(i+1)),['Fin'],PSB?['Pre']:[]); // zones d'attente du circuit, dans l'ordre de marche
+const HOLD_Z=TRAV?null:WZ.reduce((h,z)=>{const s=zStop(z);return z!==YZ&&s>ANCH+(YZ==='St'?TLEN:0)&&s<SW_A-.5?z:h;},YZ),HOLD_S=HOLD_Z?zStop(HOLD_Z):null;
+const DEV_HOLD=HOLD_Z&&HOLD_Z[0]==='B'?+HOLD_Z.slice(1)-1:-1;
+const devHoldOn=()=>!!HOLD_Z&&(devOff()||trains.some(o=>yardBusy(o))),devHoldIn=z=>z===HOLD_Z&&devHoldOn(),devHoldAt=i=>devHoldIn('B'+(i+1));
 const raLock=()=>trains.find(onRail); // rail A : immobile tant qu'un train y est, y roule ou s'en approche
 const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-TLEN<LANES[o.lane].dev+.5;   // train sur le circuit, la liaison ou l'appareil
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
 /* Cantonnement et garage (propriétaire, 2026-11-17 : « la présence d'un train sur le chariot doit bloquer les sections précédentes uniquement si le chariot est sur le parcours ») :
    pont droit, le train porté (ou qui entre / sort d'une voie) ne compte dans le dernier canton que si le rail porteur est en place sur le circuit (PC : G, ou P pour un rail unique).
    Chariot face à une voie ou en mouvement : il ne bloque pas ; le train qui arrive est alors retenu au frein final avant le pont (aucun rail en ligne, circIn), jamais dans le vide. */
-const yardBlocks=self=>YD.at==='brake'&&(!TRAV||(!devMoving()&&G.dev.pos===PC))&&trains.some(o=>o!==self&&yardBusy(o));
+// Canton qui mène à la zone de raccordement (issue #36) : se termine à son point d'arrêt (frein de bloc k : canton du frein k-1 ou du lift), ou à la fin du circuit
+// (frein final, frein avant gare : dernier canton, blkEnd = L). Un train de garage qui occupe ou va occuper le raccordement (yardBusy) occupe CE canton (b = fin du canton testé, absent : ce canton) ; gare : stationBusy.
+const Y_CEND=YZ==='St'?null:YZ[0]==='B'?ANCH:L;
+const yardBlocks=(self,b)=>Y_CEND!=null&&(b==null||(Y_CEND>=L?b>=L:Math.abs(b-Y_CEND)<.01))&&(!TRAV||(!devMoving()&&G.dev.pos===PC))&&trains.some(o=>o!==self&&yardBusy(o));
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-TLEN<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
 const devLock=()=>TRAV?trains.find(o=>(onRail(o)&&!(RA&&raIn()&&G.dev.pos!==PG)&&!(atAnchor(o)&&G.dev.pos===PC&&!count(o)))||(onCar(o)&&(o.mv||o.lane>=0)))
-  :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||(YD.at==='brake'&&o.entering)||(DEV_HOLD>=0&&o.s>BLK[DEV_HOLD]+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
+  :trains.find(o=>nearDev(o)||(o.st==='run'&&((o.s>(LBK?SW_A-.5:ANCH+.2)&&o.s<SW_B+TLEN+1)||((HOLD_Z==='Fin'||HOLD_Z==='Pre')&&(o.entering||o.toPre))||(HOLD_Z&&HOLD_Z!=='St'&&o.s>HOLD_S+.05&&o.s<SW_A)))); // train qui a passé le frein de retenue et se dirige vers l'appareil
 // Quai : une travée et un portillon par wagon
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 // Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
@@ -325,7 +340,7 @@ const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.
 /* Roues de propulsion des freins de bloc (BDRV[i]) : en MANU, un train arrêté au frein n'en repart qu'au bouton AV (#zB<k>_f, freins relâchés, canton suivant libre),
    poussé jusqu'à VPROP puis rendu à la gravité quand sa queue a passé le frein ; sans roues (drive:false), le relâchement suffit. En AUTO : inchangé. VPROP = PH.vmin, ESTIMÉ. */
 const BDRV=BLK.map((_,i)=>!!(ZONES.find(o=>o.id==='B'+(i+1))||{}).drive),VPROP=PH.vmin;
-const CARR=TRAV?'RB':YD.at==='station'?'St':'Fin'; // zone porteuse : zone d'où un train entre dans la voie en face de l'appareil (au Dispatch de la voie) ; son Arrêt arrête aussi ce train // gare : pas de bouton de frein, freins liés au départ (stHeld)
+const CARR=TRAV?'RB':YZ; // zone porteuse : zone d'où un train entre dans la voie en face de l'appareil (au Dispatch de la voie) ; son Arrêt arrête aussi ce train // gare : pas de bouton de frein, freins liés au départ (stHeld)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
 const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
 const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z)||(SG&&z==='RB'),ZR=SG?'RB':'RA'; // ZR : zone du rail du circuit sur le pont droit (rail unique : RB, zone de freinage ET zone porteuse)
