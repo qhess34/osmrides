@@ -22,7 +22,8 @@
         o.barriers = {};
         for (const key of Object.keys(g.barriers).sort()) {
           const b = g.barriers[key];
-          o.barriers[key] = b.off === true ? { off: true } : { x: r2(b.x), z: r2(b.z), a: { ang: r1(b.a.ang), len: r2(b.a.len) }, b: { ang: r1(b.b.ang), len: r2(b.b.len) } };
+          if (/^b[0-9]+$/.test(key)) { const q = { x: r2(b.x), z: r2(b.z), ang: r1(b.ang), len: r2(b.len) }; if (b.open === true) q.open = true; if (b.sw === -1) q.sw = -1; o.barriers[key] = q; } // issue #37
+          else o.barriers[key] = b.off === true ? { off: true } : { x: r2(b.x), z: r2(b.z), a: { ang: r1(b.a.ang), len: r2(b.a.len) }, b: { ang: r1(b.b.ang), len: r2(b.b.len) } }; // ancien format (lu, converti par le moteur)
         }
       } else if (k === 'controlRooms') {
         o.controlRooms = g.controlRooms.map(r => ({ id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }));
@@ -59,13 +60,26 @@
       else {
         const keys = Object.keys(B);
         if (keys.length > LIM.barriers) E.push('barriers : trop de surcharges');
+        let legacy = 0;
         for (const key of keys) {
           const b = B[key], p = 'barriers["' + key + '"]';
-          // clés : 'entry', 'fork:<tronçon>:<rôle>' (barrière calculée), 'add:<tronçon>:<n>' (barrière ajoutée à la main, liée à la fourche de ce tronçon)
-          const isAdd = /^add:[^\n"\\:]{1,80}:[1-9][0-9]{0,2}$/.test(key);
-          if (!isAdd && !/^(entry|fork:[^\n"\\]{1,80}:[a-z]+[0-9]+(#[0-9]+)?)$/.test(key)) { E.push(p + ' : clé invalide'); continue; }
           if (!b || typeof b !== 'object' || Array.isArray(b)) { E.push(p + ' : objet attendu'); continue; }
-          // suppression d'une barrière calculée : {off:true} seul (le calcul n'est jamais effacé) ; une barrière ajoutée se retire de GAME, sans off
+          // issue #37 : barrière indépendante posée à la main, clé 'b<n>' : {x, z, ang, len, open?, sw?} (pivot, angle en degrés de la position fermée, longueur,
+          // ouverte au début de la partie, sens d'ouverture 1 / -1)
+          if (/^b[1-9][0-9]{0,3}$/.test(key)) {
+            for (const k of Object.keys(b)) if (!['x', 'z', 'ang', 'len', 'open', 'sw'].includes(k)) E.push(p + ' : clé inconnue ' + k);
+            if (!num(b.x, -LIM.xz, LIM.xz) || !num(b.z, -LIM.xz, LIM.xz)) E.push(p + ' : x, z (m) hors bornes');
+            if (!num(b.ang, -LIM.ang, LIM.ang)) E.push(p + '.ang : degrés, de -720 à 720');
+            if (!num(b.len, LIM.len[0], LIM.len[1])) E.push(p + '.len : de ' + LIM.len[0] + ' à ' + LIM.len[1] + ' m');
+            if ('open' in b && typeof b.open !== 'boolean') E.push(p + '.open : true ou false');
+            if ('sw' in b && b.sw !== 1 && b.sw !== -1) E.push(p + '.sw : 1 ou -1');
+            continue;
+          }
+          // ancien format (lot 1 à issue #34) : 'entry', 'fork:<tronçon>:<rôle>', 'add:<tronçon>:<n>' = {x, z, a:{ang, len}, b:{ang, len}} ou {off:true} ; accepté,
+          // converti par le moteur en barrières indépendantes à la lecture, remplacé par l'éditeur à la première modification d'une barrière
+          const isAdd = /^add:[^\n"\\:]{1,80}:[1-9][0-9]{0,2}$/.test(key);
+          if (!isAdd && !/^(entry|fork:[^\n"\\]{1,80}:[a-z]+[0-9]+(#[0-9]+)?)$/.test(key)) { E.push(p + ' : clé invalide (b<n> attendu)'); continue; }
+          legacy++;
           if ('off' in b) { if (isAdd) E.push(p + ' : une barrière ajoutée se supprime en retirant sa clé (pas de off)'); else if (b.off !== true || Object.keys(b).length !== 1) E.push(p + ' : suppression = {"off": true} seul'); continue; }
           for (const k of Object.keys(b)) if (!['x', 'z', 'a', 'b'].includes(k)) E.push(p + ' : clé inconnue ' + k);
           if (!num(b.x, -LIM.xz, LIM.xz) || !num(b.z, -LIM.xz, LIM.xz)) E.push(p + ' : x, z (m) hors bornes');
@@ -77,6 +91,7 @@
             if (!num(q.len, LIM.len[0], LIM.len[1])) E.push(p + '.' + s + '.len : de ' + LIM.len[0] + ' à ' + LIM.len[1] + ' m');
           }
         }
+        if (legacy) W.push('barriers : ' + legacy + ' barrière(s) à l\'ancien format (surcharges, ajouts), converties par le jeu en barrières indépendantes ; réécrites au format b<n> à la première modification d\'une barrière');
       }
     }
     if ('controlRooms' in g) {

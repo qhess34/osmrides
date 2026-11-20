@@ -12,12 +12,12 @@ const ok = (name, c, info) => { if (!c) fails.push(name + (info !== undefined ? 
 const snap = () => ({
   played: G.played, time: G.time, money: G.money, speed: G.speed, sat: G.sat, open: G.open, q: G.queue.length, plat: G.plat.filter(r => r).length,
   walkers: G.walkers.length, riders: G.stats.riders, wx: G.wx.type, zm: JSON.stringify(G.zm), zk: JSON.stringify(G.zk), dev: [G.dev.pos, G.dev.to, G.dev.k],
-  loops: LOOPS.map(l => l.on), wear: [G.wear.chain, G.wear.track, G.wear.brake].map(v => +v.toFixed(2)), gates: G.gatesOpen, res: G.resOpen,
+  loops: LOOPS.map(l => l.on), bars: BARS.map(b => b.open), wear: [G.wear.chain, G.wear.track, G.wear.brake].map(v => +v.toFixed(2)), gates: G.gatesOpen, res: G.resOpen,
   trains: trains.map(t => ({ s: t.s, v: t.v, st: t.st, lane: t.lane, g: t.g, ph: t.phase, n: count(t), seated: seated(t), rc: t.rc.map(v => v.toFixed(3)).join(',') + '/' + t.rcT })) });
 function cmp(a, b) {
   const bad = [], eq = (k, x, y, tol) => { if (typeof x === 'number' ? Math.abs(x - y) > (tol || 0) : String(x) !== String(y)) bad.push(`${k}:${x}!=${y}`); };
   for (const k of ['speed', 'open', 'q', 'plat', 'walkers', 'riders', 'wx', 'zm', 'zk', 'gates', 'res']) eq(k, a[k], b[k]);
-  eq('time', a.time, b.time, .02); eq('played', a.played, b.played, .02); eq('money', a.money, b.money, 1); eq('sat', a.sat, b.sat, .05); eq('loops', a.loops, b.loops); eq('wear', a.wear, b.wear, .02);
+  eq('time', a.time, b.time, .02); eq('played', a.played, b.played, .02); eq('money', a.money, b.money, 1); eq('sat', a.sat, b.sat, .05); eq('loops', a.loops, b.loops); eq('bars', a.bars, b.bars); eq('wear', a.wear, b.wear, .02);
   eq('dev.pos', a.dev[0], b.dev[0]); eq('dev.to', a.dev[1], b.dev[1]); eq('dev.k', a.dev[2], b.dev[2], .002);
   a.trains.forEach((t, i) => { const u = b.trains[i]; eq(`T${i}.s`, t.s, u.s, .01); eq(`T${i}.v`, t.v, u.v, .001); eq(`T${i}.st`, t.st, u.st); eq(`T${i}.lane`, t.lane, u.lane);
     eq(`T${i}.g`, t.g, u.g, .01); eq(`T${i}.ph`, t.ph, u.ph); eq(`T${i}.n`, t.n, u.n); eq(`T${i}.seated`, t.seated, u.seated); eq(`T${i}.rc`, t.rc, u.rc); });
@@ -63,7 +63,7 @@ const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k
     const pre = await page.evaluate(() => {
       const r = { riders: G.stats.riders, q: G.queue.length };
       const z = ZONES.find(Z => Z.auto && Z.id !== 'Fin' && !/^R/.test(Z.id)) || ZONES.find(Z => Z.auto);
-      act('zone', z.id + ':m'); r.zone = z.id; if (LOOPS.length) act('loop', 0);
+      act('zone', z.id + ':m'); r.zone = z.id; if (BARS.length) toggleBar(0); // barrière de file (issue #37)
       if (!devMoving()) { const p = POS_ORDER.find(p => p !== G.dev.pos && p !== 0) || POS_ORDER[0]; act('pos', p); }
       for (let i = 0; i < 400 && devMoving() && G.dev.k < .4; i++) step(.025);
       r.moving = devMoving(); r.dev = [G.dev.pos, G.dev.to, G.dev.k]; r.inLane = trains.some(t => t.st === 'garage' && t.lane >= 0);

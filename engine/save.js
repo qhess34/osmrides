@@ -32,7 +32,7 @@
       trains:trains.map(t=>{const o={};for(const k in t){if(['i','name','col','col2','seats'].includes(k))continue;if(simple(t[k]))o[k]=typeof t[k]==='number'?R(t[k],4):t[k];}
         o.seats=t.seats.map(s=>s?[s.ci,R(s.w,1),s.on?1:0]:0);o.rc=t.rc.map(v=>R(v,3));return o;}),
       q,sl:SEGS.map(e=>e.list.map(v=>G.queue.indexOf(v))),walkers,
-      loops:LOOPS.map(l=>[l.on?1:0,R(l.t,3)]),gate:R(ENTRY_GATE.t,3),
+      loops:LOOPS.map(l=>[l.on?1:0,R(l.t,3)]),bars:BARS.map(b=>[b.key,b.open?1:0]),
       cam:{key:cam.key,x:R(cam.x,2),z:R(cam.z,2),s:R(cam.s,3),follow:cam.follow,g:cam.g},syn:synOn};
   }
   function save(){
@@ -64,7 +64,7 @@
     const tgt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.slot!=null).map(o=>o.slot));G.plat.forEach((r,i)=>{if(r&&!r.on&&!tgt.has(i))r.on=true;});
     if(!Array.isArray(G.platR))G.platR=[];G.platR=G.platR.slice(0,BRES.length);const rt=new Set(d.walkers.filter(o=>o.k==='wait'&&o.res!=null).map(o=>o.res));G.platR.forEach((r,j)=>{if(r&&!r.on&&!rt.has(j))r.on=true;}); // réserve de la zone d'attente (issue #24)
     const bt=new Set(d.walkers.filter(o=>o.k==='board'&&o.slot!=null).map(o=>o.tr+':'+o.slot));trains.forEach(t=>t.seats.forEach((s,i)=>{if(s&&!s.on&&!bt.has(t.i+':'+i))s.on=true;}));
-    LOOPS.forEach((l,i)=>{l.on=!!d.loops[i][0];l.t=d.loops[i][1];});ENTRY_GATE.t=d.gate;buildQueue();
+    for(const [k,o] of d.bars||[]){const b=BARS.find(b=>b.key===k);if(b){b.open=!!o;b.t=o?0:1;}}qRoute(); // barrières indépendantes (issue #37) ; chemin des fourches recalculé
     resetOps();for(const t of trains)if(t.st==='station'&&t.phase==='check')startCheck(t);
     Object.assign(cam,d.cam);if(cam.follow>=0&&!cam.g)cam.g={s:12};
     if(typeof d.syn==='boolean'&&d.syn!==synOn)toggleSyn();

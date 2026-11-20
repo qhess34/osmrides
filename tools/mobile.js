@@ -103,11 +103,11 @@ async function game(browser, site, mode) {
   ok('deux doigts: zoom arrière', c3 < c2 * .6, `s -> ${c3.toFixed(2)}`);
 
   // toucher une barrière de file (rayon de toucher >= 22 px) : placer la barrière au centre, toucher à 18 px
-  const gate = await page.evaluate(() => { const l = LOOPS[0]; if (!l) return null; cam.g = null; cam.follow = -1; cam.key = ''; cam.s = 6; cam.x = l.g.h[0]; cam.z = l.g.h[1]; render(.05); return LOOPS.map(l => l.on); });
+  const gate = await page.evaluate(() => { const g = BARS[0]; if (!g) return null; cam.g = null; cam.follow = -1; cam.key = ''; cam.s = 6; cam.x = g.h[0]; cam.z = g.h[1]; render(.05); return BARS.map(b => b.open); }); // issue #37 : barrières indépendantes
   if (gate) {
     const vb2 = await rectOf(page, '#view');
     await page.touchscreen.tap(vb2.x + vb2.w / 2 + 14, vb2.y + vb2.h / 2 + 12);
-    const after = await page.evaluate(() => LOOPS.map(l => l.on));
+    const after = await page.evaluate(() => BARS.map(b => b.open));
     ok('tap barrière de file (à ~18 px)', JSON.stringify(after) !== JSON.stringify(gate), JSON.stringify(gate) + ' -> ' + JSON.stringify(after));
     await page.touchscreen.tap(vb2.x + vb2.w / 2 + 14, vb2.y + vb2.h / 2 + 12);
   } else ok('barrières de file', true, '(aucune sur ce site)');
