@@ -32,6 +32,7 @@ function ui(){
   for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
   $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.over;
   $('bEvac').disabled=!evacCan();
+  {const ev=evacOn(),bk=[...EVW.bars.keys()];$('lEvac').className='lamp'+(!ev?' off':bk.length?' err':' occ');$('lEvacT').textContent=bk.length?'Évacuation bloquée — barrière n° '+bk.map(k=>k.replace(/^b/,'')).join(', '):'Évacuation en cours';} // issue #41 : voyant d'évacuation (ambre = en cours, rouge clignotant = bloquée par une barrière fermée)
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
   {const s=trains.find(o=>o.st==='station'),op=G.resOpen||!!(s&&s.rcT),mv=!!s&&s.rc.some((v,k)=>v>.02&&v<.98); // sécurités : bouton allumé = ouvertes ; voyant vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement

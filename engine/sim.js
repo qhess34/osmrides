@@ -410,12 +410,32 @@ function updateWeather(dt){
    l'attraction ne ferme qu'au bouton du joueur. L'horloge tourne sur la plage d'ouverture T_OPEN…T_CLOSE et repart à T_OPEN (affluence continue au raccord,
    engine/queue.js hourF) ; G.played = minutes de jeu cumulées. Salaires : WAGE € par plage (9 h), prélevés en continu (G.wage = fraction due).
    Budget sous OVER € (carrière) : fin de partie à tout moment. */
+/* Suivi de l'évacuation (issue #41, générique) : voyant « Évacuation en cours » du pupitre (#lEvac, engine/ui.js) tant que evacOn() ; à la fin, message au journal.
+   Évacués arrêtés devant une barrière de file fermée (marcheur 'evac', k.bk = la barrière, engine/queue.js) : message qui nomme la barrière (numéro, tronçon,
+   distance à l'entrée le long de la file), une fois, puis rappel toutes les EVAC_REM s de simulation (30 min de jeu) tant qu'elle les retient ; barrière mise en
+   évidence sur la carte (b.evHi, engine/render.js) jusqu'à son ouverture. État transitoire, non sauvegardé. */
+const EVW={on:false,bars:new Map()},EVAC_REM=60;
+function barWhere(b){let c=0;const fk=(e,l)=>(e===l.loop?'boucle':'raccourci')+(l.name?' « '+l.name+' »':'')+', ';
+  for(const st of STAGES){const B=st.seg?[st.seg]:[st.fork.r||st.fork.short,st.fork.short,st.fork.loop];
+    for(const e of B){const x=e.bx.find(x=>x.b===b);if(x)return (st.fork?fk(e,st.fork):'')+'à '+Math.round(c+x.d)+' m de l\'entrée de la file';}
+    c+=B[0].len;}
+  return 'à '+Math.round(Math.hypot(b.x-ENTRY0[0],b.z-ENTRY0[1]))+' m de l\'entrée de la file';}
+const barName=b=>'barrière n° '+String(b.key).replace(/^b/,'')+' ('+barWhere(b)+')';
+function evacTick(dt){const on=evacOn();
+  for(const b of BARS)if(b.evHi&&b.open)b.evHi=false; // mise en évidence jusqu'à l'ouverture
+  if(!on){if(EVW.on){EVW.on=false;EVW.bars.clear();for(const b of BARS)b.evHi=false;log('Évacuation terminée, la file peut reprendre'+(G.open?'.':' : l\'entrée est fermée, rouvrez-la.'),'good');}return;}
+  EVW.on=true;const n=new Map();
+  for(const k of G.walkers)if(k.kind==='evac'&&k.bk&&!k.bk.open&&BARS.includes(k.bk))n.set(k.bk.key,(n.get(k.bk.key)||0)+1);
+  for(const key of [...EVW.bars.keys()])if(!n.has(key))EVW.bars.delete(key);
+  for(const [key,c] of n){const b=BARS.find(b=>b.key===key),r=EVW.bars.get(key);b.evHi=true;
+    if(!r){EVW.bars.set(key,{t:EVAC_REM});log('Évacuation bloquée : '+c+' évacué'+(c>1?'s attendent':' attend')+' devant la '+barName(b)+', fermée. Ouvrez-la d\'un clic sur la carte (barrière mise en évidence).','bad');}
+    else if((r.t-=dt)<=0){r.t=EVAC_REM;log('Rappel : la '+barName(b)+' est fermée, '+c+' évacué'+(c>1?'s':'')+' bloqué'+(c>1?'s':'')+'. Personne n\'entre dans la file tant que l\'évacuation n\'est pas finie.','warn');}}}
 const T_OPEN=600,T_CLOSE=1140,WAGE=350,OVER=-2000;
 function step(dt){
   const m=dt*.5;G.time+=m;if(G.time>=T_CLOSE)G.time-=T_CLOSE-T_OPEN;G.played=(G.played||0)+m;
   if(!G.sandbox){G.wage=(G.wage||0)+m*WAGE/(T_CLOSE-T_OPEN);if(G.wage>=1){const n=Math.floor(G.wage);G.wage-=n;pay(n);}}
   if(G.sandbox){G.wear.chain=G.wear.track=G.wear.brake=0;G.liftBroken=G.brakeFault=false;for(const t of trains){t.wear=0;t.hs=false;if(t.fault){t.fault=null;if(t.phase==='fault')t.phase='ready';}}}
-  updateWeather(dt);updateVisitors(dt);updatePlatform(dt);stepOps(dt);updateTrains(dt);
+  updateWeather(dt);updateVisitors(dt);evacTick(dt);updatePlatform(dt);stepOps(dt);updateTrains(dt);
   if(G.job){G.job.rem-=dt;if(G.job.rem<=0)finishJob();}
   if(!G.sandbox&&!G.over&&G.money<OVER){G.over=true;G.open=false;log('Le budget est dans le rouge : fin de partie.','bad');bilan();}
 }
@@ -454,8 +474,6 @@ function act(a,arg){
     for(const v of G.queue)walker(backPath(v,true),v.ci,null,rnd(3,3.8),0,'evac');
     let nt=0;for(const o of tv){o.evq=true;o.depReq=false;nt+=count(o);}
     clearQueue();const n=nq+platEvac();G.sat=clamp(G.sat-Math.min(8,(n+nt)*.03),0,100);log('File évacuée : '+n+' visiteurs (file et portillons) ressortent par l\'entrée'+(nt?', '+nt+' passager'+(nt>1?'s':'')+' du train à quai descendent par la sortie.':'.'),'warn');}
-  else if(a==='loop'){const l=LOOPS[arg];l.on=!l.on;buildQueue();
-    log(l.name[0].toUpperCase()+l.name.slice(1)+(l.on?' fermé : les visiteurs sont dirigés vers la boucle':' ouvert : les visiteurs sont dirigés vers le raccourci')+' — capacité '+Math.floor(QLEN/SP)+' visiteurs. Ceux déjà engagés terminent leur chemin.');}
   else if(a==='syn')toggleSyn();
   else if(a==='roof'){G.roofOff=!G.roofOff;}
   else if(a==='hidest'){G.hideSt=!G.hideSt;} // « Masquer la gare » : bâtiment de gare, toits effaçables et couvertures (tunnels, rochers) masqués, couloirs couverts visibles

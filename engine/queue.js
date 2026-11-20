@@ -381,7 +381,7 @@ function updateVisitors(dt){
     if(nk&&room(nk)){l.shift();h.e=nk;h.r=nk.len;nk.list.push(h);}
   }
   for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null,end=moveAlong(k,dt);
-    if(o&&barHit(o[0],o[2],k.x,k.z)){[k.x,k.y,k.z,k.i]=o;k.bk=1;continue;}if(o)k.bk=0; // évacué arrêté devant une barrière fermée : repart quand on l'ouvre
+    const hb=o&&barHit(o[0],o[2],k.x,k.z);if(hb){[k.x,k.y,k.z,k.i]=o;k.bk=hb;continue;}if(o)k.bk=null; // évacué arrêté devant une barrière fermée (k.bk = la barrière, signalée par evacTick, engine/sim.js) : repart quand on l'ouvre
     if(end){if(k.done)k.done();G.walkers.splice(i,1);}}
 }
 

@@ -87,6 +87,8 @@ button.sel.manu i{transform:rotate(42deg)}
 .lamp{text-align:center;font-size:12px;padding:4px 2px;border-radius:6px;background:#141c30;border:1px solid var(--line)}
 .lamp i{display:block;width:12px;height:12px;border-radius:50%;margin:0 auto 3px;background:var(--ok);box-shadow:0 0 6px currentColor}
 .lamp.occ i{background:var(--warn)}.lamp.err i{background:var(--bad)}
+#lEvac{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:6px}#lEvac i{margin:0;flex:none}#lEvac.err i{animation:blink .8s infinite}
+#desk button.pb.sq:not(.sm){font-size:10px;line-height:1.15;letter-spacing:.4px;font-weight:700}#desk button.pb.big{font-size:11.5px;letter-spacing:.5px;font-weight:700}
 .card{background:#141c30;border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:6px}
 .card .name{font-weight:600}.card .st{color:var(--dim);font-size:13px;min-height:18px}
 .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
@@ -231,14 +233,14 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
       <h2>Pupitre de commande</h2>
       <div class="lcd" id="opNote"></div>
       <div class="deskrow">
-        <div class="ctl"><button class="pb sq green" id="bOpen" data-act="open" title="Ouvrir ou fermer l'entrée de la file ; les visiteurs déjà dans la file continuent d'embarquer">⏻</button><div class="plate">Entrée<br>ouverte</div></div>
-        <div class="ctl"><button class="pb sq amber" id="bEvac" data-act="evac" title="Évacuer la file d'attente">⇤</button><div class="plate">Évacuer<br>la file</div></div>
+        <div class="ctl"><button class="pb sq green" id="bOpen" data-act="open" title="Ouvrir ou fermer l'entrée de la file ; les visiteurs déjà dans la file continuent d'embarquer">OUV.<br>FERM.</button><div class="plate">Entrée<br>ouverte</div></div>
+        <div class="ctl"><button class="pb sq amber" id="bEvac" data-act="evac" title="Évacuer la file d'attente : tout le monde ressort par l'entrée (voyant Évacuation en cours jusqu'à la fin)">ÉVAC.</button><div class="plate">Évacuer<br>la file</div></div>
         <div class="ctl"><button class="sel" id="bAuto" data-act="auto" title="Départs automatiques ou manuels"><i></i></button><div class="plate">Auto · Manuel</div></div>
       </div>
       <div class="deskrow">
-        <div class="ctl"><button class="pb sq blue" id="bGate" data-act="gates" title="Ouvrir ou fermer les portillons du quai (seulement à la main, en auto comme en manuel)">▮▮</button><div class="plate">Portillons</div></div>
-        <div class="ctl"><button class="pb sq blue" id="bRes" data-act="res" title="Sécurités des passagers : ouvrir (à quai) / verrouiller (portillons fermés : lance la fermeture et la vérification par les deux opérateurs)">⊓</button><div class="plate"><span class="zl" id="lRes"></span>Sécurités</div></div>
-        <div class="ctl"><button class="pb green big" id="bGo" data-act="depart" title="Donner le départ">▶</button><div class="plate">Départ</div></div>
+        <div class="ctl"><button class="pb sq blue" id="bGate" data-act="gates" title="Ouvrir ou fermer les portillons du quai (seulement à la main, en auto comme en manuel)">OUV.<br>FERM.</button><div class="plate">Portillons</div></div>
+        <div class="ctl"><button class="pb sq blue" id="bRes" data-act="res" title="Sécurités des passagers : ouvrir (à quai) / verrouiller (portillons fermés : lance la fermeture et la vérification par les deux opérateurs)">OUV.<br>VERR.</button><div class="plate"><span class="zl" id="lRes"></span>Sécurités</div></div>
+        <div class="ctl"><button class="pb green big" id="bGo" data-act="depart" title="Donner le départ">DÉPART</button><div class="plate">Départ</div></div>
         <div class="ctl"><button class="pb estop" id="bStop" data-act="estop" title="Arrêt d'urgence (appuyer de nouveau pour réarmer)"></button><div class="plate">Arrêt<br>d'urgence</div></div>
       </div>
       <div class="lamps">
@@ -246,6 +248,7 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
         <div class="lamp" id="lLift"><i></i>Lift</div>
         <div class="lamp" id="lCourse"><i></i>Parcours</div>
         <div class="lamp" id="lBrake"><i></i>Freins</div>
+        <div class="lamp off" id="lEvac" title="Évacuation de la file : allumé tant que des évacués ressortent, rouge si une barrière fermée les bloque"><i></i><span id="lEvacT">Évacuation en cours</span></div>
       </div>
       <div class="deskrow">
         <div class="ctl"><div class="pair"><div class="lamp off" id="lOp0"><i></i>Op. 1</div><div class="lamp off" id="lOp1"><i></i>Op. 2</div></div><div class="plate">Lapbars validés</div></div>
