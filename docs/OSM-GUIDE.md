@@ -24,6 +24,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Figures | `roller_coaster:element=*` (`loop`, `corkscrew`, `butterfly`, `batwing`…) | Lu | Gardé dans les données (`OSM.elements`, abscisses du moteur) pour un futur réglage du tangage et du roulis dans l'éditeur ; la forme de la figure reste dans la spec (`inversions`). Tag en usage, non documenté dans le wiki. |
 | Tunnel | `tunnel=yes` (ou `covered=yes` + `layer` négatif) | Lu | Voie cachée sous une couverture : eau si un plan d'eau la recouvre, sinon remblai. |
 | Galerie au-dessus du sol | `tunnel=yes` + `layer` positif | Lu | Voie sous un toit de béton. |
+| Emprise d'un tunnel | `man_made=tunnel` (polygone) | Lu | Situe seulement le tunnel : voie la plus basse dans le polygone couverte le long de son tracé (galerie, eau ou rocher détectés), jamais le polygone rempli (issue #42). |
 | Niveau | `layer=*` | Lu | Ordre des croisements (quelle voie passe dessus). |
 | Looping, vrilles | voie dessinée dans OSM | Lu en partie | Un looping dessiné dans OSM est lu tel quel ; ses hauteurs et le type de figure viennent de la spec. |
 | Pont transbordeur | `railway=traverser`, ou rail du chariot `roller_coaster=track` + `moving` | Lu via la spec | Position du chariot et des voies (identifiants repris dans `tools/specs/<site>.json` ; Trace du Hourra : voies, écart et longueurs mesurés sur OSM depuis le 20/11). |
