@@ -298,7 +298,7 @@ function evacAhead(k){let bl=null;if(eNear(k.ox,k.oz,o=>o!==k&&Math.hypot(o.x-k.
 // place (x, z) libre : à QD au moins des autres arrivants arrêtés (QGRID) ou des autres évacués arrêtés (EGRID), file devant la barrière comprise ;
 // all : de tous, même en marche (place où l'on recule : on n'y retombe pas sur un autre)
 const barFree=(W,x,z,k,all)=>k.mode==='app'?!qStill(k,x,z,all):k.kind==='evac'?!eNear(x,z,o=>o!==k&&(all||o.bk)&&Math.hypot(o.x-x,o.z-z)<QD):W.every(m=>Math.hypot(m.x-x,m.z-z)>=QD);
-function qStill(v,x,z,all){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(c)for(const o of c)if(o!==v&&o.mode==='app'&&(all||!o.mv)&&Math.hypot(o.x-x,o.z-z)<QD)return true;}return false;}
+function qStill(v,x,z,all){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(c)for(const o of c)if(o!==v&&(o.mode==='q'&&!(o.lv|0)||o.mode==='app'&&(all||!o.mv))&&Math.hypot(o.x-x,o.z-z)<QD)return true;}return false;}
 const gridAdd=k=>{const G2=k.mode==='app'?QGRID:EGRID,c=qk(k.x,k.z);let L=G2.get(c);if(!L)G2.set(c,L=[]);L.push(k);}; // reculé : case de la grille à jour
 // évacué (sur la file) : première place libre sur l'axe de la file en reculant vers la gare depuis sa position, deux de front si l'allée le permet (segSpots) ;
 // trajet prolongé d'autant (il repartira de là)
@@ -468,6 +468,7 @@ function updateVisitors(dt){
     const h=l[0],nk=h&&h.r<=1e-3?nextSeg(e):null;
     if(nk&&room(nk)){l.shift();h.e=nk;h.r=nk.len;nk.list.push(h);}
   }
+  for(const v of Q.slice())if(v.mode==='app'&&!v.mv&&v.i<v.pts.length&&qStill(v,v.x,v.z)&&!barStepBack(v,[]))turnAway(v); // arrivant arrêté que la file vient de rejoindre (début de file le long de l'accès) : recule (issue #44)
   EGRID.clear();if(BARS.length)for(const k of G.walkers)if(k.kind==='evac'&&barAhead(k)){k.bdd=barDist(k);const c=qk(k.x,k.z);let L=EGRID.get(c);if(!L)EGRID.set(c,L=[]);L.push(k);}
   for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null;if(o&&k.hold>0){k.hold-=dt;continue;}const end=moveAlong(k,dt);
     if(o&&k.ba&&k.bv===BARV&&!k.bwb){k.ox=o[0];k.oz=o[2];if(evacAhead(k)){[k.x,k.y,k.z,k.i]=o;k.bk=k.ba||1;continue;}} // derrière un évacué qui le précède vers la barrière : attend
