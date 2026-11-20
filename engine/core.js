@@ -46,6 +46,13 @@ const TR=[],TAG={}; let L=0,N=0,DS=.5;
   const pts=[]; let j=0;
   for(let i=0;i<N;i++){const s=i*DS;while(dense[j+1].s<s)j++;const a=dense[j],b=dense[j+1],k=(s-a.s)/((b.s-a.s)||1);
     pts.push([0,1,2,3].map(c=>lerp(a.v[c],b.v[c],k)));}
+  // Gare droite (issue #43, propriétaire 20/11 : dernier wagon de Zeus de travers en gare) : la spline passe par le nœud OSM du début de gare et y garde la courbure
+  // de l'arrivée, si bien que le wagon de queue se mettait en biais. Une gare presque droite (écart à la corde st0 → st1 de moins de ST_STRAIGHT = 0,6 m, ESTIMÉ) est
+  // redressée en plan sur cette corde (hauteurs gardées) : voie, quai, portillons et wagons alignés. Une gare franchement courbe reste telle qu'OSM la donne.
+  {const ST_STRAIGHT=.6,i0=Math.ceil((TAG.st0||0)/DS),i1=TAG.st1!=null?Math.floor(TAG.st1/DS):-1;
+    if(i1-i0>8&&i1<N){const A=pts[i0],B=pts[i1],dx=B[0]-A[0],dz=B[2]-A[2],l2=dx*dx+dz*dz;let dev=0;
+      for(let i=i0;i<=i1;i++){const p=pts[i],t=((p[0]-A[0])*dx+(p[2]-A[2])*dz)/l2;dev=Math.max(dev,Math.hypot(p[0]-A[0]-t*dx,p[2]-A[2]-t*dz));}
+      if(dev<ST_STRAIGHT)for(let i=i0+1;i<i1;i++){const t=(i-i0)/(i1-i0);pts[i][0]=A[0]+t*dx;pts[i][2]=A[2]+t*dz;}}}
   const Y=new V3(0,1,0);
   for(let i=0;i<N;i++){
     const a=pts[(i-1+N)%N],c=pts[(i+1)%N],p=pts[i];
