@@ -203,6 +203,13 @@ const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[
     LANES.forEach((ln,j)=>{const o=strip(LREV?line(laneU(ln.end),-.04,ln.d):line(R1-R0+.04,ln.end,ln.d));LCH[j]=o;chunks.push(o);}); // yard.rev : voies en amont du chariot
   }else LANES.forEach((ln,j)=>{const GP=ln.path,gs=GP.map((q,i)=>{const a=GP[Math.max(0,i-1)],b=GP[Math.min(GP.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;return {x:q.x,y:ST_Y,z:q.z,nx:-(b.z-a.z)/l,nz:(b.x-a.x)/l,i};});
     const nl=LBK?Math.round(ln.link/.5):36,gl=gs.slice(0,nl+1);gl.dev=1;const sP=strip(gl);sP.lk=j+1;LCH[j]=strip(gs.slice(nl));LCH[j].nl=nl;chunks.push(sP,LCH[j]);});
+  // Voies décoratives (OSM.deco, tools/make_site.py, issue #33, propriétaire 20/11) : tronçons roller_coaster=track non reliés au circuit, dessinés comme la voie
+  // du site (même kind), immobiles : aucun train, aucune zone, aucun frein ; posés à la hauteur de la gare (ESTIMÉ, OSM ne donne pas leur hauteur).
+  for(const d of OSM.deco||[]){const P=d.p||d;if(!P||P.length<2)continue;const cum=[0];for(let k=1;k<P.length;k++)cum.push(cum[k-1]+Math.hypot(P[k][0]-P[k-1][0],P[k][1]-P[k-1][1]));
+    const L=cum[cum.length-1],n=Math.max(1,Math.round(L/.5)),gs=[];let j=0;
+    for(let k=0;k<=n;k++){const u=L*k/n;while(j<P.length-2&&cum[j+1]<u)j++;const l=(cum[j+1]-cum[j])||1,f=(u-cum[j])/l,tx=(P[j+1][0]-P[j][0])/l,tz=(P[j+1][1]-P[j][1])/l;
+      gs.push({x:P[j][0]+(P[j+1][0]-P[j][0])*f,y:ST_Y,z:P[j][1]+(P[j+1][1]-P[j][1])*f,nx:-tz,nz:tx,i:k});}
+    const o=strip(gs);o.deco=1;chunks.push(o);}
   // Chaîne du lift et équipements de freinage : rattachés à leur tronçon (dessinés avec lui), donc toujours SOUS les trains qui y passent et sous les voies plus hautes
   const cOf=new Int32Array(N+1);for(let c=0;c<cl.length-1;c++)for(let i=cl[c];i<cl[c+1];i++)cOf[i]=c;
   const lc0=Math.round(S_LIFT0/DS),lc1=Math.round((S_LIFT1+3)/DS);

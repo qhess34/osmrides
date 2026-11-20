@@ -29,7 +29,9 @@ Le fichier de spécification (JSON) décrit :
   (barrières)   nœuds barrier=swing_gate | gate | lift_gate -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] : barrières de file du jeu (engine/queue.js, à la place des barrières posées par le moteur)
   (traçabilité) chaque objet garde son id OSM (w123 / n456 / r789) et sa version : champs id, v (feats, stairs), fin de tableau (doors, barriers, pois, widths), OSM.src (track, others, trees, paths, polys) — docs/OSM-GUIDE.md §7
   (multipolygones) anneaux assemblés à partir de plusieurs tronçons (ex. rocher natural=rock en relation)
-  (issue #33)   roller_coaster:track = waiting | brake_run | moving : zones de freinage où un train peut attendre (brake_run = frein final, noms automatiques sans osm_brakes) ;
+  (issue #33)   roller_coaster:track = waiting | brake_run | moving : zones de freinage où un train peut attendre ; rôle selon la position (sans osm_brakes) :
+                dernière zone avant la gare (ou avant le tronçon moving) = frein final, précédentes = freins de bloc, après : moving = transfert, autre = avant gare ;
+                tronçon roller_coaster=track non relié au circuit (sans rôle, hors spec) -> OSM.deco : voie décorative immobile ;
                 roller_coaster:station = load | unload (non officiel) : gares -> OSM.stations ; quais déduits de la gare (un de chaque côté, moteur) ;
                 bâtiment nommé « Salle de contrôle » / « control room » -> OSM.ctl (pupitre par défaut) ; « ele » des nœuds de voie -> profil (ele_ground, ele_keep) et OSM.ele ;
                 roller_coaster:element -> OSM.elements (s moteur, pour l'éditeur)
@@ -112,10 +114,12 @@ else:
 
     # ── repères lus dans OSM (roller_coaster:track des tronçons du circuit), facultatif : la spec peut forcer chaque repère (« tags »)
     #   station → st0/st1 ; lift_hill → lift0/lift1 ; brake_run | waiting | block_brake | storage | transfer → zones de freinage, nommées dans l'ordre
-    #   par spec « osm_brakes » (ex. ["blk1", "blk2", "brk", "tr", "pre"] ; "skip" = ignorée) ; par défaut la dernière = frein final (brk), les autres blk1…
+    #   par spec « osm_brakes » (ex. ["blk1", "blk2", "brk", "tr", "pre"] ; "skip" = ignorée) ; par défaut rôle selon la position (auto_names) :
+    #   la dernière zone avant la gare (ou avant le tronçon mobile) = frein final (brk), les précédentes = freins de bloc blk1…
     #   Repères produits : blkN = point d'arrêt (fin de zone) + bzN = début ; brk = début du frein final + fin = fin ; tr0/tr1 = rail de transfert (pont) ; pre0/pre1 = frein avant gare.
     #   « roles » {way: rôle} force le rôle d'un tronçon (station, lift, brake, run).
-    #   Règle du propriétaire (issue #33, 20/11) : waiting, brake_run et moving sont TOUS des zones de freinage où un train peut attendre ; brake_run = frein final.
+    #   Règle du propriétaire (issue #33, 20/11) : waiting, brake_run et moving sont TOUS des zones de freinage où un train peut attendre ;
+    #   le frein final est la dernière zone avant la gare (pas forcément le brake_run).
     ROLE_OF = {'station': 'station', 'lift_hill': 'lift', 'brake_run': 'brake', 'waiting': 'brake', 'moving': 'brake', 'block_brake': 'brake', 'storage': 'brake', 'transfer': 'brake'}
     def role(m):
         r = spec.get('roles', {}).get(str(m))
@@ -149,11 +153,15 @@ else:
     lfv = [v for v in osm_iv if v[0] == 'lift']
     if lfv: auto['lift0'] = round(lfv[0][1], 1); auto['lift1'] = round(lfv[-1][2], 1)
     bkv = [v for v in osm_iv if v[0] == 'brake' and (not lfv or v[1] >= lfv[0][1])]
-    def auto_names(bkv):  # sans « osm_brakes » : brake_run = frein final (brk, le dernier s'il y en a plusieurs ; sinon la dernière zone) ; avant lui freins de bloc blk1… ;
-        #                  après lui, vers la gare : moving = rail de transfert (tr), autre = frein avant gare (pre)
+    def auto_names(bkv):  # sans « osm_brakes » : rôle déduit de la POSITION (propriétaire 20/11, issue #33 : à Goudurix le train s'arrête au brake_run PUIS
+        #   va en zone waiting avant la gare ; brake_run n'est donc pas forcément le frein final). Zones de freinage après le lift, dans l'ordre de marche :
+        #   frein final (brk) = la dernière avant la gare, ou avant le premier tronçon mobile (moving : rail du pont / de l'aiguillage) s'il y en a un ;
+        #   les précédentes = freins de bloc blk1… ; après lui, vers la gare : moving = rail de transfert (tr), autre = frein avant gare (pre).
+        #   Le type OSM (waiting, brake_run, block_brake…) ne décide plus du rôle.
         tg_ = [tags(WAY[v[3]]).get('roller_coaster:track') for v in bkv]
         if not bkv: return []
-        f = max([k for k, t in enumerate(tg_) if t == 'brake_run'] or [len(bkv) - 1])
+        mv = next((k for k, t in enumerate(tg_) if t == 'moving'), len(bkv))
+        f = mv - 1 if mv > 0 else max([k for k, t in enumerate(tg_) if t != 'moving'] or [len(bkv) - 1])
         return ['blk%d' % (k + 1) for k in range(f)] + ['brk'] + [('tr' if t == 'moving' else 'pre') for t in tg_[f + 1:]]
     names = spec.get('osm_brakes') or auto_names(bkv)
     if len(names) != len(bkv): sys.exit('osm_brakes : %d noms pour %d zones de freinage OSM %s' % (len(names), len(bkv), [(round(v[1]), round(v[2]), v[3]) for v in bkv]))
@@ -421,6 +429,36 @@ def chain_pts(v):  # chemin de la spec : un tronçon OSM, ou une liste de tronç
     return [list(xy(i, 1)) for i in out]
 SPATHS = {str(i) for v in spec.get('paths', {}).values() for i in (v if isinstance(v, list) else [v])}
 drop = set(track) | {str(i) for i in spec.get('drop_ways', [])} | {str(i) for i in spec.get('paths', {}).values()}
+# voies décoratives (issue #33, propriétaire 20/11, Zeus w1353118255) : tronçon roller_coaster=track NON RELIÉ au circuit = décor, dessiné comme une voie
+#   immobile (aucun train, aucune zone) -> OSM.deco=[{p:[[x,z]…], id, v}]. Règle générique : composante connexe (nœuds partagés) de tronçons roller_coaster=track
+#   sans boucle (pas un autre circuit), sans tronçon du circuit, de la spec (paths, drop_ways) ni tronçon à rôle (roller_coaster:track maintenance, storage, moving…,
+#   qui reste une voie de garage), plus proche de CE circuit que de tout autre circuit et à moins de DECO_D m de lui (ESTIMÉ). Hauteur : celle de la gare (moteur).
+DECO_D = 25
+deco = []; deco_src = []; DECO = set()
+if BASE is None:
+    RCW = {m: nds(w) for m, w in WAY.items() if tags(w).get('roller_coaster') == 'track' and len(nds(w)) > 1}
+    par_ = {m: m for m in RCW}
+    def root_(a):
+        while par_[a] != a: par_[a] = par_[par_[a]]; a = par_[a]
+        return a
+    byn_ = collections.defaultdict(list)
+    for m, n_ in RCW.items():
+        for x_ in n_: byn_[x_].append(m)
+    for ms_ in byn_.values():
+        for m in ms_[1:]: par_[root_(m)] = root_(ms_[0])
+    comps_ = collections.defaultdict(list)
+    for m in RCW: comps_[root_(m)].append(m)
+    cyc_ = lambda ms: sum(len(RCW[m]) - 1 for m in ms) >= len({x_ for m in ms for x_ in RCW[m]})
+    others_c = [[xy(x_) for m in ms for x_ in RCW[m]] for ms in comps_.values() if cyc_(ms) and not set(ms) & set(track)]
+    dmin_ = lambda P, Q: min(dist(a, b) for a in P for b in Q[::2] or Q)
+    for ms in comps_.values():
+        if cyc_(ms) or set(ms) & (drop | SPATHS) or any(tags(WAY[m]).get('roller_coaster:track', 'track') != 'track' for m in ms): continue
+        P = [xy(x_) for m in ms for x_ in RCW[m]]; d_ = dmin_(P, raw)
+        if d_ < DECO_D and all(d_ < dmin_(P, Q) for Q in others_c):
+            for m in sorted(ms):
+                deco.append({'p': [list(xy(x_, 1)) for x_ in RCW[m]], 'id': 'w' + m, 'v': ver(WAY[m])}); DECO.add(m)
+    if deco: print('voies décoratives (hors circuit, immobiles) :', sorted(DECO))
+drop |= DECO
 KEYS = ('building', 'highway', 'natural', 'landuse', 'leisure', 'water', 'waterway', 'barrier', 'amenity', 'tourism', 'man_made', 'railway')
 feats = []; others = []; others_src = []
 def area(p): return sum(p[i][0] * p[(i + 1) % len(p)][1] - p[(i + 1) % len(p)][0] * p[i][1] for i in range(len(p))) / 2
@@ -558,6 +596,7 @@ res = {'cps': cps, **({'widths': widths} if widths else {}), **({'stairs': steps
        'polys': {k: [list(xy(i, 1)) for i in nds(WAY[str(v)])] for k, v in spec.get('polys', {}).items()},
        'trees': [list(xy(i, 1)) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))],
        'pois': [[list(xy(i, 1)), t.get('name'), *NSRC(i)] for i, t in NTAG.items() if t.get('name') and inb(xy(i))]}
+if deco: res['deco'] = deco  # voies décoratives immobiles (id, v dans chaque objet)
 # OSM.src : origine des objets qui n'ont pas de place pour un champ (tableaux de points, dictionnaires lus par clé) ; mêmes indices que la structure décrite
 SRC = {'track': [WSRC(m) for m in (chain_ways if BASE is None else track)]}
 if others_src: SRC['others'] = others_src                                                    # même ordre que OSM.others
