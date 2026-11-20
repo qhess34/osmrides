@@ -808,7 +808,7 @@ function drawResCar(hl,r,a){ // lapbar commune au wagon : UNE barre en travers D
    - mâchoires mécaniques : deux patins de part et d'autre de l'ailette du train (axe de la voie), dans leur carter ; serrées (patins contre l'axe) ou écartées selon l'état des freins ;
    - roues de propulsion (pneus) là où la zone a des moteurs (SITE.zones … drive ; défaut : toutes les zones, freins de bloc compris en marche avant seule, drive:'fwd'), une unité sur deux : paire de pneus à axe vertical
      qui pincent l'ailette (bois, acier, inversé), pneu à axe horizontal au fond de la gouttière (bob) ; ils tournent quand un train roule dessus.
-   Coaster inversé : étriers et pneus de part et d'autre de la poutre caisson. Matières mates ; de loin, un simple trait sombre. Dimensions ESTIMÉES. */
+   Coaster inversé : étriers et pneus de part et d'autre de la poutre caisson, dessinés AVANT elle (sous le tube, au niveau du chariot suspendu, issue #32) : seuls leurs bords dépassent. Matières mates ; de loin, un simple trait sombre. Dimensions ESTIMÉES. */
 const BZS={},PV=new WeakMap(),tSp=t=>t.st==='garage'?(t.mv?MV.v:0):t.st==='station'?0:t.v;
 const zTrains=z=>trains.filter(t=>z.car?tZone(t)==='RB':(t.st==='run'&&t.s>z.r0-.3&&t.s-TLEN<z.r1+.3)||(z.id==='St'&&t.st==='station')||(t.st==='garage'&&tZone(t)===z.id));
 const _bf=mkF();
@@ -1067,7 +1067,8 @@ function drawWorld(dt){
       else{ctx.strokeStyle=TRO.deck;ctx.lineWidth=DECKW;ctx.stroke(o.deck);ctx.strokeStyle=o.col;ctx.lineWidth=2;ctx.stroke(o.deck);
       ctx.strokeStyle=TRO.shine;ctx.lineWidth=.9;ctx.stroke(o.deck);}
       ctx.strokeStyle=TRO.rim;lw(.1,.5);ctx.stroke(o.rail);
-    }else if(INV){ // poutre caisson, rails, puis portiques et poteaux par-dessus
+    }else if(INV){ // équipements des zones de freinage SOUS la poutre (au niveau du chariot suspendu, issue #32), puis poutre caisson, rails, portiques et poteaux par-dessus
+      drawBU(o);
       ctx.strokeStyle='rgba(20,24,30,.55)';ctx.lineWidth=DECKW+.25;ctx.stroke(o.deck);ctx.strokeStyle=TKC.spine;ctx.lineWidth=DECKW;ctx.stroke(o.deck);
       ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=.3;ctx.stroke(o.deck);
       ctx.strokeStyle=TKC.rail;lw(.14,.6);ctx.stroke(o.rail);
@@ -1085,7 +1086,7 @@ function drawWorld(dt){
       ctx.strokeStyle='#e6cfa0';lw(.12,.5);ctx.stroke(o.hand);
       ctx.strokeStyle='#2b2b30';lw(.17,.9);ctx.stroke(o.rail);
     }
-    drawBU(o);
+    if(!INV)drawBU(o);
     if(o.ch){ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(o.ch);ctx.setLineDash([]);} // chaîne du lift
     if(k)ctx.restore();
   }

@@ -37,8 +37,9 @@ function body(req) {
   });
 }
 // Proposition : validation, texte normalisé, diff avec le fichier actuel.
-function propose(id, game) {
-  const v = S.validate(game), cur = readGame(id);
+// trainMax : places d'attente des trains calculées par le moteur dans l'éditeur (TRAIN_MAX, issue #32), entier de 1 à 8 ; sinon borne générale du schéma.
+function propose(id, game, trainMax) {
+  const v = S.validate(game, { trainMax: Number.isInteger(trainMax) ? trainMax : undefined }), cur = readGame(id);
   if (v.errors.length) return { ok: false, errors: v.errors, warnings: v.warnings };
   const text = S.text(game);
   return { ok: true, warnings: v.warnings, exists: cur.exists, before: cur.text, after: text, same: cur.text === text, diff: S.diff(cur.text, text) };
@@ -62,9 +63,9 @@ const server = http.createServer(async (req, res) => {
       if (!checkSite(m[2])) return send(res, 404, { error: 'attraction inconnue' });
       const id = m[2];
       if (m[1] === 'game' && req.method === 'GET') return send(res, 200, readGame(id));
-      if (m[1] === 'diff' && req.method === 'POST') { const b = await body(req); return send(res, 200, propose(id, b.game)); }
+      if (m[1] === 'diff' && req.method === 'POST') { const b = await body(req); return send(res, 200, propose(id, b.game, b.trainMax)); }
       if (m[1] === 'game' && req.method === 'PUT') {
-        const b = await body(req), r = propose(id, b.game);
+        const b = await body(req), r = propose(id, b.game, b.trainMax);
         if (!r.ok) return send(res, 422, r);
         const tmp = gamePath(id) + '.tmp-' + process.pid;
         fs.writeFileSync(tmp, r.after, { mode: 0o644 }); fs.renameSync(tmp, gamePath(id)); // écriture atomique, seul fichier écrit par l'éditeur

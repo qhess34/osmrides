@@ -17,7 +17,7 @@
     open(L.some(s => s.id === s0) ? s0 : L[0].id);
   }
   async function open(id) {
-    ready = false; sel = null; adding = null; site = id; $('site').value = id; setName(''); siteUndo = null;
+    ready = false; sel = null; adding = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
     $('file').textContent = 'sites/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
@@ -32,7 +32,8 @@
       st.textContent = 'header,#side,#log,#tabs,#fsBar,#hint,#cams{display:none!important}#view{min-height:0!important}';
       W.document.head.appendChild(st); W.dispatchEvent(new W.Event('resize'));
       E("act('speed',0);synOn=false"); // simulation figée : seul le dessin tourne ; synoptique masqué (choix du joueur non modifié)
-      hook(); ready = true; panel(); window.ED.ready = true;
+      if (keep) { const k = keep; keep = null; E('cam.g=null;cam.follow=-1;cam.key="";0'); const c = E('cam'); c.x = k.x; c.z = k.z; c.s = k.s; } // rechargement du jeu en cadre (GAME.site) : la vue de l'éditeur est gardée (issue #32)
+      hook(); ready = true; panel(); $('side').scrollTop = sideTop; window.ED.ready = true;
     };
     wait();
   });
@@ -208,10 +209,13 @@
   // ── paramètres de l'attraction (lot 3, D9) : GAME.site = surcharges partielles de SITE (liste blanche, editor/schema.js) ──
   // Le moteur fusionne GAME.site dans SITE au chargement (engine/core.js) : toute modification recharge le jeu en cadre ; le brouillon complet (barrières, salle, zone…)
   // voyage dans window.name du cadre (`t2z-draft:<JSON>`, lu seulement avec `?editeur=`), donc rien de non enregistré n'est perdu.
-  let siteUndo = null, rt = 0;
+  let siteUndo = null, rt = 0, keep = null, sideTop = 0;
   const setName = v => { try { fr.contentWindow.name = v; } catch (e) { } }; // window.name du cadre : survit à la navigation suivante (même origine)
-  const reloadPreview = () => { ready = false; window.ED.ready = false; sel = null; adding = null; clearTimeout(rt); rt = setTimeout(() => { setName('t2z-draft:' + JSON.stringify(draft())); fr.src = '/jeu.html?site=' + site + '&mode=sandbox&editeur=' + Date.now(); }, 120); };
+  const reloadPreview = () => { try { const c = E('cam'); keep = { x: c.x, z: c.z, s: c.s }; } catch (e) { } sideTop = $('side').scrollTop; ready = false; window.ED.ready = false; sel = null; adding = null; clearTimeout(rt); rt = setTimeout(() => { setName('t2z-draft:' + JSON.stringify(draft())); fr.src = '/jeu.html?site=' + site + '&mode=sandbox&editeur=' + Date.now(); }, 120); };
   const SB = () => E('SITE_BASE'), SKIND = () => E('SITE.kind');
+  // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/state.js : gare, voies de garage, frein avant gare, frein final, freins de bloc), 8 au plus (editor/schema.js)
+  const tMax = () => { let m = S.SL.trains[1]; try { m = Math.min(m, E('TRAIN_MAX')); } catch (e) { } return m; };
+  function tPlaces() { let t = ''; try { const g = E('LANES.reduce((n,l)=>n+l.cap,0)'), z = E('TRAIN_SPOTS.map(p=>zName(p.z))'); t = `Au plus ${tMax()} trains : un par place où un train peut attendre (1 en gare, ${g} au garage${z.length ? ', ' + z.length + ' sur les zones de freinage : ' + z.join(', ') : ''}${E('TRAIN_MAX') > S.SL.trains[1] ? ' ; ' + S.SL.trains[1] + ' au plus dans l\'éditeur' : ''}). Les trains au-delà du garage partent arrêtés sur ces zones.`; } catch (e) { } return esc(t); }
   const pth = (o, p) => p.reduce((a, k) => a == null ? undefined : a[k], o);
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function siteChange(fn) { siteUndo = JSON.stringify(draft()); const M = GM(); if (!M.site) M.site = {}; fn(M.site); prune(M); reloadPreview(); }
@@ -249,9 +253,9 @@
     h.push('<h3>Wagons</h3>', ...SF.car.map(f => fieldHTML(f, kind)));
     const c = E('({len:CAR,n:NCARS})'), tl = c.len * c.n; h.push(`<p class="note${tl > S.SL.trainLen ? ' err' : ''}">Train : ${tl.toFixed(1).replace('.', ',')} m (${S.SL.trainLen} m au plus, ESTIMÉ). Les longueurs de wagon de SITE sont souvent ESTIMÉES (voir le commentaire de <code>sites/'+site+'.js</code>).</p>`);
     // trains
-    const T = E('SITE.trains'), tm = ov.trains !== undefined;
-    h.push(`<h3>Trains (${T.length})</h3><div class="fld${tm ? ' mod' : ''}" style="display:block">` + T.map((t, i) => `<div class="trow" data-i="${i}"><input data-tf="name" value="${esc(t.name)}" title="Nom" style="width:96px"><input data-tf="col" type="color" value="${t.col}" title="Couleur"><input data-tf="col2" type="color" value="${t.col2}" title="Seconde couleur"><input data-tf="wear" type="number" min="0" max="100" step="1" value="${t.wear}" title="Usure (0 à 100)" style="width:48px"><input data-tf="lane" type="number" min="1" max="8" step="1" value="${t.lane || ''}" placeholder="voie" title="Voie de garage au départ (vide : automatique ; le premier train est à quai)" style="width:48px"><button data-tdel="${i}" ${T.length > 1 ? '' : 'disabled'} title="Retirer ce train">x</button></div>`).join('')
-      + `<div class="row"><button id="bTAdd" ${T.length < S.SL.trains[1] ? '' : 'disabled'}>Ajouter un train</button><button data-rev="trains" ${tm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div><span class="orig">origine : ${base.trains.length} train(s) ; couleur 1, couleur 2, usure, voie de garage. Le premier train est à quai ; chaque train garé a besoin d'une place au garage.</span></div>`);
+    const T = E('SITE.trains'), tm = ov.trains !== undefined, tmax = tMax(), full = T.length >= tmax;
+    h.push(`<h3>Trains (${T.length})</h3><div class="fld${tm ? ' mod' : ''}" style="display:block">` + T.map((t, i) => `<div class="trow" data-i="${i}"><input data-tf="name" value="${esc(t.name)}" title="Nom" style="width:96px"><input data-tf="col" type="color" value="${t.col}" title="Couleur"><input data-tf="col2" type="color" value="${t.col2}" title="Seconde couleur"><input data-tf="wear" type="number" min="0" max="100" step="1" value="${t.wear}" title="Usure (0 à 100)" style="width:48px"><input data-tf="lane" type="number" min="1" max="${Math.max(1, E('LANES.length'))}" step="1" value="${t.lane || ''}" placeholder="voie" title="Voie de garage au départ (vide : automatique ; le premier train est à quai)" style="width:48px"><button data-tdel="${i}" ${T.length > 1 ? '' : 'disabled'} title="Retirer ce train">x</button></div>`).join('')
+      + `<div class="row"><button id="bTAdd" ${full ? 'disabled' : ''}>Ajouter un train</button><button data-rev="trains" ${tm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div><span class="orig">origine : ${base.trains.length} train(s) ; couleur 1, couleur 2, usure, voie de garage. Le premier train est à quai ; chaque train garé a besoin d'une place au garage.</span><p class="note${full ? ' warn' : ''}">${tPlaces()}</p></div>`);
     // couleurs de voie
     if (kind === 'inverted' || kind === 'steel') { const K = E('TKC'), bt = base.track || {}; h.push('<h3>Couleurs de la voie</h3>', ...[['spine', 'Poutre'], ['rail', 'Rails'], ['support', 'Supports']].map(([f, l]) => colorHTML(['track', f], l, K[f], bt[f], pth(ov, ['track', f]) !== undefined))); }
     if (kind === 'bob') { const K = E('TRO'), bt = base.trough || {}; h.push('<h3>Gouttière du bobsleigh</h3>', ...[['lo', 'Fond (bas)', 1], ['hi', 'Fond (haut)', 1], ['edge', 'Bord', 0], ['deck', 'Tablier', 0], ['rim', 'Rebord', 0]].map(([f, l, r]) => colorHTML(['trough', f], l, K[f], bt[f], pth(ov, ['trough', f]) !== undefined, r)));
@@ -268,12 +272,17 @@
     });
     for (const el of B.querySelectorAll('[data-rev]')) el.onclick = () => { const p = el.dataset.rev.split('.'); siteChange(s => delSite(s, p)); };
     const trains = () => JSON.parse(JSON.stringify(E('SITE.trains')));
-    const putTrains = A => siteChange(s => { if (same(A, SB().trains)) delete s.trains; else s.trains = A; });
+    const putTrains = A => { // couleurs, noms, usure : appliqués à chaud au jeu en cadre ; nombre de trains ou voie de garage : jeu en cadre rechargé (vue gardée)
+      const cur = trains(), hot = A.length === cur.length && A.every((t, i) => (t.lane || null) === (cur[i].lane || null));
+      if (!hot) return siteChange(s => { if (same(A, SB().trains)) delete s.trains; else s.trains = A; });
+      siteUndo = JSON.stringify(draft()); const M = GM(); if (!M.site) M.site = {}; if (same(A, SB().trains)) delete M.site.trains; else M.site.trains = A; prune(M);
+      E('SITE.trains=' + JSON.stringify(A) + ';SITE.trains.forEach((c,i)=>{const t=trains[i];if(t){t.name=c.name;t.col=c.col;t.col2=c.col2;t.wear=c.wear;}});0');
+      panel(); };
     for (const el of B.querySelectorAll('.trow [data-tf]')) el.addEventListener('change', () => { const A = trains(), i = +el.closest('.trow').dataset.i, f = el.dataset.tf; let v = el.value;
       if (f === 'wear') v = clamp(+v || 0, 0, 100); else if (f === 'lane') { if (v === '') { delete A[i].lane; return putTrains(A); } v = Math.round(+v); }
       A[i][f] = v; putTrains(A); });
     for (const el of B.querySelectorAll('[data-tdel]')) el.onclick = () => { const A = trains(); A.splice(+el.dataset.tdel, 1); putTrains(A); };
-    const ba = $('bTAdd'); if (ba) ba.onclick = () => { const A = trains(), l = A[A.length - 1], c = Object.assign({}, l, { name: 'Train ' + (A.length + 1), wear: 30 }); delete c.lane; A.push(c); putTrains(A); };
+    const ba = $('bTAdd'); if (ba) ba.onclick = () => { if (trains().length >= tMax()) { panel(); return; } const A = trains(), l = A[A.length - 1], c = Object.assign({}, l, { name: 'Train ' + (A.length + 1), wear: 30 }); delete c.lane; A.push(c); putTrains(A); };
   }
 
   // ── panneau ──
@@ -354,7 +363,7 @@
   }
   function focus(x, z) { E('cam.g=null;cam.follow=-1;cam.key="";0'); const c = E('cam'); c.x = x; c.z = z; if (c.s < 8) c.s = 12; }
   function status() {
-    const d = draft(), v = S.validate(d), t = S.text(d), dirty = orig.exists ? t !== orig.text : Object.keys(d).length > 0;
+    const d = draft(), v = S.validate(d, { trainMax: tMax() }), t = S.text(d), dirty = orig.exists ? t !== orig.text : Object.keys(d).length > 0;
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
     const orph = Object.keys(d.barriers || {}).filter(k => !new Set(gates().map(g => g.key)).has(k)).length;
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
@@ -366,7 +375,7 @@
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {
     if (!ready) return;
-    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g }) });
+    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: tMax() }) });
     $('mFile').textContent = 'sites/' + site + '.game.js'; $('modal').classList.add('on');
     $('mBefore').innerHTML = '<b>Avant</b><br>' + (orig.exists ? esc(summary(orig.game)) : 'fichier absent');
     $('mAfter').innerHTML = '<b>Après</b><br>' + esc(summary(g));
@@ -376,7 +385,7 @@
     $('bSave').disabled = r.same;
   }
   async function save() {
-    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft() }) });
+    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft(), trainMax: tMax() }) });
     if (!r.written) { $('mMsg').innerHTML = '<span class="err">Échec : ' + esc((r.errors || [r.error]).join(' ; ')) + '</span>'; return; }
     orig = r; $('mMsg').textContent = 'Enregistré : ' + r.written + '. Rien n\'est envoyé à Git : relire, puis committer soi-même.'; $('bSave').disabled = true;
     $('file').textContent = r.written + ' : présent'; window.ED.saved = (window.ED.saved || 0) + 1; status();

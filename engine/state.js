@@ -14,10 +14,19 @@ function mkTrain(i,name,col,col2,wear,st){
   return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
     depReq:false,toPre:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0,rc:new Array(NCARS).fill(0),rcT:0}; // sécurités : rc[k] = ouverture du wagon k (0 verrouillées … 1 ouvertes, animée) ; rcT = wagons à garder ouverts (bits) après le verrouillage, jusqu'au passage d'un opérateur
 }
+/* Places d'attente des trains au départ (issue #32) : la gare (train 1), les voies de garage (cap), puis, sur le circuit, le frein avant gare (Pre), le frein final
+   (Fin, S_HOLD) et les freins de bloc du dernier au premier. TRAIN_MAX = nombre de ces places : SITE.trains (ou GAME.site.trains) est ramené à TRAIN_MAX
+   (l'éditeur refuse au-delà, editor/schema.js validate(g, {trainMax})). Les tronçons OSM waiting / brake_run / moving / block_brake donnent ces zones. */
+const TRAIN_SPOTS=[].concat(PSB?[{s:S_PSB,z:'Pre'}]:[],[{s:S_HOLD,z:'Fin'}],BLK.map((b,i)=>({s:b,z:'B'+(i+1),i})).reverse());
+const TRAIN_MAX=1+LANES.reduce((n,l)=>n+(l.cap||1),0)+TRAIN_SPOTS.length;
+if(SITE.trains.length>TRAIN_MAX){console.warn('SITE.trains : '+SITE.trains.length+' trains pour '+TRAIN_MAX+' places d\'attente, les suivants sont ignorés');SITE.trains=SITE.trains.slice(0,TRAIN_MAX);}
 const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
-// Trains au garage au départ : voie SITE.trains[i].lane (1…n) ou première voie qui a de la place ; rangés depuis la butée
-{const n=LANES.map(()=>0);trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,j=c?c-1:LANES.findIndex((l,k)=>n[k]<l.cap);
-  if(j<0||n[j]>=LANES[j].cap)throw new Error('SITE.yard : pas de place au garage pour '+t.name);t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;});}
+// Trains au garage au départ : voie SITE.trains[i].lane (1…n) si elle a de la place, sinon première voie qui en a ; garage plein : places du circuit (TRAIN_SPOTS)
+{const n=LANES.map(()=>0);let k=0;trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,free=j=>j>=0&&j<LANES.length&&n[j]<(LANES[j].cap||1);
+  const j=free(c-1)?c-1:LANES.findIndex((l,q)=>free(q));
+  if(j>=0){t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;return;}
+  const P=TRAIN_SPOTS[k++];t.st='run';t.s=P.s;t.v=0;t.lane=0;t.g=0; // arrêté à son point de freinage, freins serrés
+  if(P.z==='Fin'){t.inBrake=true;t.hold=1;}else if(P.z!=='Pre'){t.blk=true;if(BDRV[P.i])t.bst=P.i+1;}});}
 const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){

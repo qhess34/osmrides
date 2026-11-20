@@ -47,7 +47,8 @@
 
   const num = (v, a, b) => typeof v === 'number' && isFinite(v) && v >= a && v <= b;
   // Renvoie {errors:[…], warnings:[…]} ; aucune écriture si errors n'est pas vide.
-  function validate(g) {
+  // ctx.trainMax (facultatif) : nombre de places où un train peut attendre sur l'attraction (TRAIN_MAX du moteur, issue #32) ; borne site.trains en plus de SL.trains.
+  function validate(g, ctx) {
     const E = [], W = [];
     if (!g || typeof g !== 'object' || Array.isArray(g)) return { errors: ['GAME doit être un objet'], warnings: W };
     for (const k of Object.keys(g)) if (!KNOWN.includes(k)) W.push('clé inconnue de cet éditeur, conservée sans modification : ' + k);
@@ -124,11 +125,11 @@
         if (!num(B.depth, LIM.depth[0], LIM.depth[1])) E.push('board.depth : profondeur des travées de ' + LIM.depth[0] + ' à ' + LIM.depth[1] + ' m');
       }
     }
-    if ('site' in g) validateSite(g.site, E, W);
+    if ('site' in g) validateSite(g.site, E, W, ctx || {});
     return { errors: E, warnings: W };
   }
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
-  function validateSite(T, E, W) {
+  function validateSite(T, E, W, ctx) {
     if (!T || typeof T !== 'object' || Array.isArray(T)) { E.push('site : objet attendu'); return; }
     const isInt = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
     for (const k of Object.keys(T)) if (!(k in SITE_KEYS)) E.push('site.' + k + ' : clé refusée (autorisées : ' + Object.keys(SITE_KEYS).join(', ') + ')');
@@ -147,7 +148,8 @@
     if (T.car && typeof T.car === 'object' && num(T.car.len, 0, 1e3) && isInt(T.car.n, 1, 1e3) && T.car.len * T.car.n > SL.trainLen) E.push('site.car : train trop long (len x n = ' + Math.round(T.car.len * T.car.n * 10) / 10 + ' m, ' + SL.trainLen + ' m au plus)');
     if ('trains' in T) {
       const A = T.trains;
-      if (!Array.isArray(A) || A.length < SL.trains[0] || A.length > SL.trains[1]) E.push('site.trains : de ' + SL.trains[0] + ' à ' + SL.trains[1] + ' trains');
+      const tm = Number.isInteger(ctx.trainMax) && ctx.trainMax >= SL.trains[0] ? Math.min(SL.trains[1], ctx.trainMax) : SL.trains[1];
+      if (!Array.isArray(A) || A.length < SL.trains[0] || A.length > tm) E.push('site.trains : de ' + SL.trains[0] + ' à ' + tm + ' trains' + (tm < SL.trains[1] ? ' (un par place où un train peut attendre : gare, voies de garage, zones de freinage)' : ''));
       else A.forEach((c, i) => {
         const p = 'site.trains[' + i + ']';
         if (!c || typeof c !== 'object' || Array.isArray(c)) { E.push(p + ' : objet attendu'); return; }
