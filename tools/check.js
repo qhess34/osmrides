@@ -372,18 +372,25 @@ const root = path.resolve(__dirname, '..');
       let viol = 0; const prev = new Map(), mon = () => { for (const v of G.queue) { if (v.mode !== 'q') continue; const o = prev.get(v), dl = v.e.len - v.r;
           if (o) for (const x of o.e.bx) if (!x.b.open && o.dl < x.d - 1e-6 && (v.e !== o.e || dl > x.d + 1e-6)) viol++;
           prev.set(v, { e: v.e, dl }); } };
-      const run = (n, f) => { for (let i = 0; i < n; i++) { step(.05); mon(); if (f) f(); } };
+      // overlapQ devant une barrière fermée (issue #40) : visiteurs de file, arrivants arrêtés et évacués arrêtés, à moins de QPW (même niveau), relevé toutes les 20 itérations
+      let ovB = 0, ovBn = 0; const ovBEx = [], ovb = () => { const W = G.queue.filter(v => v.mode === 'q' || !v.mv).map(v => [v.x, v.z, v.lv | 0, v.mode]);
+          for (const k of G.walkers) if (k.kind === 'evac' && k.bk) W.push([k.x, k.z, 0, 'evac']); ovBn = Math.max(ovBn, W.length);
+          for (let a = 0; a < W.length; a++) for (let c = a + 1; c < W.length; c++) if (W[a][2] === W[c][2] && Math.hypot(W[a][0] - W[c][0], W[a][1] - W[c][1]) < QPW) { ovB++; if (ovBEx.length < 3) ovBEx.push([+W[a][0].toFixed(1), +W[a][1].toFixed(1), W[a][3] + '/' + W[c][3], it7]); } };
+      let it7 = 0; const run = (n, f) => { for (let i = 0; i < n; i++) { step(.05); mon(); if (f) f(); if (++it7 % 20 === 0) ovb(); } };
       const B0 = JSON.parse(JSON.stringify(GM.barriers || {}));
       set({}); run(4000); // file remplie, sans barrière
       const e = SEG_IN, d = Math.min(e.len * .5, 12);
       set({ b1: across(e, d) }); run(1200);
       ck('blocked', viol === 0); ck('waitBefore', G.queue.some(v => v.mode === 'q' && v.e === e && e.len - v.r < d && e.len - v.r > d - 1.5));
-      set({ b1: across(e, .1) }); const inQ = new Set(G.queue.filter(v => v.mode === 'q')); let ent = 0; run(1200, () => { for (const v of G.queue) if (v.mode === 'q' && !inQ.has(v)) { ent++; inQ.add(v); } });
+      set({ b1: across(e, .1) }); const inQ = new Set(G.queue.filter(v => v.mode === 'q')); let ent = 0; run(4000, () => { for (const v of G.queue) if (v.mode === 'q' && !inQ.has(v)) { ent++; inQ.add(v); } });
       ck('entryShut', ent === 0 && viol === 0 && G.queue.some(v => v.mode === 'app'));
       if (LOOPS.length) { const l = LOOPS[0];
         set({ b1: across(l.short, Math.min(.5, l.short.len / 2)) }); ck('otherWay', l.r === l.loop);
         set({ b1: across(l.short, Math.min(.5, l.short.len / 2)), b2: across(l.loop, Math.min(.5, l.loop.len / 2)) }); ck('forkShortest', l.r === l.short); // aucun trajet ouvert : le plus court, arrêt devant la barrière
         run(1200); ck('forkBlocked', viol === 0); }
+      // barrières de l'attraction (GAME.barriers) toutes fermées 200 s de jeu, puis rouvertes : arrivants en file devant elles, repartis ensuite
+      set(B0); for (const g of BARS) g.open = false; qRoute(); run(4000); const nW = G.queue.filter(v => v.mode === 'app' && !v.mv).length;
+      for (let i = 0; i < BARS.length; i++) toggleBar(i); run(400); ck('lineGo', !nW || G.queue.some(v => v.mode === 'q' || v.mv));
       // évacuation : barrière fermée au milieu du premier tronçon, file remplie au-delà
       set({}); run(2000); set({ b1: across(e, d) }); const qd = G.queue.filter(v => v.mode === 'q' && e.len - v.r > d + .5 || v.mode === 'q' && v.e !== e).length;
       act('evac'); let adv = 0, cross = 0; const wp = new Map(), b = BARS[0];
@@ -392,7 +399,7 @@ const root = path.resolve(__dirname, '..');
       const held = G.walkers.filter(k => k.kind === 'evac' && k.bk).length;
       ck('evacHeld' + (qd ? '' : '(vide)'), cross === 0 && (held > 0 || !qd)); ck('evacNoAdvance', adv === 0);
       toggleBar(0); run(1200); ck('evacResume', !G.walkers.some(k => k.kind === 'evac' && k.bk));
-      set(B0); return R.join(' ');
+      set(B0); ck('overlapQ=' + ovB + (ovB ? ' ex ' + JSON.stringify(ovBEx) : '') + ' (max ' + ovBn + ')', ovB === 0); return R.join(' ');
     });
     man += ' | bars: ' + bt; await p7.close();
   }
