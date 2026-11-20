@@ -44,31 +44,25 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-19 (soir) par la session de pilotage n° 5._
+_Mis à jour le 2026-11-20 (soir) par la session de pilotage n° 6._
 
-**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** (19/11) : ne rien éditer hors OSM qui puisse y être ; voir `docs/OSM-LIMITES.md` (#30). Lire `docs/ROADMAP.md`, `docs/ARCHITECTURE.md` (D1–D9).
+**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** ; mais les **barrières de file ne viennent plus d'OSM** : posées à la main dans l'éditeur (#37). Lire `docs/ROADMAP.md`, `docs/ARCHITECTURE.md` (D1–D10), `docs/manoeuvres.md` (section « Modèle »).
 
-**Publié sur `main` pendant la session n° 5 (19/11)** :
-- #24 éditeur : fin de file visible et aimant des sommets de la zone d'attente ; zone qui se remplit (réserve `BRES`, pas 2,4 m à la demande du propriétaire, `slot.res`).
-- #26 évacuation : passagers assis d'un train à quai descendus par la sortie si sécurités ouvertes.
-- #27 éditeur : profondeur des travées (`GAME.board.depth`, D8).
-- #28 file : plus aucun chevauchement (`QPW`, `segSpots`, `qBehind`, `qBlocked`, mesure `overlapQ`).
-- #29 OzIris : visiteurs visibles sur l'allée w1580105935 (`inCovQ`).
-- #25 renommage en **OSMrides** (dépôt `qhess34/osmrides`, Pages https://qhess34.github.io/osmrides/) ; clés `t2z.*` gardées volontairement (sauvegardes).
-- Logo `img/logo/` (carte pliée + montagnes russes de profil, choix du propriétaire), icônes par `tools/make_icons.js`, logo sur l'écran titre.
-- #30 inventaire `docs/OSM-LIMITES.md` (analyse seule).
-- #31 lot 3 fait : `GAME.site` (D9), section « Attraction » de l'éditeur (boutons « Origine », pas de pictogramme).
+**Publié sur `main` pendant la session n° 6 (20/11)** :
+- #32 éditeur : plafond de trains (`TRAIN_MAX`), réglages des trains à chaud, roues du coaster inversé sous la poutre.
+- #33 importeur : `waiting` / `brake_run` / `moving` = zones d'attente qui freinent, rôle déduit de la position (« Frein final » = simple nom de la dernière zone avant la gare) ; quais déduits de la gare ; salle de contrôle OSM ; `ele` ; `roller_coaster:element` ; voies décoratives (`OSM.deco`) ; réimport des 4 attractions (Zeus complet, garage du Hourra depuis OSM).
+- #36 zones toutes équivalentes, garage branchable sur n'importe quelle zone ; #38 aiguillage en amont d'un frein de bloc à marche arrière (essai `tools/yard-zone.js`).
+- #34 puis #37 : barrières posées à la main (`GAME.barriers` `b<n>`), ouvertes / fermées une par une, une barrière fermée bloque tout le monde (évacués compris) ; file déduite d'OSM pour les 4 attractions (Zeus : raccourci w937019288).
+- #39 éditeur : prolongement de l'entrée de file (`GAME.queueEntry`), largeur = chemin de file, aimant des barrières sur les bords d'allée (angle libre).
+- #40 visiteurs en file devant une barrière fermée ; #41 voyant d'évacuation, barrière bloquante signalée, boutons du pupitre sans pictogramme ; #42 tunnels en galerie le long de la voie ; #43 Zeus : voie de maintenance qui cachait le train, gare redressée, hangar translucide ; #44 quai : arrivants qui respectent l'ordre de la zone d'attente.
 
-**Issues ouvertes** : #3 (vrai téléphone), #4 (vignettes / tutos à refaire, dont le nouveau nom et le logo), #5, #18 ; #19 à #29 et #31 faites, à valider puis fermer par le propriétaire ; **#30 : 8 questions au propriétaire en attente** (freins `waiting` → `brake_run`, garage du Hourra absent d'OSM, barrières de Zeus, quais `railway=platform`, salle de contrôle de Zeus depuis OSM, `roller_coaster:element`, périmètre des lots 4/5, réimport complet de Zeus).
+**Issues ouvertes** : #5 (valeurs estimées, `ele`), #30, #31 et #32 à #44 faites et à valider / fermer par le propriétaire ; #35 (éditeur, plus tard : relier une voie décorative par un `moving` proche, lot 8).
 
-**Prochaine tâche** : attendre les réponses à #30 avant tout développement des lots 4 et 5 (lot 5 peut-être presque automatique : files `oneway=yes`, barrières de même `ref` aux pointes). Sinon #4 (vignettes / tutos) ou corrections demandées.
-
-**Décisions du propriétaire (19/11)** : OSM reste la référence ; nom OSMrides ; logo en profil ; réserve de la zone d'attente 4× plus espacée (2,4 m) ; « profondeur des portillons » = profondeur des travées.
+**Questions en attente du propriétaire** : hangar du garage de Zeus translucide ou toit opaque effaçable (#43) ? fin de file de Goudurix prolongée jusqu'à l'entrée du quai OK (#34) ? bug « plus personne ne revient après une évacuation » (#41) non reproduit : attendre son retour avec le nouveau voyant. Pitch / roll dans l'éditeur (depuis `roller_coaster:element`) : pas encore d'issue.
 
 **Points de vigilance** :
-- Le remote git local pointe encore sur `qhess34/t2z` (redirection, poussées OK) ; les outils GitHub acceptent `qhess34/t2z`.
-- Le propriétaire publie lui-même des `sites/*.game.js` sur `main` : toujours `git fetch origin main` et fusionner avant de pousser ; ne jamais réécrire ses réglages.
-- Quota Opus : les agents Opus ont été coupés par la limite de 5 h (reprise par SendMessage après la remise à zéro) ; lot 3 fait avec Sonnet sans problème.
-- Deux agents en même temps : le second en worktree (`isolation: worktree`), le pilote fusionne puis supprime le worktree. `.claude/worktrees/` exclu via `.git/info/exclude` (local).
-- Tests en parallèle : échecs de clic sous la charge, relancer seul.
-- Docker utilisable dans les sessions cloud : `dockerd &` puis `docker compose up -d`. github.io et le wiki OSM inaccessibles d'ici ; `api.openstreetmap.org` fonctionne.
+- **Quota Opus** : les agents `moteur` ont été coupés deux fois par la limite de 5 h ; les reprendre par SendMessage après la remise à zéro (heure donnée dans la notification).
+- **Un seul `editor-test` à la fois** : il retire puis restaure les `sites/*.game.js` du propriétaire (un passage en parallèle a effacé `goudurix.game.js`, restauré). Ne jamais commiter / pousser pendant qu'il tourne ; vérifier `git diff origin/main -- 'sites/*.game.js'` avant de publier.
+- Agents en parallèle : worktree pour le second ; conflits fréquents sur `AGENTS.md` et le journal de `docs/NOUVELLE-ATTRACTION.md` (très longues lignes : fusion caractère par caractère depuis la version de base, script dans le scratchpad de la session n° 6, à refaire si besoin).
+- Le propriétaire publie lui-même des `game.js` sur `main` : toujours `git fetch origin main` et fusionner avant de pousser.
+- Tests en parallèle : échecs de clic sous la charge, relancer seul. Docker utilisable (`dockerd &`). `api.openstreetmap.org` fonctionne.
