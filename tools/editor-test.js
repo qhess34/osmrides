@@ -87,8 +87,15 @@ const ed = (page, s) => page.evaluate(s);
         const g1 = await ed(page, `ED.draft().barriers.b1`), e1 = await ed(page, `ED.E('edgeSnap(${g1.x},${g1.z},.02)')`);
         ok(e1 && e1.d < .02, `aimant : pivot glissé à 6 px du bord, collé au bord (${g1.x}, ${g1.z})`);
         const A1 = await ed(page, `(()=>{const g=ED.gates().find(g=>g.key==='b1').g;return g.a;})()`), op = e1.o, pa = await ed(page, `ED.toScr(${A1[0]},${A1[1]})`), po = await ed(page, `ED.toScr(${op[0]},${op[1]})`);
-        await drag(page, pa, [po[0] + 5, po[1] - 4]); const g2 = await ed(page, `ED.draft().barriers.b1`), t2 = g2.ang * Math.PI / 180, end = [g2.x + Math.cos(t2) * g2.len, g2.z + Math.sin(t2) * g2.len];
-        ok(Math.hypot(end[0] - op[0], end[1] - op[1]) < .03, `aimant : bout du vantail collé au bord opposé, barrière en travers (${g2.len} m, allée ${e1.w} m)`);
+        // barrière à 60° de l'allée : bout amené à 5 px du bord opposé → angle du curseur gardé, longueur ajustée, bout sur le bord opposé (jamais de perpendiculaire imposée)
+        const nn = [(op[0] - g1.x) / e1.w, (op[1] - g1.z) / e1.w], tt = [-nn[1], nn[0]], u60 = [nn[0] * Math.sin(Math.PI / 3) + tt[0] * Math.cos(Math.PI / 3), nn[1] * Math.sin(Math.PI / 3) + tt[1] * Math.cos(Math.PI / 3)];
+        const L60 = await ed(page, `ED.E('(()=>{let bL=null,bd=1;for(let L=${e1.w * .8};L<8;L+=.005){const s=edgeSnap(${g1.x}+${u60[0]}*L,${g1.z}+${u60[1]}*L,.5);if(s&&s.d<bd){bd=s.d;bL=L;}if(bL&&s&&s.d>bd+.2)break;}return bL;})()')`), tgt = [g1.x + u60[0] * L60, g1.z + u60[1] * L60], cs = await ed(page, `ED.E('cam.s')`), dropW = [tgt[0] + u60[0] * 5 / cs, tgt[1] + u60[1] * 5 / cs];
+        await drag(page, pa, await ed(page, `ED.toScr(${dropW[0]},${dropW[1]})`)); const g2 = await ed(page, `ED.draft().barriers.b1`), t2 = g2.ang * Math.PI / 180, end = [g2.x + Math.cos(t2) * g2.len, g2.z + Math.sin(t2) * g2.len];
+        const aCur = Math.atan2(dropW[1] - g1.z, dropW[0] - g1.x) * 180 / Math.PI, eS = await ed(page, `ED.E('edgeSnap(${end[0]},${end[1]},.5)')`);
+        ok(Math.abs(((g2.ang - aCur) % 360 + 540) % 360 - 180) < .3 && eS && eS.d < .03 && Math.hypot(end[0] - tgt[0], end[1] - tgt[1]) < .06 && Math.abs(g2.len - L60) < .05,
+          `aimant : barrière à 60° de l'allée, angle gardé (${g2.ang}° / curseur ${aCur.toFixed(1)}°), bout collé au bord opposé (${g2.len} m, croisement à ${L60.toFixed(2)}, à ${eS && eS.d} m du bord, ${Math.hypot(end[0] - tgt[0], end[1] - tgt[1]).toFixed(2)} m de la cible ; allée ${e1.w} m)`);
+        await drag(page, await ed(page, `ED.toScr(${end[0]},${end[1]})`), [po[0] + 3, po[1] - 2]); const g4 = await ed(page, `ED.draft().barriers.b1`), t4 = g4.ang * Math.PI / 180, e4 = [g4.x + Math.cos(t4) * g4.len, g4.z + Math.sin(t4) * g4.len];
+        ok(Math.hypot(e4[0] - op[0], e4[1] - op[1]) < .3 && (await ed(page, `ED.E('edgeSnap(${e4[0]},${e4[1]},.5)')`)).d < .03, `aimant : en travers aussi possible (bout sur le bord opposé, ${g4.ang}°)`);
         await page.keyboard.down('Alt'); const ps2 = await ed(page, `ED.toScr(${g2.x},${g2.z})`); await drag(page, ps2, [ps2[0] + n[0] * 6, ps2[1] + n[1] * 6]); await page.keyboard.up('Alt');
         const g3 = await ed(page, `ED.draft().barriers.b1`), e3 = await ed(page, `ED.E('edgeSnap(${g3.x},${g3.z},1)')`); ok(e3 && e3.d > .1, `Alt maintenue : pivot posé librement (${e3 && e3.d} m du bord)`); }
       await ed(page, `(()=>{const s=ED.E('barPlace(${M1[0]},${M1[1]})'),o=ED.E('GM').barriers.b1;Object.assign(o,{x:s.x,z:s.z,ang:s.ang,len:s.len});ED.E('reGates()');})()`);

@@ -284,10 +284,12 @@ function barPlace(x,z){let bd=6,B=null;for(const e of SEGS)for(let i=1;i<e.P.len
   let nx=-B.tz,nz=B.tx;if((x-B.px)*nx+(z-B.pz)*nz<0){nx=-nx;nz=-nz;}const hw=qwAt(B.px,B.pz)/2;
   return {x:+(B.px+nx*hw).toFixed(2),z:+(B.pz+nz*hw).toFixed(2),ang:+(Math.atan2(-nz,-nx)*180/Math.PI).toFixed(1),len:+(2*hw).toFixed(2),sw:nz*B.tz+nx*B.tx>=0?1:-1};}
 // Aimant des barrières (éditeur, demande du propriétaire 20/11) : point le plus proche, à moins de r m, sur une bordure d'allée de file dessinée (axe des tronçons et de
-// l'entrée, demi-largeur qwAt = largeur OSM ou dessinée) ; o = point en face sur la bordure opposée (barrière exactement en travers de l'allée), d = distance.
+// l'entrée, demi-largeur qwAt = largeur OSM ou dessinée ; bordure = points à une demi-largeur de l'axe, arrondie à l'extérieur des coudes) ; o = point en face sur la bordure
+// opposée, d = distance.
 function edgeSnap(x,z,r){let B=null;const L=SEGS.map(e=>e.P).concat([(QS.link||[]).concat([ENTRY0])]);
   for(const P of L)for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz);if(l<.05)continue;const t=clamp(((x-a[0])*dx+(z-a[1])*dz)/(l*l),0,1),px=a[0]+dx*t,pz=a[1]+dz*t,hw=qwAt(px,pz)/2;
-    for(const sd of [1,-1]){const nx=-dz/l*sd,nz=dx/l*sd,ex=px+nx*hw,ez=pz+nz*hw,d=Math.hypot(ex-x,ez-z);if(d<r&&(!B||d<B.d))B={d:+d.toFixed(3),p:[+ex.toFixed(2),+ez.toFixed(2)],o:[+(px-nx*hw).toFixed(2),+(pz-nz*hw).toFixed(2)],w:+(2*hw).toFixed(2)};}}
+    let dc=Math.hypot(x-px,z-pz),nx,nz;if(dc>1e-4){nx=(x-px)/dc;nz=(z-pz)/dc;}else{nx=-dz/l;nz=dx/l;dc=0;}const d=Math.abs(dc-hw);
+    if(d<r&&(!B||d<B.d))B={d:+d.toFixed(3),p:[+(px+nx*hw).toFixed(2),+(pz+nz*hw).toFixed(2)],o:[+(px-nx*hw).toFixed(2),+(pz-nz*hw).toFixed(2)],w:+(2*hw).toFixed(2)};}
   return B;}
 let QOK=0;
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer

@@ -72,11 +72,16 @@
     for (const [t, k] of [[V.end, 'end'], [V.edges[0], 'edge'], [V.edges[1], 'edge']]) { const d = Math.hypot(q[0] - t[0], q[1] - t[1]) * s; if (d < bd) { bd = d; best = { p: [t[0], t[1]], k }; } if (best && best.k === 'end') break; } // le point de fin de file l'emporte sur les bords
     return best; }
 
-  // aimant des barrières (demande du propriétaire, 20/11) : bords des allées de file dessinées (edgeSnap du moteur : largeur OSM ou dessinée), SNAP_PX px écran, Alt = libre ;
-  // bout du vantail (piv donné) : d'abord le point en face du pivot sur le bord opposé (barrière exactement en travers de l'allée), sinon le bord le plus proche
+  // aimant des barrières (demande du propriétaire, 20/11) : bords des allées de file dessinées (edgeSnap du moteur : largeur OSM ou dessinée), SNAP_PX px écran, Alt = libre.
+  // Pivot : collé au bord le plus proche. Bout du vantail (piv donné) : l'angle choisi est GARDÉ (jamais de perpendiculaire imposée) ; seule la longueur s'ajuste pour que
+  // le bout tombe sur le bord (opposé ou autre) que croise la direction pivot → curseur, à moins de SNAP_PX px du curseur.
   function barSnap(q, alt, piv) { if (alt) return null; const r = SNAP_PX / E('cam').s;
-    if (piv) { const s0 = E(`edgeSnap(${piv[0]},${piv[1]},.05)`); if (s0 && Math.hypot(q[0] - s0.o[0], q[1] - s0.o[1]) < r) return { p: s0.o, k: 'bar' }; }
-    const s1 = E(`edgeSnap(${q[0]},${q[1]},${r})`); if (!s1 || (piv && Math.hypot(s1.p[0] - piv[0], s1.p[1] - piv[1]) < .2)) return null; return { p: s1.p, k: 'bar' }; }
+    if (!piv) { const s1 = E(`edgeSnap(${q[0]},${q[1]},${r})`); return s1 ? { p: s1.p, k: 'bar' } : null; }
+    const L0 = Math.hypot(q[0] - piv[0], q[1] - piv[1]); if (L0 < .2) return null; const u = [(q[0] - piv[0]) / L0, (q[1] - piv[1]) / L0];
+    const L = E(`(()=>{const f=L=>{const s=edgeSnap(${piv[0]}+${u[0]}*L,${piv[1]}+${u[1]}*L,.5);return s?s.d:9;},a=Math.max(.2,${L0 - r}),b=${L0 + r},n=60;let bL=null,bd=.3;
+      for(let i=0;i<=n;i++){const L=a+(b-a)*i/n,d=f(L);if(d<bd){bd=d;bL=L;}}if(bL==null)return null;let lo=Math.max(.2,bL-(b-a)/n),hi=bL+(b-a)/n;
+      for(let k=0;k<40;k++){const m1=lo+(hi-lo)/3,m2=hi-(hi-lo)/3;if(f(m1)<f(m2))hi=m2;else lo=m1;}const L=(lo+hi)/2;return f(L)<.02?L:null;})()`); // croisement du rayon avec un bord (distance au bord nulle)
+    return L == null ? null : { p: [piv[0] + u[0] * L, piv[1] + u[1] * L], k: 'bar' }; }
   // ── données éditées ──
   function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; if (g.board && g.board.depth == null) delete g.board; if (g.queueEntry && !(isFinite(g.queueEntry.len) && isFinite(g.queueEntry.ang))) delete g.queueEntry; if (g.site && !Object.keys(g.site).length) delete g.site; return g; }
   // barrières (issue #37) : GAME.barriers = {'b<n>': {x, z, ang, len, open?, sw?}} ; anciennes clés (surcharges, ajouts) lues et converties par le moteur (barSpecs),
@@ -144,7 +149,7 @@
         if (!drag.o0) drag.o0 = JSON.parse(JSON.stringify(ovrOf(g.g)));
         const o = ovrOf(g.g);
         if (drag.m === 'move') { const q = [drag.o0.x + dx, drag.o0.z + dz], sn = barSnap(q, e.altKey); snapped = sn; o.x = sn ? sn.p[0] : R2(q[0]); o.z = sn ? sn.p[1] : R2(q[1]); } // pivot aimanté au bord le plus proche
-        else { const sn = barSnap(p, e.altKey, [o.x, o.z]), q = sn ? sn.p : p; snapped = sn; o.ang = R1(deg(Math.atan2(q[1] - o.z, q[0] - o.x))); o.len = R2(clamp(Math.hypot(q[0] - o.x, q[1] - o.z), .2, 20)); } // poignée A : orientation et longueur, bout aimanté au bord opposé
+        else { const sn = barSnap(p, e.altKey, [o.x, o.z]), q = sn ? sn.p : p; snapped = sn; o.ang = R1(deg(Math.atan2(p[1] - o.z, p[0] - o.x))); o.len = R2(clamp(Math.hypot(q[0] - o.x, q[1] - o.z), .2, 20)); } // poignée A : orientation (celle du curseur, gardée) et longueur, bout aimanté au bord croisé
         E('reGates()');
       } else if (drag.t === 'qe') { const Q = qe(); setQe(Math.hypot(p[0] - Q.o[0], p[1] - Q.o[1]), deg(Math.atan2(p[1] - Q.o[1], p[0] - Q.o[0]))); // aperçu ; appliqué au lâcher (rechargement)
       } else if (drag.t === 'depth') { const D = dep(); setDepth((p[0] - D.u.o[0]) * D.u.r[0] + (p[1] - D.u.o[1]) * D.u.r[1]); // profondeur = distance à la ligne des portillons
@@ -306,7 +311,7 @@
     if (sel.t === 'gate') {
       const g = gates().find(x => x.key === sel.key); if (!g) return '<span class="err">Barrière introuvable.</span>';
       const G = g.g;
-      return `<div><b>Barrière ${esc(g.key)}</b> ${g.from ? '<span class="tag t-est">reprise de ' + esc(g.from) + '</span>' : ''}</div><div class="note">Posée à la main ; dans le jeu, elle s'ouvre et se ferme seule au clic. Trait plein : fermée (A), tirets : ouverte. Fermée, elle bloque les visiteurs qui essaient d'y passer (évacuation comprise). Le pivot se colle au bord de l'allée le plus proche, le bout (poignée A) au bord opposé ; maintenir <b>Alt</b> pour les poser librement.</div>
+      return `<div><b>Barrière ${esc(g.key)}</b> ${g.from ? '<span class="tag t-est">reprise de ' + esc(g.from) + '</span>' : ''}</div><div class="note">Posée à la main ; dans le jeu, elle s'ouvre et se ferme seule au clic. Trait plein : fermée (A), tirets : ouverte. Fermée, elle bloque les visiteurs qui essaient d'y passer (évacuation comprise). Le pivot se colle au bord de l'allée le plus proche, le bout (poignée A) au bord opposé là où il arrive, l'angle choisi étant gardé ; maintenir <b>Alt</b> pour les poser librement.</div>
         <div class="grid" style="margin-top:6px"><span>Pivot x, z (m)</span><span>${inp('x', R2(G.h[0]))} ${inp('z', R2(G.h[1]))}</span>
         <span>Fermée : angle °, long. m</span><span>${inp('ang', R1(G.ang), 1)} ${inp('len', R2(G.len))}</span></div>
         <div class="row"><label><input type="checkbox" id="gOpen" ${G.open0 ? 'checked' : ''}> Ouverte au début de la partie</label></div>
