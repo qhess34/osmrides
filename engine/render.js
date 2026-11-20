@@ -93,7 +93,21 @@ const pipXZ=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j
 // Une voie sans aucun tunnel dans un rocher passe PAR-DESSUS (supports posés sur le rocher) : cas gardé pour un rocher OSM traversé sans tag tunnel.
 const rockExt=t=>{const at=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return ROCKP.find(P=>pipXZ(P,q.x,q.z));},R=at((t[0]+t[1])/2)||at(t[0])||at(t[1]);if(!R)return [t[0],t[1]];
   const inR=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return pipXZ(R,q.x,q.z);};let a=t[0],b=t[1];while(a>t[0]-40&&inR(a-DS))a-=DS;while(b<t[1]+40&&inR(b+DS))b+=DS;return [a,b];};
-const TUNS=(OSM.tunnels||[]).map(t=>rockExt(t)).concat((SITE.tunnels||[]).filter(c=>c.s).map(c=>rockExt(c.s))),inTunS=s=>TUNS.some(t=>s>=t[0]-1&&s<=t[1]+1);
+// Polygones OSM man_made=tunnel (issue #42, propriétaire 20/11 : à Zeus, w1353118256 dessiné en tache brune qui débordait sur les voies voisines) : ils ne servent
+// plus qu'à SITUER le tunnel. Tronçons du circuit dont le tracé est dans le polygone, regroupés en passages continus ; seul le passage le plus bas est couvert, avec ceux
+// à moins de TPOLY_DH = 3 m (ESTIMÉ) au-dessus (une voie plus haute passe par-dessus le tunnel) ; passages de moins de 2 m ignorés. Un passage qui recoupe un tunnel
+// OSM.tunnels ou SITE.tunnels {s} l'étend (réunion), sinon il devient un tunnel de plus, couvert le long de la voie comme les autres (drawTunnel ; eau ou rocher détectés comme pour OSM.tunnels, sinon galerie 'roof' ;
+// SITE.tunnels:[{poly:'w123', under, w}] pour le régler).
+const TPOLY_DH=3,TPOLY=OSM.feats.filter(f=>f.k==='man_made=tunnel'&&f.c&&f.p.length>3).flatMap(f=>{const runs=[];let r=null;
+  for(let i=0;i<N;i++){const q=TR[i].p;if(pipXZ(f.p,q.x,q.z)){if(!r)runs.push(r={i0:i,i1:i,y:q.y});r.i1=i;r.y=Math.min(r.y,q.y);}else r=null;}
+  if(runs.length>1&&runs[0].i0===0&&runs[runs.length-1].i1===N-1){const a=runs.shift(),b=runs[runs.length-1];b.i1=a.i1+N;b.y=Math.min(a.y,b.y);} // passage à cheval sur s = 0
+  const lo=Math.min(...runs.map(r=>r.y));return runs.filter(r=>r.y<=lo+TPOLY_DH&&(r.i1-r.i0)*DS>=2).map(r=>({s:[r.i0*DS,r.i1*DS],id:f.id}));});
+// liste commune des tunnels : [s0, s1, 'roof'?] et réglage SITE.tunnels (cf) ; polygones fondus dans le tunnel qu'ils recoupent
+const TLIST=(function(){const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s&&!c.poly),L=(OSM.tunnels||[]).map((r,ti)=>({r:rockExt(r).concat(r.slice(2)),cf:cfO[ti]||{}})).concat(CF.filter(c=>c.s).map(c=>({r:rockExt(c.s),cf:c})));
+  for(const p of TPOLY){const o=L.find(t=>p.s[0]<=t.r[1]&&p.s[1]>=t.r[0]);if(o){o.r[0]=Math.min(o.r[0],p.s[0]);o.r[1]=Math.max(o.r[1],p.s[1]);}
+    else L.push({r:rockExt(p.s),cf:Object.assign({dflt:'roof'},CF.find(c=>c.poly===p.id))});}
+  return L;})();
+const TUNS=TLIST.map(t=>t.r),inTunS=s=>TUNS.some(t=>s>=t[0]-1&&s<=t[1]+1);
 const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;
 // Bâtiment survolé par la voie (propriétaire, issue #14 : Au Dolmen Gourmand sous le lift de la Trace du Hourra) : quand la voie passe au-dessus de son emprise
 // plus haut que lui partout (hauteur OSM `height`, sinon `building:levels` × 3 m, f.bh de tools/make_site.py ; sinon 7 m ESTIMÉ, 4 m un auvent, 12 m un hôtel),
@@ -290,7 +304,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
       if(k==='highway=footway'&&!c&&!(SITE.noStroll||[]).some(q=>Math.hypot(f.p[0][0]-q[0],f.p[0][1]-q[1])<1.5))stroll(f.p);}
     else if(k==='highway=service'||k==='highway=unclassified'||k==='highway=track')LY.road.push(p);
     else if(k==='barrier=hedge'||k==='natural=tree_row')LY.hedge.push(p);
-    else if(k==='man_made=tunnel'){if(!tunnelP){tunnelP=new Path2D;tunnelC=cen(f.p);}tunnelP.addPath(p);} // plusieurs polygones man_made=tunnel possibles ; étiquette sur le premier
+    else if(k==='man_made=tunnel'){if(!tunnelP){tunnelP=1;tunnelC=cen(f.p);}} // polygone man_made=tunnel : seulement l'étiquette (le premier) ; couverture le long de la voie (TPOLY, drawTunnel, issue #42)
     else if(k.startsWith('building'))addBld(STATION_GROW&&SITE.stationAt&&(c=>Math.hypot(c[0]-SITE.stationAt[0],c[1]-SITE.stationAt[1])<SITE.stationAt[2])(cen(f.p))?STATION_GROW:f.p,{ // gare agrandie à ses quais (STATION_GROW, engine/garage.js)
       col:ROOFS[i%ROOFS.length],h:BLD_H(k,f),canopy:k==='building=roof',un:ROOFB.some(r=>r.p===f.p)});
   });
@@ -411,10 +425,10 @@ const bldA=b=>{const a=b.fade?(b.cvb?Math.min(roofA,hideA):roofA):b.cvb?hideA:1;
 const TUN=(function(){
   const pip=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])c=!c;return c;};
   const fr=i=>{const f=TR[((i%N)+N)%N],g=TR[(((i+1)%N)+N)%N],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(g.p.x-f.p.x,g.p.z-f.p.z)||1;return {x:f.p.x,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:(g.p.x-f.p.x)/tl,tz:(g.p.z-f.p.z)/tl};};
-  const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s); // SITE.tunnels : réglages des tunnels OSM dans l'ordre, puis tunnels ESTIMÉS absents d'OSM ({s:[s0,s1], under, w})
-  return (OSM.tunnels||[]).map((r,ti)=>[rockExt(r).concat(r.slice(2)),cfO[ti]||{}]).concat(CF.filter(c=>c.s).map(c=>[rockExt(c.s),c])).map(([r,cf])=>{ // rockExt : tunnel prolongé jusqu'aux bords du rocher
+  // SITE.tunnels : réglages des tunnels OSM dans l'ordre, puis tunnels ESTIMÉS absents d'OSM ({s:[s0,s1], under, w}), puis polygones man_made=tunnel ({poly}) : TLIST
+  return TLIST.map(({r,cf})=>{ // rockExt : tunnel prolongé jusqu'aux bords du rocher
     const i0=Math.round(r[0]/DS),i1=Math.round(r[1]/DS),w=cf.w||2.1,m=fr(Math.round((i0+i1)/2));
-    const e0=fr(i0),e1=fr(i1),under=cf.under||(ROCKP.some(P=>pipXZ(P,m.x,m.z))?'rock':0)||r[2]||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':'ground'); // r[2]='roof' : galerie couverte au-dessus du sol (OSM layer>0) // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
+    const e0=fr(i0),e1=fr(i1),under=cf.under||(ROCKP.some(P=>pipXZ(P,m.x,m.z))?'rock':0)||r[2]||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':cf.dflt||'ground'); // polygone man_made=tunnel : galerie 'roof' par défaut, hors eau et rocher // r[2]='roof' : galerie couverte au-dessus du sol (OSM layer>0) // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
     const band=(a,b,hw)=>{const P=new Path2D,L1=[],R1=[];for(let i=a;i<=b;i++){const f=fr(i);L1.push([f.x+f.nx*hw,f.z+f.nz*hw]);R1.push([f.x-f.nx*hw,f.z-f.nz*hw]);}
       L1.forEach((q,i)=>i?P.lineTo(q[0],q[1]):P.moveTo(q[0],q[1]));R1.reverse().forEach(q=>P.lineTo(q[0],q[1]));P.closePath();return P;};
     const walls=new Path2D,heads=new Path2D,mouth=[],RAMP=Math.round(6/DS);
@@ -1018,7 +1032,6 @@ function drawWorld(dt){
     ctx.fillStyle=`rgba(12,28,14,${.3*dry})`;
     for(const t of trees)if(vis(t.x-t.r,t.x+t.r*3,t.z-t.r,t.z+t.r*3)){ctx.beginPath();ctx.ellipse(t.x+t.r*1.25,t.z+t.r*.95,t.r*1.05,t.r*.9,.6,0,7);ctx.fill();}
     for(const b of LY.bld){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);ctx.globalAlpha=bldA(b);ctx.fill(b.p);ctx.restore();}
-    if(tunnelP){ctx.save();ctx.translate(2.2,1.7);ctx.fill(tunnelP);ctx.restore();}
     for(const r of ROCKS){ctx.save();ctx.translate(r.h*SHX*.6,r.h*SHZ*.6);ctx.globalAlpha=r.cov?.2+.8*hideA:1;ctx.fill(r.pa);ctx.restore();} // ombre du rocher (relief arrondi : ombre plus courte)
     for(const b of BRIDGES){ctx.save();ctx.translate(b.h*SHX,b.h*SHZ);ctx.strokeStyle=`rgba(12,28,14,${.3*dry})`;ctx.lineWidth=b.w;ctx.stroke(b.deck);ctx.restore();}
     ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;
@@ -1125,7 +1138,6 @@ function drawWorld(dt){
     ctx.setLineDash([]);ctx.lineDashOffset=0;ctx.restore();}
   if(roofA<.6&&SITE.draw&&SITE.draw.underRoof)SITE.draw.underRoof(ctx,roofA,API); // charpente visible sous le toit effacé
   if(pplLate)drawStationPeople(); // toit effacé : personnes du quai au-dessus du toit, de la charpente et des colonnes
-  if(tunnelP){ctx.fillStyle='#5a4630';ctx.fill(tunnelP);ctx.strokeStyle='#3a2c1c';lw(.3,.8);ctx.stroke(tunnelP);}
   const al=G.liftBroken||G.estop||G.brakeFault||trains.some(t=>t.fault);ctx.fillStyle=al?(Math.sin(clock*9)>0?'#ff2a2a':'#7a0000'):'#3f9a66';const bc=beaconAt();if(bc){ctx.beginPath();ctx.arc(bc[0],bc[1],.2,0,7);ctx.fill();}
   if(SITE.draw&&SITE.draw.landmarks){SITE.draw.landmarks(ctx,s,API);for(const g of BARS)leaf(g,g.t);ctx.lineCap='butt';}
   for(const g of BARS)if(g.evHi&&!g.off){const k=.55+.45*Math.sin(clock*6),cx=(g.h[0]+g.a[0])/2,cz=(g.h[1]+g.a[1])/2; // barrière fermée qui bloque une évacuation (issue #41, evacTick) : halo rouge pulsé jusqu'à son ouverture

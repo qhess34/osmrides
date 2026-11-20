@@ -22,7 +22,8 @@ const SITE=(()=>{
     // Second tunnel (propriétaire, 2026-11-16 : « il en existe un de plus », puis « entre les repères 18 et 19 » de docs/plans/zeus-trace-complete.png ; RCDB : Tunnel, Tunnel) :
     // absent d'OSM. Les ronds de ce plan sont en s du moteur (rond n = (n-1)×50 m ; vérifié : rond 18 = s 850, h 8,9 m, (83 ; 43) ; rond 19 = s 900, h 3,1 m, (45 ; 68)) :
     // galerie sombre à effets sur toute la diagonale qui revient de la boucle est vers le pied du lift, s 850–900 m. Bornes exactes et largeur ESTIMÉES (± quelques mètres).
-    // Le premier tunnel (bas de la première descente) reste le polygone OSM man_made=tunnel 1353118256.
+    // Le premier tunnel (bas de la première descente) : polygone OSM man_made=tunnel 1353118256, couvert le long de la voie par le moteur (galerie, issue #42) ;
+    // le polygone r18584330 recoupe la galerie à effets et la prolonge jusqu'à s 900.
     // Réimport du 2026-11-20 (issue #33) : la voie 3D est plus longue de quelques mètres (lift recalé sur OSM) : mêmes points au sol, s 847–897.
     tunnels:[{s:[847,897],under:'roof',w:2.3}],
     stationPoly:OSM.polys.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
