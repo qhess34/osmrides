@@ -243,7 +243,8 @@ function reBoard(){ // (re)lit GAME.boardAreas et GAME.board : polygone, places,
   reDepth();
   const A=Array.isArray(GM.boardAreas)&&GM.boardAreas[0];BAREA=A&&Array.isArray(A.pts)&&A.pts.length>=3?A.pts.map(p=>[+p[0],+p[1]]):null;BSLOTS=null;BVIA=null;BNODES=[];BRES=[];
   if(!BAREA){ // travées calculées : réserve = rangs supplémentaires des travées (sur le quai : en deçà du couloir d'attente)
-    const V=(SITE.board.via||[]).slice(-1)[0]||[0,0];BRES=resRows(p=>latA(p[0],p[2])<=BWALK-.4);
+    const V=(SITE.board.via||[]).slice(-1)[0]||[0,0],b0=BAYS[0],lo=(x,z)=>(x-b0.x)*b0.tx+(z-b0.z)*b0.tz,lv=latA(V[0],V[1]);
+    BRES=resRows(p=>latA(p[0],p[2])<=BWALK-.4&&!(Math.abs(lo(p[0],p[2])-lo(V[0],V[1]))<.6&&latA(p[0],p[2])>lv-.6)); // issue #44 : place libre en face du bout de via (passage vers le couloir d'attente)
     BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-V[0],p[2]-V[1])-Math.hypot(q[0]-V[0],q[2]-V[1])));return;}
   const P=BAREA,n=P.length;let ar=0;for(let i=0,j=n-1;i<n;j=i++)ar+=P[j][0]*P[i][1]-P[i][0]*P[j][1];const sg=ar>0?1:-1; // orientation : normale intérieure des bords
   for(let i=0;i<n;i++){const a=P[(i+n-1)%n],b=P[i],c=P[(i+1)%n],n1=[-(b[1]-a[1]),b[0]-a[0]],n2=[-(c[1]-b[1]),c[0]-b[0]],l1=Math.hypot(...n1)||1,l2=Math.hypot(...n2)||1;
@@ -267,14 +268,47 @@ function reBoard(){ // (re)lit GAME.boardAreas et GAME.board : polygone, places,
   for(let row=0;row<80&&BRES.length<BR_MAX;row++){const lat=lmax+row*RES_P; // premier rang à RES_P/2 (0,5 m au moins) derrière le dernier rang des portillons
     BAYS.forEach((b,i)=>{const ext=(i===0||i===BAYS.length-1)?12:0;for(let u=-CAR/2-ext+RES_P/2;u<=CAR/2+ext&&BRES.length<BR_MAX;u+=RES_P){const p=[b.x+b.tx*u+b.rx*lat,b.z+b.tz*u+b.rz*lat];
       if(inA(p[0],p[1],BA_IN)&&latA(p[0],p[1])>=lmax-.05&&!far(p))BRES.push([p[0],0,p[1]]);}});}
-  BRES=BT.concat(BRES);const e0=BVIA.e||[0,0];BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-e0[0],p[2]-e0[1])-Math.hypot(q[0]-e0[0],q[2]-e0[1])));}
+  const e0=BVIA.e||[0,0];BRES=BT.concat(BRES).filter(p=>Math.hypot(p[0]-e0[0],p[2]-e0[1])>=.8); // issue #44 : entrée de la zone laissée libre (0,8 m, ESTIMÉ) : les arrivants ne marchent pas sur quelqu'un
+  BRES.sort((p,q)=>(latA(p[0],p[2])-latA(q[0],q[2]))||(Math.hypot(p[0]-e0[0],p[2]-e0[1])-Math.hypot(q[0]-e0[0],q[2]-e0[1])));}
 // trajet dans la zone éditée : de la file au point p ([x,0,z] : place i d'un portillon ou place de réserve) (sans le point de départ) ; à rebours pour l'évacuation
 // travées calculées (pas de zone éditée) : place de réserve p d'une travée réglée (p.u = portillon) atteinte comme une place de portillon, par via et le couloir d'attente
 const bwalkAt=u=>{const g=GUNITS[u||0],b=BAYS[g.k];return [b.x+b.rx*BWALK+b.tx*g.c,0,b.z+b.rz*BWALK+b.tz*g.c];};
 const resUnit=p=>{if(p.u!=null)return p.u;const q=BRES.find(r=>Math.hypot(r[0]-p[0],r[2]-p[2])<.02);return q?q.u:null;}; // après une reprise de sauvegarde : retrouvée par position
-function boardInP(p){if(!BAREA)return (SITE.board.via||[]).map(q=>[q[0],0,q[1]]).concat([bwalkAt(resUnit(p)),p]);const e=BVIA.e||[p[0],p[2]];return BVIA.pre.concat([[e[0],0,e[1]]],routeA(e,[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}
+function boardInP(p){if(!BAREA){const V=(SITE.board.via||[]).map(q=>[q[0],0,q[1]]),w=bwalkAt(resUnit(p)),v=V[V.length-1],c=v&&BAYS[0]?atP(lonP(v),latP(w)):null; // issue #44 : jusqu'au couloir d'attente en face du bout de via, puis le long du couloir (pas en biais à travers les travées)
+  return V.concat(c&&Math.hypot(c[0]-v[0],c[2]-v[2])>.3?[c]:[],[w,p]);}const e=BVIA.e||[p[0],p[2]];return BVIA.pre.concat([[e[0],0,e[1]]],routeA(e,[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}
 function boardOutP(p){if(!BAREA)return [p,bwalkAt(resUnit(p))].concat((SITE.board.via||[]).slice().reverse().map(q=>[q[0],0,q[1]]));const e=BVIA.e||[p[0],p[2]];return [p].concat(routeA([p[0],p[2]],e).map(q=>[q[0],0,q[1]]),BVIA.pre.slice().reverse());}
 const boardIn=i=>boardInP(slotPos(i)),boardOut=i=>boardOutP(slotPos(i));
+// Ordre sur le quai (propriétaire, issue #44 : un arrivant ne passe ni au travers ni par-dessus ceux qui attendent) : repère du quai (BAYS[0] : lon le long de la voie,
+// lat en s'éloignant de la voie) ; une COLONNE = les places de même lon (à 0,3 m près). Dans la zone éditée, l'arrivant longe l'ALLÉE derrière toutes les places
+// occupées ou promises (0,6 m au-delà de la plus éloignée de la voie, ESTIMÉ), puis avance tout droit dans la colonne de sa place, dont les places de derrière sont
+// libres (resFree, engine/sim.js) ; allée hors de la zone : trajet direct d'avant (boardInP).
+const PB=()=>BAYS[0],lonP=p=>{const b=PB();return (p[0]-b.x)*b.tx+(p[2]-b.z)*b.tz;},latP=p=>{const b=PB();return (p[0]-b.x)*b.rx+(p[2]-b.z)*b.rz;},
+  atP=(lo,la)=>{const b=PB();return [b.x+b.tx*lo+b.rx*la,0,b.z+b.tz*lo+b.rz*la];},sameCol=(p,q)=>Math.abs(lonP(p)-lonP(q))<.3;
+const PGRID=.3,PCLR=.4; // pas de la grille de recherche du trajet (ESTIMÉ) ; écart gardé aux places occupées (QD)
+function platOcc(p){const Q=[];G.plat.forEach((r,i)=>{if(r){const q=slotPos(i);if(Math.hypot(q[0]-p[0],q[2]-p[2])>.05)Q.push(q);}});
+  (G.platR||[]).forEach((r,j)=>{const q=BRES[j];if(r&&q&&Math.hypot(q[0]-p[0],q[2]-p[2])>.05)Q.push(q);});return Q;}
+// trajet de E à p dans la zone éditée qui garde PCLR de toute place occupée ou promise (grille de pas PGRID, plus court chemin, raccourci en lignes droites) ; null si aucun
+function platPath(E,p,Q){const lo0=Math.min(lonP(E),lonP(p)),la0=Math.min(latP(E),latP(p));let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const q of BAREA){const P=[q[0],0,q[1]],a=lonP(P),b=latP(P);x0=Math.min(x0,a);x1=Math.max(x1,a);y0=Math.min(y0,b);y1=Math.max(y1,b);}
+  const W=Math.ceil((x1-x0)/PGRID)+1,H=Math.ceil((y1-y0)/PGRID)+1;if(W*H>40000)return null;const free=(x,z)=>inA(x,z,.1)&&Q.every(q=>Math.hypot(q[0]-x,q[2]-z)>=PCLR);
+  const id=(a,b)=>b*W+a,pt=k=>atP(x0+(k%W)*PGRID,y0+Math.floor(k/W)*PGRID),cell=P=>id(clamp(Math.round((lonP(P)-x0)/PGRID),0,W-1),clamp(Math.round((latP(P)-y0)/PGRID),0,H-1));
+  const s0=cell(E),t0=cell(p),ok=new Map(),okA=k=>{if(!ok.has(k)){const q=pt(k);ok.set(k,free(q[0],q[2]));}return ok.get(k);};
+  const prev=new Map([[s0,-1]]),Fq=[s0];let found=false;
+  for(let h=0;h<Fq.length;h++){const k=Fq[h];if(k===t0){found=true;break;}const a=k%W,b=Math.floor(k/W);
+    for(const [da,db] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const na=a+da,nb=b+db;if(na<0||nb<0||na>=W||nb>=H)continue;const n=id(na,nb);if(prev.has(n))continue;if(n!==t0&&!okA(n))continue;prev.set(n,k);Fq.push(n);}}
+  if(!found)return null;const C=[];for(let k=t0;k>=0;k=prev.get(k))C.unshift(pt(k));C[0]=[E[0],0,E[2]];C[C.length-1]=p;
+  const vis=(a,b)=>{const n=Math.ceil(Math.hypot(b[0]-a[0],b[2]-a[2])/.1);for(let k=1;k<n;k++){const x=a[0]+(b[0]-a[0])*k/n,z=a[2]+(b[2]-a[2])*k/n;if(Q.some(q=>Math.hypot(q[0]-x,q[2]-z)<.37)||!inA(x,z,.1)&&Math.hypot(x-p[0],z-p[2])>PCLR)return false;}return true;};
+  const out=[];for(let i=0;i<C.length-1;){let j=C.length-1;while(j>i+1&&!vis(C[i],C[j]))j--;out.push(C[j]);i=j;}return out;}
+function boardInA(p){if(!BAREA)return boardInP(p);const e=BVIA.e,E=[e[0],0,e[1]],r=platPath(E,p,platOcc(p));return r?BVIA.pre.concat([E],r):boardInP(p);}
+// place p sur le reste du trajet d'un visiteur qui gagne déjà sa place (à moins de PCLR + 0,05 m), où il passera après t s (arrivée du nouvel occupant, moins
+// 0,3 s) : on ne la donne pas encore (il passerait au travers de celui qui s'y tient) ; plen3 = longueur d'un trajet
+const plen3=P=>{let d=0;for(let i=1;i<P.length;i++)d+=Math.hypot(P[i][0]-P[i-1][0],P[i][2]-P[i-1][2]);return d;};
+function platCross(p,t){t=t||0;for(const k of G.walkers){if(k.kind!=='wait'||k.i>=k.pts.length)continue;const T=k.pts[k.pts.length-1];if(Math.hypot(T[0]-p[0],T[2]-p[2])<.05)continue;let a=[k.x,0,k.z],d=0;
+    for(let i=k.i;i<k.pts.length;i++){const b=k.pts[i],dx=b[0]-a[0],dz=b[2]-a[2],L=Math.hypot(dx,dz),u=L?clamp(((p[0]-a[0])*dx+(p[2]-a[2])*dz)/(L*L),0,1):0;
+      if(Math.hypot(a[0]+dx*u-p[0],a[2]+dz*u-p[2])<PCLR+.05&&(d+L*u)/(k.sp||3)>t-.3)return true;d+=L;a=b;}}
+  return false;}
+const platTo=(a,p)=>{if(!BAREA)return null;const r=platPath(a,p,platOcc(p));return r?[a].concat(r):null;}; // d'une place à une autre sans frôler personne (réserve → portillon, avance d'une place)
+const platReach=p=>{if(!BAREA)return true;const E=[BVIA.e[0],0,BVIA.e[1]];return !!platPath(E,p,platOcc(p))||!platPath(E,p,[]);}; // place atteignable sans frôler personne (grille sans issue même à vide, zone de forme étroite : trajet direct d'avant)
+const resStep=(k,j)=>{const a=BRES[k],p=BRES[j];if(!BAREA)return [a,p];return [a].concat(routeA([a[0],a[2]],[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}; // d'une place de réserve à une autre, plus avant (issue #44)
 const resTo=(j,i)=>{const a=BRES[j],p=slotPos(i);if(!BAREA)return [a,p];return [a].concat(routeA([a[0],a[2]],[p[0],p[2]]).slice(0,-1).map(q=>[q[0],0,q[1]]),[p]);}; // de la réserve j à la place i
 /* Fin de la file à raccorder à la zone d'attente (issue #24, éditeur) : dernière portion du trajet des visiteurs vers le quai (8 m de la fin du dernier tronçon de file,
    puis SITE.board.via), point d'extrémité `end` (dernier point de board.via, sinon fin de la file : c'est là que les visiteurs quittent le chemin pour la zone), et bords
