@@ -68,29 +68,22 @@
 
   // ── données éditées ──
   function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; if (g.board && g.board.depth == null) delete g.board; if (g.site && !Object.keys(g.site).length) delete g.site; return g; }
-  function ovrOf(g) { // surcharge d'une barrière, créée depuis sa géométrie actuelle au premier changement
-    const M = GM(); if (!M.barriers) M.barriers = {};
-    if (!M.barriers[g.key] || M.barriers[g.key].off) { const p = q => ({ ang: R1(deg(Math.atan2(q[1] - g.h[1], q[0] - g.h[0]))), len: R2(Math.hypot(q[0] - g.h[0], q[1] - g.h[1])) }); M.barriers[g.key] = { x: R2(g.h[0]), z: R2(g.h[1]), a: p(g.a), b: p(g.b) }; }
-    return M.barriers[g.key];
-  }
+  // barrières (issue #37) : GAME.barriers = {'b<n>': {x, z, ang, len, open?, sw?}} ; anciennes clés (surcharges, ajouts) lues et converties par le moteur (barSpecs),
+  // réécrites au nouveau format à la première modification d'une barrière (own)
+  function own() { const M = GM(), B = M.barriers || {}; if (Object.keys(B).every(k => /^b[0-9]+$/.test(k)) && M.barriers) return M.barriers;
+    const L = E('barSpecs(GM.barriers)'); M.barriers = {}; for (const s of L) { const q = { x: R2(s.x), z: R2(s.z), ang: R1(s.ang), len: R2(s.len) }; if (s.open) q.open = true; if (s.sw === -1) q.sw = -1; M.barriers[s.key] = q; }
+    return M.barriers; }
+  function ovrOf(g) { return own()[g.key]; }
   function migrate() { // salle déduite de SITE.booth (D3) : SITE reste inchangé, la salle passe dans GAME à la sauvegarde
     const M = GM(); if (Array.isArray(M.controlRooms)) return;
     const b = E('defRoom()'); M.controlRooms = b ? [{ id: 'poste', x: R2(b.x), z: R2(b.z), angle: R1(b.angle), w: R2(b.w), d: R2(b.d), main: true }] : [];  // salle OSM (OSM.ctl), sinon SITE.booth
   }
   const applied = () => { E('reGates()'); panel(); };
-  function revertGate(key) { const M = GM(); if (M.barriers) { delete M.barriers[key]; if (!Object.keys(M.barriers).length) delete M.barriers; } applied(); }
-  // Supprimer : barrière calculée -> surcharge {off:true} (le calcul reste, « Rétablir » retire la surcharge) ; barrière ajoutée -> clé retirée de GAME
-  function deleteGate(key) { const g = gates().find(x => x.key === key); if (!g) return; const M = GM(); if (!M.barriers) M.barriers = {};
-    if (g.add) delete M.barriers[key]; else M.barriers[key] = { off: true }; if (!Object.keys(M.barriers).length) delete M.barriers; if (g.add) sel = null; applied(); }
-  // Ajouter : pivot cliqué sur la carte, A en travers du raccourci, B en travers de la boucle de la fourche choisie ; clé 'add:<tronçon>:<n>' (n libre le plus petit)
-  function addGate(name, p) { const M = GM(); if (!M.barriers) M.barriers = {}; let n = 1; while (M.barriers['add:' + name + ':' + n]) n++; const key = 'add:' + name + ':' + n;
-    const ab = E(`(()=>{const l=LOOPS.find(l=>l.kname===${JSON.stringify(name)}),h=[${p[0]},${p[1]}],hw=qwAt(h[0],h[1])/2;return [across(h,l.short.P,hw),across(h,l.loop.P,hw)];})()`);
-    const q = v => { let len = Math.hypot(v[0] - p[0], v[1] - p[1]), ang = Math.atan2(v[1] - p[1], v[0] - p[0]); if (len < .5) len = 2.2; return { ang: R1(deg(ang)), len: R2(clamp(len, .2, 20)) }; };
-    M.barriers[key] = { x: R2(p[0]), z: R2(p[1]), a: q(ab[0]), b: q(ab[1]) }; adding = null; sel = { t: 'gate', key }; applied(); return key; }
-  // Rattacher une barrière ajoutée à une autre fourche : la clé 'add:<fourche>:<n>' est renommée (n libre le plus petit dans la nouvelle fourche), géométrie intacte
-  function moveGate(key, name) { const M = GM(), m = /^add:(.+):(\d+)$/.exec(key); if (!m || !M.barriers || !M.barriers[key] || m[1] === name) return key;
-    let n = 1; while (M.barriers['add:' + name + ':' + n]) n++; const nk = 'add:' + name + ':' + n; M.barriers[nk] = M.barriers[key]; delete M.barriers[key];
-    if (sel && sel.t === 'gate' && sel.key === key) sel.key = nk; applied(); return nk; }
+  // Supprimer : clé retirée de GAME (plus de barrière calculée à garder)
+  function deleteGate(key) { const B = own(); delete B[key]; if (!Object.keys(B).length) delete GM().barriers; sel = null; applied(); }
+  // Ajouter : clic sur la carte = en travers de l'allée de file la plus proche (barPlace du moteur), fermée au départ ; clé 'b<n>' (n libre le plus petit)
+  function addGate(p) { const B = own(); let n = 1; while (B['b' + n]) n++; const key = 'b' + n, s = E(`barPlace(${p[0]},${p[1]})`);
+    B[key] = { x: R2(s.x), z: R2(s.z), ang: R1(s.ang), len: R2(clamp(s.len, .2, 20)) }; if (s.sw === -1) B[key].sw = -1; adding = null; sel = { t: 'gate', key }; applied(); return key; }
   function areaOvr() { const M = GM(); if (!areaEd()) M.boardAreas = [{ id: 'quai', pts: areaPts().map(q => [R2(q[0]), R2(q[1])]) }]; return M.boardAreas[0]; }
   const areaApplied = () => { E('reBoard()'); panel(); };
   function revertArea() { delete GM().boardAreas; sel = sel && sel.t === 'area' ? { t: 'area' } : sel; areaApplied(); }
@@ -101,13 +94,13 @@
   // ── sélection et poignées ──
   function hit(p) {
     const s = E('cam').s, tol = Math.max(.35, 9 / s);
-    if (sel && sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); if (g) { if (Math.hypot(p[0] - g.g.a[0], p[1] - g.g.a[1]) < tol) return { t: 'gate', key: g.key, m: 'a' }; if (Math.hypot(p[0] - g.g.b[0], p[1] - g.g.b[1]) < tol) return { t: 'gate', key: g.key, m: 'b' }; } }
+    if (sel && sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); if (g && Math.hypot(p[0] - g.g.a[0], p[1] - g.g.a[1]) < tol) return { t: 'gate', key: g.key, m: 'a' }; }
     if (sel && sel.t === 'room') { const r = rooms()[0]; if (r) { if (Math.hypot(p[0] - rotH(r)[0], p[1] - rotH(r)[1]) < tol) return { t: 'room', m: 'rot' }; for (let i = 0; i < 4; i++) { const q = roomPt(r, [CORNERS[i][0] * r.w / 2, CORNERS[i][1] * r.d / 2]); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'room', m: 'c' + i }; } } }
     if (sel && sel.t === 'area') { const P = areaPts(); for (let i = 0; i < P.length; i++) if (Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) < tol) return { t: 'area', m: 'v' + i };
       const M = mids(P); for (let i = 0; i < M.length; i++) if (Math.hypot(p[0] - M[i][0], p[1] - M[i][1]) < tol * .8) return { t: 'area', m: 'm' + i }; }
     { const D = dep(), q = depthH(D); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'depth', m: 'depth' }; } // poignée de profondeur des travées
     let best = null, bd = tol;
-    for (const g of gates()) { if (g.off) continue; const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
+    for (const g of gates()) { const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
     if (best) return best;
     const r = rooms()[0]; if (r) { const l = toLocal(r, p); if (Math.abs(l[0]) <= r.w / 2 + .2 && Math.abs(l[1]) <= r.d / 2 + .2) return { t: 'room', m: 'move' }; }
     if (pipE(areaPts(), p[0], p[1])) return { t: 'area', m: 'move' };
@@ -118,7 +111,7 @@
     const pos = e => toW(e.clientX, e.clientY);
     W.addEventListener('pointerdown', e => {
       if (e.target !== cv || e.button > 0) return; const p = pos(e);
-      if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(adding, p); return; }
+      if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(p); return; }
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
       if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i], sn = snap(q, e.altKey); A.pts.splice(i + 1, 0, sn ? sn.p : [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); snapped = sn; E('reBoard()'); } // milieu d'un bord : nouveau sommet (aimanté)
@@ -139,7 +132,7 @@
         if (!drag.o0) drag.o0 = JSON.parse(JSON.stringify(ovrOf(g.g)));
         const o = ovrOf(g.g);
         if (drag.m === 'move') { o.x = R2(drag.o0.x + dx); o.z = R2(drag.o0.z + dz); }
-        else { const q = o[drag.m]; q.ang = R1(deg(Math.atan2(p[1] - o.z, p[0] - o.x))); q.len = R2(clamp(Math.hypot(p[0] - o.x, p[1] - o.z), .2, 20)); }
+        else { o.ang = R1(deg(Math.atan2(p[1] - o.z, p[0] - o.x))); o.len = R2(clamp(Math.hypot(p[0] - o.x, p[1] - o.z), .2, 20)); } // poignée A : orientation et longueur
         E('reGates()');
       } else if (drag.t === 'depth') { const D = dep(); setDepth((p[0] - D.u.o[0]) * D.u.r[0] + (p[1] - D.u.o[1]) * D.u.r[1]); // profondeur = distance à la ligne des portillons
       } else if (drag.t === 'area') {
@@ -190,12 +183,11 @@
       oc.fillStyle = on ? '#ff8a3d' : '#fff'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.moveTo(q[0], q[1] - 6); oc.lineTo(q[0] + 6, q[1]); oc.lineTo(q[0], q[1] + 6); oc.lineTo(q[0] - 6, q[1]); oc.closePath(); oc.fill(); oc.stroke();
       const t = 'travées ' + D.depth.toFixed(2).replace('.', ',') + ' m'; oc.font = '600 11px system-ui'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 9, q[1] - 7); oc.fillStyle = '#ff8a3d'; oc.fillText(t, q[0] + 9, q[1] - 7); }
     for (const g of gates()) {
-      if (g.off) { const h = P(g.g.h[0], g.g.h[1]); oc.strokeStyle = '#e5484d'; oc.lineWidth = 2; oc.beginPath(); oc.moveTo(h[0] - 5, h[1] - 5); oc.lineTo(h[0] + 5, h[1] + 5); oc.moveTo(h[0] + 5, h[1] - 5); oc.lineTo(h[0] - 5, h[1] + 5); oc.stroke(); continue; }
-      const col = g.kind === 'entry' ? '#f0a23b' : '#5fd3e6', on = sel && sel.t === 'gate' && sel.key === g.key, h = P(g.g.h[0], g.g.h[1]), a = P(g.g.a[0], g.g.a[1]), b = P(g.g.b[0], g.g.b[1]);
+      const col = g.g.open0 ? '#f0a23b' : '#5fd3e6', on = sel && sel.t === 'gate' && sel.key === g.key, h = P(g.g.h[0], g.g.h[1]), a = P(g.g.a[0], g.g.a[1]), b = P(g.g.b[0], g.g.b[1]);
       oc.strokeStyle = col; oc.lineWidth = on ? 3 : 2; oc.beginPath(); oc.moveTo(h[0], h[1]); oc.lineTo(a[0], a[1]); oc.stroke();
       oc.setLineDash([4, 3]); oc.lineWidth = on ? 2 : 1.3; oc.beginPath(); oc.moveTo(h[0], h[1]); oc.lineTo(b[0], b[1]); oc.stroke(); oc.setLineDash([]);
-      oc.fillStyle = g.g.ovr || g.add ? '#4cc38a' : col; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.arc(h[0], h[1], on ? 6 : 4.5, 0, 7); oc.fill(); oc.stroke();
-      if (on) for (const [q, t] of [[a, 'A'], [b, 'B']]) { oc.fillStyle = '#fff'; oc.fillRect(q[0] - 5, q[1] - 5, 10, 10); oc.strokeRect(q[0] - 5, q[1] - 5, 10, 10); oc.fillStyle = '#fff'; oc.font = '600 11px system-ui'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 8, q[1] - 6); oc.fillText(t, q[0] + 8, q[1] - 6); oc.lineWidth = 1.5; }
+      oc.fillStyle = g.from ? '#8a94a6' : '#4cc38a'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.arc(h[0], h[1], on ? 6 : 4.5, 0, 7); oc.fill(); oc.stroke();
+      if (on) for (const [q, t] of [[a, 'A']]) { oc.fillStyle = '#fff'; oc.fillRect(q[0] - 5, q[1] - 5, 10, 10); oc.strokeRect(q[0] - 5, q[1] - 5, 10, 10); oc.fillStyle = '#fff'; oc.font = '600 11px system-ui'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 8, q[1] - 6); oc.fillText(t, q[0] + 8, q[1] - 6); oc.lineWidth = 1.5; }
     }
     for (const rm of rooms()) {
       const on = sel && sel.t === 'room', C = CORNERS.map(c => P(...roomPt(rm, [c[0] * rm.w / 2, c[1] * rm.d / 2])));
@@ -289,17 +281,16 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const inp = (k, v, st) => `<input data-k="${k}" type="number" step="${st || .05}" value="${v}">`;
   function selHTML() {
-    if (!sel) return '<span class="note">Cliquer une barrière, la salle de contrôle ou la zone d\'attente sur la carte. Glisser : déplacer ; poignées A / B : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
+    if (!sel) return '<span class="note">Cliquer une barrière, la salle de contrôle ou la zone d\'attente sur la carte. Glisser : déplacer ; poignée A d\'une barrière : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
     if (sel.t === 'gate') {
       const g = gates().find(x => x.key === sel.key); if (!g) return '<span class="err">Barrière introuvable.</span>';
-      if (g.off) return `<div><b>${esc(g.key)}</b></div><div class="note">Barrière <span class="tag t-orph">supprimée</span> : ignorée par le dessin, le clic et la logique du jeu (surcharge <code>{"off": true}</code>, le calcul reste).</div><div class="row"><button id="bAuto">Rétablir la barrière</button></div>`;
-      const G = g.g, an = q => R1(deg(Math.atan2(q[1] - G.h[1], q[0] - G.h[0]))), ln = q => R2(Math.hypot(q[0] - G.h[0], q[1] - G.h[1]));
-      const fsel = g.add ? `<div class="row"><label>Fourche <select id="selFork">${E('forkList()').map(f => `<option value="${esc(f.name)}"${f.fork === g.fork ? ' selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label></div>` : '';
-      return `<div><b>${esc(g.key)}</b></div><div class="note">${g.kind === 'entry' ? 'Barrière d\'entrée — A : fermée en travers du chemin, B : ouverte.' : 'Fourche « ' + esc(g.name || '') + ' » — A : en travers du raccourci (boucle en service), B : position basculée.'} ${g.add ? '<span class="tag t-ovr">ajoutée</span>' : G.ovr ? '<span class="tag t-ovr">corrigée</span>' : 'Calcul automatique (déduite de la file et de son sens, sans nœud OSM)'}</div>
+      const G = g.g;
+      return `<div><b>Barrière ${esc(g.key)}</b> ${g.from ? '<span class="tag t-est">reprise de ' + esc(g.from) + '</span>' : ''}</div><div class="note">Posée à la main ; dans le jeu, elle s'ouvre et se ferme seule au clic. Trait plein : fermée (A), tirets : ouverte. Fermée, elle bloque les visiteurs qui essaient d'y passer (évacuation comprise).</div>
         <div class="grid" style="margin-top:6px"><span>Pivot x, z (m)</span><span>${inp('x', R2(G.h[0]))} ${inp('z', R2(G.h[1]))}</span>
-        <span>A : angle °, long. m</span><span>${inp('a.ang', an(G.a), 1)} ${inp('a.len', ln(G.a))}</span>
-        <span>B : angle °, long. m</span><span>${inp('b.ang', an(G.b), 1)} ${inp('b.len', ln(G.b))}</span></div>
-        ${fsel}<div class="row">${g.add ? '' : `<button id="bAuto" ${G.ovr ? '' : 'disabled'}>Revenir au calcul auto</button>`}<button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
+        <span>Fermée : angle °, long. m</span><span>${inp('ang', R1(G.ang), 1)} ${inp('len', R2(G.len))}</span></div>
+        <div class="row"><label><input type="checkbox" id="gOpen" ${G.open0 ? 'checked' : ''}> Ouverte au début de la partie</label></div>
+        <div class="row"><label>Ouverture <select id="gSw"><option value="1"${G.sw !== -1 ? ' selected' : ''}>sens direct</option><option value="-1"${G.sw === -1 ? ' selected' : ''}>sens inverse</option></select></label></div>
+        <div class="row"><button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
     if (sel.t === 'depth') { const D = dep(); return `<div><b>Profondeur des travées d'attente</b> ${D.game ? '<span class="tag t-ovr">réglée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${D.depth.toFixed(2).replace('.', ',')} m depuis la ligne des portillons : ${D.rows} rang(s) par travée (calcul : ${D.calc.toFixed(2).replace('.', ',')} m). Glisser la poignée (losange orange) ou saisir la valeur dans la section « Zone d'attente du quai ».</div>`; }
     if (sel.t === 'area') {
@@ -320,11 +311,11 @@
       const v = +el.value, k = el.dataset.k; if (!isFinite(v)) return;
       if (sel.t === 'depth') { const D = dep(); return `<div><b>Profondeur des travées d'attente</b> ${D.game ? '<span class="tag t-ovr">réglée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${D.depth.toFixed(2).replace('.', ',')} m depuis la ligne des portillons : ${D.rows} rang(s) par travée (calcul : ${D.calc.toFixed(2).replace('.', ',')} m). Glisser la poignée (losange orange) ou saisir la valeur dans la section « Zone d'attente du quai ».</div>`; }
     if (sel.t === 'area') { const A = areaOvr(); A.pts[sel.v] = k === 'vx' ? [v, A.pts[sel.v][1]] : [A.pts[sel.v][0], v]; areaApplied(); }
-      else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); if (k.includes('.')) { const [s, f] = k.split('.'); o[s][f] = f === 'len' ? clamp(v, .2, 20) : v; } else o[k] = v; applied(); }
+      else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); o[k] = k === 'len' ? R2(clamp(v, .2, 20)) : v; applied(); }
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
     });
-    const b = $('bAuto'); if (b) b.onclick = () => revertGate(sel.key);
-    const sf = $('selFork'); if (sf) sf.onchange = () => moveGate(sel.key, sf.value);
+    const go = $('gOpen'); if (go) go.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (go.checked) o.open = true; else delete o.open; applied(); };
+    const gs = $('gSw'); if (gs) gs.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (gs.value === '-1') o.sw = -1; else delete o.sw; applied(); };
     const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
     const bv = $('bDelVtx'); if (bv) bv.onclick = () => delVertex(sel.v);
     const ba = $('bAreaAuto'); if (ba) ba.onclick = revertArea;
@@ -348,30 +339,25 @@
     $('bSelArea').onclick = () => { sel = { t: 'area' }; const Q = areaPts(); focus(Q.reduce((a, q) => a + q[0], 0) / Q.length, Q.reduce((a, q) => a + q[1], 0) / Q.length); panel(); };
     $('bAreaAuto2').onclick = revertArea;
     if ($('bSelRoom')) $('bSelRoom').onclick = () => { sel = { t: 'room' }; const r = rooms()[0]; focus(r.x, r.z); panel(); };
-    const L = gates(), keys = new Set(L.map(g => g.key));
-    $('gList').innerHTML = L.map(g => { const calc = g.g.calc || (g.g.cfg && g.g.cfg.calc); /* barrière déduite de la file (issue #34), plus de nœud OSM */ return `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.kind === 'entry' ? 't-entry">entrée' : 't-fork">fourche'}</span><span class="k" title="${esc(g.key)}">${esc(g.kind === 'entry' ? 'Entrée de la file' : (g.name || '') + ' · ' + g.key.split(':').pop())}</span>${g.off ? '<span class="tag t-orph">supprimée</span>' : g.add ? '<span class="tag t-ovr">ajoutée</span>' : g.g.ovr ? '<span class="tag t-ovr">corrigée</span>' : calc ? '<span class="tag t-est">calculée</span>' : ''}</div>`; }).join('');
+    const L = gates();
+    $('gList').innerHTML = L.length ? L.map(g => `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.g.open0 ? 't-entry">ouverte' : 't-fork">fermée'}</span><span class="k" title="${esc(g.from || g.key)}">Barrière ${esc(g.key)}</span>${g.from ? '<span class="tag t-est">reprise</span>' : ''}</div>`).join('') : '<p class="note">Aucune barrière.</p>';
     for (const el of $('gList').querySelectorAll('.it')) el.onclick = () => { sel = { t: 'gate', key: el.dataset.key }; const g = gates().find(x => x.key === sel.key); focus(g.g.h[0], g.g.h[1]); panel(); };
-    const F = E('forkList()'), fv = $('addFork').value;
-    $('addFork').innerHTML = F.map(f => `<option value="${esc(f.name)}">${esc(f.name)}</option>`).join(''); if (F.some(f => f.name === fv)) $('addFork').value = fv;
-    $('secAdd').hidden = !F.length; $('bAddGate').textContent = adding ? 'Cliquer le pivot sur la carte… (annuler)' : 'Ajouter une barrière';
-    $('bAddGate').onclick = () => { adding = adding ? null : $('addFork').value; panel(); };
-    const orph = Object.keys(GM().barriers || {}).filter(k => !keys.has(k));
-    $('orph').innerHTML = orph.length ? '<p class="err">Surcharges orphelines (la barrière n\'existe plus dans le jeu) :</p>' + orph.map(k => `<div class="it"><span class="tag t-orph">orpheline</span><span class="k">${esc(k)}</span><button data-del="${esc(k)}">Supprimer</button></div>`).join('') : '';
-    for (const el of $('orph').querySelectorAll('[data-del]')) el.onclick = () => { if (confirm('Supprimer la surcharge orpheline ' + el.dataset.del + ' ?')) revertGate(el.dataset.del); };
+    $('bAddGate').textContent = adding ? 'Cliquer l\'allée sur la carte… (annuler)' : 'Ajouter une barrière';
+    $('bAddGate').onclick = () => { adding = !adding; panel(); };
+    $('orph').innerHTML = '';
     status();
   }
   function focus(x, z) { E('cam.g=null;cam.follow=-1;cam.key="";0'); const c = E('cam'); c.x = x; c.z = z; if (c.s < 8) c.s = 12; }
   function status() {
     const d = draft(), v = S.validate(d, { trainMax: tMax() }), t = S.text(d), dirty = orig.exists ? t !== orig.text : Object.keys(d).length > 0;
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
-    const orph = Object.keys(d.barriers || {}).filter(k => !new Set(gates().map(g => g.key)).has(k)).length;
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
-      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'OSM ou SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'}.</div>`;
+      + `<div>${gates().length} barrière(s) de file ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'OSM ou SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'}.</div>`;
     window.ED.dirty = dirty;
   }
 
   // ── diff et sauvegarde ──
-  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
+  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {
     if (!ready) return;
     const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: tMax() }) });
@@ -395,6 +381,6 @@
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, depth: () => dep(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding };
+  window.ED = { ready: false, isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, depth: () => dep(), draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel() };
   loadSites();
 })();

@@ -68,16 +68,17 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Bâtiments | `building=*` | Lu | Toits, avec `name` affiché. |
 | Hauteur des bâtiments | `height=*`, sinon `building:levels=*` (× 3 m) | Lu | Longueur de l'ombre ; un bâtiment que la voie survole plus haut que lui est dessiné sous la voie (sans hauteur : 7 m estimé). |
 
-## 5. Barrières de file : déduites par le jeu, plus par OSM
+## 5. Barrières de file : posées à la main dans l'éditeur
 
-**Décision du propriétaire (20/11, issue #34, remplace la règle du 17/11)** : les barrières de file **ne se dessinent plus dans OSM**. Les nœuds `barrier=*` restent importés (`OSM.barriers`) mais le moteur ne s'en sert plus pour les placer. Le jeu les **déduit des bifurcations de la file et de son sens** (`engine/queue.js`) ; l'éditeur sert à les corriger, en ajouter ou en supprimer (`GAME.barriers`, clés stables inchangées).
+**Décision du propriétaire (20/11, issue #37, remplace les règles des issues #12, #17 et #34)** : le jeu ne pose **aucune** barrière ; ni OSM (`barrier=*` reste importé dans `OSM.barriers`, ignoré par le moteur), ni calcul. Le propriétaire les pose dans l'éditeur (`GAME.barriers`, clé `b<n>` : pivot, angle, longueur, ouverte ou fermée au début de la partie).
 
-| Barrière | Comment le jeu la pose |
+| Règle | Jeu |
 |---|---|
-| Entrée de la file | Au **début de la file, dans son sens** : premier nœud du chemin de file OSM que suit le premier tronçon (`QSTART`) ; ce qui est écrit avant (raccord) est parcouru par les arrivants. Poteau à droite du sens de la file. |
-| Fourche (bifurcation) | **Une barrière par pointe** (départ et retour du raccourci, liées : elles basculent ensemble ; chaque chemin fermable a ainsi une barrière à son entrée et à sa sortie). Poteau-pivot sur la **bordure**, à la **pointe de l'angle intérieur** entre les deux chemins ; A = en travers du raccourci (boucle en service), B = en travers de la boucle (croquis `docs/sources/goudurix-barrieres-fourche-2026-11-17.png`). Raccourci très court : chaque pivot à au plus L/4 de sa pointe (deux barrières distinctes). |
-| Longueur | Largeur du chemin d'une bordure à l'autre : `width=*` du chemin si présent, sinon largeur dessinée (**ESTIMÉE**). |
-| Correction | Éditeur : déplacer / tourner (`fork:<tronçon>:fork0|fork1`, `entry`), supprimer (`{off:true}`), ajouter (`add:<tronçon>:<n>`). |
+| Commande | Chaque barrière s'ouvre et se ferme **seule** au clic sur la carte ; plus de barrières liées ni de bascule de fourche. |
+| Blocage | Une barrière fermée arrête tout visiteur qui essaie de la franchir (file, arrivants, évacués). Barrière fermée au début de la file : plus personne n'entre. |
+| Itinéraire | À chaque embranchement du réseau des chemins de file (déduit d'OSM, ci-dessous) : plus court trajet vers la gare par des barrières ouvertes ; aucun : plus court trajet, arrêt devant la première barrière fermée. |
+| Évacuation | Les évacués s'arrêtent aussi devant une barrière fermée (le joueur l'ouvre) ; tant qu'un évacué est dans la file, personne n'entre ni n'avance vers la gare. |
+| Anciennes données | Surcharges `entry`, `fork:…`, ajouts `add:…` : converties à la lecture en barrières indépendantes à la même position ; barrières calculées non surchargées : disparues. |
 
 Ce que le propriétaire met dans OSM pour que la file soit bien déduite (lot 5) :
 

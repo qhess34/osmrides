@@ -358,24 +358,47 @@ const root = path.resolve(__dirname, '..');
     }
     man += ' | dep: ' + ds.join(' '); await p5.close();
   }
-  // gatesMove : chaque barrière de file dessinée appartient à une fourche et change d'angle quand on la bascule ; aucune main courante fixe sous un vantail (positions A et B) ni sur son poteau (propriétaire, lot 5 ; règle précisée le 2026-11-17, OzIris B2)
-  const gm = await page.evaluate(() => {
-    const end = (g, t) => { const ta = Math.atan2(g.a[1] - g.h[1], g.a[0] - g.h[0]), tb = Math.atan2(g.b[1] - g.h[1], g.b[0] - g.h[0]); let d = ta - tb; d = Math.atan2(Math.sin(d), Math.cos(d)); return tb + d * t; };
-    const bad = [];
-    LOOPS.forEach((l, i) => {
-      const a0 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
-      const a1 = l.gs.map(g => end(g, g.loop ? 1 - l.t : l.t)); act('loop', i); for (let k = 0; k < 40; k++) step(.05);
-      a0.forEach((v, j) => { if (Math.abs(Math.atan2(Math.sin(v - a1[j]), Math.cos(v - a1[j]))) < .3) bad.push(l.name + '#' + j); });
-      const dSeg = (m, h, e) => { const dx = e[0] - h[0], dz = e[1] - h[1], L = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((m[0] - h[0]) * dx + (m[1] - h[1]) * dz) / L)); return Math.hypot(h[0] + dx * t - m[0], h[1] + dz * t - m[1]); };
-      for (const g of l.gs) if (QMIDS.some(q => Math.hypot(q[0] - g.h[0], q[1] - g.h[1]) < .55 || dSeg(q, g.h, g.a) < .3 || dSeg(q, g.h, g.b) < .3)) bad.push(l.name + ':rail'); // pas de main courante fixe sous un vantail (A, B) ni sur son poteau
+  // issue #37 : barrières indépendantes posées à la main (GAME.barriers 'b<n>') ; une barrière fermée bloque : personne ne la franchit (file, entrée, évacuation),
+  // fourche : autre chemin pris ou attente ; pendant une évacuation, personne n'entre ni n'avance vers la gare ; l'évacué arrêté repart quand on l'ouvre
+  {
+    const p7 = await browser.newPage(); p7.on('pageerror', e => errors.push(String(e.message || e)));
+    await p7.goto(url); await p7.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p7.click('[data-act=closeHelp]');
+    const bt = await p7.evaluate(() => {
+      const R = [], ck = (n, v) => R.push(n + (v ? '' : ':FAIL'));
+      act('speed', 0); G.wx.next = 1e6; G.crowd = 3; if (!G.open) act('open');
+      const across = (e, d, open) => { let i = 1; while (i < e.P.length - 1 && e.C[i] < d) i++; const a = e.P[i - 1], b = e.P[i], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, k = (d - e.C[i - 1]) / l, tx = (b[0] - a[0]) / l, tz = (b[1] - a[1]) / l, c = [a[0] + tx * l * k, a[1] + tz * l * k];
+        return { x: +(c[0] - tz * 1.3).toFixed(2), z: +(c[1] + tx * 1.3).toFixed(2), ang: +(Math.atan2(-tx, tz) * 180 / Math.PI).toFixed(1), len: 2.6, open: !!open }; };
+      const set = B => { GM.barriers = B; reGates(); };
+      let viol = 0; const prev = new Map(), mon = () => { for (const v of G.queue) { if (v.mode !== 'q') continue; const o = prev.get(v), dl = v.e.len - v.r;
+          if (o) for (const x of o.e.bx) if (!x.b.open && o.dl < x.d - 1e-6 && (v.e !== o.e || dl > x.d + 1e-6)) viol++;
+          prev.set(v, { e: v.e, dl }); } };
+      const run = (n, f) => { for (let i = 0; i < n; i++) { step(.05); mon(); if (f) f(); } };
+      const B0 = JSON.parse(JSON.stringify(GM.barriers || {}));
+      set({}); run(4000); // file remplie, sans barrière
+      const e = SEG_IN, d = Math.min(e.len * .5, 12);
+      set({ b1: across(e, d) }); run(1200);
+      ck('blocked', viol === 0); ck('waitBefore', G.queue.some(v => v.mode === 'q' && v.e === e && e.len - v.r < d && e.len - v.r > d - 1.5));
+      set({ b1: across(e, .1) }); const inQ = new Set(G.queue.filter(v => v.mode === 'q')); let ent = 0; run(1200, () => { for (const v of G.queue) if (v.mode === 'q' && !inQ.has(v)) { ent++; inQ.add(v); } });
+      ck('entryShut', ent === 0 && viol === 0 && G.queue.some(v => v.mode === 'app'));
+      if (LOOPS.length) { const l = LOOPS[0];
+        set({ b1: across(l.short, Math.min(.5, l.short.len / 2)) }); ck('otherWay', l.r === l.loop);
+        set({ b1: across(l.short, Math.min(.5, l.short.len / 2)), b2: across(l.loop, Math.min(.5, l.loop.len / 2)) }); ck('forkShortest', l.r === l.short); // aucun trajet ouvert : le plus court, arrêt devant la barrière
+        run(1200); ck('forkBlocked', viol === 0); }
+      // évacuation : barrière fermée au milieu du premier tronçon, file remplie au-delà
+      set({}); run(2000); set({ b1: across(e, d) }); const qd = G.queue.filter(v => v.mode === 'q' && e.len - v.r > d + .5 || v.mode === 'q' && v.e !== e).length;
+      act('evac'); let adv = 0, cross = 0; const wp = new Map(), b = BARS[0];
+      run(800, () => { if (evacOn()) { if (G.queue.some(v => v.mode === 'q')) adv++; }
+        for (const k of G.walkers) if (k.kind === 'evac') { const o = wp.get(k); if (o && segX(o, [k.x, k.z], b.H, b.A) != null && !b.open) cross++; wp.set(k, [k.x, k.z]); } });
+      const held = G.walkers.filter(k => k.kind === 'evac' && k.bk).length;
+      ck('evacHeld' + (qd ? '' : '(vide)'), cross === 0 && (held > 0 || !qd)); ck('evacNoAdvance', adv === 0);
+      toggleBar(0); run(1200); ck('evacResume', !G.walkers.some(k => k.kind === 'evac' && k.bk));
+      set(B0); return R.join(' ');
     });
-    return bad;
-  });
-  man += ' | gatesMove=' + (gm.length ? 'FAIL ' + gm.join(',') : 'ok');
-  // issue #34 : file déduite des chemins OSM (SITE.queue.ways) ou écrite à la main (SITE.queue.parts) ; surcharges GAME.barriers sans barrière (orphelines, signalées, jamais modifiées)
-  const qa = await page.evaluate(() => { const A = QS.auto || {}, K = new Set(gateList().map(g => g.key)), F = new Set(forkList().map(f => f.name));
-    const orph = Object.keys(GM.barriers || {}).filter(k => { const m = /^add:(.+):\d+$/.exec(k); return m ? !F.has(m[1]) : !K.has(k); });
-    return (A.used ? 'auto(' + A.forks.join(',') + (A.dir ? '' : ', sens déduit') + ')' : 'manuel') + ' gameOrphans=' + (orph.length ? orph.join(',') : 'none'); });
+    man += ' | bars: ' + bt; await p7.close();
+  }
+  // issue #34 / #37 : file déduite des chemins OSM (SITE.queue.ways) ou écrite à la main (SITE.queue.parts) ; anciennes clés GAME.barriers converties (lues, jamais réécrites)
+  const qa = await page.evaluate(() => { const A = QS.auto || {};
+    return (A.used ? 'auto(' + A.forks.join(',') + (A.dir ? '' : ', sens déduit') + ')' : 'manuel') + ' bars=' + BARS.length + ' (' + BARS.filter(b => b.from).length + ' converties)'; });
   man += ' | queue=' + qa;
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
