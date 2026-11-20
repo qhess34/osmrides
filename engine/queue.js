@@ -237,16 +237,59 @@ function forkList(){return LOOPS.map((l,i)=>({fork:i,name:l.kname}));}
 // court trajet jusqu'à la gare qui ne franchit que des barrières ouvertes ; s'il n'y en a aucun, le plus court trajet tout court, et il s'arrête devant la première
 // barrière fermée (arrêt dans le tronçon, ci-dessous). l.r = allée choisie à l'embranchement l (l.on : la plus longue, pour le décompte de la file).
 const firstShut=e=>{let m=1e9;for(const x of e.bx||[])if(!x.b.open&&x.d<m)m=x.d;return m;};
-function qRoute(){let dO=0,dA=0; // distance jusqu'à la gare : par des barrières ouvertes seulement (dO, Infinity sans trajet ouvert) / sans tenir compte des barrières (dA)
+function qRoute(){BARV++;let dO=0,dA=0; // distance jusqu'à la gare : par des barrières ouvertes seulement (dO, Infinity sans trajet ouvert) / sans tenir compte des barrières (dA)
   for(let k=STAGES.length-1;k>=0;k--){const st=STAGES[k],B=st.seg?[st.seg]:[st.fork.short,st.fork.loop],o=B.map(e=>firstShut(e)<1e9?Infinity:e.len+dO),a=B.map(e=>e.len+dA);
     let j=0;if(Math.min(...o)<Infinity)j=o[1]<o[0]?1:0;else j=a[1]<a[0]?1:0;
     if(st.fork){st.fork.r=B[j];st.fork.on=B[j]===st.fork.loop;}dO=o[j];dA=Math.min(...a);}
   if(QOK)buildQueue();}
 // clic sur la carte (engine/render.js) : une barrière, seule
-function toggleBar(i){const b=BARS[i];if(!b)return;b.open=!b.open;qRoute();log('Barrière '+b.key+(b.open?' ouverte':' fermée')+' — file : '+Math.floor(QLEN/SP)+' places.');}
+function toggleBar(i){const b=BARS[i];if(!b)return;b.open=!b.open;if(b.open&&b.wq){b.wq.forEach((k,j)=>{k.hold=j*SP/(k.sp||3);k.bwb=null;});b.wq=null;}qRoute();log('Barrière '+b.key+(b.open?' ouverte':' fermée')+' — file : '+Math.floor(QLEN/SP)+' places.');}
 // premier vantail fermé franchi par le déplacement (x0, z0) → (x1, z1) d'un marcheur (arrivant, évacué) : vantail sans ses 0,3 premiers mètres (le poteau est sur la
 // bordure commune de deux allées à une fourche : un marcheur de l'autre allée, écarté de l'axe, ne s'y accroche pas)
 const barHit=(x0,z0,x1,z1)=>{for(const b of BARS)if(!b.open){const u=segX([x0,z0],[x1,z1],b.H2,b.A);if(u!=null&&u>1e-6)return b;}return null;};
+// File devant une barrière fermée (propriétaire, issue #40, générique) : arrivants et évacués que la barrière arrête attendent EN FILE derrière elle, sur leur propre
+// trajet (donc sur le chemin), jamais à moins de QD (0,4 m > QPW) l'un de l'autre. Seuls ceux dont le reste du trajet franchit cette barrière fermée (barAhead, en
+// cache jusqu'au prochain changement de barrière, BARV) s'y alignent : arrêt avant le vantail ou avant de s'approcher à moins de QD d'un visiteur déjà arrêté
+// (b.wq, ordre d'arrivée) ; arrêté trop près (deux arrivés en même temps), il recule sur son trajet jusqu'à la première place libre (barStepBack) ; deux de front
+// seulement là où les trajets (écartés au hasard dans la largeur du chemin) le permettent (évacué reculé sur la file : places de segSpots). Plus de place sur l'accès :
+// l'arrivant renonce. À l'ouverture, ils repartent dans l'ordre, chacun SP / vitesse après celui qui le précède (k.hold). En route : un évacué ne s'approche pas à moins
+// de QD de celui qui le précède vers la même barrière (evacAhead) ; arrivants rangés par reste à parcourir sur leur trajet (ptsLeft), un arrivant arrêté retient ceux
+// qui l'approchent sauf s'il les attend lui-même (bkTo : pas d'interblocage) et un arrivant arrêté à moins de QD d'un autre recule (qWalk). Les visiteurs de la file
+// elle-même (mode 'q') s'arrêtent déjà en file (qBehind). Mesure : overlapQ de la ligne « bars: » de tools/check.js.
+var BARV=0;
+function barAhead(k){if(k.bv===BARV)return k.ba;k.bv=BARV;k.ba=null;let x=k.x,z=k.z;
+  for(let i=k.i;i<k.pts.length;i++){const q=k.pts[i],b=barHit(x,z,q[0],q[2]);if(b){const u=segX([x,z],[q[0],q[2]],b.H2,b.A)||0;k.ba=b;k.bj=i;k.bX=[x+(q[0]-x)*u,z+(q[2]-z)*u];break;}x=q[0];z=q[2];}return k.ba;}
+// reste à parcourir par k jusqu'au vantail de sa barrière (barAhead) : ordre de la file devant elle
+function barDist(k){const P=k.pts,j=k.bj,X=k.bX;if(k.i>=j)return Math.hypot(X[0]-k.x,X[1]-k.z);if(!P.cum){P.cum=[0];for(let i=1;i<P.length;i++)P.cum.push(P.cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][2]-P[i-1][2]));}
+  return Math.hypot(P[k.i][0]-k.x,P[k.i][2]-k.z)+P.cum[j-1]-P.cum[k.i]+Math.hypot(X[0]-P[j-1][0],X[1]-P[j-1][2]);}
+// évacués en route vers une barrière fermée (grille EGRID, refaite à chaque pas) : aucun ne s'approche à moins de QD de celui qui le précède vers la même barrière
+// (k.bdd : reste à parcourir jusqu'au vantail) ; déjà à moins de QD d'un autre (partis côte à côte, trajets qui se croisent) : il passe, pour ne jamais s'arrêter collé
+const EGRID=new Map(),eNear=(x,z,f)=>{const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=EGRID.get((cx+i+4096)*8192+cz+j+4096);if(c)for(const o of c)if(f(o))return o;}return null;};
+function evacAhead(k){let bl=null;if(eNear(k.ox,k.oz,o=>o!==k&&Math.hypot(o.x-k.ox,o.z-k.oz)<QD))return null;
+  eNear(k.x,k.z,o=>{if(o!==k&&o.ba===k.ba&&o.bdd<k.bdd){const dn=Math.hypot(o.x-k.x,o.z-k.z);if(dn<QD&&dn<Math.hypot(o.x-k.ox,o.z-k.oz)-1e-6)bl=o;}return bl;});return bl;}
+// place (x, z) libre : à QD au moins des autres arrivants arrêtés (QGRID) ou des autres évacués arrêtés (EGRID), file devant la barrière comprise ;
+// all : de tous, même en marche (place où l'on recule : on n'y retombe pas sur un autre)
+const barFree=(W,x,z,k,all)=>k.mode==='app'?!qStill(k,x,z,all):k.kind==='evac'?!eNear(x,z,o=>o!==k&&(all||o.bk)&&Math.hypot(o.x-x,o.z-z)<QD):W.every(m=>Math.hypot(m.x-x,m.z-z)>=QD);
+function qStill(v,x,z,all){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(c)for(const o of c)if(o!==v&&o.mode==='app'&&(all||!o.mv)&&Math.hypot(o.x-x,o.z-z)<QD)return true;}return false;}
+const gridAdd=k=>{const G2=k.mode==='app'?QGRID:EGRID,c=qk(k.x,k.z);let L=G2.get(c);if(!L)G2.set(c,L=[]);L.push(k);}; // reculé : case de la grille à jour
+// évacué (sur la file) : première place libre sur l'axe de la file en reculant vers la gare depuis sa position, deux de front si l'allée le permet (segSpots) ;
+// trajet prolongé d'autant (il repartira de là)
+function evacBack(k,W){let bd=1.5,e=null,d=0;for(const g of SEGS){const r=_np(g.P,k.x,k.z);if(r.d<bd){bd=r.d;e=g;d=r.at;}}const A=[];
+  for(let n=0,left=300;e&&left>0;n++){d+=QSTEP;left-=QSTEP;if(d>e.len){d-=e.len;e=nextSeg(e);continue;}const S=segSpots(e),sp=S[Math.min(S.length-1,Math.round(d/QSTEP))];if(n%2===0)A.push([sp[0],0,sp[1]]);
+    for(const sd of [0,1,-1]){if(sd&&!sp[2]&&!sp[3])break;const x=sp[0]+sp[2]*sd,z=sp[1]+sp[3]*sd;if(!barFree(W,x,z,k,1))continue;
+      A.push([x,0,z]);const h=A.reverse().concat([[k.x,0,k.z]]),pts=h.concat(k.pts.slice(k.i));pts.qn=(k.pts.qn||k.pts.length)-k.i+h.length;
+      if(k.pe!=null)k.pe=k.pe>=k.i?k.pe-k.i+h.length:0;k.pts=pts;k.bv=-1;k.x=x;k.z=z;k.y=0;k.i=1;gridAdd(k);return true;}}
+  return false;}
+function barStepBack(k,W){if(k.kind==='evac'&&evacBack(k,W))return true;let ex=k.x,ez=k.z,left=60;for(let i=k.i-1;i>=0&&left>0;i--){const p=k.pts[i],L=Math.hypot(ex-p[0],ez-p[2]);
+    for(let t=.05;t<=L+1e-9&&left>0;t+=.05,left-=.05){const x=ex+(p[0]-ex)*t/L,z=ez+(p[2]-ez)*t/L;if(barFree(W,x,z,k,1)){k.x=x;k.z=z;k.y=p[1];k.i=i+1;gridAdd(k);return true;}}ex=p[0];ez=p[2];}
+  return false;}
+// k vient d'avancer depuis o = [x, y, z, i] : arrêté (remis en o, ou reculé) s'il franchirait la barrière fermée de son trajet ou s'approcherait d'un visiteur arrêté
+// devant elle ; renvoie 0 (libre), 1 (arrêté en file), 2 (aucune place derrière : l'arrivant renonce)
+function barWait(k,o){let b=k.bwb;if(b&&(b.open||!BARS.includes(b)))b=k.bwb=null;
+  if(b){[k.x,k.y,k.z,k.i]=o;return 1;}
+  b=barAhead(k);const hit=barHit(o[0],o[2],k.x,k.z);if(!b&&!hit)return 0;b=b||hit;const W=b.wq||(b.wq=[]);
+  if(!hit&&W.every(m=>{const d=Math.hypot(m.x-k.x,m.z-k.z);return d>=QD||d>=Math.hypot(m.x-o[0],m.z-o[2])-1e-6;}))return 0;
+  [k.x,k.y,k.z,k.i]=o;if(!barFree(W,k.x,k.z,k)&&!barStepBack(k,W))return 2;W.push(k);k.bwb=b;return 1;}
 // évacuation en cours : un évacué est encore dans la file (avant le début du raccord d'entrée et de l'accès, pts.qn = points de la file, backPath / platEvac)
 const evacOn=()=>G.walkers.some(k=>k.kind==='evac'&&k.i<(k.pts.qn||k.pts.length));
 // éditeur : barrière posée au clic (x, z) en travers de l'allée de file la plus proche (à moins de 6 m) : poteau sur la bordure côté clic, vantail fermé jusqu'à la bordure
@@ -291,17 +334,22 @@ const _qo={x:0,y:0,z:0,a:0};
 function qSpot(v,e,r){const S=segSpots(e),d=clamp(e.len-r,0,e.len),k=Math.min(S.length-2,Math.floor(d/QSTEP)),f=S.length<2?0:clamp(d/QSTEP-k,0,1),A=S[Math.max(0,k)],B=S[Math.min(S.length-1,k+1)],sd=v.side||0;
   _qo.x=A[0]+(B[0]-A[0])*f+(A[2]+(B[2]-A[2])*f)*sd;_qo.z=A[1]+(B[1]-A[1])*f+(A[3]+(B[3]-A[3])*f)*sd;_qo.a=f<.5?A[4]:B[4];_qo.lv=f<.5?A[5]:B[5];return _qo;}
 function qPlace(v){qSpot(v,v.e,v.r);v.x=_qo.x;v.z=_qo.z;v.lv=_qo.lv;v.hd=_qo.a+Math.PI/2+(v.jt||0);} // v.hd : épaules en travers de la marche (engine/render.js)
+// reste à parcourir sur son trajet (arrivant : jusqu'à la barrière d'entrée) : rang des arrivants, cohérent là où les accès se rejoignent ou tournent (issue #40)
+function ptsLeft(k){const P=k.pts;if(k.i>=P.length)return 0;if(!P.cum){P.cum=[0];for(let i=1;i<P.length;i++)P.cum.push(P.cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][2]-P[i-1][2]));}
+  return Math.hypot(P[k.i][0]-k.x,P[k.i][2]-k.z)+P.cum[P.length-1]-P.cum[k.i];}
 const QAFT=new Map(),QGRID=new Map(),QC=1.5,qk=(x,z)=>(Math.floor(x/QC)+4096)*8192+Math.floor(z/QC)+4096;
 function qRanks(){QENT.length=0;for(const o of SEG_IN.list.slice(-3).concat(G.queue.filter(o=>o.mode==='app')))if(Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<.6)QENT.push(o);let acc=0;for(let k=STAGES.length-1;k>=0;k--){const st=STAGES[k];if(st.seg)QAFT.set(st.seg,acc);else{QAFT.set(st.fork.loop,acc);QAFT.set(st.fork.short,acc);}
     acc+=st.seg?st.seg.len:(st.fork.on?st.fork.loop:st.fork.short).len;}
-  QGRID.clear();G.queue.forEach((v,i)=>{v.rk=(v.mode==='q'&&v.e?v.r+(QAFT.get(v.e)||0):1e5+Math.hypot(v.x-ENTRY0[0],v.z-ENTRY0[1]))+i*1e-7;const k=qk(v.x,v.z);let c=QGRID.get(k);if(!c)QGRID.set(k,c=[]);c.push(v);});}
+  QGRID.clear();G.queue.forEach((v,i)=>{v.rk=(v.mode==='q'&&v.e?v.r+(QAFT.get(v.e)||0):1e5+ptsLeft(v))+i*1e-7;const k=qk(v.x,v.z);let c=QGRID.get(k);if(!c)QGRID.set(k,c=[]);c.push(v);});}
 // v peut-il aller en (x, z) ? non (renvoie le gêneur) s'il s'y rapprocherait à moins de QD d'un visiteur qui le précède dans la file (s'en éloigner reste permis) ;
-// un arrivant ne bouscule pas non plus un arrivant arrêté devant la barrière d'entrée (arrêté sans être retenu par un autre visiteur : o.bk nul, aucun cycle)
+// un arrivant ne bouscule pas non plus un arrivant arrêté, sauf si celui-ci l'attend (bkTo, issue #40 : aucun cycle)
+// o attend-il (directement ou par une chaîne de visiteurs qui s'attendent, o.bk) que v avance ? alors v n'attend pas o (pas d'interblocage)
+function bkTo(o,v){for(let n=0;o&&n<12;n++){o=o.bk;if(o===v)return true;}return false;}
 function qBlocked(v,x,z){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(!c)continue;
-    for(const o of c){if(o===v||(o.lv|0)!==(v.lv|0)||!(o.rk<v.rk||v.mode==='app'&&o.mode==='app'&&!o.mv&&!o.bk))continue;
+    for(const o of c){if(o===v||(o.lv|0)!==(v.lv|0)||!(o.rk<v.rk||v.mode==='app'&&o.mode==='app'&&!o.mv&&!bkTo(o,v)))continue;
       const dn=Math.hypot(o.x-x,o.z-z);if(dn<QD&&dn<Math.hypot(o.x-v.x,o.z-v.z)-1e-6)return o;}}return null;}
 const room=e=>!e.list.length||qBehind(e,e.list[e.list.length-1].r)<=e.len+1e-9; // place libre au début du tronçon (écart SP, plus dans un repli : qBehind)
-function removeVisitor(v){const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1);if(v.e){const l=v.e.list,j=l.indexOf(v);if(j>=0)l.splice(j,1);}}
+function removeVisitor(v){v.bwb=null;const i=G.queue.indexOf(v);if(i>=0)G.queue.splice(i,1);if(v.e){const l=v.e.list,j=l.indexOf(v);if(j>=0)l.splice(j,1);}}
 function clearQueue(){G.queue.length=0;for(const s of SEGS)s.list.length=0;}
 const P3=(a,j)=>a.map(p=>[p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)]);
 function approach(){let r=Math.random()*SITE.approach.reduce((n,a)=>n+a.w,0);for(const a of SITE.approach){r-=a.w;if(r<=0)return a.pts;}return SITE.approach[0].pts;}
@@ -339,17 +387,20 @@ function moveAlong(k,dt){
 function joinQueue(){
   if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.01,0,100);G.stats.turned++;return;}
   const pts=approach().concat(QS.lead||[]).map(p=>{const j=.7*clamp(Math.hypot(p[0]-ENTRY0[0],p[1]-ENTRY0[1])/3,0,1);return [p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)];});pts.push([ENTRY0[0],0,ENTRY0[1]]); // écart aléatoire nul près de la barrière : les arrivants attendent en ligne sur l'accès, pas sur la file (issue #28)
+  if(qStill(null,pts[0][0],pts[0][2])){G.stats.turned++;return;} // accès plein jusqu'à son début (barrière fermée, issue #40) : il renonce
   G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',side:Math.random()<.5?-1:1,jt:rnd(-.25,.25),sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
 const _qp={x:0,y:0,z:0,side:0};
 // barrière d'entrée occupée (dernier entré ou arrivant à moins de 0,6 m, QENT) : les arrivants attendent à 1 m, sans gêner celui qui s'engage dans la file
 const QENT=[];
-function qWalk(v,dt){if(v.i>=v.pts.length){v.mv=false;v.bk=null;return true;}const ox=v.x,oy=v.y,oz=v.z,oi=v.i,end=moveAlong(v,dt),nx=v.x,nz=v.z; // arrivant : avance sur l'accès sans rattraper celui qui le précède
-  v.x=ox;v.z=oz;const de=Math.hypot(nx-ENTRY0[0],nz-ENTRY0[1]);let dO;const bk=qBlocked(v,nx,nz);v.bk=bk;if(bk||barHit(ox,oz,nx,nz)||de<1&&de<(dO=Math.hypot(ox-ENTRY0[0],oz-ENTRY0[1]))&&QENT.some(o=>o!==v&&(o.mode==='q'||Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<dO))){v.y=oy;v.i=oi;v.mv=false;return false;}
+function turnAway(v){const j=G.queue.indexOf(v);if(j>=0)G.queue.splice(j,1);v.bwb=null;G.stats.turned++;walker(leavePath(v),v.ci,null,3,0,'turn');} // arrivant sans place pour attendre (issue #40) : il renonce
+function qWalk(v,dt){if(v.i>=v.pts.length){v.mv=false;v.bk=null;return true;}if(v.hold>0){v.hold-=dt;v.mv=false;return false;}const ox=v.x,oy=v.y,oz=v.z,oi=v.i,end=moveAlong(v,dt),nx=v.x,nz=v.z; // arrivant : avance sur l'accès sans rattraper celui qui le précède
+  const bw=BARS.length?barWait(v,[ox,oy,oz,oi]):0;if(bw){v.mv=false;v.bk=null;if(bw===2)turnAway(v);return false;} // en file devant une barrière fermée (issue #40)
+  v.x=ox;v.z=oz;const de=Math.hypot(nx-ENTRY0[0],nz-ENTRY0[1]);let dO;const bk=qBlocked(v,nx,nz);v.bk=bk;if(bk||de<1&&de<(dO=Math.hypot(ox-ENTRY0[0],oz-ENTRY0[1]))&&QENT.some(o=>o!==v&&(o.mode==='q'||Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<dO))){v.y=oy;v.i=oi;v.mv=false;if(qStill(v,v.x,v.z)&&!barStepBack(v,[]))turnAway(v);return false;} // arrêté sur un autre arrivant arrêté (arrivés ensemble, flux qui se rejoignent) : recule sur son trajet, sinon renonce (issue #40)
   if(nx!==ox||nz!==oz){v.hd=Math.atan2(nz-oz,nx-ox)+Math.PI/2+(v.jt||0);v.rk-=Math.hypot(nx-ox,nz-oz);}v.x=nx;v.z=nz;v.mv=true;return end;}
 function updateVisitors(dt){
   const w=G.wx.type,Q=G.queue;
-  for(const b of BARS)b.t=clamp(b.t+(b.open?-dt:dt)/.9,0,1);
+  for(const b of BARS){b.t=clamp(b.t+(b.open?-dt:dt)/.9,0,1);if(b.wq)b.wq=b.wq.filter(m=>m.bwb===b);} // file devant la barrière : partis retirés
   const ev=evacOn(); // évacuation en cours (propriétaire, 20/11) : plus personne n'entre ni n'avance vers la gare
   if(G.open&&!ev){
     const hourF=.6+.8*Math.sin(Math.PI*clamp((G.time-600)/480,0,1)),wxF=w==='storm'?.25:w==='rain'?.6:1;
@@ -380,8 +431,10 @@ function updateVisitors(dt){
     const h=l[0],nk=h&&h.r<=1e-3?nextSeg(e):null;
     if(nk&&room(nk)){l.shift();h.e=nk;h.r=nk.len;nk.list.push(h);}
   }
-  for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null,end=moveAlong(k,dt);
-    if(o&&barHit(o[0],o[2],k.x,k.z)){[k.x,k.y,k.z,k.i]=o;k.bk=1;continue;}if(o)k.bk=0; // évacué arrêté devant une barrière fermée : repart quand on l'ouvre
+  EGRID.clear();if(BARS.length)for(const k of G.walkers)if(k.kind==='evac'&&barAhead(k)){k.bdd=barDist(k);const c=qk(k.x,k.z);let L=EGRID.get(c);if(!L)EGRID.set(c,L=[]);L.push(k);}
+  for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null;if(o&&k.hold>0){k.hold-=dt;continue;}const end=moveAlong(k,dt);
+    if(o&&k.ba&&k.bv===BARV&&!k.bwb){k.ox=o[0];k.oz=o[2];if(evacAhead(k)){[k.x,k.y,k.z,k.i]=o;k.bk=1;continue;}} // derrière un évacué qui le précède vers la barrière : attend
+    if(o&&barWait(k,o)){k.bk=1;continue;}if(o)k.bk=0; // évacué arrêté en file devant une barrière fermée (issue #40) : repart, dans l'ordre, quand on l'ouvre
     if(end){if(k.done)k.done();G.walkers.splice(i,1);}}
 }
 
