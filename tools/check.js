@@ -372,6 +372,11 @@ const root = path.resolve(__dirname, '..');
     return bad;
   });
   man += ' | gatesMove=' + (gm.length ? 'FAIL ' + gm.join(',') : 'ok');
+  // issue #34 : file déduite des chemins OSM (SITE.queue.ways) ou écrite à la main (SITE.queue.parts) ; surcharges GAME.barriers sans barrière (orphelines, signalées, jamais modifiées)
+  const qa = await page.evaluate(() => { const A = QS.auto || {}, K = new Set(gateList().map(g => g.key)), F = new Set(forkList().map(f => f.name));
+    const orph = Object.keys(GM.barriers || {}).filter(k => { const m = /^add:(.+):\d+$/.exec(k); return m ? !F.has(m[1]) : !K.has(k); });
+    return (A.used ? 'auto(' + A.forks.join(',') + (A.dir ? '' : ', sens déduit') + ')' : 'manuel') + ' gameOrphans=' + (orph.length ? orph.join(',') : 'none'); });
+  man += ' | queue=' + qa;
   await page.evaluate(INSTALL); // contrôle offpath : visiteurs hors des chemins (tools/offpath.js)
   const r = await page.evaluate(() => {
     act('speed', 0); G.wx.next = 1e6; __opStroll();

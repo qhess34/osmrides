@@ -56,11 +56,12 @@ const SITE=(()=>{
     // Poste de conduite : extrémité sud-est de la gare (propriétaire), côté sud-ouest de la voie, vitre tournée vers la voie, à 2,8 m de l'axe ;
     // emplacement exact ESTIMÉ (dans le décrochement sud du bâtiment OSM 148160006, là où la voie sort de la gare)
     booth:[2.8,8.0,-2.427],boothLabel:[0.4,11.6],beacon:[3.95,7.85],
-    queue:{entry0:ENTRY0,link:[[61.1,16.8]],
+    queue:{entry0:ENTRY0,link:[[61.1,16.8]],ways:[Q,TUN,B,LOOP],   // chemins de file OSM : tronçons et fourche déduits par le moteur (lot 5, engine/queue.js deduceParts) ; parts = repli
+     
       parts:[
         {pts:[ENTRY0].concat(Q,TUN.slice(1),B.slice(1,6))},
-        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Barrières = nœuds OSM B1 aux pointes du raccourci (engine/queue.js osmGates,
-        // règle du propriétaire, issues #12 et #17) : une barrière pivotante par pointe.
+        // fourche (0,6 ; -10,9) : raccourci (chemin 1580149150) ou boucle nord 1032685208. Barrières : une barrière pivotante par pointe, déduite de la fourche
+        // (engine/queue.js forkGates, issue #34 ; nœuds OSM barrier=* plus lus).
         {name:'boucle nord',short:B.slice(5,8),loop:LOOP},
         {pts:B.slice(7)}]},
     approach:[{w:.5,pts:PROM.slice(0,4)},{w:.5,pts:PROM.slice(3).reverse()}],

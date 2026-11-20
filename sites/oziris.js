@@ -46,12 +46,13 @@ const SITE=(()=>{
     // Poste de conduite (propriétaire, 2026-11-16 : « au sud-est ») : côté est (débarquement), en tête de quai, juste derrière le quai de sortie, entièrement dans
     // le bâtiment de gare OSM 420016980, vitre tournée vers la voie ; emplacement exact ESTIMÉ.
     booth:[-9.7,0.29,2.007],boothLabel:[-5.6,1.6],beacon:[-8.6,-1.6],
-    queue:{entry0:ENTRY0,link:[[37.4,27.8]],
+    queue:{entry0:ENTRY0,link:[[37.4,27.8]],ways:[Q,OSM.paths.qloopW,QIN],   // chemins de file OSM : tronçons et fourche déduits par le moteur (lot 5, engine/queue.js deduceParts) ; parts = repli
+     
       parts:[
         // File OSM (propriétaire, 2026-11-16, 2e correction) : 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) = Q[F1] ; boucle ouest 1580173578 + 1580173579 qui revient
         // à la fourche ; 1073325805 vers la gare, lacets sud compris (plus de raccourci ni de barrière B2 depuis le 2026-11-18).
         {pts:[ENTRY0].concat(Q.slice(0,F1+1))},
-        // barrières : nœuds OSM barrier=swing_gate lus par le moteur (engine/queue.js osmGates, règle issue #12) ; une barrière pivotante par pointe (issue #17)
+        // barrières : une barrière pivotante par pointe, déduite de la fourche (engine/queue.js forkGates, issue #34 ; nœuds OSM barrier=* plus lus)
         {name:'boucle ouest',loop:OSM.paths.qloopW,short:Q.slice(F1,F1B+1)},
         // fin de la file (OSM 2026-11-18, changeset 192117430) : chemin 1580105930, file souterraine sous la gare (1580105922 / 1580105931 / escalier 1580105924 au niveau -2,
         // couloir 1580105925 au niveau -1 ; visibles seulement avec « Masquer la gare »), escalier 1580105926 qui remonte au niveau 0 (fin d'escalier visible gare affichée),

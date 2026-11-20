@@ -68,8 +68,10 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 ### Lot 5 — Files d'attente complètes
 
 - **Objectif** : définir dans l'éditeur les tronçons, les fourches, les raccords et la bouche de file (aujourd'hui `SITE.queue.parts`, écrit à la main), avec validation (visiteurs uniquement sur des chemins).
-- Avant de commencer : `docs/OSM-LIMITES.md` (issue #30) : tronçons, boucles et raccourcis probablement déductibles d'OSM (chemins à sens unique, barrières de même `ref`).
+- Avant de commencer : `docs/OSM-LIMITES.md` (issue #30) : tronçons, boucles et raccourcis déductibles d'OSM (chemins à sens unique et nœuds communs ; barrières OSM plus lues, issue #34).
 - Sonnet, moyenne ; dépend du lot 1 (barrières liées aux fourches).
+- **Fait en partie (20/11, issue #34)** : barrières de file **déduites** par le moteur (entrée au début de la file, une par pointe de fourche, liées), nœuds OSM `barrier=*` ignorés, `GAME.barriers` inchangé (aucune clé orpheline) ; **tronçons, boucles et raccourcis déduits** des chemins de file OSM et de leur sens (`SITE.queue.ways`, `engine/queue.js` `deduceParts`) pour Trace du Hourra, OzIris, Goudurix ; `SITE.queue.parts` gardé en repli (Zeus : raccourci ouest absent d'OSM, file à la main). Ligne `queue=auto(…)|manuel gameOrphans=` de `tools/check.js`.
+- **Reste** : trouver les chemins de file sans liste d'ids dans la spec (importeur : `oneway`, de la barrière d'entrée à `entrance=main`) ; montrer la file déduite dans l'éditeur ; raccord d'entrée, bouche, accès encore dans `SITE`.
 
 ### Lot 6 — Contribution OSM
 

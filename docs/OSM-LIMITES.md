@@ -9,7 +9,7 @@ Analyse seule, aucun changement de code. Relevé du 19/11/2026.
 - **Vérifié sur OSM** (extrait complet du parc téléchargé le 19/11/2026 sur `api.openstreetmap.org`, versions en cours) : les tags des objets cités avec un id (`w…` = chemin ou tronçon, `n…` = nœud, `r…` = relation).
 - **Vérifié par recherche web** (le wiki OSM et taginfo sont bloqués dans cette session ; seuls les extraits de recherche ont été lus) : documentation de `roller_coaster=*`, `roller_coaster:track=*` (lift_hill, brake_run, station, launch_straight, moving, waiting ; `maintenance` seulement dans la traduction chinoise), `roller_coaster=station`, `roller_coaster=support`, `roller_coaster:type=*` (wooden_coaster, inverted_coaster, hybrid_coaster, alpine_coaster… liste « non exhaustive »).
 - **Supposé, d'après la pratique OSM générale** (pages wiki non relues ici) : `height`, `width`, `colour`, `roof:colour`, `railway=switch`, `railway=buffer_stop`, `railway=traverser`, `railway=platform`, `indoor=*`, `incline`.
-- **Supposé, non testé** : qu'un importeur saurait déduire la file (tronçons, boucles, raccourcis) du seul graphe OSM.
+- **Supposé puis testé (20/11, issue #34)** : la file (tronçons, boucles, raccourcis) se déduit des chemins de file OSM et de leur sens pour H, O, G ; pas pour Z (raccourci ouest absent d'OSM).
 
 ## Mise à jour du 20/11/2026 (réponses du propriétaire, issue #33)
 
@@ -89,13 +89,13 @@ Abréviations : Z = Tonnerre 2 Zeus, H = Trace du Hourra, O = OzIris, G = Goudur
 | Élément | Où aujourd'hui | Cat. | Tag OSM proposé ou raison | Effet lot 4 / 5 |
 |---|---|---|---|---|
 | Tracé des chemins de file, escaliers, passerelles, couloirs couverts | OSM | 1 | Déjà lu (vérifié pour les 4). | aucun |
-| Quels chemins forment la file (`paths` de la spec) | spec | 1 (déductible) / 3 | Pas de tag standard « file d'attente ». Mais les chemins de file relus sont tous `oneway=yes` (vérifié sur les chemins principaux des 4 files) et partent de la barrière d'entrée (`ref=Entrée …`) jusqu'au nœud `entrance=main` de la gare : la suite des chemins se **déduit** de ce graphe (supposé, non testé). Ne pas créer de tag maison. | lot 5 : liste calculée, à valider |
-| Découpage en tronçons, boucles, raccourcis (`queue.parts`, fourches, indices `at(x,z)`) | `SITE.queue.parts` | 1 (déductible) | Une boucle = deux chemins à sens unique entre deux mêmes nœuds ; ses pointes portent déjà les barrières de même `ref` (B1, B2 : vérifié pour Z, H, O, G). Le jeu peut en déduire boucle / raccourci et nom. | lot 5 réduit à une validation |
+| Quels chemins forment la file (`paths` de la spec) | spec + `SITE.queue.ways` | 1 (déductible) / 3 | Pas de tag standard « file d'attente » : la spec nomme toujours les chemins (liste d'ids, sans coordonnées). L'ordre des tronçons, les boucles et les raccourcis en sont **déduits** (issue #34). Trouver ces chemins sans la spec (depuis la barrière d'entrée jusqu'à `entrance=main`) : pas encore fait (importeur). | lot 5 : ids encore listés dans la spec |
+| Découpage en tronçons, boucles, raccourcis (`queue.parts`, fourches, indices `at(x,z)`) | **déduit** (`SITE.queue.ways`, `engine/queue.js` `deduceParts`) pour H, O, G ; `SITE.queue.parts` à la main pour Z (repli gardé partout) | 1 (déductible) | Graphe des nœuds communs, sens `oneway` = sens de dessin : file de base = plus court trajet du début du premier chemin au nœud le plus proche de `entrance=main` ; tout autre chemin qui la quitte et la rejoint plus loin = fourche (plus long = boucle). Vérifié le 20/11 : H, O identiques au découpage écrit à la main ; G identique sauf la fin, prolongée de 1,6 m jusqu'au nœud `entrance=main`. Z : le raccourci ouest (2,4 m entre deux allées) n'est pas un chemin OSM. | **fait (issue #34)** ; Z : dessiner le raccourci ouest dans OSM |
 | Largeur des allées de file | OSM `width` (H seul) sinon ESTIMÉE | 2 | [`width=*`](https://wiki.openstreetmap.org/wiki/Key:width), déjà lu. **Manque sur les files de Z, O, G** (vérifié). | supprime des estimations |
-| Barrières : position | OSM `barrier=swing_gate` + `ref` | 1 | Déjà lu. | aucun |
-| Barrières : pivot, angles, longueurs (`GAME.barriers`) | éditeur | 4 | Décision du 17/11 : le nœud OSM donne la position initiale, la géométrie relève du jeu. | reste dans l'éditeur |
-| Barrière ajoutée Z `add:raccourci est:1` | `GAME.barriers` | 1 ou 4 | Si une vraie barrière existe là sur le terrain : nœud `barrier=swing_gate` dans OSM (même `ref=B2`). Sinon : choix de jeu. **À demander.** | — |
-| Côté du poteau | OSM `swing_gate:hinge` (Z B2 seulement) | 3 | `swing_gate:hinge` est lu mais rare ; à garder pour les barrières déjà taguées, sans le généraliser. | aucun |
+| Barrières : position | **déduite par le jeu** (issue #34) | 4 | Décision du propriétaire (20/11) : plus de barrières côté OSM. Entrée = début de la file ; fourche = une barrière par pointe. Nœuds `barrier=*` importés mais ignorés. | **fait** |
+| Barrières : pivot, angles, longueurs (`GAME.barriers`) | éditeur | 4 | Corriger, ajouter, supprimer ; clés stables inchangées (aucune clé orpheline dans les 4 `game.js` au 20/11, ligne `queue=… gameOrphans=` de `tools/check.js`). | reste dans l'éditeur |
+| Barrière ajoutée Z `add:raccourci est:1` | `GAME.barriers` | 4 | Choix de jeu, gardé dans l'éditeur (plus de nœud OSM à ajouter). | — |
+| Côté du poteau | jeu (à droite du sens de la file) ; éditeur | 4 | `swing_gate:hinge` n'est plus lu (issue #34). | — |
 | Bouche de file (`mouth`, `mouthMax`), barrière déplacée au bout (`gateAtMouth`, Z) | `SITE.queue` | 4 | Ajustement du jeu, contraire à la position OSM (Z : nœud « Entrée T2Z » sous la statue). Si la barrière réelle est devant la statue : **déplacer le nœud dans OSM**, puis retirer `gateAtMouth`. | lot 5 : réglage de jeu |
 | `entry0`, `link` (point d'arrivée, raccord vers la file) | `SITE.queue` (coordonnées écrites) | 1 | Raccord = chemin OSM entre la zone piétonne et la barrière d'entrée ; à dessiner dans OSM s'il manque (G : `w1580408092`, cité dans `sites/goudurix.js`). | lot 5 |
 | Accès promeneurs (`approach`, Z `PROM_W` / `PROM_N` en coordonnées) | `SITE` | 1 | Ce sont des allées réelles du parc : leurs chemins OSM peuvent être nommés dans la spec au lieu de coordonnées. Largeur de foule (`w`) : cat. 4. | lot 5 |
@@ -152,15 +152,15 @@ Seulement ce qui est vrai sur le terrain ; ne jamais y mettre une estimation du 
 ### b) Ce qui reste à éditer hors d'OSM : lots 4 et 5 plus petits
 
 - **Lot 4 (corrections locales d'OSM)** : la plupart des écarts actuels relèvent d'une **correction directe dans OSM** par le propriétaire (liste ci-dessus), pas d'un fichier `osmfix.json`. Il reste peu de vraies corrections locales : une correction en attente de validation OSM, et les **écarts volontaires** du jeu (barrière d'entrée de Zeus au bout de la bouche, raccords de chemins inventés). Proposition : faire du lot 4 un **petit lot** (« écart local en attente d'OSM », signalé et listé), sans éditeur complet d'objets OSM.
-- **Lot 5 (files)** : la liste des chemins de file, les boucles et les raccourcis peuvent être **déduits d'OSM** (chemins à sens unique entre la barrière d'entrée et l'entrée de la gare, barrières de même `ref` aux pointes). Supposé, à vérifier par un essai sur les 4 attractions. L'éditeur n'aurait plus qu'à **montrer et valider** ce calcul, et à régler ce qui relève du jeu : bouche de file, largeur de foule des accès, couloir d'attente.
+- **Lot 5 (files)** : **fait en partie (issue #34, 20/11)** : tronçons, boucles et raccourcis déduits des chemins de file OSM et de leur sens (H, O, G) ; barrières déduites (4 attractions). Restent écrits à la main : la liste des ids des chemins de file (spec), le raccord d'entrée (`entry0`, `link`), la bouche (`mouth`, `gateAtMouth`), la file de Z (`queue.parts`). L'éditeur pourra **montrer** la file déduite (pas encore fait).
 - **Restent dans l'éditeur ou `SITE`, définitivement** : barrières (géométrie), salle de contrôle (pupitre), zone d'attente et profondeur des travées, trains et wagons, couleurs du rendu, profil en hauteur et géométrie des figures, mécanique et vitesses du garage, zones (moteurs, AUTO / MANU, ralentissement), physique, caméras, étiquettes, économie.
 
 ### c) Points à discuter avec le propriétaire
 
 1. **Freins `waiting` → `brake_run`** : d'accord pour corriger OSM ? Il faudra en même temps adapter l'importeur pour qu'il distingue toujours le frein de bloc du frein final.
 2. **Garage du Hourra** : les 6 voies sont-elles visibles ou connues (photo, plan) ? Sinon elles restent estimées dans le jeu.
-3. **Barrière ajoutée à Zeus** (`add:raccourci est:1`) : existe-t-elle sur le terrain ? Si oui, elle va dans OSM.
-4. **Barrière d'entrée de Zeus** : où est-elle vraiment, sous la statue (OSM) ou devant (jeu) ?
+3. **Barrières** : réglé le 20/11 (issue #34) : plus dans OSM, déduites par le jeu, corrigées dans l'éditeur (la barrière ajoutée de Zeus reste dans `GAME.barriers`).
+4. **Barrière d'entrée de Zeus** : déduite au début du chemin de file OSM (sous la statue), puis déplacée devant par `gateAtMouth` (ajustement du jeu) ; l'éditeur la corrige.
 5. **Quais** : faut-il les dessiner dans OSM (`railway=platform`, usage discutable pour un coaster), ou les laisser au jeu ?
 6. **Salles de contrôle** : Zeus en a une dans OSM. Le jeu doit-il la lire comme position de départ (comme pour les barrières) ?
 7. **`roller_coaster:element`** sur Goudurix : tag en usage mais non documenté. On le garde, ou on se limite à `name=*` ?

@@ -52,7 +52,7 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Passerelle | `bridge=yes` + `layer=*` | Lu | Chemin dessiné par-dessus la voie, visiteurs dessus. |
 | Chemin couvert, souterrain | `tunnel=yes`, `covered=yes`, `indoor=yes` ou `layer` négatif | Lu | Couloir caché, visible avec « Masquer la gare ». |
 | Niveau souterrain | `layer=-1`, `-2`… (ou `level` négatif) sur le chemin ou l'escalier | Lu | Sous la gare : rien n'est montré (ni tracé, ni visiteurs) tant que la gare est affichée. L'escalier couvert dont le **haut** (`incline=up` dans le sens du way) débouche sur un chemin non couvert (niveau 0) garde sa **fin d'escalier** visible. Mettre `incline` sur l'escalier qui remonte au niveau 0. |
-| Barrière | nœud `barrier=swing_gate` (ou `gate`, `lift_gate`…) (+ `swing_gate:hinge=left/right`, `ref=*`) | Lu | Barrières de file du jeu (règle du §5) : le nœud donne la **position** ; le jeu la pose **en travers du chemin**, de la **largeur du chemin** (`width=*`), poteau côté `hinge`. Elle remplace toute barrière posée par le jeu. Position initiale seulement : une barrière corrigée dans l'éditeur (`GAME.barriers`, lot 1) l'emporte. |
+| Barrière | nœud `barrier=swing_gate` (ou `gate`, `lift_gate`…) (+ `swing_gate:hinge=left/right`, `ref=*`) | Importé, **ignoré par le moteur** (issue #34, 20/11) | Les barrières de file sont déduites des bifurcations et du sens de la file (§5) ; l'éditeur les corrige (`GAME.barriers`). Le nœud reste une documentation du terrain. |
 | Garde-corps | `barrier=fence` ou `barrier=handrail` | Lu comme décor | Dessinés comme décor ; pas encore utilisés pour délimiter la file (le jeu pose ses propres barrières). |
 
 ## 4. Décor
@@ -67,30 +67,26 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Bâtiments | `building=*` | Lu | Toits, avec `name` affiché. |
 | Hauteur des bâtiments | `height=*`, sinon `building:levels=*` (× 3 m) | Lu | Longueur de l'ombre ; un bâtiment que la voie survole plus haut que lui est dessiné sous la voie (sans hauteur : 7 m estimé). |
 
-## 5. Barrières de file : comment les dessiner
+## 5. Barrières de file : déduites par le jeu, plus par OSM
 
-**Règle commune à toutes les files** (décision du propriétaire, 17/11, issue #12 ; `engine/queue.js`). OSM donne la **position** d'une barrière, pas son orientation ni sa longueur ; le jeu complète ainsi :
+**Décision du propriétaire (20/11, issue #34, remplace la règle du 17/11)** : les barrières de file **ne se dessinent plus dans OSM**. Les nœuds `barrier=*` restent importés (`OSM.barriers`) mais le moteur ne s'en sert plus pour les placer. Le jeu les **déduit des bifurcations de la file et de son sens** (`engine/queue.js`) ; l'éditeur sert à les corriger, en ajouter ou en supprimer (`GAME.barriers`, clés stables inchangées).
 
-| Ce qui est dessiné | D'où cela vient |
+| Barrière | Comment le jeu la pose |
 |---|---|
-| Position | Le nœud `barrier=*` (`swing_gate`, `gate`, `lift_gate`) **posé sur le chemin de file** (nœud du way, pas à côté). |
-| Orientation | **Perpendiculaire au chemin** au droit du nœud. |
-| Longueur | **Largeur du chemin**, d'une bordure à l'autre : `width=*` du chemin si présent, sinon largeur par défaut du chemin dessiné (**ESTIMÉE**). |
-| Poteau | Côté `swing_gate:hinge=left` / `right` (vu dans le sens de dessin du chemin) ; sans `hinge`, à droite du sens de la file. Ouverte, la barrière se rabat le long de sa bordure. |
-| Barrière posée à la main par une attraction | **Aucune** quand OSM en donne une. |
-| Fourche (issue #17, croquis `docs/sources/goudurix-barrieres-fourche-2026-11-17.png`) | **Une seule barrière par pointe** (là où le raccourci quitte la boucle, et là où il la rejoint ; les deux d'une même boucle basculent ensemble). Le nœud OSM, au milieu du chemin, donne seulement **l'emplacement de la fourche** ; le **poteau-pivot** est sur la **bordure**, à la **pointe de l'angle intérieur** entre les deux chemins (coin où leurs bordures se rejoignent). Position A (boucle en service) : en travers du **raccourci**, de ce coin à la bordure opposée, perpendiculaire au raccourci ; position B : pivotée autour du même coin, en travers de la **boucle**. Longueur = largeur du chemin barré dans chaque position (peut différer entre A et B). Clic sur la carte = bascule A ↔ B, animée. Pointe sans nœud OSM : même barrière, posée par le jeu (**ESTIMÉE**). Raccourci si court (1 à 2 m) que les vantaux des deux pointes se croiseraient : chaque pivot est ramené près de sa pointe (deux barrières distinctes). |
+| Entrée de la file | Au **début de la file, dans son sens** : premier nœud du chemin de file OSM que suit le premier tronçon (`QSTART`) ; ce qui est écrit avant (raccord) est parcouru par les arrivants. Poteau à droite du sens de la file. |
+| Fourche (bifurcation) | **Une barrière par pointe** (départ et retour du raccourci, liées : elles basculent ensemble ; chaque chemin fermable a ainsi une barrière à son entrée et à sa sortie). Poteau-pivot sur la **bordure**, à la **pointe de l'angle intérieur** entre les deux chemins ; A = en travers du raccourci (boucle en service), B = en travers de la boucle (croquis `docs/sources/goudurix-barrieres-fourche-2026-11-17.png`). Raccourci très court : chaque pivot à au plus L/4 de sa pointe (deux barrières distinctes). |
+| Longueur | Largeur du chemin d'une bordure à l'autre : `width=*` du chemin si présent, sinon largeur dessinée (**ESTIMÉE**). |
+| Correction | Éditeur : déplacer / tourner (`fork:<tronçon>:fork0|fork1`, `entry`), supprimer (`{off:true}`), ajouter (`add:<tronçon>:<n>`). |
 
-Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; chaque barrière se clique sur la carte. Les barrières d'une même boucle bougent ensemble.
+Ce que le propriétaire met dans OSM pour que la file soit bien déduite (lot 5) :
 
-| Cas | Comment le dessiner dans OSM |
+| Cas | Dans OSM |
 |---|---|
-| Barrière d'entrée de la file | Nœud `barrier=swing_gate` sur le chemin de file, dans ses 15 premiers mètres (`ref` libre, ex. « Entrée Goudurix ») : la file commence au nœud. |
-| Barrière qui ferme un chemin de file (boucle ou raccourci) | Nœud `barrier=swing_gate` sur ce chemin, à l'endroit de la fermeture. |
-| Barrière de fourche (cas normal) | Un nœud `barrier=swing_gate` **sur le point commun aux deux chemins**, à chaque pointe (départ et retour du raccourci), même `ref=` pour les deux pointes d'une boucle. Le jeu reconnaît un nœud à moins de 3 m d'une pointe ; il en déduit le coin de bordure (pivot) et les deux positions. Pas de `hinge` à donner. |
-| Barrière au milieu d'une boucle ou d'un raccourci | Nœud sur ce chemin à plus de 3 m des pointes : barrière simple en travers de ce chemin, liée à la fourche (cas rare). |
-| Largeur exacte | `width=*` sur le way du chemin de file (sinon largeur estimée). |
-| Côté du poteau | `swing_gate:hinge=left` ou `right`, vu dans le sens de dessin du chemin. |
-| Barrières liées | Même `ref=` (ex. `ref=B1`). |
+| Chemins de la file | `highway=footway` + `oneway=yes`, **dessinés dans le sens de marche** (de l'entrée vers la gare), reliés par des **nœuds communs**. |
+| Boucle / raccourci | Deux chemins à sens unique qui partent du **même nœud** et se rejoignent sur un **même nœud** : le plus long = boucle, le plus court = raccourci. Un raccourci qui n'est qu'un passage entre deux allées voisines (Zeus, raccourci ouest, 2,4 m) doit être **dessiné comme un chemin** pour être trouvé. |
+| Fin de la file | Nœud `entrance=main` de la gare (le jeu prend le nœud de la file le plus proche). |
+| Largeur | `width=*` sur chaque chemin de file. |
+| Barrières `barrier=*` | Facultatives (documentation du terrain) ; **ignorées par le jeu**. |
 
 ## 6. Avant d'importer une nouvelle attraction
 
@@ -98,7 +94,7 @@ Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; c
 2. Gare, lift, zones de freinage, tunnels et galeries sont tagués.
 3. Le bâtiment de gare couvre tout le quai ; les entrées et sorties sont des nœuds `entrance=*`.
 4. La file est dessinée en entier, de l'entrée à la gare, avec ses escaliers, passerelles, couloirs couverts et largeurs (`width=*`).
-5. Les barrières de file sont des nœuds `barrier=swing_gate` (§5).
+5. Les chemins de file sont à sens unique (`oneway=yes`), dessinés dans le sens de marche, boucles et raccourcis reliés par des nœuds communs (§5) ; les barrières n'ont pas à être dessinées.
 6. Le décor autour (eau, forêt, zones piétonnes, rochers) est à jour.
 7. Si tu connais des hauteurs de voie, mets `ele=*` sur les nœuds de la voie (et sur un nœud de la gare) ; pour un rocher ou une passerelle, `height=*`.
 8. Freins : `waiting`, `brake_run` (frein final), `moving` (rail mobile) ; salle de contrôle : bâtiment nommé « Salle de contrôle ». Pas de `railway=platform`.
@@ -130,7 +126,7 @@ Une version `null` (ou un objet sans `id`) veut dire « origine connue, version 
 | Zones piétonnes | `highway=pedestrian`+`area=yes`, `area:highway=*`, `place=square`, multipolygones `highway=pedestrian` (anneaux `inner` en trous) | idem | `feats` (`k=highway=pedestrian`, fermé, `h`) |
 | Escaliers | `highway=steps` | `incline` (up / down / pente), `width` (sinon chemin raccordé), `layer`, `level`, `covered`, `tunnel`, `indoor` | `stairs` |
 | Entrées / sorties | nœuds | `entrance=*`, `name` | `doors` |
-| Barrières de file | nœuds posés sur un chemin | `barrier` = `swing_gate`, `gate`, `lift_gate` ; `ref`, `swing_gate:hinge` ; direction du chemin au nœud | `barriers` |
+| Barrières de file | nœuds posés sur un chemin | `barrier` = `swing_gate`, `gate`, `lift_gate` ; `ref`, `swing_gate:hinge` ; direction du chemin au nœud | `barriers` (plus lu par le moteur depuis l'issue #34) |
 | Eau | ways / multipolygones | `natural=water`, `water`, `waterway` | `feats` |
 | Végétation | ways / multipolygones ; nœuds | `landuse` (forêt, herbe…), `natural` (bois…), `leisure` ; nœuds `natural=tree` | `feats`, `trees`, `src.trees` |
 | Rochers | ways / multipolygones (anneaux assemblés) | `natural=rock`, `natural=stone` ; `natural=bare_rock` EST un rocher (décision du propriétaire 19/11 ; `make_site.py` l'écrit `natural=rock`) | `feats` |

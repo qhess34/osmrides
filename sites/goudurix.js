@@ -48,9 +48,9 @@ const SITE=(()=>{
     // Poste de contrôle au SUD-EST de la gare, dans son emprise, vitre tournée vers la voie (propriétaire, lot 6) ; pupitre réduit (échelle .55 : 2,1 x 0,9 m, ESTIMÉ).
     booth:[2.25,8.6,Math.PI/2,.55],boothLabel:[7,12],beacon:[2.55,7.75],
     // Entrée (propriétaire, issue #9 : « ça dépasse trop ») : la barrière OSM est déjà dans la zone piétonne, aucun prolongement (mouthMax 0 : raccord retiré).
-    queue:{entry0:ENTRY0,link:[],mouthMax:0,   // barrière d'entrée : nœud OSM « Entrée Goudurix » (engine/queue.js)
+    queue:{entry0:ENTRY0,link:[],mouthMax:0,ways:[Q,QLOOP,QIN],   // barrière d'entrée au début du chemin de file OSM 1580112206 ; tronçons et fourche déduits des chemins de file OSM (lot 5, engine/queue.js deduceParts) ; parts = repli
       parts:[{pts:[ENTRY0].concat(Q.slice(Math.hypot(Q[0][0]-ENTRY0[0],Q[0][1]-ENTRY0[1])<1.5?1:0,F0+1))},
-        // boucle 1580112207 : barrières = nœuds OSM B1 aux deux pointes : une barrière pivotante par pointe (engine/queue.js osmGates, issue #17)
+        // boucle 1580112207 : une barrière pivotante par pointe, déduite de la fourche (engine/queue.js forkGates, issue #34 ; nœuds OSM barrier=* plus lus)
         {name:'boucle nord',short:Q.slice(F0,F1+1),loop:QLOOP},
         {pts:Q.slice(F1).concat(QIN.slice(1,2))}]},
     // Arrivée : depuis le pont de bois et l'allée est (OSM 161214279, 161214274), ou depuis l'entrée sud, par le chemin 1102233771.

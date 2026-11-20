@@ -30,11 +30,11 @@ const SITE=(()=>{
     plat:{load:7.9,exit:3,back:.1,front:1.6},   // exit : quai de débarquement côté nord jusqu'au mur (ESTIMÉ d'après le bâtiment OSM) ; couloir de descente au milieu
     booth:[7.275,-3.7,0],boothLabel:[10.5,-6.6],beacon:[9.6,-4.9],
     // Entrée (propriétaire, issue #9) : file prolongée de 4,5 m dans la zone piétonne (45 % de ses 10 m de profondeur) et barrière d'entrée déplacée au bout,
-    // devant la statue : AJUSTEMENT du jeu (le nœud OSM « Entrée T2Z » est sous la statue, en (-28 ; -1,2)), voir engine/queue.js gateAtMouth.
+    // devant la statue : AJUSTEMENT du jeu (le début du chemin de file OSM, et l'ancien nœud « Entrée T2Z », sont sous la statue, en (-28 ; -1,2)), voir engine/queue.js gateAtMouth.
     queue:{entry0:ENTRY0,link:[[-29.4,-9.2]],mouthMax:.45,gateAtMouth:true,
       parts:[
         {pts:[ENTRY0].concat(W.slice(0,JB+1))},
-        // Raccourcis : barrières = nœuds OSM barrier=* (règle du propriétaire, issue #12, engine/queue.js osmGates) ; une barrière pivotante par pointe (issue #17).
+        // Raccourcis : une barrière pivotante par pointe, déduite de la fourche (engine/queue.js forkGates, issue #34 ; nœuds OSM barrier=* plus lus). File écrite à la main : le raccourci ouest (2,4 m) n'est pas un chemin OSM, la déduction (SITE.queue.ways) ne le trouverait pas.
         {name:'raccourci ouest',loop:W.slice(JB,JA+1),short:[W[JB],W[JA]]},
         {pts:W.slice(JA,J2+1)},
         {name:'raccourci est',loop:W.slice(J2,J1+1),short:SHORT_E||[W[J2],[-12.1,27],[-12,19.3],[-11.6,17.4],[-9.9,16.2],W[J1]]},
