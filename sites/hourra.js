@@ -12,10 +12,15 @@ const SITE=(()=>{
   // dessiné sous le toit, qui s'efface au zoom), chemin 1580149150 vers le nord, fourche en (0,6 ; -10,9) : raccourci ou boucle 1032685208 (barrières OSM B1 aux
   // deux pointes de la boucle), escalier 1032685209 qui monte jusqu'à l'entrée du quai (OSM entrance=main (2,9 ; -3,3), 2026-11-17).
   const TUN=OSM.paths.qtun,B=OSM.paths.queueB,XD=OSM.paths.xdown;
-  // Garage : 6 voies droites, parallèles au frein final, côte à côte à l'ouest du circuit, dans le bâtiment OSM 148160581
-  // (son grand côté est parallèle à la ligne droite du frein final). d = distance (m) entre l'axe du circuit et l'axe de la voie.
-  // Côté ouest, écartement 3,2 m, distance de la première voie (8 m), longueur (un train + 1,4 m) : ESTIMÉS (non relevés).
-  const lane=(n,d)=>({name:'Voie '+n,d,cap:1});
+  // Garage (OSM, propriétaire 2026-11-20, issue #33) : 6 voies droites dessinées dans OSM (1582324002…1582324007, gar1…gar6), dans le bâtiment 148160581,
+  // au-delà du pont, à l'ouest du rail mobile du parcours (1580086185, garA) ; rail du chariot 1582324008 (garB). Lus ici dans OSM : d = distance moyenne
+  // (m) de l'axe du rail A à l'axe de la voie (côté droit du sens de marche = ouest), longueur de chaque voie, écart A/B (gap), jeu entre le bout du rail A
+  // et le début des voies (laneGap). Voies tracées à la main dans OSM, pas tout à fait parallèles (± 0,3 m) : moyenne des deux bouts.
+  const GA=OSM.paths.garA,A0=GA[0],A1=GA[GA.length-1],AL=Math.hypot(A1[0]-A0[0],A1[1]-A0[1]),TX=(A1[0]-A0[0])/AL,TZ=(A1[1]-A0[1])/AL;
+  const dOf=P=>(P.reduce((a,p)=>a+(p[0]-A0[0])*-TZ+(p[1]-A0[1])*TX,0)/P.length),tOf=p=>(p[0]-A0[0])*TX+(p[1]-A0[1])*TZ;
+  const LN=[1,2,3,4,5,6].map(k=>OSM.paths['gar'+k]),r1=v=>Math.round(v*10)/10;
+  const lane=(n,P)=>({name:'Voie '+n,d:r1(dOf([P[0],P[P.length-1]])),len:r1(Math.hypot(P[P.length-1][0]-P[0][0],P[P.length-1][1]-P[0][1])),cap:1});
+  const GAP=r1(dOf([OSM.paths.garB[0],OSM.paths.garB[OSM.paths.garB.length-1]])),LGAP=Math.max(.3,r1(Math.min(...LN.map(P=>Math.min(tOf(P[0]),tOf(P[P.length-1]))))-AL));
   return {
     id:'hourra',title:'La Trace du Hourra',kind:'bob',trackName:'Gouttière',goal:900,lap:110,
     // 7 bobs de 2 places l'une derrière l'autre (propriétaire) ; longueur et largeur d'un bob estimées. pitch : 0,56 m d'axe à axe, passagers l'un contre l'autre (propriétaire, 2026-11-17 : pas d'espace entre eux)
@@ -37,11 +42,11 @@ const SITE=(()=>{
     // rail mobile du parcours (rail A) = rail du circuit (zone de freinage), deux positions seulement : sur le circuit ou retiré vers l'est (retract) ;
     // chariot et rail du chariot (rail B ; garage, freins et pneus, porte le train) : en ligne avec le circuit (G, seulement rail A retiré) ou face à la voie k (ouest).
     // Le train y entre en marche avant et en ressort en arrière.
-    // Emplacement du rail mobile : tronçon OSM « waiting » 1580086185 (15,4 m, entre la courbe qui suit le frein final et le frein avant gare). ESTIMÉS : course du rail A (3,2 m), vitesse du chariot et du rail A
+    // Emplacement du rail mobile : tronçon OSM « moving » 1580086185 (« waiting » avant le 20/11) (15,4 m, entre la courbe qui suit le frein final et le frein avant gare). ESTIMÉS : course du rail A (3,2 m), vitesse du chariot et du rail A
     // (0,6 m/s, 4 s au moins par déplacement), vitesse de manœuvre des trains (1,8 m/s), sens d'entrée dans les voies, chariot au repos face à la voie 1.
-    yard:{at:'brake',device:'traverser',side:1,gap:3.2,post:.6,laneGap:.8,move:{v:1.8,vc:.6,t:4},
+    yard:{at:'brake',device:'traverser',side:1,gap:GAP,post:.6,laneGap:LGAP,move:{v:1.8,vc:.6,t:4},
       devName:'Chariot',devLabel:'le chariot',retract:{d:3.2,name:'Rail mobile du parcours',short:'Rail parcours',rest:1},
-      lanes:[lane(1,8),lane(2,11.2),lane(3,14.4),lane(4,17.6),lane(5,20.8),lane(6,24)]},
+      lanes:LN.map((P,k)=>lane(k+1,P))},
     // Frein avant gare (propriétaire, 2026-11-15) : zone de freinage de stockage entre le rail mobile du parcours et l'entrée de la gare, un train de long,
     // avec pneus ; AUTO par défaut (retient le train tant que la gare est occupée), MANU au choix. Position : tronçon OSM « waiting » 1580086183 (repères pre0/pre1).
     preBrake:{name:'Frein avant gare'},

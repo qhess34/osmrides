@@ -111,3 +111,10 @@ Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique 
 
 - **Lot 5 (2026-11-16)** : chemin d'entrée refait : les points OSM qui menaient au pied de l'escalier à sa position d'origine sont retirés, demi-tour régulier (deux allées à 2,5 m, main courante entre elles) puis montée droite dans l'escalier en applique ; escalier de sortie 1580112211 : 2 m.
 - **Lot 6 (2026-11-16)** : 14 portillons, un par rangée (`plat.gatesPer:'row'`), deux visiteurs par portillon, les opérateurs vérifient chaque rangée ; poste de contrôle au sud-est de la gare, sur le quai est devant le premier wagon, vitre vers la voie (`booth:[2.25, 8.6, π/2, .55]`, pupitre réduit ≈ 2,1 × 0,9 m, ESTIMÉ) ; escalier de sortie 1580112211 : palier au HAUT (côté porte de sortie, sens déduit : pas d'`incline` dans OSM), l'ancienne tache de chemin entre la porte et l'escalier retirée ; bord de quai à 0,95 m de l'axe (gabarit 1,5 m + roues), portillons à 1,75 m, couloir d'attente `board.walk` 2,8 m ; entrée de file prolongée de ≈ 4 m dans la zone piétonne, barrières des deux côtés.
+
+## Réimport du 2026-11-20 (issue #33)
+
+- Voie retouchée par le propriétaire le 20/11 (écart de 3 m au plus avec l'import précédent) ; croisement le plus serré 3,5 m (s 594 × 678 au sol) ; looping OSM retrouvé (s moteur 453–506).
+- `roller_coaster:element` lu : `OSM.elements` (butterfly, batwing, loop, corkscrew, abscisses du moteur) pour le futur réglage du tangage et du roulis dans l'éditeur.
+- **Questions** : B1 1580112200 est en `brake_run` et le frein final 1580112203 en `waiting` : la règle « brake_run = frein final » doit-elle s'appliquer ici ? Le jeu garde B1 = frein de bloc (ralenti à 8 m/s) et le frein final avant la gare (`osm_brakes`). Le tronçon 541092986 (milieu du batwing) est en `moving` : erreur probable, ignoré (`roles` de la spec).
+- Lift 541092982 : `layer=*` toujours invalide dans OSM.

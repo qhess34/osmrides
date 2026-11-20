@@ -74,7 +74,7 @@
   }
   function migrate() { // salle déduite de SITE.booth (D3) : SITE reste inchangé, la salle passe dans GAME à la sauvegarde
     const M = GM(); if (Array.isArray(M.controlRooms)) return;
-    const b = E('B0'); M.controlRooms = b ? [{ id: 'poste', x: R2(b.room.x), z: R2(b.room.z), angle: R1(b.room.angle), w: R2(b.room.w), d: R2(b.room.d), main: true }] : [];
+    const b = E('defRoom()'); M.controlRooms = b ? [{ id: 'poste', x: R2(b.x), z: R2(b.z), angle: R1(b.angle), w: R2(b.w), d: R2(b.d), main: true }] : [];  // salle OSM (OSM.ctl), sinon SITE.booth
   }
   const applied = () => { E('reGates()'); panel(); };
   function revertGate(key) { const M = GM(); if (M.barriers) { delete M.barriers[key]; if (!Object.keys(M.barriers).length) delete M.barriers; } applied(); }
@@ -301,7 +301,7 @@
         <div class="row">${v != null ? `<button id="bDelVtx" class="bad" ${Ps.length > 3 ? '' : 'disabled'}>Supprimer le sommet</button>` : ''}<button id="bAreaAuto" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
     }
     const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>';
-    return `<div><b>Salle de contrôle</b> ${migrated() ? '' : '<span class="tag t-est">SITE.booth (repli)</span>'}</div>
+    return `<div><b>Salle de contrôle</b> ${migrated() ? '' : (E('OSM_ROOM') ? '<span class="tag">OSM (bâtiment Salle de contrôle)</span>' : '<span class="tag t-est">SITE.booth (repli)</span>')}</div>
       <div class="grid" style="margin-top:6px"><span>Centre x, z (m)</span><span>${inp('x', r.x)} ${inp('z', r.z)}</span><span>Angle (°)</span><span>${inp('angle', r.angle, 1)}</span>
       <span>Largeur, profondeur (m)</span><span>${inp('w', r.w)} ${inp('d', r.d)}</span></div><p class="note">La vitre (côté du rond) est tournée vers la voie.</p>`;
   }
@@ -358,12 +358,12 @@
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
     const orph = Object.keys(d.barriers || {}).filter(k => !new Set(gates().map(g => g.key)).has(k)).length;
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
-      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'}.</div>`;
+      + `<div>${Object.keys(d.barriers || {}).length} surcharge(s) de barrière (corrigées, ajoutées, supprimées)${orph ? ', dont ' + orph + ' orpheline(s)' : ''} ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'OSM ou SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'}.</div>`;
     window.ED.dirty = dirty;
   }
 
   // ── diff et sauvegarde ──
-  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
+  const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) corrigée(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {
     if (!ready) return;
     const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g }) });

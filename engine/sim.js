@@ -295,6 +295,8 @@ function updateRun(t,dt){
   }else if(z==='course'){
     const a=-9.81*(hAt(t.s)-hAt(t.s-TLEN))/TLEN-(PH.roll+t.wear*.0003)-PH.drag*t.v*t.v;
     let bi=-1;for(let i=0;i<BLK.length;i++)if(BLK[i]>t.s-.2){bi=i;break;}
+    if(bi>=0){if(t.s<BZ0[bi])t.bvi=-1;else if(t.bvi!==bi){t.bvi=bi;t.bvin=t.v;}} // vitesse d'entrée dans la zone du frein de bloc (issue #33 : un train arrêté en repart à cette vitesse)
+    if(t.brs&&!(t.s<BLK[t.brs-1]+TLEN))t.brs=0;
     if(t.bst&&!(t.s<BLK[t.bst-1]+.3))t.bst=0;if(t.bgo&&!(t.s<BLK[t.bgo-1]+TLEN))t.bgo=0; // bst : arrêté au frein de bloc k (roues) ; bgo : poussé par ses roues (bouton AV) jusqu'à ce que la queue ait passé le frein
     const wd=bi>=0&&BDRV[bi]&&!!G.zm['B'+(bi+1)]&&t.bst===bi+1&&!t.bgo; // MANU, roues de propulsion : le train arrêté au frein n'en repart qu'au bouton AV
     const man=bi>=0&&zK('B'+(bi+1)),dh=bi>=0&&devHoldAt(bi); // frein de bloc serré au pupitre (zone en MANU) : arrêt même si le canton suivant est libre ; dh : retenu avant l'appareil hors de P (règle de départ)
@@ -302,7 +304,9 @@ function updateRun(t,dt){
       if(d<.2){t.v=0;t.blk=true;if(BDRV[bi])t.bst=bi+1;if(wd&&!man&&!dh&&t.wdTold!==bi&&!occupied(BLK[bi],blkEnd(bi),t)){t.wdTold=bi;log(t.name+' attend au frein de bloc '+(bi+1)+' (MANU) : AV pour le faire repartir.');}
         if(man&&t.bkTold!==bi){t.bkTold=bi;log(t.name+' arrêté au frein de bloc '+(bi+1)+' (serré au pupitre).','warn');}
         else if(dh&&!man&&t.dhTold!==bi){t.dhTold=bi;log(t.name+' retenu au frein de bloc '+(bi+1)+' : '+DEVL+' n\'est pas sur P (ou une manœuvre de garage est en cours).','warn');}}} // arrêt au frein de bloc
-    else{t.v=t.bgo?Math.max(t.v+a*dt,Math.min(VPROP,t.v+2*dt)):Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;t.dhTold=-1;t.wdTold=-1; // bgo : roues de propulsion (montée à VPROP)
+    else{if(t.blk&&bi>=0&&t.v===0){t.brs=bi+1;t.brv=t.bvi===bi?t.bvin:0;} // arrêté au frein de bloc puis libéré (AUTO, AV ou relâché en MANU) : relancé par la zone à sa vitesse d'entrée (brv)
+      const vr=t.bgo||t.brs?blkRelaunch(t):0;
+      t.v=vr?Math.max(t.v+a*dt,Math.min(vr.v,t.v+vr.a*dt)):Math.max(PH.vmin,t.v+a*dt);t.blk=false;t.bkTold=-1;t.dhTold=-1;t.wdTold=-1; // bgo : roues de propulsion (montée à VPROP)
       const tr=bi>=0&&!G.zm['B'+(bi+1)]?BTRIM[bi]:0;if(tr)t.v=Math.min(t.v,Math.sqrt(tr*tr+12*Math.max(0,BLK[bi]-t.s)));} // frein de ralentissement (zone en AUTO, canton libre) : vitesse ramenée à trim.v au point de frein, puis le train continue
     if(!t.screamed&&t.s>S_DROP){t.screamed=true;const n=count(t);if(n)sfx.scream(n);}
   }else{
@@ -518,3 +522,9 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
 $('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p===PG?'position G, rail de garage sur le circuit':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${posId(p)}</button>`).join('');
 $('yName').textContent=DEVN;
 if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');
+/* Relance d'un train arrêté dans une zone de freinage du parcours (frein de bloc ; OSM waiting, brake_run ou moving : propriétaire, issue #33, 20/11 :
+   « un train arrêté repart à la même vitesse qu'à l'entrée »). Cible = vitesse relevée à l'entrée de la zone (t.bvin au début BZ0, gardée dans t.brv à la relance), ramenée à trim.v si la zone
+   ralentit les trains (SITE.zones.B<k>.trim), au moins VPROP ; accélération des roues = celle qui atteint la cible quand la queue a passé le point de frein
+   (v² / 2 TLEN), entre 2 et 5 m/s² (ESTIMÉ). Le train n'atteint donc la cible que si la zone le permet ; ensuite, gravité. */
+function blkRelaunch(t){const k=(t.bgo||t.brs)-1;let v=t.brs===k+1&&t.brv>0?t.brv:VPROP;if(BTRIM[k])v=Math.min(v,BTRIM[k]);v=Math.max(VPROP,v);
+  return {v,a:clamp(v*v/(2*TLEN),2,5)};}
