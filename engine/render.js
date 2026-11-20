@@ -903,7 +903,11 @@ function drawLip(){const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exi
 const BOOTH_W=3.75,BOOTH_D=1.7;
 const B0=SITE.booth?(()=>{const B=SITE.booth,sc=B[3]||1,c=Math.cos(B[2]),sn=Math.sin(B[2]),loc=q=>q?[(q[0]-B[0])*c+(q[1]-B[1])*sn,-(q[0]-B[0])*sn+(q[1]-B[1])*c]:null;
   return {room:{id:'poste',x:B[0],z:B[1],angle:B[2]*180/Math.PI,w:BOOTH_W*sc,d:BOOTH_D*sc,main:true},bl:loc(SITE.beacon),ll:loc(SITE.boothLabel)};})():null;
-function ctlRooms(){const R=Array.isArray(GM.controlRooms)?GM.controlRooms:B0?[B0.room]:[];return R.filter(r=>r&&[r.x,r.z,r.angle,r.w,r.d].every(v=>typeof v==='number'&&isFinite(v)));}
+// Salle lue dans OSM (issue #33, propriétaire 20/11) : bâtiment nommé « Salle de contrôle » / « control room » (tools/make_site.py, OSM.ctl : rectangle d'aire
+// minimale, vitre tournée vers la voie) = position par défaut, avant SITE.booth ; GAME.controlRooms (éditeur) reste prioritaire. defRoom() : salle par défaut (éditeur).
+const OSM_ROOM=Array.isArray(OSM.ctl)&&OSM.ctl.length?{id:'poste',x:OSM.ctl[0].x,z:OSM.ctl[0].z,angle:OSM.ctl[0].angle,w:OSM.ctl[0].w,d:OSM.ctl[0].d,main:true}:null;
+function defRoom(){return OSM_ROOM||(B0?B0.room:null);}
+function ctlRooms(){const D=defRoom(),R=Array.isArray(GM.controlRooms)?GM.controlRooms:D?[D]:[];return R.filter(r=>r&&[r.x,r.z,r.angle,r.w,r.d].every(v=>typeof v==='number'&&isFinite(v)));}
 function mainRoom(){const R=ctlRooms();return R.find(r=>r.main)||R[0]||null;}
 const roomPt=(r,l)=>{const t=r.angle*Math.PI/180;return [r.x+l[0]*Math.cos(t)-l[1]*Math.sin(t),r.z+l[0]*Math.sin(t)+l[1]*Math.cos(t)];};
 function beaconAt(){const r=mainRoom();if(!r)return null;const l=B0&&B0.bl?B0.bl:[r.w/2-.35,-r.d/2+.3];return roomPt(r,[clamp(l[0],-r.w/2-.5,r.w/2+.5),clamp(l[1],-r.d/2-.5,r.d/2+.5)]);}

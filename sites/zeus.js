@@ -2,13 +2,14 @@
 /* Tonnerre 2 Zeus — configuration de l'attraction pour le moteur (engine/*.js).
    Les coordonnées viennent de sites/zeus.data.js (OpenStreetMap) ; ce qui est estimé est signalé. */
 const SITE=(()=>{
-  // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare (OSM 93696870, relue le 2026-11-17 : barrière d'entrée, fourche est en (-12,2 ; 28,4))
-  const W=(OSM.paths&&OSM.paths.queue||OSM.queue).concat([OSM.steps[1]]),SHORT_E=OSM.paths&&OSM.paths.short;
+  // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare (OSM 93696870, relue le 2026-11-17 : barrière d'entrée, fourche est en (-12,2 ; 28,4)),
+  // puis haut de l'escalier couvert OSM 1353118268 (entrée du quai). Réimport complet du 2026-11-20 (issue #33) : voie, gare, garage et file relus dans OSM.
+  const ST=OSM.paths.stair,W=OSM.paths.queue.concat([ST[ST.length-1]]),SHORT_E=OSM.paths.short;
   const at=(x,z)=>{let b=0,bd=1e9;W.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;b=i;}});return b;};
   const JB=at(-27.2,25.2),JA=at(-25.9,27.3),J2=at(-12.2,28.4),J1=at(-4.1,16.4),ENTRY0=[-28.6,-5.4];
   const PROM_W=[[-107.1,-8.2],[-95.1,-8.7],[-83.4,-9.8],[-74.9,-14],[-67,-17.3],[-61.1,-20.1],[-57.7,-19.1],[-50.9,-15.2],[-44.4,-11.1],[-39.7,-9.8],[-33.4,-9],[-30.1,-9.2]];
   const PROM_N=[[4.8,-56.4],[3.6,-42.4],[-.2,-32.2],[-8.6,-25],[-11.6,-19],[-13.2,-14.5],[-17.6,-8.5],[-20.9,-6.7]];
-  const onGarage=x=>[x,OSM.maint[0][1]+(x-OSM.maint[0][0])*(OSM.maint[2][1]-OSM.maint[0][1])/(OSM.maint[2][0]-OSM.maint[0][0])]; // voie de maintenance réelle
+  const GM_=OSM.paths.garage,onGarage=x=>[x,GM_[0][1]+(x-GM_[0][0])*(GM_[GM_.length-1][1]-GM_[0][1])/(GM_[GM_.length-1][0]-GM_[0][0])]; // voie de maintenance réelle (OSM 938337765 + 938337766)
   return {
     id:'zeus',title:'Tonnerre 2 Zeus',kind:'wood',trackName:'Voie en bois',goal:400,lap:150,
     car:{len:1.5,n:14},                    // 14 wagons de 2 places côte à côte ; longueur de wagon estimée
@@ -22,8 +23,9 @@ const SITE=(()=>{
     // absent d'OSM. Les ronds de ce plan sont en s du moteur (rond n = (n-1)×50 m ; vérifié : rond 18 = s 850, h 8,9 m, (83 ; 43) ; rond 19 = s 900, h 3,1 m, (45 ; 68)) :
     // galerie sombre à effets sur toute la diagonale qui revient de la boucle est vers le pied du lift, s 850–900 m. Bornes exactes et largeur ESTIMÉES (± quelques mètres).
     // Le premier tunnel (bas de la première descente) reste le polygone OSM man_made=tunnel 1353118256.
-    tunnels:[{s:[850,900],under:'roof',w:2.3}],
-    stationPoly:OSM.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
+    // Réimport du 2026-11-20 (issue #33) : la voie 3D est plus longue de quelques mètres (lift recalé sur OSM) : mêmes points au sol, s 847–897.
+    tunnels:[{s:[847,897],under:'roof',w:2.3}],
+    stationPoly:OSM.polys.station,stationAt:[0,2.5,9],stationRoofCol:'#a24e38',
     fade:[[0,2.5,9],[7.3,-3.7,1.5],[49,-3,8],[-4,11.4,4]],   // toits qui s'effacent : gare, poste de conduite, garage, escalier
     plat:{load:7.9,exit:3,back:.1,front:1.6},   // exit : quai de débarquement côté nord jusqu'au mur (ESTIMÉ d'après le bâtiment OSM) ; couloir de descente au milieu
     booth:[7.275,-3.7,0],boothLabel:[10.5,-6.6],beacon:[9.6,-4.9],

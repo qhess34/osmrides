@@ -107,3 +107,8 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/JOURNAL.md`.
 ### Issue #29 (propriétaire, 2026-11-19)
 
 Aucun visiteur visible sur l'allée 1580105935 (niveau 0, de (-13,9 ; -18,1) à la porte entrance=main) : la file y passait bien (≈ 15 visiteurs en exploitation chargée), mais ils étaient cachés comme s'ils étaient dans les couloirs souterrains qui passent dessous en plan (1580105925 niveau -1, presque parallèle). Corrigé dans le moteur (`engine/render.js` `inCovQ`) : seuls les visiteurs d'un tronçon de file qui fait partie du couloir sont cachés.
+
+## Réimport du 2026-11-20 (issue #33)
+
+- Changements OSM du propriétaire : tags seulement (frein final 1580105919 en `brake_run`, rail du pont 541161847 en `moving`, bouts de gare 1580412872 / 1580412873 sans `moving`, tunnel 421460641 `covered=yes` + `layer=-1`). Voie, repères et file inchangés.
+- Aucune salle de contrôle dans OSM (repli `SITE.booth`), aucun `ele` : profil ESTIMÉ.

@@ -18,15 +18,19 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Tronçons de voie | `roller_coaster=track` | Lu | Tracé du circuit, assemblé en boucle fermée. |
 | Type de tronçon | `roller_coaster:track=station` | Lu | Gare (repères début et fin de quai). |
 | | `roller_coaster:track=lift_hill` | Lu | Lift (début et fin de la chaîne). |
-| | `roller_coaster:track=brake_run` / `block_brake` / `waiting` / `storage` / `transfer` | Lu | Zones de freinage : frein de bloc, frein final, frein avant gare, rail du pont transbordeur. |
+| | `roller_coaster:track=waiting` / `brake_run` / `moving` | Lu | **Zones de freinage où un train peut attendre** (règle du propriétaire, 20/11, issue #33) : toutes freinent, et un train arrêté **repart à la vitesse qu'il avait en entrant** dans la zone. `brake_run` = **frein final** ; avant lui, freins de bloc ; après lui, vers la gare, `moving` = rail mobile du pont transbordeur, `waiting` = frein avant gare (noms automatiques, la spec `osm_brakes` peut les forcer). Un `moving` avant le lift (tronçon mobile d'un aiguillage) n'est pas une zone de freinage. |
+| | `block_brake` / `storage` / `transfer` | Lu (ancien) | Valeurs non documentées dans le wiki, encore lues comme zones de freinage ; ne pas en ajouter. |
+| Gares | `roller_coaster:station=load` / `unload` sur les tronçons `station` | Lu (non officiel) | Seulement s'il y a **deux gares** (embarquement / débarquement) : `OSM.stations`. Le moteur n'exploite encore que la gare de départ (celle du tronçon de départ de la spec). |
+| Figures | `roller_coaster:element=*` (`loop`, `corkscrew`, `butterfly`, `batwing`…) | Lu | Gardé dans les données (`OSM.elements`, abscisses du moteur) pour un futur réglage du tangage et du roulis dans l'éditeur ; la forme de la figure reste dans la spec (`inversions`). Tag en usage, non documenté dans le wiki. |
 | Tunnel | `tunnel=yes` (ou `covered=yes` + `layer` négatif) | Lu | Voie cachée sous une couverture : eau si un plan d'eau la recouvre, sinon remblai. |
 | Galerie au-dessus du sol | `tunnel=yes` + `layer` positif | Lu | Voie sous un toit de béton. |
 | Niveau | `layer=*` | Lu | Ordre des croisements (quelle voie passe dessus). |
 | Looping, vrilles | voie dessinée dans OSM | Lu en partie | Un looping dessiné dans OSM est lu tel quel ; ses hauteurs et le type de figure viennent de la spec. |
-| Pont transbordeur | `railway=traverser` | Lu via la spec | Position du chariot (l'identifiant du tronçon est repris dans `tools/specs/<site>.json`). |
+| Pont transbordeur | `railway=traverser`, ou rail du chariot `roller_coaster=track` + `moving` | Lu via la spec | Position du chariot et des voies (identifiants repris dans `tools/specs/<site>.json` ; Trace du Hourra : voies, écart et longueurs mesurés sur OSM depuis le 20/11). |
 | Aiguillage | nœud `railway=switch` | Lu via la spec | Pointe de l'aiguillage. |
-| Voies de maintenance ou de garage | `roller_coaster=track` (hors circuit) | Lu via la spec | Voies du garage ; un `name` ou `service=*` aiderait à les reconnaître automatiquement. |
-| Hauteur | `height=*` sur un tronçon ou un pylône | Utile | Aujourd'hui toutes les hauteurs sont estimées : une hauteur relevée remplacerait l'estimation. |
+| Voies de maintenance ou de garage | `roller_coaster=track` + `roller_coaster:track=maintenance` (hors circuit) | Lu via la spec | Voies du garage ; un `name` ou `service=*` aiderait à les reconnaître automatiquement. |
+| Hauteur de la voie | `ele=*` (altitude en m) sur les **nœuds** de la voie | Lu | Chaque nœud à `ele` devient un point **relevé** du profil (hauteur = `ele` − altitude du sol : spec `ele_ground`, sinon `ele` des nœuds de la gare − hauteur de la gare) ; les points estimés de la spec à moins de 10 m sont retirés (`ele_keep`). Sans `ele`, le profil reste **ESTIMÉ**. Mettre `ele` aussi sur un nœud de la gare, ou donner `ele_ground`. Aucune attraction n'en a encore (20/11). |
+| Hauteur | `height=*` sur un tronçon ou un pylône | Utile | Pas lu pour la voie (préférer `ele` sur les nœuds). |
 | Nom des figures | `name=*` sur un tronçon (ex. « Dive loop ») | Utile | Étiquette et caméra de la figure sans estimation de position. |
 
 ## 2. Gare, quais et postes
@@ -34,9 +38,9 @@ Après une session d'édition, il suffit de dire « OSM mis à jour » : le jeu 
 | Objet | Tags | Statut | Ce que le jeu en fait |
 |---|---|---|---|
 | Bâtiment de gare | `building=*` qui recouvre la voie de gare | Lu | Toit de la gare. Il doit couvrir **tout** le quai, sinon le jeu l'agrandit (estimé). |
-| Quais | `railway=platform` ou `public_transport=platform` | Utile | Bord exact des quais, côté embarquement et côté sortie. |
+| Quais | déduits de `roller_coaster:track=station` | Lu | **Un quai de chaque côté du rail** de la gare (embarquement côté `loadSide`, débarquement en face ; profondeurs dans `SITE.plat`, ESTIMÉES). `railway=platform` n'est **pas** utilisé (décision du propriétaire, 20/11). Deux gares : `roller_coaster:station=load|unload` (§1). |
 | Entrées et sorties | nœud `entrance=*` sur le bâtiment ou le chemin | Lu | Portes d'entrée de la file et de sortie. |
-| Poste de conduite | `building=*` ou nœud `man_made=*` + `name=Poste de conduite` | Utile | Position du pupitre sans estimation. |
+| Salle de contrôle | `building=*` (contour fermé) + `name=Salle de contrôle` (ou `control room`, casse libre) | Lu | **Position par défaut du pupitre** (`OSM.ctl` : rectangle du bâtiment, vitre tournée vers la voie la plus proche). L'éditeur (`GAME.controlRooms`) l'emporte ; sans salle OSM, repli `SITE.booth`. Zeus : `w148159968`. |
 
 ## 3. File d'attente et chemins
 
@@ -96,7 +100,8 @@ Les visiteurs ne franchissent que les barrières ouvertes (sauf évacuation) ; c
 4. La file est dessinée en entier, de l'entrée à la gare, avec ses escaliers, passerelles, couloirs couverts et largeurs (`width=*`).
 5. Les barrières de file sont des nœuds `barrier=swing_gate` (§5).
 6. Le décor autour (eau, forêt, zones piétonnes, rochers) est à jour.
-7. Si tu connais des hauteurs (lift, figures, rocher, passerelle), ajoute `height=*`.
+7. Si tu connais des hauteurs de voie, mets `ele=*` sur les nœuds de la voie (et sur un nœud de la gare) ; pour un rocher ou une passerelle, `height=*`.
+8. Freins : `waiting`, `brake_run` (frein final), `moving` (rail mobile) ; salle de contrôle : bâtiment nommé « Salle de contrôle ». Pas de `railway=platform`.
 
 Ce qui reste estimé après import est signalé dans `docs/<attraction>-notes.md` et dans `docs/plans/QUESTIONS.md`.
 
@@ -116,7 +121,8 @@ Une version `null` (ou un objet sans `id`) veut dire « origine connue, version 
 
 | Catégorie | Objets OSM | Tags lus | Sortie |
 |---|---|---|---|
-| Voie et tronçons | tronçons listés dans la spec (`track_ways`) | `roller_coaster:track` = `station`, `lift_hill`, `brake_run`, `waiting`, `block_brake`, `storage`, `transfer` (autre = parcours) ; `tunnel` (`yes`, `true`, `1`, `building_passage`, `culvert`), `covered=yes` avec `layer<0`, `layer>0` (galerie couverte `'roof'`) ; la hauteur, le profil, les dévers sont ESTIMÉS (spec) | `cps`, `tunnels`, `inversions`, `src.track` |
+| Voie et tronçons | tronçons listés dans la spec (`track_ways`) | `roller_coaster:track` = `station`, `lift_hill`, `brake_run`, `waiting`, `moving`, `block_brake`, `storage`, `transfer` (autre = parcours) ; `roller_coaster:station` (`load` / `unload`) ; `roller_coaster:element` ; `tunnel` (`yes`, `true`, `1`, `building_passage`, `culvert`), `covered=yes` avec `layer<0`, `layer>0` (galerie couverte `'roof'`) ; nœuds : `ele` (hauteur relevée) ; sans `ele`, le profil et les dévers sont ESTIMÉS (spec) | `cps`, `tunnels`, `inversions`, `stations`, `elements` (`{type, s0, s1, id}`), `ele` (`[s, h]` relevés), `src.track` |
+| Salle de contrôle | ways fermés `building=*` | `name` ~ « Salle de contrôle » / « control room » | `ctl` (`[{x, z, angle, w, d, name, id, v}]`) |
 | Autres voies voisines | tronçons `roller_coaster=*` hors circuit, hors `drop_ways`/`paths` | `roller_coaster` | `others`, `src.others` |
 | Gare, file, sortie, garage | tronçons et polygones nommés par la spec (`paths`, `polys`) | géométrie seule (+ `highway`, `layer`, `covered`, `bridge` si le chemin reste aussi dans le décor) | `paths`, `polys`, `src.paths`, `src.polys` |
 | Bâtiments et abris | ways / multipolygones fermés | `building` (dont `roof`), `height`, `building:levels` (×3 m), `name` | `feats` (`k=building=…`, `bh`) |

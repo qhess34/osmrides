@@ -29,7 +29,11 @@ Le fichier de spécification (JSON) décrit :
   (barrières)   nœuds barrier=swing_gate | gate | lift_gate -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] : barrières de file du jeu (engine/queue.js, à la place des barrières posées par le moteur)
   (traçabilité) chaque objet garde son id OSM (w123 / n456 / r789) et sa version : champs id, v (feats, stairs), fin de tableau (doors, barriers, pois, widths), OSM.src (track, others, trees, paths, polys) — docs/OSM-GUIDE.md §7
   (multipolygones) anneaux assemblés à partir de plusieurs tronçons (ex. rocher natural=rock en relation)
-OpenStreetMap ne donne pas les hauteurs : le profil est une estimation, vérifiée ici aux croisements.
+  (issue #33)   roller_coaster:track = waiting | brake_run | moving : zones de freinage où un train peut attendre (brake_run = frein final, noms automatiques sans osm_brakes) ;
+                roller_coaster:station = load | unload (non officiel) : gares -> OSM.stations ; quais déduits de la gare (un de chaque côté, moteur) ;
+                bâtiment nommé « Salle de contrôle » / « control room » -> OSM.ctl (pupitre par défaut) ; « ele » des nœuds de voie -> profil (ele_ground, ele_keep) et OSM.ele ;
+                roller_coaster:element -> OSM.elements (s moteur, pour l'éditeur)
+OpenStreetMap donne rarement les hauteurs : sans « ele », le profil est une estimation, vérifiée ici aux croisements.
 """
 import sys, json, math, collections, xml.etree.ElementTree as ET
 
@@ -111,7 +115,8 @@ else:
     #   par spec « osm_brakes » (ex. ["blk1", "blk2", "brk", "tr", "pre"] ; "skip" = ignorée) ; par défaut la dernière = frein final (brk), les autres blk1…
     #   Repères produits : blkN = point d'arrêt (fin de zone) + bzN = début ; brk = début du frein final + fin = fin ; tr0/tr1 = rail de transfert (pont) ; pre0/pre1 = frein avant gare.
     #   « roles » {way: rôle} force le rôle d'un tronçon (station, lift, brake, run).
-    ROLE_OF = {'station': 'station', 'lift_hill': 'lift', 'brake_run': 'brake', 'waiting': 'brake', 'block_brake': 'brake', 'storage': 'brake', 'transfer': 'brake'}
+    #   Règle du propriétaire (issue #33, 20/11) : waiting, brake_run et moving sont TOUS des zones de freinage où un train peut attendre ; brake_run = frein final.
+    ROLE_OF = {'station': 'station', 'lift_hill': 'lift', 'brake_run': 'brake', 'waiting': 'brake', 'moving': 'brake', 'block_brake': 'brake', 'storage': 'brake', 'transfer': 'brake'}
     def role(m):
         r = spec.get('roles', {}).get(str(m))
         return r if r else ROLE_OF.get(tags(WAY[m]).get('roller_coaster:track'), 'run')
@@ -122,6 +127,16 @@ else:
         else: osm_iv.append([r, cumr[i], cumr[i + 1], ewy[i]])
     auto = {}
     stv = [v for v in osm_iv if v[0] == 'station']
+    # gares (issue #33, propriétaire 20/11) : groupes de tronçons « station » consécutifs ; deux gares (embarquement / débarquement) se distinguent par
+    # l'attribut NON OFFICIEL roller_coaster:station=load|unload. Les quais sont déduits de la gare : un de chaque côté du rail (moteur, SITE.plat) ;
+    # railway=platform n'est plus utilisé. La gare qui commence à s = 0 (start_way) donne st0/st1 ; les gares sont exportées dans OSM.stations.
+    st_groups = []
+    for v in stv:
+        r_ = tags(WAY[v[3]]).get('roller_coaster:station', '')
+        if st_groups and abs(st_groups[-1][2] - v[1]) < 1e-6 and (not r_ or r_ == st_groups[-1][0] or not st_groups[-1][0]): st_groups[-1][2] = v[2]; st_groups[-1][0] = st_groups[-1][0] or r_; st_groups[-1][3].append(v[3])
+        else: st_groups.append([r_, v[1], v[2], [v[3]]])
+    if len(st_groups) > 1: print('  gares :', [(g[0] or '?', round(g[1], 1), round(g[2], 1)) for g in st_groups], '(seule la gare à s = 0 est exploitée par le moteur)')
+    if stv and stv[0][1] < 1 and st_groups and st_groups[0][0] == 'unload': print('  ATTENTION : la gare de départ est taguée unload (débarquement)')
     if stv and stv[0][1] < 1:  # gare : tronçons « station » consécutifs (une gare découpée dans OSM reste une seule gare)
         e_ = stv[0][2]
         for v in stv[1:]:
@@ -134,7 +149,13 @@ else:
     lfv = [v for v in osm_iv if v[0] == 'lift']
     if lfv: auto['lift0'] = round(lfv[0][1], 1); auto['lift1'] = round(lfv[-1][2], 1)
     bkv = [v for v in osm_iv if v[0] == 'brake' and (not lfv or v[1] >= lfv[0][1])]
-    names = spec.get('osm_brakes') or (['blk%d' % (k + 1) for k in range(len(bkv) - 1)] + ['brk'] if bkv else [])
+    def auto_names(bkv):  # sans « osm_brakes » : brake_run = frein final (brk, le dernier s'il y en a plusieurs ; sinon la dernière zone) ; avant lui freins de bloc blk1… ;
+        #                  après lui, vers la gare : moving = rail de transfert (tr), autre = frein avant gare (pre)
+        tg_ = [tags(WAY[v[3]]).get('roller_coaster:track') for v in bkv]
+        if not bkv: return []
+        f = max([k for k, t in enumerate(tg_) if t == 'brake_run'] or [len(bkv) - 1])
+        return ['blk%d' % (k + 1) for k in range(f)] + ['brk'] + [('tr' if t == 'moving' else 'pre') for t in tg_[f + 1:]]
+    names = spec.get('osm_brakes') or auto_names(bkv)
     if len(names) != len(bkv): sys.exit('osm_brakes : %d noms pour %d zones de freinage OSM %s' % (len(names), len(bkv), [(round(v[1]), round(v[2]), v[3]) for v in bkv]))
     for nm, v in zip(names, bkv):
         a, b = round(v[1], 1), round(v[2], 1)
@@ -170,6 +191,27 @@ else:
 
     # ── profil en hauteur
     H = spec['profile']; level = spec['level']
+    # hauteurs relevées (issue #5 / #33, propriétaire 20/11) : attribut « ele » (altitude au-dessus du niveau de la mer, OSM) sur les nœuds de la voie.
+    #   Hauteur au-dessus du sol = ele − sol ; sol = spec « ele_ground » (altitude du sol en m), sinon altitude des nœuds de la gare − « level ».
+    #   Chaque nœud à « ele » devient un point du profil ; les points de la spec à moins de « ele_keep » m (défaut 10) sont retirés ; le reste du profil est ESTIMÉ.
+    def fnum(x):
+        try: return float(str(x).replace(',', '.').replace('m', '').strip())
+        except ValueError: return None
+    ELE = [(cumr[i], fnum(NTAG.get(chain[i], {}).get('ele'))) for i in range(len(raw))]
+    ELE = [(a, e) for a, e in ELE if e is not None]
+    ele_pts = []
+    if ELE:
+        g0 = spec.get('ele_ground')
+        if g0 is None:
+            st_e = [e for a, e in ELE if a <= auto.get('st1', 0) + .5]
+            g0 = sorted(st_e)[len(st_e) // 2] - level if st_e else None
+        if g0 is None: print('  ATTENTION : %d nœuds de voie ont « ele » mais aucune référence du sol (spec ele_ground, ou ele sur un nœud de la gare) : ignorés' % len(ELE))
+        else:
+            ele_pts = [[round(a, 1), round(e - g0, 2)] for a, e in ELE]
+            kp = spec.get('ele_keep', 10)
+            H = sorted([q for q in H if all(abs(q[0] - a) > kp for a, _ in ele_pts)] + [list(q) for q in ele_pts], key=lambda q: q[0])
+            print('  hauteurs relevées (ele, sol %.2f m) : %d points %s ; le reste du profil est ESTIMÉ' % (g0, len(ele_pts), ele_pts))
+    else: print('  aucune hauteur relevée (ele) sur la voie : profil ESTIMÉ (spec)')
     def hraw(s):
         for a, b in zip(H, H[1:]):
             if a[0] <= s <= b[0]:
@@ -351,6 +393,18 @@ else:
     print('tunnels : s au sol', tunnels_ground, '-> s moteur', tunnels)
     inversions = [{'type': iv['type'], 's0': round(engine_s(a), 1), 's1': round(engine_s(b), 1), 'n': iv.get('n', 1)} for iv, a, b in sorted(inv_ground, key=lambda q: q[1])]
     if inversions: print('inversions (s moteur) :', inversions)
+    # figures nommées dans OSM (roller_coaster:element = loop, corkscrew, butterfly, batwing… ; tag en usage, non documenté) : gardées pour l'éditeur
+    #   (réglage ultérieur du tangage et du roulis, propriétaire 20/11) ; le moteur ne les lit pas encore. OSM.elements=[{type, s0, s1, id}] (s moteur).
+    el_iv = []
+    for i in range(len(raw)):
+        ty = tags(WAY[ewy[i]]).get('roller_coaster:element')
+        if not ty: continue
+        if el_iv and el_iv[-1][0] == ty and abs(el_iv[-1][2] - cumr[i]) < 1e-6: el_iv[-1][2] = cumr[i + 1]; el_iv[-1][3] += [] if ewy[i] in el_iv[-1][3] else [ewy[i]]
+        else: el_iv.append([ty, cumr[i], cumr[i + 1], [ewy[i]]])
+    elements = [{'type': ty, 's0': round(engine_s(a), 1), 's1': round(engine_s(b), 1), 'id': ['w' + m for m in ws]} for ty, a, b, ws in el_iv]
+    if elements: print('figures OSM (roller_coaster:element, s moteur) :', [(e['type'], e['s0'], e['s1']) for e in elements])
+    stations = [{'role': g[0] or 'load', 's0': round(engine_s(g[1]), 1), 's1': round(engine_s(g[2]), 1), 'id': ['w' + m for m in g[3]]} for g in st_groups] if len(st_groups) > 1 or any(g[0] for g in st_groups) else []
+    ele_out = [[round(engine_s(a), 1), h] for a, h in ele_pts]
 
 # ── décor
 X0, X1, Z0, Z1 = spec['bbox']; inb = lambda p: X0 <= p[0] <= X1 and Z0 <= p[1] <= Z1
@@ -511,11 +565,46 @@ if res['paths']: SRC['paths'] = {k: [WSRC(m) for m in (v if isinstance(v, list) 
 if res['polys']: SRC['polys'] = {k: [WSRC(v)] for k, v in spec['polys'].items()}
 SRC['trees'] = [NSRC(i) for i, t in NTAG.items() if t.get('natural') == 'tree' and inb(xy(i))]  # même ordre que OSM.trees
 res['src'] = SRC
+# salle de contrôle (issue #33, propriétaire 20/11) : bâtiment (way fermé) nommé « Salle de contrôle » / « control room » (casse et accents libres) dans la zone :
+#   position par défaut du pupitre (le moteur la prend si GAME.controlRooms est absent ; l'éditeur la surcharge). Rectangle d'aire minimale du contour ;
+#   orientation : vitre (côté +z local du pupitre, engine/render.js drawBooth) tournée vers le point de voie le plus proche. OSM.ctl=[{x, z, angle (degrés), w, d, name, id, v}]
+import re, unicodedata
+CTLRX = re.compile(r'salle\s*de\s*contr[oô]le|control\s*room', re.I)
+def mrect(P):
+    best = None
+    for k in range(len(P) - 1):
+        ex, ez = P[k + 1][0] - P[k][0], P[k + 1][1] - P[k][1]; l = math.hypot(ex, ez)
+        if l < 1e-6: continue
+        ux, uz = ex / l, ez / l; a_ = [q[0] * ux + q[1] * uz for q in P]; b_ = [-q[0] * uz + q[1] * ux for q in P]
+        A_ = (max(a_) - min(a_)) * (max(b_) - min(b_))
+        if best is None or A_ < best[0]:
+            ca, cb = (max(a_) + min(a_)) / 2, (max(b_) + min(b_)) / 2
+            best = (A_, ca * ux - cb * uz, ca * uz + cb * ux, math.atan2(uz, ux), max(a_) - min(a_), max(b_) - min(b_))
+    return best
+ctl = []
+for wid, w in WAY.items():
+    t = tags(w); n_ = nds(w)
+    if 'building' not in t or len(n_) < 4 or n_[0] != n_[-1] or not CTLRX.search(unicodedata.normalize('NFC', t.get('name', ''))): continue
+    P = [xy(i) for i in n_]
+    if not any(inb(q) for q in P): continue
+    _, cx, cz, th, a_, b_ = mrect(P)
+    tp = min(cps, key=lambda c: (c[0] - cx) ** 2 + (c[2] - cz) ** 2) if cps else None
+    dx, dz = (tp[0] - cx, tp[2] - cz) if tp else (0.0, 1.0)
+    cand = [(th + k * math.pi / 2, a_ if k % 2 == 0 else b_, b_ if k % 2 == 0 else a_) for k in range(4)]
+    t_, ww, dd = max(cand, key=lambda c: -math.sin(c[0]) * dx + math.cos(c[0]) * dz)
+    ang = (math.degrees(t_) + 180) % 360 - 180
+    ctl.append({'x': round(cx, 2), 'z': round(cz, 2), 'angle': round(ang, 1), 'w': round(ww, 2), 'd': round(dd, 2), 'name': t.get('name'), 'id': 'w' + wid, 'v': ver(w)})
+if ctl: res['ctl'] = ctl; print('salle de contrôle OSM :', ctl)
+if BASE is None:
+    if elements: res['elements'] = elements
+    if stations: res['stations'] = stations
+    if ele_out: res['ele'] = ele_out
+for k in spec.get('skip', []): res.pop(k, None)  # clés non exportées (spec « skip »), tous modes
 if BASE is not None:  # décor seul : voie, file et gare du fichier de base, décor relu dans OSM
     res = dict(BASE, **{k: v for k, v in res.items() if k not in ('cps', 'tunnels', 'inversions', 'others') and k not in spec.get('skip', [])})
     if not spec.get('paths'): res.pop('paths', None)
     if not spec.get('polys'): res.pop('polys', None)
-open(out, 'w').write('/* Données © contributeurs OpenStreetMap (ODbL) — tracé au sol et alentours. Hauteurs estimées. Généré par tools/make_site.py. */\nconst OSM=' + json.dumps(res, separators=(',', ':'), ensure_ascii=False) + ';\n')
+open(out, 'w').write('/* Données © contributeurs OpenStreetMap (ODbL) — tracé au sol et alentours. Hauteurs estimées (sauf OSM.ele, relevées). Généré par tools/make_site.py. */\nconst OSM=' + json.dumps(res, separators=(',', ':'), ensure_ascii=False) + ';\n')
 print('écrit', out, '-', len(feats), 'éléments de décor,', len(others), 'autres voies')
 
 if png and BASE is None:

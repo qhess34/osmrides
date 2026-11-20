@@ -131,3 +131,10 @@ Extrait OSM frais (`/tmp/osm5`) ; changesets du propriétaire depuis le lot 3 : 
 
 - **Lot 5 (2026-11-16)** : poteaux-pivots des deux barrières parallèles sur la **bordure du raccourci**, côté boucle, juste après la pointe (ESTIMÉ) ; file dessinée à la **width OSM (1 m)**, boucle 1032685208 (sans width) à 1 m aussi (ESTIMÉ) ; escalier 1580086195 (entièrement sur le quai) plus dessiné, l'escalier qui y mène et l'escalier de sortie s'arrêtent au **bord du quai** ; traversée du quai délimitée de barrières ; couloir sous la gare et tunnel sous le rocher visibles seulement avec « Masquer la gare ».
 - **Réimport 19/11** : le rocher (anciens ways 1580139648 et deux autres) est remplacé par la relation r22083041 v2 `natural=bare_rock` avec un trou, lue comme un rocher ; le tunnel de voie (`roof`, s 559-563 m) est inchangé.
+
+## Réimport du 2026-11-20 (issue #33)
+
+- Garage dessiné dans OSM par le propriétaire : rail mobile du parcours 1580086185 (`moving`, rail A), rail du chariot 1582324008 (`moving`), 6 voies 1582324002…1582324007. `sites/hourra.js` lit dans OSM la distance de chaque voie à l'axe du rail A (7,1 / 9,4 / 11,8 / 14,2 / 16,7 / 20,3 m, au lieu de 8 à 24 m ESTIMÉS), leur longueur (16,4 à 16,6 m), l'écart A/B (3,6 m au lieu de 3,2) et le jeu rail / voies (0,4 m). Voies dessinées à la main dans OSM, pas tout à fait parallèles (± 0,3 m) : moyenne des deux bouts.
+- **À corriger dans OSM** : les 6 voies ont `roller_coaster:track=entretienlayer=1_roller_coaster=track_…` (copier-coller cassé) ; mettre `roller_coaster:track=maintenance`.
+- Frein final 1580086193 en `brake_run`, rail du pont en `moving` : repères inchangés (noms par la spec `osm_brakes`).
+- Restent ESTIMÉS : course du rail A escamotable (3,2 m), vitesses du chariot et des manœuvres, profil en hauteur (aucun `ele`).

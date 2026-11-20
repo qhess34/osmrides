@@ -11,6 +11,27 @@ Analyse seule, aucun changement de code. Relevé du 19/11/2026.
 - **Supposé, d'après la pratique OSM générale** (pages wiki non relues ici) : `height`, `width`, `colour`, `roof:colour`, `railway=switch`, `railway=buffer_stop`, `railway=traverser`, `railway=platform`, `indoor=*`, `incline`.
 - **Supposé, non testé** : qu'un importeur saurait déduire la file (tronçons, boucles, raccourcis) du seul graphe OSM.
 
+## Mise à jour du 20/11/2026 (réponses du propriétaire, issue #33)
+
+Appliqué dans `tools/make_site.py` et le moteur ; les 4 attractions sont réimportées depuis l'extrait du 20/11.
+
+| Point | Décision | Effet |
+|---|---|---|
+| Freins | `waiting`, `brake_run` et `moving` = zones de freinage où un train peut attendre ; `brake_run` = frein final ; un train arrêté repart à sa vitesse d'entrée | importeur (rôle `moving`, noms automatiques) ; moteur : relance d'un frein de bloc à la vitesse d'entrée (`blkRelaunch`, `engine/sim.js`). Ligne « Freins de bloc, frein final » ci-dessous : **réglée**. |
+| Quais | déduits de `roller_coaster:track=station`, un de chaque côté ; deux gares : `roller_coaster:station=load|unload` (non officiel, cat. 3 assumée par le propriétaire) ; plus de `railway=platform` | ligne « Quais » : **réglée** (profondeurs encore ESTIMÉES dans `SITE.plat`). Deux gares lues (`OSM.stations`) mais pas encore exploitées par le moteur (aucune attraction n'en a). |
+| Salle de contrôle | bâtiment nommé « Salle de contrôle » / « control room » = position par défaut, l'éditeur l'emporte | `OSM.ctl`, `engine/render.js` `defRoom()`. Zeus `w148159968` (nom corrigé le 20/11) ; H, O, G : aucune dans OSM. |
+| Hauteurs | `ele` sur les nœuds de la voie, sinon profil ESTIMÉ | lu (`OSM.ele`) ; **aucun nœud de voie n'a `ele`** le 20/11 : les 4 profils restent ESTIMÉS. |
+| `roller_coaster:element` | gardé et lu, pour un réglage du tangage / roulis dans l'éditeur | `OSM.elements` (Goudurix : butterfly, batwing, loop, corkscrew). |
+| Zeus | réimport complet | fin du mode `base` : voie, gare, garage, file relus dans OSM (tracé identique à 0,3 m près ; profil ESTIMÉ recopié de l'ancien import). |
+| Garage H | ajouté dans OSM | 6 voies, rail du chariot : distances, écart et longueurs lus dans OSM (`sites/hourra.js`). |
+
+**Corrections OSM encore à faire (relevées à l'import du 20/11)**
+
+- Trace du Hourra : les 6 voies `1582324002…1582324007` ont `roller_coaster:track=entretienlayer=1_roller_coaster=track_…` (copier-coller cassé) : mettre `roller_coaster:track=maintenance` (et `layer=1`, `source` à part).
+- Goudurix : `541092986` (milieu du batwing) a `roller_coaster:track=moving` : sans doute une erreur ; le jeu l'ignore (spec `roles`). **Question** : B1 `1580112200` est `brake_run` et le frein final `1580112203` `waiting` : la règle « brake_run = frein final » est-elle à appliquer à Goudurix (le jeu garde B1 = frein de bloc à 8 m/s, frein final avant la gare) ?
+- Goudurix : lift `541092982` `layer=*` toujours invalide.
+- Zeus : tronçon isolé `1353118255` (11,5 m, hors circuit, près de (79 ; 53)) : reste d'un ancien tracé ? Dessiné comme voie voisine.
+
 ## Les quatre catégories
 
 1. **Déjà dans OSM**, ou devrait l'être : une correction à faire dans OSM.
