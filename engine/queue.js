@@ -372,7 +372,8 @@ function moveAlong(k,dt){
 }
 function joinQueue(){
   if(G.queue.length*SP+1>QLEN){G.sat=clamp(G.sat-.01,0,100);G.stats.turned++;return;}
-  const pts=approach().concat(QS.lead||[]).map(p=>{const j=.7*clamp(Math.hypot(p[0]-ENTRY0[0],p[1]-ENTRY0[1])/3,0,1);return [p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)];});pts.push([ENTRY0[0],0,ENTRY0[1]]); // écart aléatoire nul près de la barrière : les arrivants attendent en ligne sur l'accès, pas sur la file (issue #28)
+  const LK=(QS.link||[]).concat([ENTRY0]),pts=approach().concat(QS.lead||[]).map(p=>{let j=.7*clamp(Math.hypot(p[0]-ENTRY0[0],p[1]-ENTRY0[1])/3,0,1);if(LK.length>1&&dPl(p[0],p[1],LK)<.05)j=Math.min(j,Math.max(0,qwAt(p[0],p[1])/2-.2)*.7); // dans la largeur du prolongement de l'entrée (issue #39)
+  return [p[0]+rnd(-j,j),0,p[1]+rnd(-j,j)];});pts.push([ENTRY0[0],0,ENTRY0[1]]); // écart aléatoire nul près de la barrière : les arrivants attendent en ligne sur l'accès, pas sur la file (issue #28)
   G.queue.push({ci:Math.floor(Math.random()*12),w:0,pat:rnd(220,420),mode:'app',side:Math.random()<.5?-1:1,jt:rnd(-.25,.25),sp:3.2,ph:rnd(0,6),pts,i:1,x:pts[0][0],y:0,z:pts[0][2],mv:true});
 }
 const _qp={x:0,y:0,z:0,side:0};

@@ -368,6 +368,12 @@ let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=n
   // de délimitation (main courante sur poteaux) des DEUX côtés (QSIDE), là où aucune bordure de chemin ne la sépare du sol environnant.
   {const SG=STATION_GROW||SITE.stationPoly||[],PEDP=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3).map(f=>f.p);
     for(const q of S){const st=SG.length>2&&pipXZ(SG,q.x,q.z);if(st||PEDP.some(P=>pipXZ(P,q.x,q.z))){q.w=Math.min(q.w,q.ow||1);q.side=st?2:1;}}}
+  // Prolongement de l'entrée (raccord QS.link, GAME.queueEntry, mouth / gateAtMouth ; propriétaire, issue #39) : même largeur que le chemin de file qu'il prolonge
+  // (width OSM, sinon largeur dessinée de l'allée au premier point hors zone piétonne / gare, appliquée aussi à son début dans la zone) ; garde-corps (QSIDE) gardés.
+  {const E0=QS.osmEntry0||ENTRY0,LK=(QS.link||[]).concat([ENTRY0]),P0=QS.parts[0]&&QS.parts[0].pts||[],k=QS.osmEntry0?P0.findIndex(q=>Math.hypot(q[0]-E0[0],q[1]-E0[1])<.05):-1,EX=k>0?P0.slice(0,k+1):LK;
+    if(EX.length>1){for(const q of S)q.ext=dPl(q.x,q.z,EX)<.05&&Math.hypot(q.x-E0[0],q.z-E0[1])>.05;let i=-1,bd=1e9;S.forEach((q,k)=>{const d=Math.hypot(q.x-E0[0],q.z-E0[1]);if(!q.ext&&d<bd){bd=d;i=k;}});
+      if(i>=0){let j=i;while(j<S.length&&S[j].pi===S[i].pi&&S[j].side&&!S[j].ow)j++;const w=j<S.length&&S[j].pi===S[i].pi?S[j].w:S[i].w; // 1re largeur de l'allée hors zone piétonne / gare (sinon celle de l'entrée)
+        for(let k=i;k<j;k++)S[k].w=w;for(const q of S)if(q.ext)q.w=w;}}}
   stairWidths(S);
   gateClear(S);
   QWS=S;
