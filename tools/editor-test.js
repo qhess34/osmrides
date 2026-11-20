@@ -70,15 +70,27 @@ const ed = (page, s) => page.evaluate(s);
       // déplacer (glisser le pivot), tourner et allonger (poignée A)
       const s0 = await ed(page, `ED.E('cam.s')`);
       let p = await ed(page, `ED.toScr(${b1.x},${b1.z})`);
-      await drag(page, p, [p[0] + 30, p[1] + 18]);
+      await page.keyboard.down('Alt'); await drag(page, p, [p[0] + 30, p[1] + 18]); await page.keyboard.up('Alt'); // Alt : sans aimant
       let o = await ed(page, `ED.draft().barriers.b1`);
       ok(Math.abs(o.x - b1.x - 30 / s0) < .15 && Math.abs(o.z - b1.z - 18 / s0) < .15, `barrière b1 déplacée (${o.x}, ${o.z})`);
       const A = await ed(page, `(()=>{const g=ED.gates().find(g=>g.key==='b1').g;return {a:g.a,h:g.h};})()`);
       p = await ed(page, `ED.toScr(${A.a[0]},${A.a[1]})`); const hS = await ed(page, `ED.toScr(${A.h[0]},${A.h[1]})`);
-      await drag(page, p, [hS[0] + (p[0] - hS[0]) * 1.3 + 8, hS[1] + (p[1] - hS[1]) * 1.3 - 8]);
+      await page.keyboard.down('Alt'); await drag(page, p, [hS[0] + (p[0] - hS[0]) * 1.3 + 8, hS[1] + (p[1] - hS[1]) * 1.3 - 8]); await page.keyboard.up('Alt');
       const o2 = await ed(page, `ED.draft().barriers.b1`);
       ok(Math.abs(o2.len - o.len) > .1 && o2.ang !== o.ang, `barrière b1 tournée et allongée (${o.ang}° ${o.len} m -> ${o2.ang}° ${o2.len} m)`);
       // remise en travers de l'allée (champs du panneau) : le test du jeu ci-dessous en dépend
+      await ed(page, `(()=>{const s=ED.E('barPlace(${M1[0]},${M1[1]})'),o=ED.E('GM').barriers.b1;Object.assign(o,{x:s.x,z:s.z,ang:s.ang,len:s.len});ED.E('reGates()');})()`);
+      // aimant des barrières (propriétaire, 20/11) : pivot écarté de 6 px du bord puis relâché → collé au bord ; bout du vantail amené à 6 px du bord opposé → collé en face
+      { await page.click('#gList .it[data-key="b1"]'); await sleep(120); await ed(page, `(()=>{const o=ED.E('GM').barriers.b1,c=ED.E('cam');c.x=o.x;c.z=o.z;c.s=22;})()`); await sleep(120);
+        const g0 = await ed(page, `ED.draft().barriers.b1`), n = [-Math.cos(g0.ang * Math.PI / 180), -Math.sin(g0.ang * Math.PI / 180)]; // vers l'extérieur de l'allée
+        const ps = await ed(page, `ED.toScr(${g0.x},${g0.z})`); await drag(page, ps, [ps[0] + n[0] * 6, ps[1] + n[1] * 6]);
+        const g1 = await ed(page, `ED.draft().barriers.b1`), e1 = await ed(page, `ED.E('edgeSnap(${g1.x},${g1.z},.02)')`);
+        ok(e1 && e1.d < .02, `aimant : pivot glissé à 6 px du bord, collé au bord (${g1.x}, ${g1.z})`);
+        const A1 = await ed(page, `(()=>{const g=ED.gates().find(g=>g.key==='b1').g;return g.a;})()`), op = e1.o, pa = await ed(page, `ED.toScr(${A1[0]},${A1[1]})`), po = await ed(page, `ED.toScr(${op[0]},${op[1]})`);
+        await drag(page, pa, [po[0] + 5, po[1] - 4]); const g2 = await ed(page, `ED.draft().barriers.b1`), t2 = g2.ang * Math.PI / 180, end = [g2.x + Math.cos(t2) * g2.len, g2.z + Math.sin(t2) * g2.len];
+        ok(Math.hypot(end[0] - op[0], end[1] - op[1]) < .03, `aimant : bout du vantail collé au bord opposé, barrière en travers (${g2.len} m, allée ${e1.w} m)`);
+        await page.keyboard.down('Alt'); const ps2 = await ed(page, `ED.toScr(${g2.x},${g2.z})`); await drag(page, ps2, [ps2[0] + n[0] * 6, ps2[1] + n[1] * 6]); await page.keyboard.up('Alt');
+        const g3 = await ed(page, `ED.draft().barriers.b1`), e3 = await ed(page, `ED.E('edgeSnap(${g3.x},${g3.z},1)')`); ok(e3 && e3.d > .1, `Alt maintenue : pivot posé librement (${e3 && e3.d} m du bord)`); }
       await ed(page, `(()=>{const s=ED.E('barPlace(${M1[0]},${M1[1]})'),o=ED.E('GM').barriers.b1;Object.assign(o,{x:s.x,z:s.z,ang:s.ang,len:s.len});ED.E('reGates()');})()`);
       // état initial : ouverte au début de la partie (case du panneau)
       await page.click('#gList .it[data-key="b1"]'); await sleep(120); await page.check('#gOpen'); await sleep(80);
@@ -178,6 +190,25 @@ const ed = (page, s) => page.evaluate(s);
       A3 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1], 'polygone raccordé à la fin de file (écrit)');
       if (SHOT) { await page.click(`#gList .it[data-key="b1"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); }
+      // ── entrée de la file (GAME.queueEntry, issue #39) : calcul affiché, poignée glissée (rechargement du cadre), champs, bornes, retour au calcul, réglée de nouveau (écrite) ──
+      { const rdy = async () => { await sleep(400); await page.waitForFunction(() => window.ED && window.ED.ready && window.ED.isReady(), null, { timeout: 60000 }); await sleep(300); };
+        const Q0 = await ed(page, `ED.qe()`);
+        ok(!Q0.game && Q0.len === Q0.calc.len && await page.isDisabled('#bQeAuto') && Math.abs(+(await page.inputValue('#qeLen')) - Q0.calc.len) < .06, `entrée : calcul affiché (${Q0.calc.len} m à ${Q0.calc.ang}°)`);
+        await ed(page, `ED.E('cam.g=null;cam.follow=-1;cam.key="";cam.x=${Q0.end[0]};cam.z=${Q0.end[1]};cam.s=18;0')`); await sleep(100);
+        const t = (Q0.calc.ang + 25) * Math.PI / 180, L = Math.max(1.5, Q0.calc.len * .8), tg = [Q0.o[0] + Math.cos(t) * L, Q0.o[1] + Math.sin(t) * L];
+        await drag(page, await ed(page, `ED.toScr(${Q0.end.join(',')})`), await ed(page, `ED.toScr(${tg.join(',')})`)); await rdy();
+        let Q1 = await ed(page, `ED.qe()`), dq = await ed(page, `ED.draft().queueEntry`);
+        ok(Q1.game && dq && Math.abs(dq.len - L) < .2 && Math.abs(((dq.ang - Q0.calc.ang - 25) % 360 + 540) % 360 - 180) < 2 && await ed(page, `ED.sel()&&ED.sel().t==='qe'`), `entrée : poignée glissée (${dq && dq.len} m à ${dq && dq.ang}°, retenu ${Q1.len} m)`);
+        ok(await ed(page, `ED.E('(QS.link.length?QS.link[0]:ENTRY0).every((v,i)=>Math.abs(v-queueEntry().end[i])<.01)&&SITE.approach.every(a=>{const q=a.pts[a.pts.length-1],e=queueEntry().end;return Math.hypot(q[0]-e[0],q[1]-e[1])<.01;})')`), 'entrée : appliquée par le moteur (raccord et accès jusqu\'au bout)');
+        await page.fill('#qeLen', '40'); await page.$eval('#qeLen', e => e.dispatchEvent(new Event('change'))); await rdy();
+        Q1 = await ed(page, `ED.qe()`); ok((await ed(page, `ED.draft().queueEntry.len`)) === 30 && Q1.len <= 30, `entrée : borne haute 30 m (retenu ${Q1.len} m${Q1.clamped ? ', ramené sur la surface praticable' : ''})`);
+        ok(S.validate({ queueEntry: { len: 31, ang: 0 } }).errors.length === 1 && S.validate({ queueEntry: { len: 2, ang: 0, x: 1 } }).errors.length === 1 && !S.validate({ queueEntry: { len: 2, ang: -90 } }).errors.length, 'entrée : validation (bornes, clé inconnue)');
+        await page.click('#bQeAuto'); await rdy(); Q1 = await ed(page, `ED.qe()`);
+        ok(!(await ed(page, `'queueEntry' in ED.draft()`)) && !Q1.game && JSON.stringify(Q1.end) === JSON.stringify(Q0.end), 'entrée : retour au calcul auto (clé retirée de GAME)');
+        const LS = Math.round((Q0.calc.len + 1) * 10) / 10, AS = Math.round(Q0.calc.ang + 10);
+        await page.fill('#qeLen', String(LS)); await page.$eval('#qeLen', e => e.dispatchEvent(new Event('change'))); await rdy();
+        await page.fill('#qeAng', String(AS)); await page.$eval('#qeAng', e => e.dispatchEvent(new Event('change'))); await rdy();
+        dq = await ed(page, `ED.draft().queueEntry`); ok(dq && dq.len === LS && dq.ang === AS && !!(await ed(page, `ED.draft().barriers.b1`)), `entrée : réglée aux champs (${LS} m à ${AS}°, écrite) ; barrières gardées`); }
       // ── diff puis sauvegarde ──
       await page.click('#bDiff'); await page.waitForSelector('#diff .a', { timeout: 5000 });
       const nAdd = await page.$$eval('#diff .a', e => e.length);
@@ -207,6 +238,7 @@ const ed = (page, s) => page.evaluate(s);
       const ea = [ov.x + Math.cos(ov.ang * Math.PI / 180) * ov.len, ov.z + Math.sin(ov.ang * Math.PI / 180) * ov.len];
       ok(gj && gj.open === true && Math.abs(gj.h[0] - ov.x) < 1e-6 && Math.abs(gj.h[1] - ov.z) < 1e-6 && Math.hypot(gj.a[0] - ea[0], gj.a[1] - ea[1]) < 1e-6, 'jeu : barrière b1 appliquée (pivot, position fermée, ouverte au départ)');
       ok(await jp.evaluate(`gateList().length===2&&!BARS[1].open`), 'jeu : b2 présente, fermée au départ');
+      { const qj = await jp.evaluate(`queueEntry()`); ok(qj.game && qj.ang === exp.queueEntry.ang && qj.want === exp.queueEntry.len, `jeu : entrée de la file appliquée (${qj.len} m à ${qj.ang}°${qj.clamped ? ', ramenée sur la surface praticable' : ''})`); }
       const rj = await jp.evaluate(`ctlRooms()`), re = exp.controlRooms[0];
       ok(rj.length === 1 && ['x', 'z', 'angle', 'w', 'd'].every(k => rj[0][k] === re[k]), 'jeu : salle de contrôle appliquée');
       // dessin : couleur du local au centre de la salle (toits retirés, caméra sur la salle)

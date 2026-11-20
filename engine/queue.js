@@ -183,6 +183,7 @@ const APPW=2;
 // est délimité par des barrières des deux côtés (engine/render.js, QSIDE). Le raccord QS.link commence à la bouche du couloir et les accès (SITE.approach) y mènent.
 // Plafond (propriétaire, issue #9) : la part de file dans la zone (raccord compris) ne dépasse pas SITE.queue.mouthMax (défaut 20 %) de la profondeur de la zone, mesurée
 // dans la direction du prolongement depuis le bord où la file en sort ; au-delà, le raccord est coupé à ce plafond (QS.mouthCut), sans jamais toucher à la file OSM.
+const QE_SAVE={link:(QS.link||[]).slice(),lead:(QS.lead||[]).slice(),app:SITE.approach.map(A=>A.pts)}; // état avant le prolongement calculé (GAME.queueEntry le remplace, issue #39)
 const QMOUTH=QS.mouth!=null?QS.mouth:5;
 const QMOUTH_MAX=QS.mouthMax!=null?QS.mouthMax:.2; // part maximale de la profondeur de la zone piétonne occupée par la file (propriétaire, issue #9)
 (function queueMouth(){const PED=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3).map(f=>f.p);if(!PED.length||!QMOUTH)return;
@@ -202,6 +203,33 @@ const QMOUTH_MAX=QS.mouthMax!=null?QS.mouthMax:.2; // part maximale de la profon
   let d=want-inL;while(d>.3&&!pin(Z,[C[0][0]+ux*(d+.8),C[0][1]+uz*(d+.8)]))d-=.2; // reste dans la zone (0,8 m de marge)
   if(d<=.3)return;const M=[+(C[0][0]+ux*d).toFixed(2),+(C[0][1]+uz*d).toFixed(2)];QS.link=[M].concat(QS.link||[]);fix(M);
 })();
+// Entrée de file réglée dans l'éditeur (issue #39) : GAME.queueEntry={len, ang} (m ; degrés, 0 = est, 90 = sud, comme les barrières) remplace le prolongement calculé
+// ci-dessus (SITE.queue.mouth / mouthMax / link) par un segment droit depuis le début du chemin de file OSM (ENTRY0). Priorité GAME > SITE > calcul. Le bout reste sur une
+// surface praticable : la longueur est ramenée au dernier point (pas de 0,2 m) situé dans une zone piétonne OSM (hors trous), à moins de la demi-largeur d'un chemin OSM
+// (1,2 m par défaut, ESTIMÉ) ou à moins de 1,5 m de l'entrée calculée, et hors bâtiment (QE_CLAMP). Les accès (SITE.approach) sont prolongés jusqu'au bout ; gateAtMouth
+// s'applique ensuite comme avant. Les barrières posées à la main (GAME.barriers) ne bougent pas. queueEntry() : valeurs pour l'éditeur.
+const QE_MAX=30; // longueur maximale (m), même borne que editor/schema.js
+const QENTRY=(()=>{const r1=v=>Math.round(v*10)/10,r2=v=>Math.round(v*100)/100,C=(QS.link||[]).concat([ENTRY0]),p0=QS.parts[0]&&QS.parts[0].pts||[];
+  let len=0;for(let i=1;i<C.length;i++)len+=Math.hypot(C[i][0]-C[i-1][0],C[i][1]-C[i-1][1]);
+  let ang;if(len>.05)ang=Math.atan2(C[0][1]-ENTRY0[1],C[0][0]-ENTRY0[0]);else{const q=p0.find(q=>Math.hypot(q[0]-ENTRY0[0],q[1]-ENTRY0[1])>.5)||p0[1]||[ENTRY0[0]-1,ENTRY0[1]];ang=Math.atan2(ENTRY0[1]-q[1],ENTRY0[0]-q[0]);}
+  const calc={len:r2(len),ang:r1(ang*180/Math.PI)},o=GM.queueEntry,base={o:ENTRY0.slice(),calc,max:QE_MAX};
+  if(!o||typeof o!=='object'||!isFinite(o.len)||!isFinite(o.ang))return Object.assign(base,{game:false,len:calc.len,ang:calc.ang,want:calc.len,end:C[0].slice(),clamped:false});
+  const AUTO_APP=SITE.approach.map(A=>A.pts); // accès du calcul (déjà praticables, raccord compris)
+  QS.link=QE_SAVE.link.slice();QS.lead=QE_SAVE.lead.slice();SITE.approach.forEach((A,i)=>A.pts=QE_SAVE.app[i]);delete QS.mouthAt;delete QS.mouthCut; // calcul annulé
+  const pin=(P,q)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>q[1])!==(P[j][1]>q[1])&&q[0]<(P[j][0]-P[i][0])*(q[1]-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
+  const PED=OSM.feats.filter(f=>f.k==='highway=pedestrian'&&f.c&&f.p.length>3),LN=[],BLD=OSM.feats.filter(f=>/^building=/.test(f.k)&&f.k!=='building=roof'&&f.c&&f.p.length>3).map(f=>f.p);
+  for(const f of OSM.feats)if(/^highway=(footway|steps|pedestrian|path)$/.test(f.k)&&!(f.c&&f.p.length>3))LN.push([f.p,f.w?f.w/2:1.2]);
+  for(const k in OSM.paths||{})if(OSM.paths[k]&&OSM.paths[k].length>1)LN.push([OSM.paths[k],1.2]);for(const P of QE_SAVE.app.concat(AUTO_APP))if(P.length>1)LN.push([P,1.2]); // accès écrits (SITE.approach) et calculés : praticables
+  const walk=q=>!BLD.some(P=>pin(P,q))&&(dPl(q[0],q[1],C.length>1?C:[ENTRY0,ENTRY0])<1.5||PED.some(f=>pin(f.p,q)&&!(f.h||[]).some(H=>pin(H,q)))||LN.some(([P,hw])=>dPl(q[0],q[1],P)<hw));
+  const want=clamp(+o.len,0,QE_MAX),t=+o.ang*Math.PI/180,ux=Math.cos(t),uz=Math.sin(t),at=d=>d>.05?[r2(ENTRY0[0]+ux*d),r2(ENTRY0[1]+uz*d)]:ENTRY0.slice();let d=0;
+  while(d<want-1e-6){const n=Math.min(want,d+.2);if(!walk([ENTRY0[0]+ux*n,ENTRY0[1]+uz*n]))break;d=n;}
+  // accès : derniers points le long de l'ancienne entrée (QE_SAVE.link) ou de la nouvelle retirés, puis raccord droit jusqu'au bout ; raccord non praticable : entrée raccourcie
+  const OLD=QE_SAVE.link.concat([ENTRY0]),apps=M=>QE_SAVE.app.map(P0=>{const P=P0.slice();while(P.length>1&&(dPl(P[P.length-1][0],P[P.length-1][1],[M,ENTRY0])<1.6||(OLD.length>1&&dPl(P[P.length-1][0],P[P.length-1][1],OLD)<1.6)))P.pop();P.push(M.slice());return P;});
+  const conOk=M=>apps(M).every(P=>{const a=P[P.length-2],b=P[P.length-1];if(!a)return true;const n=Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.25);for(let i=1;i<n;i++)if(!walk([a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n]))return false;return true;});
+  while(d>.05&&!conOk(at(d)))d=Math.max(0,d-.2);
+  const M=at(d);QS.link=d>.05?[M]:[];QS.lead=[];QS.mouthAt=M;apps(M).forEach((P,i)=>SITE.approach[i].pts=P); // accès jusqu'au bout de l'entrée
+  return Object.assign(base,{game:true,len:r2(d),ang:r1(+o.ang),want:r2(want),end:M.slice(),clamped:d<want-.05});})();
+const queueEntry=()=>Object.assign({},QENTRY,{o:QENTRY.o.slice(),end:QENTRY.end.slice(),calc:Object.assign({},QENTRY.calc)});
 // Barrière d'entrée au bout du prolongement (SITE.queue.gateAtMouth, propriétaire, issue #9, Zeus : barrière devant la statue) : AJUSTEMENT du jeu, pas OSM.
 // Le raccord dans la zone piétonne devient le début de la file : la barrière d'entrée (nœud OSM ou QS.gate) est déplacée à la bouche du couloir (QS.mouthAt).
 if(QS.gateAtMouth&&QS.link&&QS.link.length){const P=QS.parts[0].pts,L=QS.link;QS.osmEntry0=ENTRY0.slice();QS.parts[0].pts=L.concat(P.filter((q,i)=>i||Math.hypot(q[0]-L[L.length-1][0],q[1]-L[L.length-1][1])>.05));
@@ -255,6 +283,12 @@ function barPlace(x,z){let bd=6,B=null;for(const e of SEGS)for(let i=1;i<e.P.len
   if(!B)return {x:+x.toFixed(2),z:+z.toFixed(2),ang:0,len:2};
   let nx=-B.tz,nz=B.tx;if((x-B.px)*nx+(z-B.pz)*nz<0){nx=-nx;nz=-nz;}const hw=qwAt(B.px,B.pz)/2;
   return {x:+(B.px+nx*hw).toFixed(2),z:+(B.pz+nz*hw).toFixed(2),ang:+(Math.atan2(-nz,-nx)*180/Math.PI).toFixed(1),len:+(2*hw).toFixed(2),sw:nz*B.tz+nx*B.tx>=0?1:-1};}
+// Aimant des barrières (éditeur, demande du propriétaire 20/11) : point le plus proche, à moins de r m, sur une bordure d'allée de file dessinée (axe des tronçons et de
+// l'entrée, demi-largeur qwAt = largeur OSM ou dessinée) ; o = point en face sur la bordure opposée (barrière exactement en travers de l'allée), d = distance.
+function edgeSnap(x,z,r){let B=null;const L=SEGS.map(e=>e.P).concat([(QS.link||[]).concat([ENTRY0])]);
+  for(const P of L)for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz);if(l<.05)continue;const t=clamp(((x-a[0])*dx+(z-a[1])*dz)/(l*l),0,1),px=a[0]+dx*t,pz=a[1]+dz*t,hw=qwAt(px,pz)/2;
+    for(const sd of [1,-1]){const nx=-dz/l*sd,nz=dx/l*sd,ex=px+nx*hw,ez=pz+nz*hw,d=Math.hypot(ex-x,ez-z);if(d<r&&(!B||d<B.d))B={d:+d.toFixed(3),p:[+ex.toFixed(2),+ez.toFixed(2)],o:[+(px-nx*hw).toFixed(2),+(pz-nz*hw).toFixed(2)],w:+(2*hw).toFixed(2)};}}
+  return B;}
 let QOK=0;
 SEGS.reverse(); // traités de la gare vers l'entrée, pour libérer la place devant avant d'avancer
 const SEG_IN=STAGES[0].seg,SEG_OUT=STAGES[STAGES.length-1].seg;

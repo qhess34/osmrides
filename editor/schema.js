@@ -4,8 +4,8 @@
 (function (root) {
   const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (sites/<site>.js).\n'
     + '// Le corps est du JSON strict : à modifier de préférence avec l\'éditeur (docker compose up -d, http://127.0.0.1:8787/).\n';
-  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board', 'site'];
-  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], depth: [0.5, 6] }; // depth : profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
+  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board', 'queueEntry', 'site'];
+  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], depth: [0.5, 6], qeLen: [0, 30], qeAng: 360 }; // qeLen / qeAng : entrée de file (issue #39), longueur en m (même borne que le moteur, QE_MAX) et orientation en degrés // depth : profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
 
   // GAME.site (lot 3, D9) : surcharges partielles de SITE, liste blanche ; bornes ESTIMÉES (sûres pour le moteur, pas des mesures).
   const SK = { kind: ['wood', 'bob', 'inverted', 'steel'], restraint: ['lapbar', 'otsr', 'belt'] };
@@ -31,6 +31,8 @@
         o.boardAreas = g.boardAreas.map(a => ({ id: a.id, pts: a.pts.map(p => [r2(p[0]), r2(p[1])]) }));
       } else if (k === 'board') {
         o.board = { depth: r2(g.board.depth) };
+      } else if (k === 'queueEntry') {
+        o.queueEntry = { len: r2(g.queueEntry.len), ang: r1(g.queueEntry.ang) };
       } else if (k === 'site') {
         o.site = {}; const t = g.site;
         for (const key of Object.keys(SITE_KEYS)) {
@@ -138,6 +140,15 @@
       else {
         for (const k of Object.keys(B)) if (k !== 'depth') E.push('board : clé inconnue ' + k);
         if (!num(B.depth, LIM.depth[0], LIM.depth[1])) E.push('board.depth : profondeur des travées de ' + LIM.depth[0] + ' à ' + LIM.depth[1] + ' m');
+      }
+    }
+    if ('queueEntry' in g) { // entrée de file (issue #39) : prolongement droit depuis le début du chemin de file OSM, longueur (m) et orientation (degrés, 0 = est, 90 = sud)
+      const Q = g.queueEntry;
+      if (!Q || typeof Q !== 'object' || Array.isArray(Q)) E.push('queueEntry : objet {len, ang} attendu');
+      else {
+        for (const k of Object.keys(Q)) if (k !== 'len' && k !== 'ang') E.push('queueEntry : clé inconnue ' + k);
+        if (!num(Q.len, LIM.qeLen[0], LIM.qeLen[1])) E.push('queueEntry.len : longueur de ' + LIM.qeLen[0] + ' à ' + LIM.qeLen[1] + ' m');
+        if (!num(Q.ang, -LIM.qeAng, LIM.qeAng)) E.push('queueEntry.ang : orientation de -' + LIM.qeAng + ' à ' + LIM.qeAng + ' degrés');
       }
     }
     if ('site' in g) validateSite(g.site, E, W, ctx || {});
