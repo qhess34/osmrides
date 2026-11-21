@@ -285,7 +285,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
     for(let j=0;j<pts.length-1;j++)ar+=pts[j][0]*pts[j+1][1]-pts[j+1][0]*pts[j][1];
     for(let j=0;j<pts.length-1;j++){const a=pts[j],b=pts[j+1],sg=ar>0?1:-1,nx=(b[1]-a[1])*sg,nz=-(b[0]-a[0])*sg,pp=nx*-.8+nz*-.6>0?lit:dark;pp.moveTo(a[0],a[1]);pp.lineTo(b[0],b[1]);}
     const near=q=>q&&Math.hypot(m[0]-q[0],m[1]-q[1])<q[2];
-    const b=Object.assign({p:mkPath(pts,true),m,lit,dark,st:near(SITE.stationAt),h:7,canopy:false,fade:(SITE.fade||[]).some(near),cvb:COV.some(P=>P.some(q=>pin(pts,q[0],q[1]))),yd:!near(SITE.stationAt)&&LANES.some(l=>(l.path||[]).some(q=>pin(pts,q.x,q.z)))},o); // yd : remise au-dessus d'une voie de garage (toit translucide, bldA) // cvb : couvre un chemin couvert, effacé seulement par « Masquer la gare »
+    const b=Object.assign({p:mkPath(pts,true),m,lit,dark,st:near(SITE.stationAt),h:7,canopy:false,fade:(SITE.fade||[]).some(near),cvb:COV.some(P=>P.some(q=>pin(pts,q[0],q[1]))),yd:!near(SITE.stationAt)&&LANES.some(l=>(l.path||[]).some(q=>pin(pts,q.x,q.z)))},o); // yd : remise au-dessus d'une voie de garage (toit effaçable comme la gare, bldA) // cvb : couvre un chemin couvert, effacé seulement par « Masquer la gare »
     if(!b.cvb&&(b.canopy||SHP.some(q=>pin(pts,q[0],q[1]))))b.fade=b.ab=true; // abri (issue #15) : auvent OSM building=roof, ou bâtiment au-dessus de la file ou du quai : s'efface comme les toits SITE.fade
     LY.bld.push(b);};
   // points de la file (tronçons, liaison) et des quais, tous les 1 m : un bâtiment qui en recouvre un est un abri
@@ -421,8 +421,8 @@ let clock=0,wet=0,roofA=1,hideA=1;
 // visibles seulement avec « Masquer la gare » (G.hideSt, hideA → 0), plus au simple zoom ni avec les toits retirés.
 // Abris (issue #15, b.ab : auvents OSM building=roof, bâtiments au-dessus de la file ou du quai) : effacés au zoom et par « Toits », comme SITE.fade ; un auvent reste un peu translucide (0,8).
 // Remise du garage (issue #43, propriétaire 20/11 : train de Zeus « disparu » sous un toit gris, bâtiment OSM w148159085 au-dessus de la voie de garage) : tout bâtiment
-// (hors gare) qui recouvre une voie de garage (LANES, b.yd) a un toit translucide (YD_ROOF_A = 0,25, ESTIMÉ, contour gardé) : les trains garés restent toujours visibles.
-const YD_ROOF_A=.25,bldA=b=>{const a=b.fade?(b.cvb?Math.min(roofA,hideA):roofA):b.cvb?hideA:1;return b.yd?Math.min(a,YD_ROOF_A):b.canopy?.8*a:a;};
+// (hors gare) qui recouvre une voie de garage (LANES, b.yd) a un toit opaque effacé comme celui des gares (propriétaire 21/11) : au zoom rapproché, par « Toits » et « Masquer la gare » (roofA).
+const bldA=b=>{const a=b.fade?(b.cvb?Math.min(roofA,hideA):roofA):b.cvb?hideA:1;return b.yd?Math.min(a,roofA):b.canopy?.8*a:a;};
 // Tunnels du circuit : OSM.tunnels=[[s0,s1(,'roof')],…] (tronçons tagués tunnel=yes, ou covered=yes et layer<0 ; 'roof' = galerie au-dessus du sol, layer>0), puis tunnels ESTIMÉS
 // de SITE.tunnels:[{s:[s0,s1],…}] (s du moteur). Couverture : eau si le tunnel passe sous un plan d'eau OSM (détection automatique), toit de béton ('roof'), sinon remblai enherbé.
 // SITE.tunnels[k]={under:'water'|'ground'|'roof',w:demi-largeur} (k = rang du tunnel OSM) force le choix.
