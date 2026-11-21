@@ -308,29 +308,36 @@
   const TEXN = { concrete: 'béton', asphalt: 'asphalte', sand: 'sable stabilisé', pavers: 'pavés', deck: 'platelage bois' }, RAILN = { metal: 'métal', wood: 'bois', stone: 'pierre (muret)' };
   function lookChange(fn) { const M = GM(); if (!M.look || typeof M.look !== 'object') M.look = {}; fn(M.look); const L = M.look;
     for (const k of ['queue', 'plat']) if (L[k] && !Object.keys(L[k]).length) delete L[k]; if (!Object.keys(L).length) delete M.look; panel(); }
+  // Origine des réglages (issue #46, D12) : valeur lue dans OSM (engine/render.js OSML, depuis OSM.attrs) ou valeur du jeu ; étiquette « OSM » (valeur d'OSM, GAME absent ou identique) ou « modifié » (GAME écarte de OSM ou règle une valeur sans équivalent lu).
   function lookHTML() {
-    const L = GM().look || {}, h = [], fd = E('FLOOR_DEF');
-    const fld = (key, label, ctl, orig, mod) => `<div class="fld${mod ? ' mod' : ''}"><span>${label}</span>${ctl}<span class="orig">origine : ${esc(orig)}</span><button data-lrev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
+    const L = GM().look || {}, h = [], fd = E('FLOOR_DEF'), O = E('OSML') || {};
+    const badge = (g, o) => g != null ? (o != null && g === o ? '<span class="tag t-osm">OSM</span>' : '<span class="tag t-mod">modifié</span>') : o != null ? '<span class="tag t-osm">OSM</span>' : '';
+    const fld = (key, label, ctl, orig, mod, g, o) => `<div class="fld${mod ? ' mod' : ''}"><span>${label} ${badge(g, o)}</span>${ctl}<span class="orig">origine : ${esc(orig)}</span><button data-lrev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine (OSM si elle existe)">Origine</button></div>`;
     const texSel = (key, cur, first) => `<select data-l="${key}"><option value=""${cur ? '' : ' selected'}>${first}</option>${S.LOOK.tex.map(t => `<option value="${t}"${t === cur ? ' selected' : ''}>${TEXN[t]}</option>`).join('')}</select>`;
-    const q = L.queue || {}, p = L.plat || {};
+    const q = L.queue || {}, p = L.plat || {}, oq = O.queue || {}, op = O.plat || {};
+    const tx = (o, def) => o.tex ? TEXN[o.tex] + ' (OSM)' : def, cl = (o, def) => o.col ? o.col + ' (OSM)' : def;
     h.push('<h3>Sol des allées de file</h3>');
-    h.push(fld('queue.tex', 'Texture', texSel('queue.tex', q.tex, 'béton (origine)'), 'béton clair', !!q.tex));
-    h.push(fld('queue.col', 'Couleur', `<input data-l="queue.col" type="color" value="${q.col || (q.tex ? fd[q.tex] : '#c4c0b6')}">`, 'béton clair #c4c0b6', !!q.col));
+    h.push(fld('queue.tex', 'Texture', texSel('queue.tex', q.tex, tx(oq, 'béton (origine)')), tx(oq, 'béton clair'), !!q.tex, q.tex, oq.tex));
+    h.push(fld('queue.col', 'Couleur', `<input data-l="queue.col" type="color" value="${q.col || oq.col || (q.tex || oq.tex ? fd[q.tex || oq.tex] : '#c4c0b6')}">`, cl(oq, 'béton clair #c4c0b6'), !!q.col, q.col, oq.col));
     const pc0 = E('PLAT_COL');
     h.push('<h3>Sol des quais</h3>');
-    h.push(fld('plat.tex', 'Texture', texSel('plat.tex', p.tex, 'béton lissé (origine)'), 'béton lissé', !!p.tex));
-    h.push(fld('plat.col', 'Couleur', `<input data-l="plat.col" type="color" value="${p.col || (p.tex ? fd[p.tex] : pc0)}">`, pc0 + (E('SITE.platCol') ? ' (SITE.platCol)' : ' (défaut)'), !!p.col));
+    h.push(fld('plat.tex', 'Texture', texSel('plat.tex', p.tex, tx(op, 'béton lissé (origine)')), tx(op, 'béton lissé'), !!p.tex, p.tex, op.tex));
+    h.push(fld('plat.col', 'Couleur', `<input data-l="plat.col" type="color" value="${p.col || op.col || (p.tex || op.tex ? fd[p.tex || op.tex] : pc0)}">`, cl(op, pc0 + (E('SITE.platCol') ? ' (SITE.platCol)' : ' (défaut)')), !!p.col, p.col, op.col));
     h.push('<h3>Garde-corps et barrières de file</h3>');
-    h.push(fld('rail', 'Matériau', `<select data-l="rail">${S.LOOK.rail.map(r => `<option value="${r}"${r === (L.rail || 'metal') ? ' selected' : ''}>${RAILN[r]}</option>`).join('')}</select>`, 'métal', !!L.rail));
+    const rdef = O.rail || 'metal';
+    h.push(fld('rail', 'Matériau', `<select data-l="rail">${S.LOOK.rail.map(r => `<option value="${r}"${r === (L.rail || rdef) ? ' selected' : ''}>${RAILN[r]}</option>`).join('')}</select>`, O.rail ? RAILN[O.rail] + ' (OSM)' : 'métal', !!L.rail, L.rail, O.rail));
     h.push('<h3>Portillons du quai</h3>');
-    h.push(fld('gate', 'Couleur', `<input data-l="gate" type="color" value="${L.gate || '#4d525a'}">`, 'vert ouvert / rouge fermé', !!L.gate));
-    h.push('<p class="note">Appliqué tout de suite dans le jeu. Textures et couleurs générées par le jeu, teintes ESTIMÉES (pas relevées). Les barrières pivotantes prennent le matériau des garde-corps (pierre : vantail en fer entre piliers de pierre). Portillons de couleur réglée : leur état se lit à l\'angle du vantail et au voyant vert / rouge du poteau.</p>');
+    h.push(fld('gate', 'Couleur', `<input data-l="gate" type="color" value="${L.gate || '#4d525a'}">`, 'vert ouvert / rouge fermé', !!L.gate, L.gate, null));
+    h.push('<h3>Toit de la gare</h3>');
+    const rf0 = E('SITE.stationRoofCol');
+    h.push(fld('roof', 'Couleur', `<input data-l="roof" type="color" value="${L.roof || O.roof || (/^#[0-9a-f]{6}$/i.test(rf0 || '') ? rf0 : '#a24e38')}">`, O.roof ? O.roof + ' (OSM roof:colour)' : (rf0 ? rf0 + ' (SITE.stationRoofCol)' : 'couleur du bâtiment (OSM)'), !!L.roof, L.roof, O.roof));
+    h.push('<p class="note">Appliqué tout de suite dans le jeu. Textures et couleurs générées par le jeu, teintes ESTIMÉES (pas relevées). Les barrières pivotantes prennent le matériau des garde-corps (pierre : vantail en fer entre piliers de pierre). Portillons de couleur réglée : leur état se lit à l\'angle du vantail et au voyant vert / rouge du poteau. « OSM » : valeur lue dans OpenStreetMap ; « modifié » : écart avec OSM, renvoyable par « Envoyer vers OSM » (jamais automatique). Les portillons n\'ont pas d\'équivalent OSM lu.</p>');
     return h.join('');
   }
   function bindLook() {
     const B = $('lookBox');
     for (const el of B.querySelectorAll('[data-l]')) el.addEventListener('change', () => { const p = el.dataset.l.split('.'), v = el.value;
-      lookChange(L => { if (p.length === 1) { if (v === '' || (p[0] === 'rail' && v === 'metal')) delete L[p[0]]; else L[p[0]] = v; return; }
+      lookChange(L => { if (p.length === 1) { if (v === '' || (p[0] === 'rail' && v === ((E('OSML') || {}).rail || 'metal'))) delete L[p[0]]; else L[p[0]] = v; return; }
         const o = L[p[0]] || (L[p[0]] = {}); if (v === '') delete o[p[1]]; else o[p[1]] = v; }); });
     for (const el of B.querySelectorAll('[data-lrev]')) el.onclick = () => { const p = el.dataset.lrev.split('.'); lookChange(L => { if (p.length === 1) delete L[p[0]]; else if (L[p[0]]) delete L[p[0]][p[1]]; }); };
   }
@@ -422,6 +429,36 @@
       + `<div>${gates().length} barrière(s) de file ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'OSM ou SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'} ; entrée de la file : ${d.queueEntry ? d.queueEntry.len + ' m à ' + d.queueEntry.ang + '°' : 'calcul auto'}.</div>`;
     window.ED.dirty = dirty;
   }
+
+  // ── envoi vers OSM (issue #46, D12) : écarts GAME ↔ OSM.attrs (S.osmDiff), cases à cocher, changeset commenté ; l'envoi lui-même est fait par le serveur (OAuth2 PKCE, editor/server.js) ──
+  const PLATS = '(()=>{const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2;const q=(l0,l1)=>[[a.x-a.tx*bk+a.rx*l0,a.z-a.tz*bk+a.rz*l0],[b.x+b.tx*P.front+b.rx*l0,b.z+b.tz*P.front+b.rz*l0],[b.x+b.tx*P.front+b.rx*l1,b.z+b.tz*P.front+b.rz*l1],[a.x-a.tx*bk+a.rx*l1,a.z-a.tz*bk+a.rz*l1]].map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);return P.exit?[q(PEDGE,P.load),q(-PEDGE,-P.exit)]:[q(PEDGE,P.load)];})()';
+  let osmItems = [];
+  async function showOsm() {
+    if (!ready) return;
+    $('oSite').textContent = site; $('modalOsm').classList.add('on'); $('oSend').disabled = true; $('oLogin').hidden = true;
+    const st = await api('/api/osm/status'), attrs = E('OSM.attrs') || [];
+    osmItems = S.osmDiff(draft(), attrs, { plats: E(PLATS) });
+    $('oCom').value = $('oCom').value || `Apparence de la file et du quai (${site}) : surface, couleur, matériau, toit`;
+    const who = st.user ? ' (connecté : ' + esc(st.user) + ')' : '';
+    if (!st.configured) $('oMsg').innerHTML = '<span class="err">Envoi non configuré : créer editor/osm.local.json (identifiant client OAuth2, voir editor/README.md).</span>';
+    else $('oMsg').innerHTML = 'Serveur OSM : <code>' + esc(st.api) + '</code>' + (st.loggedIn ? ' — connecté' + who : ' — <span class="warn">non connecté</span>') + '. Un changeset sera ouvert, les écarts cochés envoyés, puis il sera fermé. Rien n\'est envoyé sans ce bouton.';
+    $('oLogin').hidden = !st.configured || st.loggedIn;
+    $('oList').innerHTML = osmItems.length ? osmItems.map((it, i) => `<label><input type="checkbox" data-oi="${i}" ${it.type === 'create' ? '' : 'checked'}> <b>${it.type === 'create' ? 'créer' : 'modifier'}</b> ${esc(it.role)} ${it.type === 'create' ? '' : '<code>' + esc(it.id) + ' v' + it.v + '</code>'} — ${esc(it.key)} : <code>${esc(it.from || '(absent)')}</code> → <code>${esc(it.to)}</code>${it.type === 'create' ? ' <span class="note">(décoché par défaut)</span>' : ''}</label>`).join('')
+      : '<p class="note">Aucun écart avec OSM : tous les réglages concernés sont ceux d\'OSM (ou sans équivalent).</p>';
+    const upd = () => { $('oSend').disabled = !(st.configured && st.loggedIn && $('oList').querySelector('input:checked')); };
+    for (const c of $('oList').querySelectorAll('input')) c.onchange = upd; upd();
+  }
+  async function sendOsm() {
+    const items = [...$('oList').querySelectorAll('input:checked')].map(c => osmItems[+c.dataset.oi]);
+    $('oSend').disabled = true; $('oMsg').textContent = 'Envoi…';
+    const r = await api('/api/osm/send/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ comment: $('oCom').value, items }) });
+    window.ED.osmResult = r;
+    if (r.ok) $('oMsg').innerHTML = `<span class="ok">Envoyé : changeset <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.changeset)}</a> (${r.modified.length} objet(s) modifié(s), ${r.created.length} créé(s)).</span> Relancer l'import (<code>tools/make_site.py</code>) pour relire les nouvelles versions : les écarts ci-dessus ne disparaissent qu'après.`;
+    else $('oMsg').innerHTML = '<span class="err">Refusé : ' + esc((r.errors || [r.error]).join(' ; ')) + '</span>' + (r.conflicts ? '<br>' + r.conflicts.map(c => esc(c.id + ' : version importée ' + c.have + ', version actuelle ' + c.now)).join('<br>') + '<br>Relancer l\'import avant de renvoyer.' : '');
+  }
+  $('bOsm').onclick = showOsm; $('oClose').onclick = () => $('modalOsm').classList.remove('on'); $('oSend').onclick = sendOsm;
+  $('oLogin').onclick = () => { window.open('/osm/login', 'osmlogin', 'width=720,height=820'); };
+  window.addEventListener('message', e => { if (e.origin === location.origin && e.data === 'osm-login' && $('modalOsm').classList.contains('on')) showOsm(); });
 
   // ── diff et sauvegarde ──
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · entrée de la file : ${g && g.queueEntry ? g.queueEntry.len + ' m à ' + g.queueEntry.ang + '°' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;

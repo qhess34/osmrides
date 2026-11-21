@@ -48,7 +48,7 @@
       } else if (k === 'look') {
         o.look = {}; const L = g.look;
         for (const f of ['queue', 'plat']) if (L[f]) { const q = {}; if (L[f].col) q.col = String(L[f].col).toLowerCase(); if (L[f].tex) q.tex = L[f].tex; if (Object.keys(q).length) o.look[f] = q; }
-        if (L.rail) o.look.rail = L.rail; if (L.gate) o.look.gate = String(L.gate).toLowerCase();
+        if (L.rail) o.look.rail = L.rail; if (L.gate) o.look.gate = String(L.gate).toLowerCase(); if (L.roof) o.look.roof = String(L.roof).toLowerCase();
       } else o[k] = g[k]; // clé inconnue (lot futur) : conservée telle quelle
     }
     return o;
@@ -158,7 +158,7 @@
       }
     }
     if ('site' in g) validateSite(g.site, E, W, ctx || {});
-    if ('look' in g) { // apparence (issue #45) : {queue:{col, tex}, plat:{col, tex}, rail, gate}, chaque clé facultative
+    if ('look' in g) { // apparence (issue #45) : {queue:{col, tex}, plat:{col, tex}, rail, gate, roof}, chaque clé facultative
       const L = g.look;
       if (!L || typeof L !== 'object' || Array.isArray(L)) E.push('look : objet attendu');
       else for (const k of Object.keys(L)) {
@@ -172,6 +172,7 @@
           }
         } else if (k === 'rail') { if (!LOOK.rail.includes(v)) E.push('look.rail : ' + LOOK.rail.join(' | ') + ' attendu'); }
         else if (k === 'gate') { if (typeof v !== 'string' || !HEX.test(v)) E.push('look.gate : couleur #rrggbb attendue'); }
+        else if (k === 'roof') { if (typeof v !== 'string' || !HEX.test(v)) E.push('look.roof : couleur #rrggbb attendue'); } // toit du bâtiment de la gare (issue #46)
         else E.push('look : clé inconnue ' + k);
       }
     }
@@ -247,6 +248,36 @@
     return out;
   }
 
-  const api = { HEAD, KNOWN, LOOK, LIM, SK, SL, SITE_KEYS, normalize, validate, text, parse, diff, selfCross };
+
+  // ── Écarts GAME ↔ OSM.attrs (issue #46, D12) : ce que l'éditeur pourrait renvoyer vers OSM. Pur (serveur et interface). Un réglage absent de GAME = valeur OSM : aucun écart.
+  // attrs = OSM.attrs (tools/make_site.py : [{role, id, v, l, t, h}]) ; ctx.plats = polygones [[x, z], …] du quai calculé (proposition de création, décochée par défaut dans l'interface).
+  // Correspondances : textures du jeu <-> surface OSM (concrete, asphalt, sand <-> compacted | fine_gravel, pavers <-> paving_stones | sett, deck <-> wood), matériau des garde-corps <-> material.
+  const SURF_OUT = { concrete: 'concrete', asphalt: 'asphalt', sand: 'compacted', pavers: 'paving_stones', deck: 'wood' };
+  const SURF_IN = { concrete: 'concrete', asphalt: 'asphalt', compacted: 'sand', fine_gravel: 'sand', paving_stones: 'pavers', sett: 'pavers', wood: 'deck' };
+  const MAT_IN = { metal: 'metal', steel: 'metal', iron: 'metal', wood: 'wood', stone: 'stone', brick: 'stone', concrete: 'stone' };
+  const OSM_TAGS = { queue: ['surface', 'colour'], plat: ['surface', 'colour'], rail: ['material'], roof: ['roof:colour'], track: ['colour'] }; // clés que l'envoi peut écrire, par rôle
+  const hexOf = (a, k) => ((a.h && a.h[k]) || (a.t && HEX.test(a.t[k] || '') ? a.t[k] : '') || '').toLowerCase();
+  function osmDiff(game, attrs, ctx) {
+    const out = [], L = (game && game.look) || {}, A = Array.isArray(attrs) ? attrs : [];
+    const push = (a, key, from, to) => out.push({ type: 'modify', role: a.role, id: a.id, v: a.v, key, from: from == null ? '' : from, to });
+    const tex = (role, o) => { if (!o) return;
+      for (const a of A) if (a.role === role) {
+        if (o.tex && SURF_IN[(a.t || {}).surface] !== o.tex) push(a, 'surface', (a.t || {}).surface, SURF_OUT[o.tex]);
+        if (o.col && hexOf(a, 'colour') !== o.col.toLowerCase()) push(a, 'colour', (a.t || {}).colour, o.col.toLowerCase());
+      } };
+    tex('queue', L.queue); tex('plat', L.plat);
+    if (L.rail) for (const a of A) if (a.role === 'rail' && MAT_IN[(a.t || {}).material] !== L.rail) push(a, 'material', (a.t || {}).material, L.rail);
+    if (L.roof) for (const a of A) if (a.role === 'roof' && hexOf(a, 'roof:colour') !== L.roof.toLowerCase()) push(a, 'roof:colour', (a.t || {})['roof:colour'], L.roof.toLowerCase());
+    const sp = game && game.site && game.site.track && game.site.track.spine;
+    if (sp) for (const a of A) if (a.role === 'track' && hexOf(a, 'colour') !== String(sp).toLowerCase()) push(a, 'colour', (a.t || {}).colour, String(sp).toLowerCase());
+    // polygone de sol du quai : proposé seulement si un réglage de quai existe et qu'aucun polygone n'existe dans OSM (une case par quai, décochée par défaut)
+    const P = L.plat || {};
+    if ((P.tex || P.col) && !A.some(a => a.role === 'plat')) (ctx && ctx.plats || []).forEach((pts, i) => {
+      const tags = { 'area:highway': 'footway', covered: 'yes', level: '0' }; if (P.tex) tags.surface = SURF_OUT[P.tex]; if (P.col) tags.colour = P.col.toLowerCase();
+      out.push({ type: 'create', role: 'plat', id: 'new' + (i + 1), v: 0, key: 'polygone du quai ' + (i + 1), from: '', to: Object.keys(tags).map(k => k + '=' + tags[k]).join(', '), tags, pts });
+    });
+    return out;
+  }
+  const api = { osmDiff, OSM_TAGS, SURF_OUT, SURF_IN, MAT_IN, HEAD, KNOWN, LOOK, LIM, SK, SL, SITE_KEYS, normalize, validate, text, parse, diff, selfCross };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.T2ZSchema = api;
 })(this);
