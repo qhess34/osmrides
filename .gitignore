@@ -1,0 +1,2 @@
+editor/*.local.json
+!editor/*.local.example.json

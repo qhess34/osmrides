@@ -458,7 +458,7 @@
   }
   $('bOsm').onclick = showOsm; $('oClose').onclick = () => $('modalOsm').classList.remove('on'); $('oSend').onclick = sendOsm;
   $('oLogin').onclick = () => { window.open('/osm/login', 'osmlogin', 'width=720,height=820'); };
-  window.addEventListener('message', e => { if (e.origin === location.origin && e.data === 'osm-login' && $('modalOsm').classList.contains('on')) showOsm(); });
+  window.addEventListener('message', e => { if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(e.origin) && e.data === 'osm-login' && $('modalOsm').classList.contains('on')) showOsm(); });
 
   // ── diff et sauvegarde ──
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · entrée de la file : ${g && g.queueEntry ? g.queueEntry.len + ' m à ' + g.queueEntry.ang + '°' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;

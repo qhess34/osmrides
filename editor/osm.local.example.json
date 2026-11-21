@@ -1,0 +1,5 @@
+{
+  "clientId": "IDENTIFIANT_CLIENT_OAUTH2_DE_L_APPLICATION_OSM",
+  "api": "https://api.openstreetmap.org",
+  "auth": "https://www.openstreetmap.org"
+}

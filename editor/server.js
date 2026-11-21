@@ -1,6 +1,7 @@
 'use strict';
 /* Éditeur OSMrides — serveur local (Node 22, sans dépendance npm). docs/ARCHITECTURE.md D4, editor/README.md.
    - sert le dépôt en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) ;
+   - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
    - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site> ;
    - n'écrit QUE sites/<site>.game.js (liste blanche : <site> = un sites/<site>.js existant), après validation (editor/schema.js) ; aucune opération Git.
    Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt, défaut : parent de editor/). */
@@ -9,6 +10,8 @@ const S = require('./schema.js');
 const ROOT = path.resolve(process.env.T2Z_ROOT || path.join(__dirname, '..'));
 const SITES = path.join(ROOT, 'sites');
 const PORT = +process.env.PORT || 8787, HOST = process.env.HOST || '127.0.0.1';
+// Envoi vers OSM (issue #46, D12) : editor/osm-sync.js ; configuration locale non versionnée editor/osm.local.json (OSM_CONFIG).
+const OSM = require('./osm-sync.js')({ configPath: process.env.OSM_CONFIG || path.join(__dirname, 'osm.local.json'), port: PORT, root: ROOT });
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8' };
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN' };
@@ -51,12 +54,17 @@ const server = http.createServer(async (req, res) => {
     const host = String(req.headers.host || '').replace(/:\d+$/, '');
     if (!['127.0.0.1', 'localhost', '[::1]'].includes(host)) return send(res, 403, { error: 'hôte refusé' });
     const url = new URL(req.url, 'http://local'), p = decodeURIComponent(url.pathname);
+    if (req.method === 'GET' && p === '/osm/login') { const r = OSM.login(); if (r.location) { res.writeHead(302, Object.assign({ Location: r.location }, SEC)); return res.end(); } return send(res, r.code, r.text, 'text/plain; charset=utf-8'); }
+    if (req.method === 'GET' && p === '/osm/callback') { const r = await OSM.callback(url); return r.html ? send(res, r.code, r.html, 'text/html; charset=utf-8') : send(res, r.code, r.text, 'text/plain; charset=utf-8'); }
     if (p.startsWith('/api/')) {
       if (req.method !== 'GET') {
         const o = req.headers.origin;
         if (o && !/^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(o)) return send(res, 403, { error: 'origine refusée' });
         if (!/^application\/json/.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'JSON attendu' });
       }
+      if (req.method === 'GET' && p === '/api/osm/status') return send(res, 200, OSM.status());
+      const mo = /^\/api\/osm\/send\/([^/]+)$/.exec(p);
+      if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1], await body(req)); return send(res, r.code, r.body); }
       const m = /^\/api\/(sites|game|diff)(?:\/([^/]+))?$/.exec(p);
       if (!m) return send(res, 404, { error: 'inconnu' });
       if (m[1] === 'sites' && req.method === 'GET') return send(res, 200, siteIds().map(id => ({ id, game: fs.existsSync(gamePath(id)) })));
@@ -79,7 +87,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/sw.js') return send(res, 404, 'pas de service worker dans l\'éditeur', 'text/plain'); // évite tout cache hors ligne de game.js
     const rel = path.normalize(p.endsWith('/') ? p + 'index.html' : p).replace(/^([/\\])+/, '');
     const f = path.resolve(ROOT, rel);
-    if (!f.startsWith(ROOT + path.sep) || rel.split(/[/\\]/).some(s => s.startsWith('.')) || rel.split(/[/\\]/)[0] === 'node_modules') return send(res, 404, 'introuvable', 'text/plain');
+    if (!f.startsWith(ROOT + path.sep) || /\.local\.json$/.test(f) || rel.split(/[/\\]/).some(s => s.startsWith('.')) || rel.split(/[/\\]/)[0] === 'node_modules') return send(res, 404, 'introuvable', 'text/plain');
     fs.stat(f, (e, st) => {
       if (e || !st.isFile()) return send(res, 404, '', TYPES[path.extname(f).toLowerCase()] || 'text/plain'); // script absent (game.js facultatif) : simple 404
       res.writeHead(200, Object.assign({ 'Content-Type': TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream', 'Content-Length': st.size }, SEC));
