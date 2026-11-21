@@ -10,6 +10,7 @@ Règles d'ajout d'attraction : `docs/NOUVELLE-ATTRACTION.md`. Détail technique 
 
 - **Réalisme avant tout** : rendu aérien crédible, couleurs sourdes, aucun pictogramme ni emoji, rien d'enfantin.
 - **Fidélité** : tracé, gare, file, garage pris dans OSM ; ce qui est estimé (hauteurs, longueurs, couleurs, pont transbordeur) est signalé dans le code et dit au propriétaire, jamais présenté comme mesuré.
+- **Synchronisation vers OSM** (propriétaire 21/11, issue #46) : tout réglage de l'éditeur qui a un équivalent en attribut OSM (revêtement `surface`, `colour`, `material`, `barrier`, `width`…) est lu dans OSM par défaut et doit pouvoir être renvoyé vers OSM à la demande ; à prévoir dès la conception de chaque nouveau réglage (`docs/ARCHITECTURE.md` D12).
 - **Commande par zones, jamais par train** (gare, lift, freinage AUTO/MANU, appareil, voies) ; portillons et sécurités ouverts / verrouillés au bouton seulement ; barrières de file posées à la main dans l'éditeur, cliquées sur la carte.
 - **Visiteurs** : ils ne marchent que sur les chemins, ne franchissent que les barrières ouvertes (évacués compris), ne se chevauchent jamais, sont tournés face à leur marche.
 - Vocabulaire : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur.
