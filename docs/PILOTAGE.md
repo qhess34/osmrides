@@ -44,7 +44,7 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-20 (soir) par la session de pilotage n° 6._
+_Mis à jour le 2026-11-21 par la session de pilotage n° 7 (reprise de l'état de la n° 6)._
 
 **Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** ; mais les **barrières de file ne viennent plus d'OSM** : posées à la main dans l'éditeur (#37). Lire `docs/ROADMAP.md`, `docs/ARCHITECTURE.md` (D1–D10), `docs/manoeuvres.md` (section « Modèle »).
 
@@ -58,7 +58,7 @@ _Mis à jour le 2026-11-20 (soir) par la session de pilotage n° 6._
 
 **Issues ouvertes** : #5 (valeurs estimées, `ele`), #30, #31 et #32 à #44 faites et à valider / fermer par le propriétaire ; #35 (éditeur, plus tard : relier une voie décorative par un `moving` proche, lot 8).
 
-**Questions en attente du propriétaire** : hangar du garage de Zeus translucide ou toit opaque effaçable (#43) ? fin de file de Goudurix prolongée jusqu'à l'entrée du quai OK (#34) ? bug « plus personne ne revient après une évacuation » (#41) non reproduit : attendre son retour avec le nouveau voyant. Pitch / roll dans l'éditeur (depuis `roller_coaster:element`) : pas encore d'issue.
+**Réponses du propriétaire (21/11, session n° 7)** : hangar du garage de Zeus « comme les gares » → toit opaque effaçable, publié (f2ee3b3, #43) ; fin de file de Goudurix validée (#34) ; bug d'évacuation (#41) non reconstaté, considéré réglé. Reste sans issue : pitch / roll dans l'éditeur (depuis `roller_coaster:element`).
 
 **Points de vigilance** :
 - **Quota Opus** : les agents `moteur` ont été coupés deux fois par la limite de 5 h ; les reprendre par SendMessage après la remise à zéro (heure donnée dans la notification).
