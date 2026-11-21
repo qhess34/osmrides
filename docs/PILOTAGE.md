@@ -45,25 +45,25 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-21 par la session de pilotage n° 7 (reprise de l'état de la n° 6)._
+_Mis à jour le 2026-11-21 par la session de pilotage n° 7._
 
-**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** ; mais les **barrières de file ne viennent plus d'OSM** : posées à la main dans l'éditeur (#37). Lire `docs/ROADMAP.md`, `docs/ARCHITECTURE.md` (D1–D10), `docs/manoeuvres.md` (section « Modèle »).
+**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA. **OSM reste la référence** ; barrières de file posées à la main dans l'éditeur (#37). **Nouveau (D12, #46)** : tout réglage de l'éditeur qui a un équivalent OSM est lu dans OSM par défaut et renvoyable vers OSM à la demande (envoi direct OAuth2 depuis l'éditeur local) ; à prévoir pour chaque nouveau réglage.
 
-**Publié sur `main` pendant la session n° 6 (20/11)** :
-- #32 éditeur : plafond de trains (`TRAIN_MAX`), réglages des trains à chaud, roues du coaster inversé sous la poutre.
-- #33 importeur : `waiting` / `brake_run` / `moving` = zones d'attente qui freinent, rôle déduit de la position (« Frein final » = simple nom de la dernière zone avant la gare) ; quais déduits de la gare ; salle de contrôle OSM ; `ele` ; `roller_coaster:element` ; voies décoratives (`OSM.deco`) ; réimport des 4 attractions (Zeus complet, garage du Hourra depuis OSM).
-- #36 zones toutes équivalentes, garage branchable sur n'importe quelle zone ; #38 aiguillage en amont d'un frein de bloc à marche arrière (essai `tools/yard-zone.js`).
-- #34 puis #37 : barrières posées à la main (`GAME.barriers` `b<n>`), ouvertes / fermées une par une, une barrière fermée bloque tout le monde (évacués compris) ; file déduite d'OSM pour les 4 attractions (Zeus : raccourci w937019288).
-- #39 éditeur : prolongement de l'entrée de file (`GAME.queueEntry`), largeur = chemin de file, aimant des barrières sur les bords d'allée (angle libre).
-- #40 visiteurs en file devant une barrière fermée ; #41 voyant d'évacuation, barrière bloquante signalée, boutons du pupitre sans pictogramme ; #42 tunnels en galerie le long de la voie ; #43 Zeus : voie de maintenance qui cachait le train, gare redressée, hangar translucide ; #44 quai : arrivants qui respectent l'ordre de la zone d'attente.
+**Publié sur `main` pendant la session n° 7 (21/11)** :
+- #43 : hangar du garage de Zeus à toit opaque effacé comme la gare (choix du propriétaire).
+- #45 : éditeur « Apparence de la file et du quai » (`GAME.look` : sol des allées et des quais, couleur + texture, garde-corps métal / bois / pierre, couleur des portillons), D11.
+- #46 : `OSM.attrs` (surface, colour, material, roof:colour lus à l'import), badges « OSM » / « modifié », couleur du toit de la gare, bouton « Envoyer vers OSM » (`editor/osm-sync.js`, OAuth2 PKCE, contrôle de version, changeset) ; testé sur faux serveur seulement. Sol du quai en OSM = polygone `area:highway=footway` + `covered=yes` + `level=0` sous le toit (validé par le propriétaire).
+- Économie de tokens : `AGENTS.md` 48 → 7 Ko, détail dans `docs/ref/*.md`, journal dans `docs/journal/2026-11.md` (ajout en fin sans relire), agent `moteur` en Sonnet par défaut, plus de testeurs en parallèle (l'agent teste lui-même, une attraction après l'autre).
+- Mesures : #45 (Opus, ancien AGENTS.md) ≈ 180 k tokens ; réorganisation des docs (Sonnet) ≈ 125 k ; #46 (Sonnet, grosse tâche) ≈ 233 k.
 
-**Issues ouvertes** : #5 (valeurs estimées, `ele`), #30, #31 et #32 à #44 faites et à valider / fermer par le propriétaire ; #35 (éditeur, plus tard : relier une voie décorative par un `moving` proche, lot 8).
+**Issues ouvertes** : #5 (valeurs estimées) ; #30, #31, #32 à #46 faites, à valider / fermer par le propriétaire ; #35 (plus tard, lot 8).
 
-**Réponses du propriétaire (21/11, session n° 7)** : hangar du garage de Zeus « comme les gares » → toit opaque effaçable, publié (f2ee3b3, #43) ; fin de file de Goudurix validée (#34) ; bug d'évacuation (#41) non reconstaté, considéré réglé. Reste sans issue : pitch / roll dans l'éditeur (depuis `roller_coaster:element`).
+**À faire par le propriétaire (#46)** : enregistrer l'application OAuth2 dans son compte OSM (redirection `http://127.0.0.1:8787/osm/callback`, client public, `write_api`), `editor/osm.local.json` (modèle `.example`), ouvrir http://127.0.0.1:8787/ (pas `localhost`) ; premier essai conseillé sur le serveur de développement OSM. Vrai envoi et vraie connexion jamais testés ici.
+
+**Questions / suites possibles** : pitch / roll dans l'éditeur (depuis `roller_coaster:element`, pas d'issue) ; découper `docs/manoeuvres.md` et `engine/render.js` (économie de tokens, reporté). Hourra et OzIris ont des changements OSM récents non importés (salle de contrôle, quelques points) : réimport complet à proposer.
 
 **Points de vigilance** :
-- **Quota Opus** : les agents `moteur` ont été coupés deux fois par la limite de 5 h ; les reprendre par SendMessage après la remise à zéro (heure donnée dans la notification).
-- **Un seul `editor-test` à la fois** : il retire puis restaure les `sites/*.game.js` du propriétaire (un passage en parallèle a effacé `goudurix.game.js`, restauré). Ne jamais commiter / pousser pendant qu'il tourne ; vérifier `git diff origin/main -- 'sites/*.game.js'` avant de publier.
-- Agents en parallèle : worktree pour le second ; conflits fréquents sur `AGENTS.md` et le journal `docs/journal/<mois>.md` (très longues lignes : fusion caractère par caractère depuis la version de base, script dans le scratchpad de la session n° 6, à refaire si besoin).
+- **Un seul `editor-test` à la fois** (il retire puis restaure les `sites/*.game.js` du propriétaire) ; vérifier `git diff origin/main -- 'sites/*.game.js'` avant de publier.
 - Le propriétaire publie lui-même des `game.js` sur `main` : toujours `git fetch origin main` et fusionner avant de pousser.
-- Tests en parallèle : échecs de clic sous la charge, relancer seul. Docker utilisable (`dockerd &`). `api.openstreetmap.org` fonctionne.
+- Un sous-agent ne peut pas lancer de sous-agent : il teste lui-même.
+- Renouveler la session de pilotage après 3 ou 4 demandes. `api.openstreetmap.org` fonctionne ; Docker utilisable (`dockerd &`).
