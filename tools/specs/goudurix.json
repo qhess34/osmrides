@@ -260,5 +260,10 @@
  ],
  "note_osm": "Repères lus dans OSM (2026-11-16) : gare 937067647 (station), lift 541092982 (lift_hill, s 31–114), freins 'waiting' : 1580112200 = B1 (s 665–691), 1580112203 = frein final (s 745–777, voie parallèle à la gare). Cuvette avant le lift (propriétaire) raccourcie à s 20–31 (le lift OSM commence à 31 m). Mise à jour du 2026-11-17 (changeset 192067832) : tronçon mobile 1580112198 retracé (point ajouté) ; croisement s≈313 × s≈340 tombé à 1,7 m : montée vers 18 m commencée dès s 304 (point 312 retiré, ESTIMÉ).",
  "note_osm_33b": "Réimport du 2026-11-20 (issue #33, suite) : réponse du propriétaire (20/11) : le train s arrête au brake_run 1580112200 PUIS va en zone waiting 1580112203 avant la gare : frein final = dernière zone avant la gare (règle par position de tools/make_site.py), donc B1 = 1580112200, frein final = 1580112203 sans osm_brakes ; tag moving de 541092986 corrigé dans OSM (roles retiré).",
- "note_osm_33": "Réimport du 2026-11-20 (issue #33, changesets du propriétaire du 20/11) : B1 1580112200 tagué brake_run, frein final 1580112203 resté waiting (osm_brakes garde blk1 / brk : QUESTION au propriétaire, la règle brake_run = frein final désignerait 1580112200) ; 541092986 (batwing, au milieu du parcours) tagué roller_coaster:track=moving : rôle forcé à parcours (roles) en attendant la réponse (probable erreur de saisie)."
+ "note_osm_33": "Réimport du 2026-11-20 (issue #33, changesets du propriétaire du 20/11) : B1 1580112200 tagué brake_run, frein final 1580112203 resté waiting (osm_brakes garde blk1 / brk : QUESTION au propriétaire, la règle brake_run = frein final désignerait 1580112200) ; 541092986 (batwing, au milieu du parcours) tagué roller_coaster:track=moving : rôle forcé à parcours (roles) en attendant la réponse (probable erreur de saisie).",
+ "queue_paths": [
+  "q",
+  "qloop",
+  "qin"
+ ]
 }

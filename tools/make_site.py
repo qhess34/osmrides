@@ -24,6 +24,7 @@ Le fichier de spécification (JSON) décrit :
                 chemins couverts (tunnel, covered, indoor, layer<0) : f.cv=1 ; entrées / sorties (nœuds entrance=*) -> OSM.doors=[[x,z,type,nom]]
                 passerelles (highway + bridge=*) : f.br=layer (f.w = width OSM) ; chemins à width OSM -> OSM.widths=[[w, pts]…] ; escaliers highway=steps -> OSM.stairs=[{p, up(1|-1|0, incline), cv, lv, w}] ; niveau souterrain (layer / level < 0) : f.lv, lv
                 (w = width OSM de l'escalier, sinon du chemin raccordé à une extrémité ; absent : largeur décidée par le moteur) ; rochers natural=rock|stone|bare_rock (bare_rock devient natural=rock) : feats (moteur)
+  queue_paths   [clé de paths, …] chemins de file (SITE.queue.ways) dont surface / colour sont lus -> OSM.attrs (issue #46, voir plus bas)
   phys          {roll, drag} frottements utilisés pour le contrôle de vitesse affiché
   base, skip    mode « décor seul » : base = fichier de données existant dont la voie (cps), la file et la gare sont gardées (Tonnerre 2 Zeus) ; skip = clés non exportées
   (barrières)   nœuds barrier=swing_gate | gate | lift_gate -> OSM.barriers=[[x, z, ref, hinge, tx, tz, bout]] : barrières de file du jeu (engine/queue.js, à la place des barrières posées par le moteur)
@@ -638,6 +639,53 @@ if BASE is None:
     if elements: res['elements'] = elements
     if stations: res['stations'] = stations
     if ele_out: res['ele'] = ele_out
+# OSM.attrs (issue #46, D12) : attributs OSM qui servent de valeur par défaut aux réglages de l'éditeur (GAME.look, couleur de la voie) et que l'éditeur peut renvoyer vers OSM.
+#   Liste d'objets {role, id, v, l (m), t:{tag brut…}, h:{colour normalisée #rrggbb}} ; roles : queue (chemins de file de la spec « queue_paths » : surface, colour), plat (polygone de sol
+#   area:highway=footway + covered=yes dans la gare : surface, colour), rail (barrier=fence|handrail|wall le long d'une allée de file : barrier, material), roof (bâtiment de la gare :
+#   roof:colour), track (tronçon de voie : colour). Seuls les objets portant au moins un de ces tags sont exportés ; sans tag, pas de clé attrs. Le moteur n'en tire qu'une valeur par défaut.
+NCOL = {'black': '#000000', 'white': '#ffffff', 'gray': '#808080', 'grey': '#808080', 'red': '#ff0000', 'maroon': '#800000', 'brown': '#a52a2a', 'orange': '#ffa500', 'yellow': '#ffff00', 'green': '#008000', 'blue': '#0000ff', 'darkgray': '#a9a9a9', 'lightgray': '#d3d3d3', 'silver': '#c0c0c0', 'beige': '#f5f5dc', 'tan': '#d2b48c'}
+def hexcol(v):  # colour OSM (#rgb, #rrggbb ou nom CSS courant) -> #rrggbb, None si illisible
+    v = (v or '').strip().lower()
+    if re.fullmatch(r'#[0-9a-f]{6}', v): return v
+    if re.fullmatch(r'#[0-9a-f]{3}', v): return '#' + ''.join(c * 2 for c in v[1:])
+    return NCOL.get(v)
+def attr_of(role, wid, keys):
+    t = tags(WAY[str(wid)]); got = {k: t[k] for k in keys if k in t}
+    if not got: return None
+    pp = [xy(i) for i in nds(WAY[str(wid)])]
+    o = {'role': role, 'id': 'w' + str(wid), 'v': ver(WAY[str(wid)]), 'l': round(sum(math.hypot(pp[k + 1][0] - pp[k][0], pp[k + 1][1] - pp[k][1]) for k in range(len(pp) - 1)), 1), 't': got}  # l : longueur en m (le moteur prend la valeur dominante par longueur)
+    h = {k: hexcol(got[k]) for k in got if k in ('colour', 'roof:colour') and hexcol(got[k])}
+    if h: o['h'] = h
+    return o
+attrs = []
+QPW = [m for k in spec.get('queue_paths', []) for m in (spec['paths'][k] if isinstance(spec['paths'][k], list) else [spec['paths'][k]])]
+for m in QPW:
+    if tags(WAY[str(m)]).get('highway') and tags(WAY[str(m)]).get('highway') != 'steps':
+        a = attr_of('queue', m, ('surface', 'colour')); a and attrs.append(a)
+stp = [xy(i) for i in nds(WAY[str(spec['polys']['station'])])] if spec.get('polys', {}).get('station') else None
+if stp:
+    a = attr_of('roof', spec['polys']['station'], ('roof:colour',)); a and attrs.append(a)
+    for wid, w in WAY.items():
+        t = tags(w); n_ = nds(w)
+        if t.get('area:highway') == 'footway' and t.get('covered') == 'yes' and len(n_) > 3 and n_[0] == n_[-1]:
+            P_ = [xy(i) for i in n_]
+            if inside((sum(q[0] for q in P_) / len(P_), sum(q[1] for q in P_) / len(P_)), stp):
+                a = attr_of('plat', wid, ('surface', 'colour')); attrs.append(a or {'role': 'plat', 'id': 'w' + wid, 'v': ver(w), 't': {}})
+QP = [[xy(i) for i in nds(WAY[str(m)])] for m in QPW]
+def dseg(q, a, b):
+    dx, dz = b[0] - a[0], b[1] - a[1]; l2 = dx * dx + dz * dz
+    u = 0 if l2 == 0 else max(0, min(1, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dz) / l2))
+    return math.hypot(q[0] - a[0] - u * dx, q[1] - a[1] - u * dz)
+def near_queue(q): return any(dseg(q, P_[k], P_[k + 1]) < 2.0 for P_ in QP for k in range(len(P_) - 1))
+for wid, w in WAY.items():  # garde-corps le long des allées de file : tous les sommets à moins de 2 m (ESTIMÉ) d'un chemin de file
+    t = tags(w); n_ = nds(w)
+    if t.get('barrier') in ('fence', 'handrail', 'wall') and n_ and QP and all(near_queue(xy(i)) for i in n_):
+        a = attr_of('rail', wid, ('barrier', 'material'))
+        if a and ('material' in a['t'] or a['t']['barrier'] == 'wall'): attrs.append(a)
+for m in (chain_ways if BASE is None else []):
+    a = attr_of('track', m, ('colour',)); a and attrs.append(a)
+if attrs: res['attrs'] = attrs
+print('OSM.attrs :', dict(collections.Counter(a['role'] for a in attrs)) or 'aucun')
 for k in spec.get('skip', []): res.pop(k, None)  # clés non exportées (spec « skip »), tous modes
 if BASE is not None:  # décor seul : voie, file et gare du fichier de base, décor relu dans OSM
     res = dict(BASE, **{k: v for k, v in res.items() if k not in ('cps', 'tunnels', 'inversions', 'others') and k not in spec.get('skip', [])})

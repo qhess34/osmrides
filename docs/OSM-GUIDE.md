@@ -136,6 +136,7 @@ Une version `null` (ou un objet sans `id`) veut dire « origine connue, version 
 | Rochers | ways / multipolygones (anneaux assemblés) | `natural=rock`, `natural=stone` ; `natural=bare_rock` EST un rocher (décision du propriétaire 19/11 ; `make_site.py` l'écrit `natural=rock`) | `feats` |
 | Autres éléments de décor | ways / multipolygones | première clé présente parmi `building highway natural landuse leisure water waterway barrier amenity tourism man_made railway` (`landuse=commercial` ignoré) | `feats` |
 | Lieux nommés | nœuds | `name` | `pois` |
+| Attributs d'apparence (issue #46, D12) | chemins de file (spec `queue_paths`) ; polygone `area:highway=footway` + `covered=yes` dans la gare ; `barrier=fence\|handrail\|wall` à moins de 2 m (ESTIMÉ) d'une allée de file ; bâtiment de la gare (`polys.station`) ; tronçons de voie | `surface`, `colour` ; `material` (`wall` : pierre) ; `roof:colour` ; `colour` | `attrs` (`[{role: queue\|plat\|rail\|roof\|track, id, v, l, t, h}]`, seulement si un tag est présent ; valeur par défaut des réglages de l'éditeur, renvoyée vers OSM à la demande) |
 
 Hors de ces listes, un tag n'est pas lu. Toute évolution de `make_site.py` qui lit un nouveau tag met à jour ce tableau.
 

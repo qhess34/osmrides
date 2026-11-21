@@ -231,5 +231,10 @@
  "roles": {
   "1580412872": "station",
   "1580412873": "station"
- }
+ },
+ "queue_paths": [
+  "queue",
+  "qloopW",
+  "qin"
+ ]
 }

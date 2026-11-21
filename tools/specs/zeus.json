@@ -964,5 +964,10 @@
  },
  "png_scale": 4,
  "drop_ways": [],
- "note_drop": "1353118255 (roller_coaster=track de 11,5 m, isolé, hors circuit, dans la galerie à effets) : tracé décoratif (propriétaire, 20/11) : exporté dans OSM.deco par la règle générique de tools/make_site.py (tronçon non relié au circuit = voie décorative immobile)."
+ "note_drop": "1353118255 (roller_coaster=track de 11,5 m, isolé, hors circuit, dans la galerie à effets) : tracé décoratif (propriétaire, 20/11) : exporté dans OSM.deco par la règle générique de tools/make_site.py (tronçon non relié au circuit = voie décorative immobile).",
+ "queue_paths": [
+  "queue",
+  "short",
+  "shortW"
+ ]
 }
