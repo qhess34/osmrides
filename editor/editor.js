@@ -83,7 +83,7 @@
       for(let k=0;k<40;k++){const m1=lo+(hi-lo)/3,m2=hi-(hi-lo)/3;if(f(m1)<f(m2))hi=m2;else lo=m1;}const L=(lo+hi)/2;return f(L)<.02?L:null;})()`); // croisement du rayon avec un bord (distance au bord nulle)
     return L == null ? null : { p: [piv[0] + u[0] * L, piv[1] + u[1] * L], k: 'bar' }; }
   // ── données éditées ──
-  function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; if (g.board && g.board.depth == null) delete g.board; if (g.queueEntry && !(isFinite(g.queueEntry.len) && isFinite(g.queueEntry.ang))) delete g.queueEntry; if (g.site && !Object.keys(g.site).length) delete g.site; return g; }
+  function draft() { const g = JSON.parse(W.JSON.stringify(GM())); if (g.barriers && !Object.keys(g.barriers).length) delete g.barriers; if (Array.isArray(g.boardAreas) && !g.boardAreas.length) delete g.boardAreas; if (g.board && g.board.depth == null) delete g.board; if (g.queueEntry && !(isFinite(g.queueEntry.len) && isFinite(g.queueEntry.ang))) delete g.queueEntry; if (g.site && !Object.keys(g.site).length) delete g.site; if (g.look && !Object.keys(g.look).length) delete g.look; return g; }
   // barrières (issue #37) : GAME.barriers = {'b<n>': {x, z, ang, len, open?, sw?}} ; anciennes clés (surcharges, ajouts) lues et converties par le moteur (barSpecs),
   // réécrites au nouveau format à la première modification d'une barrière (own)
   function own() { const M = GM(), B = M.barriers || {}; if (Object.keys(B).every(k => /^b[0-9]+$/.test(k)) && M.barriers) return M.barriers;
@@ -303,6 +303,38 @@
     const ba = $('bTAdd'); if (ba) ba.onclick = () => { if (trains().length >= tMax()) { panel(); return; } const A = trains(), l = A[A.length - 1], c = Object.assign({}, l, { name: 'Train ' + (A.length + 1), wear: 30 }); delete c.lane; A.push(c); putTrains(A); };
   }
 
+  // ── apparence de la file et du quai (issue #45, D11) : GAME.look = {queue:{col, tex}, plat:{col, tex}, rail, gate} ; le moteur relit GAME.look à chaque image
+  // (engine/render.js look()) : appliqué à chaud, sans recharger le cadre. Clé absente = rendu d'origine (TEX.stone, PLAT_COL, garde-corps métal, portillons vert / rouge).
+  const TEXN = { concrete: 'béton', asphalt: 'asphalte', sand: 'sable stabilisé', pavers: 'pavés', deck: 'platelage bois' }, RAILN = { metal: 'métal', wood: 'bois', stone: 'pierre (muret)' };
+  function lookChange(fn) { const M = GM(); if (!M.look || typeof M.look !== 'object') M.look = {}; fn(M.look); const L = M.look;
+    for (const k of ['queue', 'plat']) if (L[k] && !Object.keys(L[k]).length) delete L[k]; if (!Object.keys(L).length) delete M.look; panel(); }
+  function lookHTML() {
+    const L = GM().look || {}, h = [], fd = E('FLOOR_DEF');
+    const fld = (key, label, ctl, orig, mod) => `<div class="fld${mod ? ' mod' : ''}"><span>${label}</span>${ctl}<span class="orig">origine : ${esc(orig)}</span><button data-lrev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
+    const texSel = (key, cur, first) => `<select data-l="${key}"><option value=""${cur ? '' : ' selected'}>${first}</option>${S.LOOK.tex.map(t => `<option value="${t}"${t === cur ? ' selected' : ''}>${TEXN[t]}</option>`).join('')}</select>`;
+    const q = L.queue || {}, p = L.plat || {};
+    h.push('<h3>Sol des allées de file</h3>');
+    h.push(fld('queue.tex', 'Texture', texSel('queue.tex', q.tex, 'béton (origine)'), 'béton clair', !!q.tex));
+    h.push(fld('queue.col', 'Couleur', `<input data-l="queue.col" type="color" value="${q.col || (q.tex ? fd[q.tex] : '#c4c0b6')}">`, 'béton clair #c4c0b6', !!q.col));
+    const pc0 = E('PLAT_COL');
+    h.push('<h3>Sol des quais</h3>');
+    h.push(fld('plat.tex', 'Texture', texSel('plat.tex', p.tex, 'béton lissé (origine)'), 'béton lissé', !!p.tex));
+    h.push(fld('plat.col', 'Couleur', `<input data-l="plat.col" type="color" value="${p.col || (p.tex ? fd[p.tex] : pc0)}">`, pc0 + (E('SITE.platCol') ? ' (SITE.platCol)' : ' (défaut)'), !!p.col));
+    h.push('<h3>Garde-corps et barrières de file</h3>');
+    h.push(fld('rail', 'Matériau', `<select data-l="rail">${S.LOOK.rail.map(r => `<option value="${r}"${r === (L.rail || 'metal') ? ' selected' : ''}>${RAILN[r]}</option>`).join('')}</select>`, 'métal', !!L.rail));
+    h.push('<h3>Portillons du quai</h3>');
+    h.push(fld('gate', 'Couleur', `<input data-l="gate" type="color" value="${L.gate || '#4d525a'}">`, 'vert ouvert / rouge fermé', !!L.gate));
+    h.push('<p class="note">Appliqué tout de suite dans le jeu. Textures et couleurs générées par le jeu, teintes ESTIMÉES (pas relevées). Les barrières pivotantes prennent le matériau des garde-corps (pierre : vantail en fer entre piliers de pierre). Portillons de couleur réglée : leur état se lit à l\'angle du vantail et au voyant vert / rouge du poteau.</p>');
+    return h.join('');
+  }
+  function bindLook() {
+    const B = $('lookBox');
+    for (const el of B.querySelectorAll('[data-l]')) el.addEventListener('change', () => { const p = el.dataset.l.split('.'), v = el.value;
+      lookChange(L => { if (p.length === 1) { if (v === '' || (p[0] === 'rail' && v === 'metal')) delete L[p[0]]; else L[p[0]] = v; return; }
+        const o = L[p[0]] || (L[p[0]] = {}); if (v === '') delete o[p[1]]; else o[p[1]] = v; }); });
+    for (const el of B.querySelectorAll('[data-lrev]')) el.onclick = () => { const p = el.dataset.lrev.split('.'); lookChange(L => { if (p.length === 1) delete L[p[0]]; else if (L[p[0]]) delete L[p[0]][p[1]]; }); };
+  }
+
   // ── panneau ──
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const inp = (k, v, st) => `<input data-k="${k}" type="number" step="${st || .05}" value="${v}">`;
@@ -352,6 +384,7 @@
     if (!ready) return;
     $('secMig').hidden = migrated() || !E('!!B0');
     $('siteBox').innerHTML = siteHTML(); bindSite();
+    $('lookBox').innerHTML = lookHTML(); bindLook();
     panelLite();
     const R = migrated() ? GM().controlRooms : null;
     $('roomBox').innerHTML = !R ? (E('!!B0') ? '<p class="note">Salle actuelle : <code>SITE.booth</code> (repli). La première modification la reprend dans <code>game.js</code>.</p><div class="row"><button id="bSelRoom">Sélectionner</button><button id="bDelRoom" class="bad">Supprimer</button></div>' : '<p class="note">Aucune salle.</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>')

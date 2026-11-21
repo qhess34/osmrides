@@ -4,7 +4,9 @@
 (function (root) {
   const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (sites/<site>.js).\n'
     + '// Le corps est du JSON strict : à modifier de préférence avec l\'éditeur (docker compose up -d, http://127.0.0.1:8787/).\n';
-  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board', 'queueEntry', 'site'];
+  const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board', 'queueEntry', 'site', 'look'];
+  // GAME.look (issue #45, D11) : apparence de la file et des quais ; textures et matériaux générés par le moteur (engine/render.js mkLook).
+  const LOOK = { tex: ['concrete', 'asphalt', 'sand', 'pavers', 'deck'], rail: ['metal', 'wood', 'stone'] };
   const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], depth: [0.5, 6], qeLen: [0, 30], qeAng: 360 }; // qeLen / qeAng : entrée de file (issue #39), longueur en m (même borne que le moteur, QE_MAX) et orientation en degrés // depth : profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
 
   // GAME.site (lot 3, D9) : surcharges partielles de SITE, liste blanche ; bornes ESTIMÉES (sûres pour le moteur, pas des mesures).
@@ -43,6 +45,10 @@
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.site.trough = q; }
           else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.site[key] = q; }
         }
+      } else if (k === 'look') {
+        o.look = {}; const L = g.look;
+        for (const f of ['queue', 'plat']) if (L[f]) { const q = {}; if (L[f].col) q.col = String(L[f].col).toLowerCase(); if (L[f].tex) q.tex = L[f].tex; if (Object.keys(q).length) o.look[f] = q; }
+        if (L.rail) o.look.rail = L.rail; if (L.gate) o.look.gate = String(L.gate).toLowerCase();
       } else o[k] = g[k]; // clé inconnue (lot futur) : conservée telle quelle
     }
     return o;
@@ -152,6 +158,23 @@
       }
     }
     if ('site' in g) validateSite(g.site, E, W, ctx || {});
+    if ('look' in g) { // apparence (issue #45) : {queue:{col, tex}, plat:{col, tex}, rail, gate}, chaque clé facultative
+      const L = g.look;
+      if (!L || typeof L !== 'object' || Array.isArray(L)) E.push('look : objet attendu');
+      else for (const k of Object.keys(L)) {
+        const v = L[k];
+        if (k === 'queue' || k === 'plat') {
+          if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push('look.' + k + ' : objet {col, tex} attendu'); continue; }
+          for (const f of Object.keys(v)) {
+            if (f === 'col') { if (typeof v.col !== 'string' || !HEX.test(v.col)) E.push('look.' + k + '.col : couleur #rrggbb attendue'); }
+            else if (f === 'tex') { if (!LOOK.tex.includes(v.tex)) E.push('look.' + k + '.tex : ' + LOOK.tex.join(' | ') + ' attendu'); }
+            else E.push('look.' + k + ' : clé inconnue ' + f);
+          }
+        } else if (k === 'rail') { if (!LOOK.rail.includes(v)) E.push('look.rail : ' + LOOK.rail.join(' | ') + ' attendu'); }
+        else if (k === 'gate') { if (typeof v !== 'string' || !HEX.test(v)) E.push('look.gate : couleur #rrggbb attendue'); }
+        else E.push('look : clé inconnue ' + k);
+      }
+    }
     return { errors: E, warnings: W };
   }
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
@@ -224,6 +247,6 @@
     return out;
   }
 
-  const api = { HEAD, KNOWN, LIM, SK, SL, SITE_KEYS, normalize, validate, text, parse, diff, selfCross };
+  const api = { HEAD, KNOWN, LOOK, LIM, SK, SL, SITE_KEYS, normalize, validate, text, parse, diff, selfCross };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.T2ZSchema = api;
 })(this);

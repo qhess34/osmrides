@@ -6,6 +6,7 @@
 // barrières et salle appliquées (géométrie, dessin, clic sur la carte, barrière supprimée ignorée, barrière ajoutée liée à sa fourche), visiteurs qui passent,
 // zone d'attente appliquée (visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone) ; profondeur des travées (GAME.board, issue #27) :
 // calcul affiché, poignée glissée, valeur saisie, bornes, retour au calcul, valeur écrite ; dans le jeu, avec et sans zone éditée : visiteurs dans les rangs ajoutés.
+// apparence de la file et du quai (issue #45, GAME.look) : choix enregistré, relu, appliqué à chaud et dans le jeu.
 // paramètres de l'attraction (lot 3, GAME.site) : couleur d'un train, nombre de trains, sous-type, physique, hors bornes refusé, sauvegarde, relecture, effet dans le jeu.
 // --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, bars). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
@@ -365,6 +366,45 @@ const ed = (page, s) => page.evaluate(s);
         const jg = await jq.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<400;i++)step(.05);render(.05);return {kind:SITE.kind,c:SITE.trains[0].col,n:SITE.trains.length,nt:trains.length,tc:trains[0].col,drag:PH.drag,car:SITE.car.len};})()`);
         ok(jg.kind === k1 && jg.c === '#123456' && jg.tc === '#123456' && jg.n === jg.nt && jg.drag === dr1 && jg.car === base.car.len, `attraction : SITE fusionné dans le jeu (kind ${jg.kind}, ${jg.n} trains, train 1 ${jg.c}, traînée ${jg.drag})`);
         await jq.close();
+      }
+      // ── apparence de la file et du quai (issue #45, D11) : GAME.look ──
+      //    formulaire : texture et couleur de la file, texture du quai, matériau des garde-corps, couleur des portillons ; appliqué à chaud (cadre non rechargé),
+      //    Origine, valeur invalide refusée par le serveur ; sauvegarde, relecture après redémarrage, effet dans jeu.html
+      {
+        await startServer();
+        const pl = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        pl.on('pageerror', e => errors.push('look: ' + String(e.message || e)));
+        await pl.goto(BASE + '/editor/?site=' + id); await pl.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 40000 }); await sleep(500);
+        ok(await ed(pl, `document.querySelectorAll('#lookBox .fld').length`) === 6 && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 0 && await ed(pl, `ED.E('LK.q===TEX.stone&&LK.pf===PLAT_COL&&LK.rail===RAILM.metal&&LK.gate===null')`), 'apparence : formulaire sans réglage, rendu d\'origine');
+        await ed(pl, `ED.E('window.__mk=1')`);
+        const chg = async (sel, v, fill) => { if (fill) { await pl.fill(sel, v); await pl.dispatchEvent(sel, 'change'); } else await pl.selectOption(sel, v); await sleep(250); };
+        await chg('#lookBox select[data-l="queue.tex"]', 'deck'); await chg('#lookBox input[data-l="queue.col"]', '#7a5c40', 1);
+        await chg('#lookBox select[data-l="plat.tex"]', 'pavers'); await chg('#lookBox select[data-l="rail"]', 'stone'); await chg('#lookBox input[data-l="gate"]', '#3c5a78', 1);
+        const hot = await ed(pl, `ED.E('window.__mk===1&&LK.q!==TEX.stone&&typeof LK.pf==="object"&&!LK.prow&&LK.rail===RAILM.stone&&LK.gate==="#3c5a78"')`);
+        ok(hot && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 5, 'apparence : platelage brun, pavés, pierre, portillons bleus appliqués à chaud (cadre non rechargé)');
+        await pl.click('#lookBox [data-lrev="plat.tex"]'); await sleep(250);
+        ok(await ed(pl, `!('plat' in ED.draft().look)`) && await ed(pl, `ED.E('LK.pf===PLAT_COL&&LK.prow')`), 'apparence : Origine (texture du quai) revient au béton lissé');
+        await chg('#lookBox input[data-l="plat.col"]', '#b8b2a6', 1);
+        const badL = await ed(pl, `fetch('/api/diff/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{look:{rail:'gold',queue:{tex:'marble'},plat:{col:'gris'},x:1}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length===4)`);
+        ok(badL === true, 'apparence : serveur refuse matériau, texture, couleur et clé inconnus');
+        await pl.click('#bDiff'); await pl.waitForSelector('#diff .a', { timeout: 30000 });
+        ok(/"look"/.test(await ed(pl, `document.getElementById('diff').textContent`)), 'apparence : diff lisible (clé look)');
+        await pl.click('#bSave'); await pl.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 30000 });
+        const expL = await ed(pl, `ED.draft()`), txtL = fs.readFileSync(gp(id), 'utf8'), LL = S.parse(txtL).look;
+        ok(txtL === S.text(expL) && LL.queue.tex === 'deck' && LL.queue.col === '#7a5c40' && LL.plat.col === '#b8b2a6' && !LL.plat.tex && LL.rail === 'stone' && LL.gate === '#3c5a78', 'apparence : sites/' + id + '.game.js écrit avec "look"');
+        await pl.close(); await stopServer(); await startServer();
+        const p4 = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        p4.on('pageerror', e => errors.push('look: ' + String(e.message || e)));
+        await p4.goto(BASE + '/editor/?site=' + id); await p4.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 40000 }); await sleep(300);
+        ok(JSON.stringify(S.normalize(await p4.evaluate(`ED.draft()`))) === JSON.stringify(S.normalize(expL)) && !(await p4.evaluate('ED.dirty')) && await p4.evaluate(`document.querySelectorAll('#lookBox .fld.mod').length`) === 5, 'apparence : relecture identique après redémarrage, 5 champs réglés');
+        await p4.close(); await stopServer();
+        const jl = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+        jl.on('pageerror', e => errors.push('jeu look: ' + String(e.message || e)));
+        await jl.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+        await jl.waitForFunction(() => typeof render === 'function' && typeof LK === 'object', null, { timeout: 30000 });
+        const jL = await jl.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<200;i++)step(.05);cam.s=12;render(.05);render(.05);return LK.q!==TEX.stone&&LK.pf==='#b8b2a6'&&LK.prow&&LK.rail===RAILM.stone&&LK.gate==='#3c5a78';})()`);
+        ok(jL === true, 'apparence : réglages appliqués dans jeu.html (file://)');
+        await jl.close();
       }
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));
