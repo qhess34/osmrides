@@ -26,7 +26,7 @@ Il remplace l'historique des conversations : une nouvelle session doit pouvoir r
 
 ## Économie de tokens (règles du propriétaire)
 
-- Captures : aucune pour la logique ; une petite capture par point visuel ; un seul montage par lot ; vignettes et tutos seulement en fin de grande étape (détail dans `AGENTS.md`).
+- Captures : aucune pour la logique ; une petite capture par point visuel ; un seul montage par lot ; vignettes et tutos seulement en fin de grande étape (règle dans `AGENTS.md`).
 - Ne jamais lire `sites/*.data.js` ni `parc/parc.data.js` en entier.
 - Le pilote regarde le montage une seule fois et ne relit pas les rapports en détail inutilement.
 
@@ -64,6 +64,6 @@ _Mis à jour le 2026-11-21 par la session de pilotage n° 7 (reprise de l'état 
 **Points de vigilance** :
 - **Quota Opus** : les agents `moteur` ont été coupés deux fois par la limite de 5 h ; les reprendre par SendMessage après la remise à zéro (heure donnée dans la notification).
 - **Un seul `editor-test` à la fois** : il retire puis restaure les `sites/*.game.js` du propriétaire (un passage en parallèle a effacé `goudurix.game.js`, restauré). Ne jamais commiter / pousser pendant qu'il tourne ; vérifier `git diff origin/main -- 'sites/*.game.js'` avant de publier.
-- Agents en parallèle : worktree pour le second ; conflits fréquents sur `AGENTS.md` et le journal de `docs/NOUVELLE-ATTRACTION.md` (très longues lignes : fusion caractère par caractère depuis la version de base, script dans le scratchpad de la session n° 6, à refaire si besoin).
+- Agents en parallèle : worktree pour le second ; conflits fréquents sur `AGENTS.md` et le journal `docs/journal/<mois>.md` (très longues lignes : fusion caractère par caractère depuis la version de base, script dans le scratchpad de la session n° 6, à refaire si besoin).
 - Le propriétaire publie lui-même des `game.js` sur `main` : toujours `git fetch origin main` et fusionner avant de pousser.
 - Tests en parallèle : échecs de clic sous la charge, relancer seul. Docker utilisable (`dockerd &`). `api.openstreetmap.org` fonctionne.

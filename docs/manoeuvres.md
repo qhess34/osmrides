@@ -226,7 +226,7 @@ Une zone de freinage qui suit immédiatement le lift (OSM `roller_coaster:track=
 
 ## Passerelles de service et évacuation (issue #7, 2026-11-16)
 
-Lift et zones de freinage surélevées ont une passerelle de service (coaster inversé : plancher pleine largeur sous la voie, issue #20) et un escalier jusqu'au sol (`SITE.catwalks`, voir `docs/NOUVELLE-ATTRACTION.md` §3). Appareil de voie : ni passerelle ni poteau de voie sur le tronçon qu'il porte ni dans l'espace qu'il balaie (`inSweep`, `engine/render.js`) ; ailleurs, toute voie surélevée a ses poteaux. Pour l'instant **décor seulement** : l'équipe technique reste dessinée à `SITE.jobsites` et il n'existe pas d'évacuation d'un train arrêté en parcours. Suite possible : faire marcher les techniciens et les passagers évacués par ces passerelles (itinéraire déjà calculé : `CATW.walks[].segs`, `CATW.towers`).
+Lift et zones de freinage surélevées ont une passerelle de service (coaster inversé : plancher pleine largeur sous la voie, issue #20) et un escalier jusqu'au sol (`SITE.catwalks`, voir `docs/NOUVELLE-ATTRACTION.md` §3 et `docs/ref/voie.md`). Appareil de voie : ni passerelle ni poteau de voie sur le tronçon qu'il porte ni dans l'espace qu'il balaie (`inSweep`, `engine/render.js`) ; ailleurs, toute voie surélevée a ses poteaux. Pour l'instant **décor seulement** : l'équipe technique reste dessinée à `SITE.jobsites` et il n'existe pas d'évacuation d'un train arrêté en parcours. Suite possible : faire marcher les techniciens et les passagers évacués par ces passerelles (itinéraire déjà calculé : `CATW.walks[].segs`, `CATW.towers`).
 
 ## Évacuation de la file (issue #21, 2026-11-19)
 

@@ -2,6 +2,8 @@
 
 Tenue par le chef de projet. Une tâche = une session courte, qui lit ce fichier, `AGENTS.md` et seulement les modules concernés.
 
+Journal des changements (tableau daté) : `docs/journal/<mois>.md` (ajout en fin de fichier sans relire) ; détail technique : `docs/ref/`.
+
 ## Règles d'économie de tokens
 
 - Ne jamais lire `sites/*.data.js` (fichiers générés, 60–70 Ko) : en extraire une valeur avec `grep -o` ou `node -e` si besoin.

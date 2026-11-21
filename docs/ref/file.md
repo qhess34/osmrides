@@ -1,0 +1,12 @@
+# File, visiteurs, évacuation, barrières
+
+Quand la lire : tout ce qui concerne la file d'attente, les visiteurs, leur trajet, l'évacuation et les barrières. Format `GAME.barriers` : `editeur.md`.
+
+Fiche de référence (extraite d'`AGENTS.md`, 21/11). Une règle n'est écrite qu'ici ; ailleurs on renvoie.
+
+## Visiteurs (règle du propriétaire, texte complet)
+
+**Visiteurs** : ils ne marchent que sur les chemins, ne franchissent que les barrières ouvertes, évacués compris (issue #37 : barrières posées à la main dans l'éditeur, chacune ouverte / fermée seule au clic sur la carte ; une barrière fermée arrête quiconque essaie de la franchir ; à chaque embranchement, plus court trajet vers la gare par des barrières ouvertes, sinon arrêt devant la première barrière fermée du plus court trajet ; évacuation : vide aussi les travées et le couloir d'attente derrière les portillons, `platEvac`, fait descendre par la sortie les passagers d'un train à quai sécurités ouvertes, `evacTrains`, issue #26 ; tant qu'un évacué est dans la file, plus personne n'entre ni n'avance vers la gare, `evacOn` ; voyant « Évacuation en cours » `#lEvac` au pupitre, fin annoncée au journal, barrière fermée qui retient des évacués nommée au journal (rappel espacé) et mise en évidence sur la carte jusqu'à son ouverture, `evacTick`, issue #41), se répartissent à deux par portillon, un portillon par wagon (ou par rangée : `SITE.plat.gatesPer:'row'`, Goudurix). Dans la file, jamais deux visiteurs à moins de leur épaisseur dessinée (`QPW` = 0,34 m, issue #28, `engine/queue.js`) : deux de front seulement si l'allée dessinée le permet, ramenés vers l'axe aux coudes et jonctions (`segSpots`), écart allongé là où le chemin se replie (`qBehind`), garde de proximité selon l'ordre de la file (`qBlocked`, niveaux souterrains à part), arrivants en ligne sur l'accès devant la barrière d'entrée
+
+- devant une barrière fermée, arrivants et évacués arrêtés **en file** derrière elle sur leur trajet, jamais à moins de `QD` (issue #40 : `barWait`, `barStepBack`, `evacAhead`, arrivants rangés par reste du trajet `ptsLeft`, sans interblocage `bkTo` ; plus de place sur l'accès : l'arrivant renonce ; à la réouverture, ils repartent dans l'ordre, `k.hold`)
+- tournés face à leur marche (`v.hd`).
