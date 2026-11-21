@@ -2,7 +2,7 @@
 name: verifier-attraction
 description: Lancer les tests du jeu OSMrides (check, mobile, save) sur une ou toutes les attractions et résumer en quelques lignes. À utiliser après toute modification d'une attraction ou du moteur.
 ---
-Prérequis : `NODE_PATH=$(npm root -g)`. Lancer en arrière-plan (certains tests dépassent 2 min) et ne lire que les lignes PASS / FAIL / `offpath=` / `page errors=`.
+Prérequis : `NODE_PATH=$(npm root -g)`. Lancer en arrière-plan (certains tests dépassent 2 min) et ne lire que les lignes PASS / FAIL / `offpath=` / `page errors=` (`… 2>&1 | tail -3`). Une attraction après l'autre, jamais en parallèle.
 
 - Une attraction modifiée : `node tools/check.js <id>` puis `node tools/mobile.js <id>` puis `node tools/save.js <id>`.
 - Moteur modifié : répéter pour zeus, hourra, oziris, goudurix (aussi `check.js <id> --build` si `tools/build.py` est concerné).

@@ -1,6 +1,6 @@
 ---
 name: testeur
-description: Lance les tests de OSMrides (check.js, mobile.js, save.js, pages, hors ligne) sur une ou plusieurs attractions et rend un résumé PASS/FAIL en quelques lignes. À utiliser après toute modification, en parallèle pour plusieurs attractions.
+description: Lance les tests de OSMrides (check.js, mobile.js, save.js, pages, hors ligne) sur une ou plusieurs attractions et rend un résumé PASS/FAIL en quelques lignes. Réservé au pilote : UN seul testeur pour toutes les attractions, tests lancés l'un après l'autre (jamais plusieurs testeurs en parallèle). Les agents moteur / attraction testent eux-mêmes.
 model: haiku
 tools: Bash, Read, Grep, Glob
 ---
