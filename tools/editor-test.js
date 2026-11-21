@@ -375,7 +375,7 @@ const ed = (page, s) => page.evaluate(s);
         const pl = await browser.newPage({ viewport: { width: 1200, height: 760 } });
         pl.on('pageerror', e => errors.push('look: ' + String(e.message || e)));
         await pl.goto(BASE + '/editor/?site=' + id); await pl.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 40000 }); await sleep(500);
-        ok(await ed(pl, `document.querySelectorAll('#lookBox .fld').length`) === 6 && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 0 && await ed(pl, `ED.E('LK.q===TEX.stone&&LK.pf===PLAT_COL&&LK.rail===RAILM.metal&&LK.gate===null')`), 'apparence : formulaire sans réglage, rendu d\'origine');
+        ok(await ed(pl, `document.querySelectorAll('#lookBox .fld').length`) === 7 && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 0 && await ed(pl, `ED.E('((OSML.queue&&OSML.queue.tex&&OSML.queue.tex!=="concrete")?LK.q!==TEX.stone:LK.q===TEX.stone)&&LK.pf===PLAT_COL&&LK.rail===RAILM[OSML.rail||"metal"]&&LK.gate===null')`), 'apparence : formulaire sans réglage, rendu d\'origine (ou valeurs OSM, issue #46)');
         await ed(pl, `ED.E('window.__mk=1')`);
         const chg = async (sel, v, fill) => { if (fill) { await pl.fill(sel, v); await pl.dispatchEvent(sel, 'change'); } else await pl.selectOption(sel, v); await sleep(250); };
         await chg('#lookBox select[data-l="queue.tex"]', 'deck'); await chg('#lookBox input[data-l="queue.col"]', '#7a5c40', 1);
