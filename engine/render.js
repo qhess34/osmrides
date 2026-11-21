@@ -935,12 +935,25 @@ function floorTex(kind,col,rot,joints){const key=kind+col+rot+(joints?1:0);if(FL
   const p=ctx.createPattern(c,'repeat');p.setTransform(new DOMMatrix().rotate(rot).scale(1/P));return FLOORC[key]=p;}
 const hexC=c=>typeof c==='string'&&/^#[0-9a-fA-F]{6}$/.test(c)?c.toLowerCase():null;
 const PLAT_ROT=BAYS.length?Math.round(Math.atan2(BAYS[0].tz,BAYS[0].tx)*180/Math.PI)+90:0; // lames et joints du quai en travers de la voie
+// Valeurs OSM par défaut de GAME.look (issue #46, D12) : OSM.attrs (tools/make_site.py) -> OSML ; priorité GAME > OSM > SITE > défaut ; sans attrs, OSML est vide et rien ne change.
+// Valeur dominante par longueur (queue : plusieurs chemins). surface : concrete, asphalt, compacted|fine_gravel -> sand, paving_stones|sett -> pavers, wood -> deck ; material des garde-corps : metal|steel|iron,
+// wood, stone|brick|concrete (barrier=wall sans material : pierre) ; roof:colour du bâtiment de la gare ; colour des chemins de file (queue) et du polygone de sol du quai (plat). Béton OSM d'une allée : l'origine du moteur
+// (TEX.stone) reste dessinée, la texture générée n'est prise que si GAME la demande (look()).
+const OSM_TEX={concrete:'concrete',asphalt:'asphalt',compacted:'sand',fine_gravel:'sand',paving_stones:'pavers',sett:'pavers',wood:'deck'},OSM_RAIL={metal:'metal',steel:'metal',iron:'metal',wood:'wood',stone:'stone',brick:'stone',concrete:'stone'};
+const OSML=(()=>{const A=typeof OSM!=='undefined'&&Array.isArray(OSM.attrs)?OSM.attrs:[],o={};
+  const dom=(role,f)=>{const m={};for(const a of A)if(a&&a.role===role&&a.t){const v=f(a);if(v)m[v]=(m[v]||0)+(a.l||1);}let b=null,n=0;for(const k in m)if(m[k]>n){b=k;n=m[k];}return b;};
+  for(const r of ['queue','plat']){let v=dom(r,a=>OSM_TEX[a.t.surface]);if(v)(o[r]=o[r]||{}).tex=v;v=dom(r,a=>a.h&&a.h.colour);if(v)(o[r]=o[r]||{}).col=v;}
+  let v=dom('rail',a=>OSM_RAIL[a.t.material]||(a.t.barrier==='wall'&&!a.t.material?'stone':null));if(v)o.rail=v;
+  v=dom('roof',a=>a.h&&a.h['roof:colour']);if(v)o.roof=v;
+  return o;})();
 function mkLook(L){const q=L.queue&&typeof L.queue==='object'?L.queue:{},p=L.plat&&typeof L.plat==='object'?L.plat:{};
   const qt=FLOOR_DEF[q.tex]?q.tex:null,qc=hexC(q.col),pt=FLOOR_DEF[p.tex]?p.tex:null,pc=hexC(p.col);
   return {q:qt||qc?floorTex(qt||'concrete',qc||FLOOR_DEF[qt||'concrete'],0,false):TEX.stone,
-    pf:pt?floorTex(pt,pc||FLOOR_DEF[pt],PLAT_ROT,true):pc||PLAT_COL,prow:!pt,rail:RAILM[L.rail]||RAILM.metal,gate:hexC(L.gate)};}
+    pf:pt?floorTex(pt,pc||FLOOR_DEF[pt],PLAT_ROT,true):pc||PLAT_COL,prow:!pt,rail:RAILM[L.rail]||RAILM.metal,gate:hexC(L.gate),roof:hexC(L.roof)};}
 let LKs=null,LK=null;
-function look(){const L=GM.look&&typeof GM.look==='object'&&!Array.isArray(GM.look)?GM.look:{},k=JSON.stringify(L);if(k!==LKs){LKs=k;LK=mkLook(L);}return LK;}
+function look(){const G_=GM.look&&typeof GM.look==='object'&&!Array.isArray(GM.look)?GM.look:{},L=Object.assign({},OSML,G_,{queue:Object.assign({},OSML.queue,G_.queue),plat:Object.assign({},OSML.plat,G_.plat)});
+  if(L.queue.tex==='concrete'&&!L.queue.col&&!(G_.queue&&G_.queue.tex))delete L.queue.tex; // béton lu dans OSM = origine du moteur (TEX.stone)
+  const k=JSON.stringify(L);if(k!==LKs){LKs=k;LK=mkLook(L);}return LK;}
 look();
 // garde-corps de file dans le matériau choisi (metal : valeurs d'avant l'issue #45, inchangées) ; w, mn : largeur (m) et minimum (px), pr : demi-côté des poteaux, sh : ombre
 function railDraw(P,PP,w,mn,pr,sh){const m=LK.rail;
@@ -1038,7 +1051,7 @@ function drawStationPeople(){drawGateLeaves();
 }
 function drawQSide(P,PP){if(!PP.length)return;railDraw(P,PP,.08,1,.06,[.1,.08]);}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
-  ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&SITE.stationRoofCol?SITE.stationRoofCol:b.col;ctx.fill(b.p);
+  ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&(LK.roof||SITE.stationRoofCol)?(LK.roof||SITE.stationRoofCol):b.col; // toit de la gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)ctx.fill(b.p);
   ctx.save();ctx.clip(b.p);
   if(s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha*=.35;ctx.fill(b.p);ctx.globalAlpha=bldA(b);}
   if(b.st&&SITE.draw&&SITE.draw.stationRoof)SITE.draw.stationRoof(ctx,b,API);
