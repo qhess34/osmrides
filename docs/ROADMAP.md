@@ -2,6 +2,10 @@
 
 Vision : un moteur de simulation d'attractions réutilisable (plusieurs parcs, plusieurs familles), et un éditeur local (Docker) qui permet de créer, corriger et configurer intégralement une attraction à partir d'OSM, **sans IA**. Les fichiers du dépôt sont la seule source de vérité ; Git versionne ; GitHub Pages publie le jeu ; OSM reste la référence géographique et reçoit, sur validation explicite, les corrections proposées.
 
+À long terme (propriétaire, 21/11) :
+- **Code lisible par des humains et simple (KISS)** : fonctions courtes et nommées clairement, pas d'abstraction sans besoin réel, commentaires en français là où la règle métier n'est pas évidente ; simplifier plutôt qu'empiler des cas particuliers.
+- **Composants réutilisables hors attractions** : certaines briques (lecture et import OSM, voie et abscisse `s`, cantonnement et commande par zones, visiteurs sur chemins et files, éditeur, synchronisation OSM) devront pouvoir servir à d'autres simulations fondées sur OSM, par exemple des transports en commun ou des domaines skiables. Les garder génériques, sans vocabulaire propre aux montagnes russes dans leur cœur, quand on les touche.
+
 Architecture, séparation des données et décisions : `docs/ARCHITECTURE.md`. Historique et questions ouvertes de l'ancienne feuille de route : `docs/JOURNAL.md`.
 
 ## Principes

@@ -13,6 +13,7 @@ Règles d'ajout d'attraction : `docs/NOUVELLE-ATTRACTION.md`. Détail technique 
 - **Synchronisation vers OSM** (propriétaire 21/11, issue #46) : tout réglage de l'éditeur qui a un équivalent en attribut OSM (revêtement `surface`, `colour`, `material`, `barrier`, `width`…) est lu dans OSM par défaut et doit pouvoir être renvoyé vers OSM à la demande ; à prévoir dès la conception de chaque nouveau réglage (`docs/ARCHITECTURE.md` D12).
 - **Commande par zones, jamais par train** (gare, lift, freinage AUTO/MANU, appareil, voies) ; portillons et sécurités ouverts / verrouillés au bouton seulement ; barrières de file posées à la main dans l'éditeur, cliquées sur la carte.
 - **Visiteurs** : ils ne marchent que sur les chemins, ne franchissent que les barrières ouvertes (évacués compris), ne se chevauchent jamais, sont tournés face à leur marche.
+- **Code lisible par des humains, KISS** ; briques génériques réutilisables pour d'autres simulations OSM (transports, domaines skiables) : vision dans `docs/ROADMAP.md`.
 - Vocabulaire : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur.
 
 ## Organisation du code
