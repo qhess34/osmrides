@@ -656,6 +656,7 @@ def attr_of(role, wid, keys, force=False):  # force : exporté même sans tag (l
     o = {'role': role, 'id': 'w' + str(wid), 'v': ver(WAY[str(wid)]), 'l': round(sum(math.hypot(pp[k + 1][0] - pp[k][0], pp[k + 1][1] - pp[k][1]) for k in range(len(pp) - 1)), 1), 't': got}  # l : longueur en m (le moteur prend la valeur dominante par longueur)
     h = {k: hexcol(got[k]) for k in got if k in ('colour', 'roof:colour') and hexcol(got[k])}
     if h: o['h'] = h
+    if role == 'queue': o['p'] = [[round(q[0], 1), round(q[1], 1)] for q in pp]  # tracé du chemin (m, repère du moteur) : le moteur y rattache chaque tronçon de file dessiné, pour un sol par chemin (GAME.look.ways, issue #45)
     return o
 attrs = []
 QPW = [m for k in spec.get('queue_paths', []) for m in (spec['paths'][k] if isinstance(spec['paths'][k], list) else [spec['paths'][k]])]
