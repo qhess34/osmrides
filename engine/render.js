@@ -918,8 +918,7 @@ const PLAT_COL=SITE.platCol||'#d6d1c6';
 // de pierre). gate : couleur des vantaux des portillons du quai (et de leur clôture fixe sur la ligne des portillons) ; leur état reste lisible (angle d'ouverture, voyant
 // vert / rouge sur le poteau-pivot).
 const FLOOR_DEF={concrete:'#bdb8ad',asphalt:'#6f7175',sand:'#c6b48f',pavers:'#8f8577',deck:'#8a6c4c'},FLOOR_PX=32,FLOOR_N=256; // 32 px par m, motif de 8 m
-// metal : mêmes couleurs et largeurs que le vantail de la barrière d'entrée de file (leaf : .2 m, main courante claire .07 m, poteaux .13 m), propriétaire 23/11 issue #45 : toute la file, comme l'entrée.
-const RAILM={metal:{c:'#4f555c',k:1.25,hi:'#aeb5bd',hk:1.17,post:'#23262b',pk:1.3,edge:'#4a3a28',ew:.3,lf:'#4f555c',lfh:'#aeb5bd',lfp:'#23262b',lpk:1},
+const RAILM={metal:{c:'#4a4f56',k:1,hi:'rgba(205,210,214,.5)',hk:1,post:'#2f3338',pk:1,edge:'#4a3a28',ew:.3,lf:'#4f555c',lfh:'#aeb5bd',lfp:'#23262b',lpk:1},
   wood:{c:'#6a5136',k:1.15,hi:'rgba(196,166,124,.45)',hk:1.2,post:'#3f2f1f',pk:1.2,edge:'#54402a',ew:.34,lf:'#6a5136',lfh:'rgba(196,166,124,.6)',lfp:'#3f2f1f',lpk:1.1},
   stone:{c:'#8d877b',k:1.9,hi:'rgba(214,208,196,.7)',hk:2.2,post:'#777166',pk:1.6,edge:'#7a7468',ew:.45,lf:'#3a3d40',lfh:'#6d7277',lfp:'#8d877b',lpk:1.6}}; // largeurs ESTIMÉES (muret ≈ 30 cm)
 const FLOORC={};
