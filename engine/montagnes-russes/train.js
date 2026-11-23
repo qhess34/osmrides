@@ -27,3 +27,22 @@ const BLK=Object.keys(TAG).filter(k=>/^blk\d+$/.test(k)).map(k=>TAG[k]).sort((a,
 const BZ0=BLK.map(b=>{const k=Object.keys(TAG).find(q=>/^blk\d+$/.test(q)&&TAG[q]===b),a=TAG['bz'+k.slice(3)];return a!=null&&a<b?a:b-9;}); // début de chaque zone de frein de bloc (OSM, sinon 9 m avant l'arrêt)
 // courbure signée (virage à droite > 0) : sert au balancement des bobs dans la gouttière
 const KAP=TR.map((f,i)=>{const a=TR[(i-2+N)%N].T,b=TR[(i+2)%N].T;return ((b.x-a.x)*f.R.x+(b.z-a.z)*f.R.z)/(4*DS);});
+/* Frein avant gare (SITE.preBrake:{back, len, name}) : zone de freinage de stockage juste avant l'entrée en gare, un train de long, avec pneus.
+   Arrêt de l'avant du train à S_PSB = L - back (back : distance au début de la gare, s=0) ; zone de PSB_A à S_PSB. Le train qui quitte
+   le frein final (ou le rail mobile du parcours) va s'y arrêter et y attend que la gare soit libre. */
+// Repères OSM pre0/pre1 (tools/make_site.py) : utilisés si back / len ne sont pas donnés.
+const PSB=SITE.preBrake||null,S_PSB=PSB?(PSB.back==null&&TAG.pre1!=null?Math.min(TAG.pre1,L-.5):L-(PSB.back!=null?PSB.back:1)):L,
+  PSB_A=PSB?(PSB.len==null&&TAG.pre0!=null&&TAG.pre0<S_PSB-TLEN?TAG.pre0:S_PSB-(PSB.len||TLEN+.5)):L;
+if(PSB&&PSB_A<S_HOLD+1)throw new Error('SITE.preBrake : pas de place entre le frein final et la gare');
+/* Zones toutes équivalentes (propriétaire, issue #36) : la gare est une zone d'attente comme les autres ; entre deux zones d'attente consécutives, un canton ordinaire ;
+   le garage est branché sur une zone d'attente quelconque du circuit, YZ = SITE.yard.at : 'St' (gare), 'B<k>' (frein de bloc k), 'Fin' (frein final), 'Pre' (frein avant gare) ;
+   alias compatibles 'station' = 'St', 'brake' = 'Fin'. ANCH = point d'arrêt de l'avant du train dans cette zone (point de raccordement). « Frein final » n'est plus qu'un nom.
+   Pont transbordeur droit : seulement sur le frein final (sa géométrie suit le rail de transfert OSM, S_HOLD). Aiguillage en amont (yard.back) : gare ou zone à marche arrière (contrôle après ZONES). */
+// Déclaration à la couche « voies » (engine/voies/reseau.js) : longueur des trains, hauteur du garage, zones d'attente dans l'ordre de marche, raccordement du garage.
+(()=>{const YD=SITE.yard;const YZ=(a=>a==null||a==='station'?'St':a==='brake'?'Fin':String(a))(YD.at);
+if(!/^(St|Fin|Pre|B\d+)$/.test(YZ)||(YZ==='Pre'&&!PSB)||(YZ[0]==='B'&&!(+YZ.slice(1)>=1&&+YZ.slice(1)<=BLK.length)))throw new Error('SITE.yard.at : zone d\'attente inconnue « '+YD.at+' » (St, B1…B'+BLK.length+', Fin'+(PSB?', Pre':'')+', ou les alias station / brake)');
+if(YD.device==='traverser'&&YZ!=='Fin')throw new Error('SITE.yard : pont transbordeur droit seulement sur le frein final (at:\'brake\')');
+  Object.assign(VOIES,{long:TLEN,hauteur:ST_Y,raccord:YZ,
+    attentes:[{id:'St',s:S_ST,dit:'la gare',conseil:' (bloquez au besoin l\'autre train au frein final).'}]
+      .concat(BLK.map((b,i)=>({id:'B'+(i+1),s:b,bloc:true,dit:'le frein de bloc '+(i+1)})),[{id:'Fin',s:S_HOLD,dit:'le frein final',horsP:' : entrée en gare bloquée.'}],
+        PSB?[{id:'Pre',s:S_PSB,dit:'« '+(PSB.name||'Frein avant gare')+' »'}]:[])});})();

@@ -8,7 +8,8 @@
    du noyau suivis de ceux de chaque couche. Un fichier ajouté au moteur n'oblige pas à changer les jeux. */
 (function(){
   const base=document.currentScript.src.replace(/[^/]*$/,'');
-  const ETAPES=['modele','personnes','interface','carte','decor','fin']; // modèle (voie, véhicules, quai), visiteurs, pupitre, carte, décor et image, démarrage
+  const ETAPES=['modele','reseau','personnes','interface','carte','decor','fin']; // modèle (voie, véhicules, zones d'attente déclarées par le type), réseau (garage, appareils, commande par zones, puis
+  // l'exploitation du type), visiteurs, pupitre, carte, décor et image, démarrage
   const NOYAU={base:['base','attente'],personnes:['personnes'],interface:['partie','interface'],carte:['carte'],decor:['decor'],fin:['demarrage','sauvegarde']};
   const COUCHES=(typeof SITE!=='undefined'&&Array.isArray(SITE.extensions)?SITE.extensions:['voies','montagnes-russes']).map(c=>/\/$/.test(c)?c:base+c+'/');
   const charge=(src,ok)=>{const s=document.createElement('script');s.src=src;s.onload=ok;

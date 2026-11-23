@@ -1,5 +1,5 @@
 'use strict';
-/* ══════════ COMMANDE PAR ZONES (docs/manoeuvres.md, « Principe de commande ») ══════════
+/* ══════════ ZONES DES MONTAGNES RUSSES (commande commune : engine/voies/zones.js ; docs/manoeuvres.md, « Principe de commande ») ══════════
    Le joueur commande des zones, jamais des trains : St (gare), Lift, B1…Bn (freins de bloc), Fin (frein final), RA / RB (pont droit :
    rail A du circuit, rail B du chariot), L1…Ln (voies de garage). Chaque zone a des freins (G.zk[z] = serrés) et, selon SITE.zones,
    des moteurs (pneus / roues de propulsion) Avancer / Reculer / Arrêt ; drive:'fwd' = marche avant seule (Avancer / Arrêt, pas de Reculer). Les zones de freinage B*, Fin, RA sont en AUTO par défaut (cantonnement) ;
@@ -8,7 +8,7 @@
    (drive:'fwd', propriétaire 2026-11-17 : roues de propulsion et bouton AV, pas d'AR ; disposition ESTIMÉE). */
 const ZCFG=z=>Object.assign({brake:true,drive:/^B\d/.test(z)?'fwd':true},SITE.zones&&SITE.zones[z.replace(/\d+$/,'')],SITE.zones&&SITE.zones[z]);
 const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
-  .concat(BLK.map((_,i)=>({id:'B'+(i+1),name:'Bloc '+(i+1),sec:'brk',auto:true})),[{id:'Fin',name:'Frein final',sec:'brk',auto:true}],
+  .concat(BLK.map((_,i)=>({id:'B'+(i+1),name:'Bloc '+(i+1),sec:'brk',auto:true,bloc:true})),[{id:'Fin',name:'Frein final',sec:'brk',auto:true}],
     SG?[{id:'RB',name:YD.railName||'Rail du pont',sec:'brk',auto:true}]:TRAV?[{id:'RA',name:RA?RAS:'Rail du parcours',sec:'brk',auto:true},{id:'RB',name:'Rail du chariot',sec:'brk'}]:[],
     PSB?[{id:'Pre',name:PSB.name||'Frein avant gare',sec:'brk',auto:true}]:[],
     LANES.map((l,j)=>({id:'L'+(j+1),name:LANES.length>1?'Voie '+(j+1):l.name,sec:'gar'})))
@@ -22,13 +22,10 @@ const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.
 if(LBK&&YZ!=='St'){if((ZONES.find(o=>o.id===YZ)||{}).drive!==true)throw new Error('SITE.yard.back : la zone '+YZ+' doit avoir la marche arrière (SITE.zones.'+YZ+'.drive:true)');
   if(YD.a<TLEN+1)console.warn('SITE.yard.back : a = '+YD.a+' m, moins d\'un train : le train arrêté '+YZ+' est sur l\'appareil');}
 const BDRV=BLK.map((_,i)=>!!(ZONES.find(o=>o.id==='B'+(i+1))||{}).drive),VPROP=PH.vmin;
-const CARR=TRAV?'RB':YZ; // zone porteuse : zone d'où un train entre dans la voie en face de l'appareil (au Dispatch de la voie) ; son Arrêt arrête aussi ce train // gare : pas de bouton de frein, freins liés au départ (stHeld)
+// S_PRE : arrêt avant le chariot du pont droit (aucun rail en ligne, frein final serré, rail occupé) = fin du frein final OSM (repère fin) si elle est avant le pont.
+const S_PRE=TAG.fin!=null&&TAG.fin<R0-.4&&TAG.fin>S_BRK?TAG.fin:R0-.4;
+const DEV_HOLD=HOLD_Z&&HOLD_Z[0]==='B'?+HOLD_Z.slice(1)-1:-1,devHoldAt=i=>devHoldIn('B'+(i+1)); // frein de bloc qui retient le train avant l'appareil (engine/voies/garage.js HOLD_Z)
 const stHeld=()=>trains.some(t=>t.st==='station'&&!t.depReq); // freins de gare : serrés automatiquement tant qu'un train est à quai, relâchés par la seule séquence Départ
-const zName=z=>(ZONES.find(o=>o.id===z)||{}).name||z;
-const isAutoZ=z=>/^(B\d+|Fin|RA|Pre)$/.test(z)||(SG&&z==='RB'),ZR=SG?'RB':'RA'; // ZR : zone du rail du circuit sur le pont droit (rail unique : RB, zone de freinage ET zone porteuse)
-const zK=z=>z[0]==='L'?!!G.zk[z]:isAutoZ(z)?!!(G.zm[z]&&G.zk[z]):!!G.zk[z]; // freins serrés au pupitre (zone de freinage : seulement en MANU)
-const bIn=()=>TRAV&&!SG&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
-const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
 function tZone(t){ // zone où se trouve un train
   if(t.st==='station')return 'St';
   if(t.st==='garage')return TRAV&&(t.lane<0||onCar(t))?'RB':'L'+(t.lane+1);
@@ -40,4 +37,3 @@ function tZone(t){ // zone où se trouve un train
   if(TRAV&&t.s>R0+.5)return SG||bIn()?'RB':'RA';
   return 'Fin';
 }
-const zT=z=>trains.filter(t=>tZone(t)===z);

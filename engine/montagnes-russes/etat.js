@@ -17,13 +17,13 @@ function placeAt(t,z){t.st='run';t.s=zStop(z);t.v=0;t.entering=false;t.toPre=fal
 const TRAIN_SPOTS=[].concat(PSB?[{s:S_PSB,z:'Pre'}]:[],[{s:S_HOLD,z:'Fin'}],BLK.map((b,i)=>({s:b,z:'B'+(i+1),i})).reverse());
 const TRAIN_MAX=1+LANES.reduce((n,l)=>n+(l.cap||1),0)+TRAIN_SPOTS.length;
 if(SITE.trains.length>TRAIN_MAX){console.warn('SITE.trains : '+SITE.trains.length+' trains pour '+TRAIN_MAX+' places d\'attente, les suivants sont ignorés');SITE.trains=SITE.trains.slice(0,TRAIN_MAX);}
-const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
+const trains=VEHICULES;trains.push(...SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'))); // véhicules du réseau (engine/voies/reseau.js)
 // Trains au garage au départ : voie SITE.trains[i].lane (1…n) si elle a de la place, sinon première voie qui en a ; garage plein : places du circuit (TRAIN_SPOTS)
 {const n=LANES.map(()=>0);let k=0;trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,free=j=>j>=0&&j<LANES.length&&n[j]<(LANES[j].cap||1);
   const j=free(c-1)?c-1:LANES.findIndex((l,q)=>free(q));
   if(j>=0){t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;return;}
   const P=TRAIN_SPOTS[k++];placeAt(t,P.z);t.lane=0;t.g=0;});} // arrêté à son point de freinage, freins serrés
-const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
+const seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 
 /* ══════════ BLOCS, DÉPARTS, MAINTENANCE ══════════ */
 function stationBusy(self){

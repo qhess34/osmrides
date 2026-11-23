@@ -14,7 +14,8 @@ const GM=(()=>{let g=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAM
      embarquement : repère et ligne du quai de la zone d'attente (engine/noyau/attente.js) ; textes : {bilanCorrect, bilanDifficile} ;
    - fonctions (appel, vrai, fournit) : step(dt), bacASable(), ui(), hud(), bilan(), accueil(), alarme(), aEvacuer(), evacuer(), escaliers(), hauteurSous(P, r),
      surVoieDeGarage(P), couvreVoie(P), sousVoie(P), pointsAbri(), presDeLaVoie(x, z, r), degagement(S), horsGardeCorps(x, z), hauteurRocher(P), angleQuai(),
-     surQuai(k), dessin(étape, s, dt, dry, vis), objets(items, dt, vis), dessinObjet(o), boutonsCamera(), suivi(i), sons(), clicEcran(x, y), surEcran(x, y). */
+     surQuai(k), dessin(étape, s, dt, dry, vis), objets(items, dt, vis), dessinObjet(o), boutonsCamera(), suivi(i), sons(), clicEcran(x, y), surEcran(x, y) ;
+   - règles qu'un type fournit à la couche voies : liste en tête de engine/voies/reseau.js. */
 const EXTENSIONS=[];
 function extension(def){if(def.surcharges)fusionSite(def.surcharges);EXTENSIONS.push(def);return def;}
 function appel(nom,...a){const r=[];for(const e of EXTENSIONS)if(typeof e[nom]==='function')r.push(e[nom](...a));return r;} // résultats de chaque couche qui déclare `nom`
