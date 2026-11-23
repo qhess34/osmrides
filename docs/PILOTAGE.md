@@ -48,29 +48,16 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-23 (fin de matinée) par la session de pilotage n° 9._
+_Mis à jour le 2026-11-23 (soir) par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
 
-**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local, création sans IA ; OSM reste la référence ; réglages synchronisables avec OSM (D12) ; code KISS ; briques réutilisables pour d'autres simulations OSM. **Hiérarchie type → lieu → éléments en place** (#48, `docs/hierarchie.md`).
+**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, Parc Astérix, publié sur https://qhess34.github.io/osmrides_parks/), `osmrides_skiresort` (Chef stations), futur `osmrides_transports` (décision du propriétaire, rien à faire maintenant). Pages d'osmrides = présentation du moteur (`index.html`), ancien `jeu.html` = redirection, `sw.js` = retrait du hors-ligne.
 
-**Publié sur `main` pendant la session n° 9 (23/11)** :
-- #44 : l'arrivant entre toujours dans la zone d'attente, avance au portillon par ordre d'arrivée (mesure `directQ` dans `check.js`).
-- #45 : en métal, garde-corps de l'entrée prolongée (`QSIDE`, main courante sur poteaux) sur toutes les bordures de file (`QSIDE0`).
-- #48 : migration faite. Fichiers dans `lieux/<type>/<lieu>/` (`lieux/index.js` = catalogue, `lieux/parc/asterix/<el>.data.js|.js|.game.js`, `plan.data.js`) ; `sites/`, `parc/` supprimés, `parc.html` → `plan.html` ; URL `jeu.html?type=parc&lieu=asterix&el=zeus` (`?site=` plus lu, sauf adresse interne de l'éditeur) ; sauvegardes `t2z.save.<type>.<lieu>.<el>.<mode>` (anciennes converties une fois). Points laissés : en-tête écrit par `editor/schema.js` cite encore `sites/` ; `tools/build.py` pose type/lieu en dur ; éditeur figé sur `lieux/parc/asterix`.
-- Éditeur : choix « Tous » dans la liste des chemins de file (même sol sur chaque way).
-- `docs/vars-notes.md` : étude OSM de Vars Les Claux (#49).
+**Versions** : étiquettes posées par le propriétaire seulement (push d'étiquette refusé aux sessions cloud). `0.0.1` posée. `0.1.0` (8e5f090 : noyau / voies / montagnes-russes, D14) et `0.2.0` (d2a6db9 : garage, appareils, arrêts, commande par zones dans `voies/`) publiées sur `main`, **étiquettes non posées** à ce jour.
 
-**Issues ouvertes** : #49 (Vars : réponses reçues, **prochaine grande tâche**), #48 (migration faite, à valider), #44 / #45 (à valider), #46 (OAuth2 OSM à enregistrer par le propriétaire), #5.
+**Décisions du propriétaire (23/11)** : trois couches (#51) ; `voies/` = mécanique sans dessin, cantonnement facultatif (trams et bus peuvent se rattraper) ; zone d'attente et météo dans le noyau ; le plus économique ; ordre : 0.2.0 (fait) → #53 → #54 ; décor de Zeus (`SITE.draw`) → « décors personnalisés » ajoutés dans l'éditeur (générique) ; quais OSM `railway=platform` + `roller_coaster:station=load|unload` ; hauteurs renvoyées en `ele` sur les nœuds de voie ; import gardé en Python (`make_site.py`, dans osmrides_parks), image Docker avec Node + Python ; horaires d'ouverture par lieu (nouveau niveau de configuration `lieux/<type>/<lieu>/`).
 
-**Séparation faite (23/11, Chef moteur)** : le jeu du Parc Astérix (pages, `lieux/`, images, tests de jeu, skills, publication Pages) est dans `osmrides_parks` (copié par le Chef parcs, commit db9c5d2) et retiré d'ici. `osmrides` = `engine/`, `editor/`, `tools/jeu/`, tests de l'éditeur (sur `../osmrides_parks`), docs ; Pages = présentation du moteur (`index.html`), redirection de l'ancien `jeu.html`, `sw.js` de retrait. Docs de jeu encore ici (`osmrides_parks/docs/NOUVELLE-ATTRACTION.md`, notes d'attractions, `osmrides_parks/docs/ref/site.md`, `osmrides_parks/docs/ref/tests.md`, `plans/`, `sources/`) : à retirer quand `osmrides_parks` les aura repris (osmrides_parks#3).
+**Prochaine tâche : #53** (réglages dans l'éditeur, lots : 6+4 → 0.2.x, puis 1+3, puis 5 ; plus décors personnalisés, horaires par lieu, freins par zone, `holdBack` / `dropAfter` / `loadSide` déduits, borne des travées selon le quai). Le Chef parcs attend la fin de #53 pour copier `montagnes-russes/`. Puis **#54** (bouton d'import et « Vérifier » appelant les outils du dépôt de jeu).
 
-**Organisation (23/11)** : quatre dépôts créés et équipés (`AGENTS.md`, `docs/PILOTAGE.md`, agents explorateur / testeur / ouvrier) : `osmrides_parks`, `osmrides_skiresort`, `osmrides_website`. **osmrides = librairie versionnée** (propriétaire, 23/11, D13, `docs/versions.md`) : chaque jeu indique sa version (`MOTEUR='0.0.1'`) et charge le moteur en ligne ; l'éditeur se lance par version (`docker compose`, modèle `tools/jeu/compose.yaml`) ; le code propre aux parcs / au ski va dans leurs dépôts. `0.0.1` étiquetée par le propriétaire le 23/11 (#50) ; étiquettes posées par le propriétaire (push d'étiquette refusé aux sessions cloud). Reste au Chef moteur : retirer d'`osmrides` ce qui a été déplacé une fois les autres dépôts publiés ; v2 = sortir du moteur ce qui est propre aux montagnes russes (points d'extension).
+**Tests** : clone `../osmrides_parks` ; tests de jeu avec moteur local `MOTEUR=../osmrides/engine/ node tools/check.js <el>` (depuis le clone) ; `tools/editor-test.js` et `osm-sync-test.js` ici. `editor-test.js` : 1 FAIL connu (Goudurix, travées, quai 3,9 m), à corriger dans #53. `cdn.jsdelivr.net` est autorisé dans l'environnement cloud.
 
-**#49 passe au Chef stations** (`osmrides_skiresort`). Ancienne note : premier jeu « télésiège »** (Escondus V15, Vars Les Claux) dans `lieux/ski/vars/` : décisions du propriétaire : sièges, vitesse, sens, altitude **estimés et signalés** ; pistes affichées avec choix été / hiver ; premier jalon = cadence et embarquement seulement (pas de météo). Réutiliser visiteurs, file, pupitre, sauvegarde ; isoler ce qui est propre aux montagnes russes (KISS). Données OSM : tuiles ≤ 0,045 × 0,05° (limite 50 000 nœuds de l'API). Tâche lourde : session dédiée ou agent `moteur` en Opus.
-
-**Points de vigilance** :
-- Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'lieux/**/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner (le propriétaire publie ses `game.js`, désormais dans `lieux/parc/asterix/`).
-- `.claude/worktrees/` à ajouter à `.git/info/exclude` dans chaque nouveau conteneur.
-- Conflit attendu sur `docs/journal/2026-11.md` à chaque fusion de worktree : garder toutes les lignes.
-- `check.js` peut échouer une fois sur un clic sous la charge : relancer seul.
-- Les sous-agents ne lisent pas toujours les issues (GraphQL bloqué) : leur donner les réponses du propriétaire dans la consigne.
-- Renouveler la session de pilotage après 3 ou 4 demandes.
+**Points de vigilance** : Docker du propriétaire sans DNS (`codeload.github.com` introuvable) ; `apropos.html` non repris (Webmestre, historique 11d4e28) ; fiches `docs/ref/` citent parfois les anciens fichiers du moteur ; ne pas lire les transcriptions des agents ; renouveler la session après 3 ou 4 demandes.
