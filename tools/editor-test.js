@@ -387,7 +387,11 @@ const ed = (page, s) => page.evaluate(s);
           if (wid) { await pl.selectOption('#lookBox select[data-wsel]', wid); await sleep(250); await chg(`#lookBox select[data-l="ways.${wid}.tex"]`, 'pavers');
             ok(await ed(pl, `ED.E('GM.look.ways&&GM.look.ways["${wid}"].tex==="pavers"&&LK.qw["${wid}"]&&LK.qw["${wid}"]!==TEX.stone')`), 'apparence : sol d\'un chemin de file (' + wid + ') appliqué à chaud');
             await pl.click(`#lookBox button[data-lrev="ways.${wid}.tex"]`); await sleep(250);
-            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine retire le sol du chemin'); await pl.selectOption('#lookBox select[data-wsel]', ''); await sleep(250); } }
+            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine retire le sol du chemin');
+            await pl.selectOption('#lookBox select[data-wsel]', '*'); await sleep(250); await chg('#lookBox select[data-l="ways.*.tex"]', 'pavers'); // « Tous » (23/11)
+            ok(await ed(pl, `ED.E('QWAYS.length>0&&QWAYS.every(a=>GM.look.ways&&GM.look.ways[a.id]&&GM.look.ways[a.id].tex==="pavers")')`), 'apparence : « Tous » applique le sol à chaque chemin de file');
+            await pl.click('#lookBox button[data-lrev="ways.*.tex"]'); await sleep(250);
+            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine de « Tous » remet chaque chemin'); await pl.selectOption('#lookBox select[data-wsel]', ''); await sleep(250); } }
         await pl.click('#lookBox [data-lrev="plat.tex"]'); await sleep(250);
         ok(await ed(pl, `!('plat' in ED.draft().look)`) && await ed(pl, `ED.E('LK.pf===PLAT_COL&&LK.prow')`), 'apparence : Origine (texture du quai) revient au béton lissé');
         await chg('#lookBox input[data-l="plat.col"]', '#b8b2a6', 1);
