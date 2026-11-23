@@ -10,10 +10,10 @@ const GAME = {
       "sw": -1
     },
     "b2": {
-      "x": -24.85,
-      "z": -3.88,
-      "ang": 56.3,
-      "len": 1.01,
+      "x": -25.2,
+      "z": -4.36,
+      "ang": 55.8,
+      "len": 2.2,
       "open": true
     },
     "b3": {
@@ -101,5 +101,14 @@ const GAME = {
   "queueEntry": {
     "len": 3.53,
     "ang": -33.8
+  },
+  "look": {
+    "queue": {
+      "tex": "asphalt"
+    },
+    "plat": {
+      "tex": "asphalt"
+    },
+    "gate": "#2570e9"
   }
 };
