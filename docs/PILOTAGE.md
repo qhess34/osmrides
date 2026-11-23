@@ -1,5 +1,8 @@
 # Pilotage du projet OSMrides — document de reprise
 
+> **Depuis le 23/11 : cette session est le Chef moteur** (dépôt `osmrides` : moteur, éditeur, outils communs ; modèle Sonnet pour le chef). Organisation des quatre dépôts, chefs et communication par issues `inter-equipe` : `docs/ORGANISATION.md`.
+> Consigne de démarrage : « Tu es le Chef moteur d'OSMrides pour le dépôt osmrides. Lis `docs/PILOTAGE.md` (dont « État courant »), `docs/ORGANISATION.md`, `AGENTS.md` et les issues ouvertes, dont celles étiquetées `inter-equipe`. Reprends le travail, présente-toi en 3 lignes au propriétaire, puis attends ses demandes en français. »
+
 Ce fichier est la **mémoire du pilotage**. Toute session de pilotage le lit en premier et le met à jour avant de se terminer.
 Il remplace l'historique des conversations : une nouvelle session doit pouvoir reprendre le travail avec lui seul, `AGENTS.md` et les issues GitHub.
 
@@ -58,7 +61,9 @@ _Mis à jour le 2026-11-23 (fin de matinée) par la session de pilotage n° 9._
 
 **Issues ouvertes** : #49 (Vars : réponses reçues, **prochaine grande tâche**), #48 (migration faite, à valider), #44 / #45 (à valider), #46 (OAuth2 OSM à enregistrer par le propriétaire), #5.
 
-**Prochaine tâche : #49, premier jeu « télésiège »** (Escondus V15, Vars Les Claux) dans `lieux/ski/vars/` : décisions du propriétaire : sièges, vitesse, sens, altitude **estimés et signalés** ; pistes affichées avec choix été / hiver ; premier jalon = cadence et embarquement seulement (pas de météo). Réutiliser visiteurs, file, pupitre, sauvegarde ; isoler ce qui est propre aux montagnes russes (KISS). Données OSM : tuiles ≤ 0,045 × 0,05° (limite 50 000 nœuds de l'API). Tâche lourde : session dédiée ou agent `moteur` en Opus.
+**Organisation (23/11)** : quatre dépôts créés et équipés (`AGENTS.md`, `docs/PILOTAGE.md`, agents explorateur / testeur / ouvrier) : `osmrides_parks`, `osmrides_skiresort`, `osmrides_website`. Copie figée du moteur par version recommandée, **à confirmer par le propriétaire**. Premières tâches ouvertes en issues `inter-equipe` dans chaque dépôt. Tâche du Chef moteur : étiquette `v1` + script `tools/sync-engine.sh`, puis retirer d'`osmrides` ce qui a été déplacé une fois les autres dépôts publiés.
+
+**#49 passe au Chef stations** (`osmrides_skiresort`). Ancienne note : premier jeu « télésiège »** (Escondus V15, Vars Les Claux) dans `lieux/ski/vars/` : décisions du propriétaire : sièges, vitesse, sens, altitude **estimés et signalés** ; pistes affichées avec choix été / hiver ; premier jalon = cadence et embarquement seulement (pas de météo). Réutiliser visiteurs, file, pupitre, sauvegarde ; isoler ce qui est propre aux montagnes russes (KISS). Données OSM : tuiles ≤ 0,045 × 0,05° (limite 50 000 nœuds de l'API). Tâche lourde : session dédiée ou agent `moteur` en Opus.
 
 **Points de vigilance** :
 - Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'lieux/**/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner (le propriétaire publie ses `game.js`, désormais dans `lieux/parc/asterix/`).
