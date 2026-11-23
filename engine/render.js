@@ -370,6 +370,9 @@ const QGATE_CLR=GDEPTH+.2,QGATE_WMIN=.6; // 2e demande (2026-11-18) : dégagemen
 function gateClear(S){for(const q of S){for(const b of BAYS){const dx=q.x-b.x,dz=q.z-b.z,u=dx*b.tx+dz*b.tz;if(Math.abs(u)>CAR/2+.3)continue;
   const lat=dx*b.rx+dz*b.rz;if(lat<PGATE||COV.some(P=>onPl(q,P,.3)))break;const m=2*(lat-PGATE-QGATE_CLR);if(q.w>m)q.w=Math.max(QGATE_WMIN,Math.min(q.w,m));break;}}}
 const FORKP=LOOPS.flatMap(l=>[l.loop.P[0],l.loop.P[l.loop.P.length-1],l.short.P[0],l.short.P[l.short.P.length-1]]);
+// Chemins de file d'OSM (OSM.attrs role queue, tracé p) : un sol par chemin (GAME.look.ways, issue #45) ; tronçon dessiné rattaché au chemin le plus proche (QWAYS, qWayAt), '' sinon (prolongement d'entrée).
+const QWAYS=(typeof OSM!=='undefined'&&Array.isArray(OSM.attrs)?OSM.attrs:[]).filter(a=>a&&a.role==='queue'&&Array.isArray(a.p)&&a.p.length>1),
+  qWayAt=(x,z)=>{let b='',bd=1.5;for(const a of QWAYS){const d=dPl(x,z,a.p);if(d<bd){bd=d;b=a.id;}}return b;};
 let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=new Path2D,QRAILP=[],QMIDS=[],QW_MAX=2.2,QW_MIN=.9,QWP=(()=>{const L0=SEGS.map(g=>g.P).concat([(QS.link||[]).concat([ENTRY0])]).filter(P=>P.length>1),S=[];
   L0.forEach((P,pi)=>{for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.max(1,Math.ceil(l/.5));for(let k=i>1?1:0;k<=n;k++)S.push({x:a[0]+(b[0]-a[0])*k/n,z:a[1]+(b[1]-a[1])*k/n,tx:(b[0]-a[0])/(l||1),tz:(b[1]-a[1])/(l||1),pi,w:QW_MAX});}});
   const G=new Map,key=(x,z)=>Math.floor(x/3)+','+Math.floor(z/3);for(const q of S){const k=key(q.x,q.z);if(!G.has(k))G.set(k,[]);G.get(k).push(q);}
@@ -405,8 +408,8 @@ let QWS=[];const QSIDE=new Path2D,QSIDEP=[],QSIDE2=new Path2D,QSIDEP2=[],QRAIL=n
   {const GS=allGates().filter(g=>g&&g.h&&g.a&&g.b),dSeg=(m,h,e)=>{const dx=e[0]-h[0],dz=e[1]-h[1],l=dx*dx+dz*dz||1e-9,t=clamp(((m[0]-h[0])*dx+(m[1]-h[1])*dz)/l,0,1);return Math.hypot(h[0]+dx*t-m[0],h[1]+dz*t-m[1]);};
     for(const q of S)if(q.mid&&GS.some(g=>Math.hypot(q.mid[0]-g.h[0],q.mid[1]-g.h[1])<.6||dSeg(q.mid,g.h,g.a)<.35||dSeg(q.mid,g.h,g.b)<.35))q.mid=null;}
   for(const q of S)q.cv=COV.some(P=>onPl(q,P,.3)); // tronçon couvert (le long du chemin couvert, pas en travers : onPl) : dessiné seulement avec le couloir (gare masquée) ; garde-corps : buildRails (après les escaliers)
-  const by=new Map;for(let i=1;i<S.length;i++){const a=S[i-1],b=S[i];if(a.pi!==b.pi||a.cv&&b.cv)continue;const w=Math.round(Math.min(a.w,b.w)*10)/10;if(!by.has(w))by.set(w,new Path2D);const P=by.get(w);P.moveTo(a.x,a.z);P.lineTo(b.x,b.z);}
-  return [...by.entries()].sort((a,b)=>b[0]-a[0]);})();
+  const by=new Map;for(let i=1;i<S.length;i++){const a=S[i-1],b=S[i];if(a.pi!==b.pi||a.cv&&b.cv)continue;const w=Math.round(Math.min(a.w,b.w)*10)/10,id=qWayAt((a.x+b.x)/2,(a.z+b.z)/2),k=w+'|'+id;if(!by.has(k))by.set(k,[w,new Path2D,id]);const P=by.get(k)[1];P.moveTo(a.x,a.z);P.lineTo(b.x,b.z);}
+  return [...by.values()].sort((a,b)=>b[0]-a[0]);})(); // [largeur, tracé, id du chemin OSM]
 const JOBSITE=SITE.jobsites;
 const HAIR=['#2a1d14','#4a3322','#6b4a2a','#c9a35a','#8a8a8a','#111','#a0522d'];
 const emos=[];function emote(){}
@@ -916,8 +919,8 @@ const PLAT_COL=SITE.platCol||'#d6d1c6';
 // vert / rouge sur le poteau-pivot).
 const FLOOR_DEF={concrete:'#bdb8ad',asphalt:'#6f7175',sand:'#c6b48f',pavers:'#8f8577',deck:'#8a6c4c'},FLOOR_PX=32,FLOOR_N=256; // 32 px par m, motif de 8 m
 const RAILM={metal:{c:'#4a4f56',k:1,hi:'rgba(205,210,214,.5)',hk:1,post:'#2f3338',pk:1,edge:'#4a3a28',ew:.3,lf:'#4f555c',lfh:'#aeb5bd',lfp:'#23262b',lpk:1},
-  wood:{c:'#6a5136',k:1.3,hi:'rgba(196,166,124,.45)',hk:1.3,post:'#3f2f1f',pk:1.25,edge:'#54402a',ew:.34,lf:'#6a5136',lfh:'rgba(196,166,124,.6)',lfp:'#3f2f1f',lpk:1.1},
-  stone:{c:'#8d877b',k:3,hi:'rgba(214,208,196,.7)',hk:4,post:'#777166',pk:2.4,edge:'#7a7468',ew:.45,lf:'#3a3d40',lfh:'#6d7277',lfp:'#8d877b',lpk:1.6}}; // largeurs ESTIMÉES (muret ≈ 30 cm)
+  wood:{c:'#6a5136',k:1.15,hi:'rgba(196,166,124,.45)',hk:1.2,post:'#3f2f1f',pk:1.2,edge:'#54402a',ew:.34,lf:'#6a5136',lfh:'rgba(196,166,124,.6)',lfp:'#3f2f1f',lpk:1.1},
+  stone:{c:'#8d877b',k:1.9,hi:'rgba(214,208,196,.7)',hk:2.2,post:'#777166',pk:1.6,edge:'#7a7468',ew:.45,lf:'#3a3d40',lfh:'#6d7277',lfp:'#8d877b',lpk:1.6}}; // largeurs ESTIMÉES (muret ≈ 30 cm)
 const FLOORC={};
 function floorTex(kind,col,rot,joints){const key=kind+col+rot+(joints?1:0);if(FLOORC[key])return FLOORC[key];
   let sd=7;const r=()=>(sd=(sd*16807)%2147483647)/2147483647,n=FLOOR_N,P=FLOOR_PX,c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d');
@@ -945,21 +948,29 @@ const OSML=(()=>{const A=typeof OSM!=='undefined'&&Array.isArray(OSM.attrs)?OSM.
   for(const r of ['queue','plat']){let v=dom(r,a=>OSM_TEX[a.t.surface]);if(v)(o[r]=o[r]||{}).tex=v;v=dom(r,a=>a.h&&a.h.colour);if(v)(o[r]=o[r]||{}).col=v;}
   let v=dom('rail',a=>OSM_RAIL[a.t.material]||(a.t.barrier==='wall'&&!a.t.material?'stone':null));if(v)o.rail=v;
   v=dom('roof',a=>a.h&&a.h['roof:colour']);if(v)o.roof=v;
+  for(const a of A)if(a&&a.role==='queue'&&a.t){const w={};if(OSM_TEX[a.t.surface])w.tex=OSM_TEX[a.t.surface];if(a.h&&a.h.colour)w.col=a.h.colour;if(w.tex||w.col)(o.ways=o.ways||{})[a.id]=w;} // surface / colour de CHAQUE chemin de file (issue #45)
   return o;})();
 function mkLook(L){const q=L.queue&&typeof L.queue==='object'?L.queue:{},p=L.plat&&typeof L.plat==='object'?L.plat:{};
   const qt=FLOOR_DEF[q.tex]?q.tex:null,qc=hexC(q.col),pt=FLOOR_DEF[p.tex]?p.tex:null,pc=hexC(p.col);
-  return {q:qt||qc?floorTex(qt||'concrete',qc||FLOOR_DEF[qt||'concrete'],0,false):TEX.stone,
+  const qw={};for(const id in L.ways||{}){const w=L.ways[id]||{},t=FLOOR_DEF[w.tex]?w.tex:null,c=hexC(w.col);qw[id]=t||c?floorTex(t||'concrete',c||FLOOR_DEF[t||'concrete'],0,false):TEX.stone;} // sol par chemin OSM : texture / couleur déjà fusionnées avec les réglages globaux (look) ; ni l'une ni l'autre : béton d'origine
+  return {qw,q:qt||qc?floorTex(qt||'concrete',qc||FLOOR_DEF[qt||'concrete'],0,false):TEX.stone,
     pf:pt?floorTex(pt,pc||FLOOR_DEF[pt],PLAT_ROT,true):pc||PLAT_COL,prow:!pt,rail:RAILM[L.rail]||RAILM.metal,gate:hexC(L.gate),roof:hexC(L.roof)};}
 let LKs=null,LK=null;
 function look(){const G_=GM.look&&typeof GM.look==='object'&&!Array.isArray(GM.look)?GM.look:{},L=Object.assign({},OSML,G_,{queue:Object.assign({},OSML.queue,G_.queue),plat:Object.assign({},OSML.plat,G_.plat)});
   if(L.queue.tex==='concrete'&&!L.queue.col&&!(G_.queue&&G_.queue.tex))delete L.queue.tex; // béton lu dans OSM = origine du moteur (TEX.stone)
+  // Sol par chemin de file (GAME.look.ways[id] = {tex, col}) : priorité GAME du chemin > GAME des allées > OSM du chemin (surface / colour) > OSM dominant > origine du moteur
+  const gw=G_.ways&&typeof G_.ways==='object'&&!Array.isArray(G_.ways)?G_.ways:{},gq=G_.queue||{},ow=OSML.ways||{};L.ways={};
+  for(const id of new Set(Object.keys(ow).concat(Object.keys(gw)))){const o=ow[id]||{},g=gw[id]||{};
+    const tex=g.tex||gq.tex||o.tex,col=g.col||gq.col||o.col,fromGame=!!(g.tex||gq.tex);
+    if(!tex&&!col)continue;L.ways[id]=tex==='concrete'&&!col&&!fromGame?{}:{tex,col};} // béton lu dans OSM : origine du moteur
   const k=JSON.stringify(L);if(k!==LKs){LKs=k;LK=mkLook(L);}return LK;}
 look();
-// garde-corps de file dans le matériau choisi (metal : valeurs d'avant l'issue #45, inchangées) ; w, mn : largeur (m) et minimum (px), pr : demi-côté des poteaux, sh : ombre
-function railDraw(P,PP,w,mn,pr,sh){const m=LK.rail;
-  if(sh){ctx.strokeStyle='rgba(0,0,0,.25)';lw(w*m.k,.6);ctx.save();ctx.translate(sh[0],sh[1]);ctx.stroke(P);ctx.restore();}
-  ctx.strokeStyle=m.c;lw(w*m.k,mn);ctx.stroke(P);ctx.strokeStyle=m.hi;lw(.03*m.hk,.3);ctx.stroke(P);
-  if(cam.s>6){ctx.fillStyle=m.post;const r=pr*m.pk;for(const q of PP)ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);}}
+// Garde-corps de file (propriétaire, 23/11, issue #45) : même dessin que le vantail de la barrière d'entrée de file (leaf) : barre large à main courante claire, ombre portée
+// décalée, poteaux carrés (tous les ≈ 1,2 m, PP) ; matériau de GAME.look.rail (largeurs ESTIMÉES, pas relevées). mn : largeur minimale (px), sh : ombre portée.
+function railDraw(P,PP,mn,sh){const m=LK.rail;
+  if(sh){ctx.strokeStyle='rgba(0,0,0,.28)';lw(.16*m.k,mn);ctx.save();ctx.translate(.18,.14);ctx.stroke(P);ctx.restore();}
+  ctx.strokeStyle=m.c;lw(.16*m.k,mn);ctx.stroke(P);ctx.strokeStyle=m.hi;lw(.06*m.hk,.5);ctx.stroke(P);
+  if(cam.s>6){ctx.fillStyle=m.post;const r=.1*m.pk;for(const q of PP)ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);}}
 function drawStationFloor(s){
   const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2; // plat.back : au-delà de l'ARRIÈRE du dernier wagon (pas de son milieu), comme tools/offpath.js
   const quad=(l0,l1)=>{ctx.beginPath();ctx.moveTo(a.x-a.tx*bk+a.rx*l0,a.z-a.tz*bk+a.rz*l0);ctx.lineTo(b.x+b.tx*P.front+b.rx*l0,b.z+b.tz*P.front+b.rz*l0);
@@ -1015,7 +1026,8 @@ function leaf(g,t){if(g.off)return; // vantail métallique : pivot h en bordure,
   ctx.fillStyle=m.lfp;for(const [q,r0] of [[g.h,.2],[g.a,.13],[g.b,.13]]){const r=r0*m.lpk;ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);}
 }
 function drawGates(){ // un portillon par wagon, ou par rangée (SITE.plat.gatesPer:'row', GUNITS) ; ligne des portillons à PGATE du rail, près du bord du quai
-  ctx.strokeStyle='#4d525a';lw(.09,.6);ctx.beginPath();
+  ctx.strokeStyle=LK.gate||'#4d525a'; // séparateurs de travées, à 90° des portillons : couleur des portillons (GAME.look.gate, propriétaire 23/11)
+  lw(.09,.6);ctx.beginPath();
   for(let u=0;u<=NGATES;u++){const g=GUNITS[Math.min(u,NGATES-1)],b=BAYS[g.k],e=u<NGATES?g.c+g.h:g.c-g.h,cx=b.x+b.tx*e,cz=b.z+b.tz*e;ctx.moveTo(cx+b.rx*(PGATE-.05),cz+b.rz*(PGATE-.05));ctx.lineTo(cx+b.rx*(PGATE+GDEPTH),cz+b.rz*(PGATE+GDEPTH));}
   ctx.stroke();
   // un vantail par portillon, articulé sur le séparateur avant ; il pivote vers le train
@@ -1049,7 +1061,7 @@ function drawStationPeople(){drawGateLeaves();
   for(const k of G.walkers)if(onPlat(k))person(k.x,k.z,k.ci,k.ph,true);
   for(const o of OPS)person(o.x,o.z,3,o.i+.6,o.mv,'#1d2b4f');
 }
-function drawQSide(P,PP){if(!PP.length)return;railDraw(P,PP,.08,1,.06,[.1,.08]);}
+function drawQSide(P,PP){if(!PP.length)return;railDraw(P,PP,1,1);}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
   ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&(LK.roof||SITE.stationRoofCol)?(LK.roof||SITE.stationRoofCol):b.col; // toit de la gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
   ctx.fill(b.p);
@@ -1080,8 +1092,8 @@ function drawWorld(dt){look(); // GAME.look relu à chaque image (éditeur : app
   {const k=pedClip();ctx.strokeStyle='#a89a78';ctx.lineWidth=3.8;for(const p of LY.foot)ctx.stroke(p);if(k)ctx.restore();}ctx.strokeStyle=TEX.sand;ctx.lineWidth=FOOT_W;for(const p of LY.foot)ctx.stroke(p);
   ctx.strokeStyle='#2f5a2c';ctx.lineWidth=1.3;for(const p of LY.hedge)ctx.stroke(p);
   // file d'attente (allée réelle, barrières des deux côtés)
-  ctx.lineCap='round';{const k=pedClip();ctx.strokeStyle=LK.rail.edge;for(const [w,P] of QWP){ctx.lineWidth=w+LK.rail.ew;ctx.stroke(P);}if(k)ctx.restore();}ctx.strokeStyle=LK.q;for(const [w,P] of QWP){ctx.lineWidth=w;ctx.stroke(P);} // largeur adaptée (QWP)
-  if(QRAILP.length)railDraw(QRAIL,QRAILP,.1,1.2,.07,[.12,.09]); // barrières entre allées collées : ombre, main courante, poteaux (matériau GAME.look.rail, issue #45)
+  ctx.lineCap='round';{const k=pedClip();ctx.strokeStyle=LK.rail.edge;for(const [w,P] of QWP){ctx.lineWidth=w+LK.rail.ew;ctx.stroke(P);}if(k)ctx.restore();}for(const [w,P,id] of QWP){ctx.strokeStyle=LK.qw[id]||LK.q;ctx.lineWidth=w;ctx.stroke(P);} // largeur adaptée (QWP), sol du chemin OSM (GAME.look.ways) sinon sol des allées
+  if(QRAILP.length)railDraw(QRAIL,QRAILP,1.2,1); // barrières entre allées collées : ombre, main courante, poteaux (matériau GAME.look.rail, issue #45)
   drawQSide(QSIDE,QSIDEP); // barrières de délimitation de la file (zones piétonnes)
   // barrières de la file : vantail métallique pivotant sur un poteau en bordure de chemin
   ctx.lineCap='butt';
@@ -1106,7 +1118,7 @@ function drawWorld(dt){look(); // GAME.look relu à chaque image (éditeur : app
     for(const c of COVD){if(c.stp)continue;ctx.globalAlpha=1-covH(c);ctx.strokeStyle=c.q?LK.q:TEX.sand;ctx.lineWidth=c.w;ctx.stroke(c.p); // sol : même teinte que le chemin extérieur
       ctx.strokeStyle='rgba(20,18,14,.07)';for(const t of c.tr)ctx.stroke(t);} // ombre du couvert, progressive depuis chaque bout
     ctx.globalAlpha=1-hideA;
-    if(QUGP.length)railDraw(QUG,QUGP,.09,1,.07,null); // garde-corps des allées souterraines (lot 22) : gare masquée seulement
+    if(QUGP.length)railDraw(QUG,QUGP,1,0); // garde-corps des allées souterraines (lot 22) : gare masquée seulement
     ctx.lineCap='round';
     for(const q of COVL){const g=ctx.createRadialGradient(q[0],q[1],0,q[0],q[1],1.3);g.addColorStop(0,'rgba(255,232,170,.42)');g.addColorStop(1,'rgba(255,232,170,0)');ctx.fillStyle=g;ctx.fillRect(q[0]-1.3,q[1]-1.3,2.6,2.6);} // éclairage discret (plafonniers)
     ctx.restore();}

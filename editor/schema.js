@@ -48,6 +48,7 @@
       } else if (k === 'look') {
         o.look = {}; const L = g.look;
         for (const f of ['queue', 'plat']) if (L[f]) { const q = {}; if (L[f].col) q.col = String(L[f].col).toLowerCase(); if (L[f].tex) q.tex = L[f].tex; if (Object.keys(q).length) o.look[f] = q; }
+        if (L.ways) { const W = {}; for (const id of Object.keys(L.ways).sort()) { const q = {}; if (L.ways[id].col) q.col = String(L.ways[id].col).toLowerCase(); if (L.ways[id].tex) q.tex = L.ways[id].tex; if (Object.keys(q).length) W[id] = q; } if (Object.keys(W).length) o.look.ways = W; } // sol par chemin de file OSM (issue #45)
         if (L.rail) o.look.rail = L.rail; if (L.gate) o.look.gate = String(L.gate).toLowerCase(); if (L.roof) o.look.roof = String(L.roof).toLowerCase();
       } else o[k] = g[k]; // clé inconnue (lot futur) : conservée telle quelle
     }
@@ -171,6 +172,15 @@
             else E.push('look.' + k + ' : clé inconnue ' + f);
           }
         } else if (k === 'rail') { if (!LOOK.rail.includes(v)) E.push('look.rail : ' + LOOK.rail.join(' | ') + ' attendu'); }
+        else if (k === 'ways') { // sol par chemin de file : {"w123": {tex, col}}
+          if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push('look.ways : objet {"w123": {tex, col}} attendu'); continue; }
+          for (const id of Object.keys(v)) { const q = v[id];
+            if (!/^w[0-9]{1,12}$/.test(id)) { E.push('look.ways : identifiant de chemin OSM wNNN attendu, reçu ' + id); continue; }
+            if (!q || typeof q !== 'object' || Array.isArray(q)) { E.push('look.ways.' + id + ' : objet {col, tex} attendu'); continue; }
+            for (const f of Object.keys(q)) {
+              if (f === 'col') { if (typeof q.col !== 'string' || !HEX.test(q.col)) E.push('look.ways.' + id + '.col : couleur #rrggbb attendue'); }
+              else if (f === 'tex') { if (!LOOK.tex.includes(q.tex)) E.push('look.ways.' + id + '.tex : ' + LOOK.tex.join(' | ') + ' attendu'); }
+              else E.push('look.ways.' + id + ' : clé inconnue ' + f); } } }
         else if (k === 'gate') { if (typeof v !== 'string' || !HEX.test(v)) E.push('look.gate : couleur #rrggbb attendue'); }
         else if (k === 'roof') { if (typeof v !== 'string' || !HEX.test(v)) E.push('look.roof : couleur #rrggbb attendue'); } // toit du bâtiment de la gare (issue #46)
         else E.push('look : clé inconnue ' + k);
@@ -265,7 +275,11 @@
         if (o.tex && SURF_IN[(a.t || {}).surface] !== o.tex) push(a, 'surface', (a.t || {}).surface, SURF_OUT[o.tex]);
         if (o.col && hexOf(a, 'colour') !== o.col.toLowerCase()) push(a, 'colour', (a.t || {}).colour, o.col.toLowerCase());
       } };
-    tex('queue', L.queue); tex('plat', L.plat);
+    const W = L.ways || {}; // sol par chemin (issue #45) : valeur du chemin, sinon celle des allées ; renvoyée sur CE way
+    for (const a of A) if (a.role === 'queue') { const w = W[a.id] || {}, g = L.queue || {}, tx = w.tex || g.tex, cl = w.col || g.col;
+      if (tx && SURF_IN[(a.t || {}).surface] !== tx) push(a, 'surface', (a.t || {}).surface, SURF_OUT[tx]);
+      if (cl && hexOf(a, 'colour') !== cl.toLowerCase()) push(a, 'colour', (a.t || {}).colour, cl.toLowerCase()); }
+    tex('plat', L.plat);
     if (L.rail) for (const a of A) if (a.role === 'rail' && MAT_IN[(a.t || {}).material] !== L.rail) push(a, 'material', (a.t || {}).material, L.rail);
     if (L.roof) for (const a of A) if (a.role === 'roof' && hexOf(a, 'roof:colour') !== L.roof.toLowerCase()) push(a, 'roof:colour', (a.t || {})['roof:colour'], L.roof.toLowerCase());
     const sp = game && game.site && game.site.track && game.site.track.spine;

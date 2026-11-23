@@ -382,6 +382,12 @@ const ed = (page, s) => page.evaluate(s);
         await chg('#lookBox select[data-l="plat.tex"]', 'pavers'); await chg('#lookBox select[data-l="rail"]', 'stone'); await chg('#lookBox input[data-l="gate"]', '#3c5a78', 1);
         const hot = await ed(pl, `ED.E('window.__mk===1&&LK.q!==TEX.stone&&typeof LK.pf==="object"&&!LK.prow&&LK.rail===RAILM.stone&&LK.gate==="#3c5a78"')`);
         ok(hot && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 5, 'apparence : platelage brun, pavés, pierre, portillons bleus appliqués à chaud (cadre non rechargé)');
+        { // sol par chemin de file (issue #45, 23/11) : choix du chemin dans la liste, texture propre à ce way, Origine
+          const wid = await ed(pl, `ED.E('QWAYS[0]&&QWAYS[0].id')`);
+          if (wid) { await pl.selectOption('#lookBox select[data-wsel]', wid); await sleep(250); await chg(`#lookBox select[data-l="ways.${wid}.tex"]`, 'pavers');
+            ok(await ed(pl, `ED.E('GM.look.ways&&GM.look.ways["${wid}"].tex==="pavers"&&LK.qw["${wid}"]&&LK.qw["${wid}"]!==TEX.stone')`), 'apparence : sol d\'un chemin de file (' + wid + ') appliqué à chaud');
+            await pl.click(`#lookBox button[data-lrev="ways.${wid}.tex"]`); await sleep(250);
+            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine retire le sol du chemin'); await pl.selectOption('#lookBox select[data-wsel]', ''); await sleep(250); } }
         await pl.click('#lookBox [data-lrev="plat.tex"]'); await sleep(250);
         ok(await ed(pl, `!('plat' in ED.draft().look)`) && await ed(pl, `ED.E('LK.pf===PLAT_COL&&LK.prow')`), 'apparence : Origine (texture du quai) revient au béton lissé');
         await chg('#lookBox input[data-l="plat.col"]', '#b8b2a6', 1);
