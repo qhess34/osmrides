@@ -3,12 +3,12 @@
    - sert le dépôt en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) ;
    - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
    - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site> ;
-   - n'écrit QUE sites/<site>.game.js (liste blanche : <site> = un sites/<site>.js existant), après validation (editor/schema.js) ; aucune opération Git.
+   - n'écrit QUE lieux/parc/asterix/<el>.game.js (liste blanche : <el> = un lieux/parc/asterix/<el>.js existant), après validation (editor/schema.js) ; aucune opération Git.
    Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt, défaut : parent de editor/). */
 const http = require('http'), fs = require('fs'), path = require('path');
 const S = require('./schema.js');
 const ROOT = path.resolve(process.env.T2Z_ROOT || path.join(__dirname, '..'));
-const SITES = path.join(ROOT, 'sites');
+const SITES = path.join(ROOT, 'lieux', 'parc', 'asterix'); // un seul lieu pour l'instant (docs/hierarchie.md)
 const PORT = +process.env.PORT || 8787, HOST = process.env.HOST || '127.0.0.1';
 // Envoi vers OSM (issue #46, D12) : editor/osm-sync.js ; configuration locale non versionnée editor/osm.local.json (OSM_CONFIG).
 const OSM = require('./osm-sync.js')({ configPath: process.env.OSM_CONFIG || path.join(__dirname, 'osm.local.json'), port: PORT, root: ROOT });
@@ -16,8 +16,8 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8' };
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN' };
 
-// Attractions = sites/<id>.js écrits à la main (ni .data.js ni .game.js).
-const siteIds = () => fs.readdirSync(SITES).filter(f => /^[a-z0-9-]{1,40}\.js$/.test(f) && !/\.(data|game)\.js$/.test(f)).map(f => f.slice(0, -3)).sort();
+// Attractions = lieux/parc/asterix/<id>.js écrits à la main (ni .data.js ni .game.js).
+const siteIds = () => fs.readdirSync(SITES).filter(f => /^[a-z0-9-]{1,40}\.js$/.test(f) && f !== 'lieu.js' && !/\.(data|game)\.js$/.test(f)).map(f => f.slice(0, -3)).sort();
 const gamePath = id => path.join(SITES, id + '.game.js');
 const checkSite = id => typeof id === 'string' && /^[a-z0-9-]{1,40}$/.test(id) && siteIds().includes(id);
 
@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
         const tmp = gamePath(id) + '.tmp-' + process.pid;
         fs.writeFileSync(tmp, r.after, { mode: 0o644 }); fs.renameSync(tmp, gamePath(id)); // écriture atomique, seul fichier écrit par l'éditeur
         console.log(new Date().toISOString(), 'écrit', path.relative(ROOT, gamePath(id)));
-        return send(res, 200, Object.assign(readGame(id), { written: 'sites/' + id + '.game.js', warnings: r.warnings }));
+        return send(res, 200, Object.assign(readGame(id), { written: 'lieux/parc/asterix/' + id + '.game.js', warnings: r.warnings }));
       }
       return send(res, 405, { error: 'méthode refusée' });
     }

@@ -14,7 +14,7 @@ Il remplace l'historique des conversations : une nouvelle session doit pouvoir r
 - Dépôt `qhess34/osmrides`. Chaque demande ou bug = **une issue** (titre court, besoin, attraction, critères de fin, étiquette : `attraction`, `moteur`, `osm`, `bug`, `question`, `docs`, `test-reel`). Les captures envoyées par le propriétaire sont décrites dans l'issue (ou copiées dans `docs/sources/` et référencées).
 - Les questions au propriétaire sont posées dans une issue `question` ; il peut y répondre depuis GitHub.
 - Réalisation : **une session neuve par issue** (ou petit lot d'issues liées), créée avec `create_session` sur la branche de travail, ou un sous-agent du dépôt (`.claude/agents/`) si la tâche est petite. La session lit l'issue, `AGENTS.md` et les fichiers concernés, rien d'autre.
-- Choix du modèle : `testeur`/`explorateur` = Haiku ; `attraction` (corrections dans `sites/*.js`, specs, docs) = Sonnet ; `moteur` (`engine/*.js`, générique, revérifie les 4 attractions) = **Sonnet par défaut** (propriétaire 21/11, économie de tokens) ; Opus (`model: 'opus'` à l'appel) seulement pour une tâche difficile (garage, manœuvres, cantonnement) ou à la demande du propriétaire. Fable seulement si le propriétaire le demande.
+- Choix du modèle : `testeur`/`explorateur` = Haiku ; `attraction` (corrections dans `lieux/parc/asterix/*.js`, specs, docs) = Sonnet ; `moteur` (`engine/*.js`, générique, revérifie les 4 attractions) = **Sonnet par défaut** (propriétaire 21/11, économie de tokens) ; Opus (`model: 'opus'` à l'appel) seulement pour une tâche difficile (garage, manœuvres, cantonnement) ou à la demande du propriétaire. Fable seulement si le propriétaire le demande.
 - Consignes aux agents : donner fichiers, fonctions et sections à lire (repérés par `grep -n` du pilote), pour qu'ils ne cherchent pas eux-mêmes. Pas de testeurs en parallèle : l'agent teste lui-même, une attraction après l'autre. Mesure : #45 (éditeur, Opus) ≈ 180 000 tokens.
 - Petite correction (une ligne, une couleur) : la faire directement, sans sous-agent.
 
@@ -27,7 +27,7 @@ Il remplace l'historique des conversations : une nouvelle session doit pouvoir r
 ## Économie de tokens (règles du propriétaire)
 
 - Captures : aucune pour la logique ; une petite capture par point visuel ; un seul montage par lot ; vignettes et tutos seulement en fin de grande étape (règle dans `AGENTS.md`).
-- Ne jamais lire `sites/*.data.js` ni `parc/parc.data.js` en entier.
+- Ne jamais lire `lieux/parc/asterix/*.data.js` ni `lieux/parc/asterix/plan.data.js` en entier.
 - Le pilote regarde le montage une seule fois et ne relit pas les rapports en détail inutilement.
 
 ## Renouvellement de la session de pilotage
@@ -61,7 +61,7 @@ _Mis à jour le 2026-11-23 par la session de pilotage n° 8._
 **Prochaine tâche** : réponses du propriétaire sur #44 / #45 ; proposition d'analyse #48 ; lot 5 (file trouvée dans OSM sans liste, file visible dans l'éditeur) ; réimport Hourra / OzIris.
 
 **Points de vigilance** :
-- Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'sites/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner.
+- Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'lieux/parc/asterix/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner.
 - `.claude/worktrees/` à ajouter à `.git/info/exclude` dans chaque nouveau conteneur (sinon le hook d'arrêt réclame un commit).
 - Un agent `moteur` relancé par SendMessage peut renvoyer son compte rendu plusieurs fois : l'arrêter (TaskStop) une fois le rapport reçu.
 - Deux agents en parallèle (le second en worktree) ont fonctionné ; conflit attendu sur `docs/journal/2026-11.md` (garder les deux lignes).

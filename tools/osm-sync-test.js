@@ -76,7 +76,7 @@ const nCs = () => LOG.filter(l => l.p === '/api/0.6/changeset/create').length;
     d = S.osmDiff({ look: { queue: { col: '#808080' }, roof: '#112233' } }, attrs, { plats });
     ok(!d.some(x => x.id === 'w101') && d.some(x => x.role === 'roof' && x.from === '#a24e38' && x.to === '#112233'), 'grey = #808080 sans écart ; toit modifié');
     for (const id of ['zeus', 'hourra', 'oziris', 'goudurix']) { // attrs réels (lus par vm, jamais affichés)
-      const ctx = vm.createContext({}); vm.runInContext(fs.readFileSync(path.join(ROOT, 'sites', id + '.data.js'), 'utf8') + ';this.O=OSM', ctx);
+      const ctx = vm.createContext({}); vm.runInContext(fs.readFileSync(path.join(ROOT, 'lieux', 'parc', 'asterix', id + '.data.js'), 'utf8') + ';this.O=OSM', ctx);
       const A = ctx.O.attrs; ok(Array.isArray(A) && A.length && A.every(a => /^w\d+$/.test(a.id) && a.v >= 1 && a.role), id + ' : OSM.attrs ' + (A ? A.length : 0) + ' objets avec id et version');
       const dd = S.osmDiff({ look: { queue: { tex: 'pavers' } } }, A, {}); ok(dd.length === A.filter(a => a.role === 'queue').length, id + ' : un écart par chemin de file pour pavés');
     }

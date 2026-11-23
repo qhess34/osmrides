@@ -20,8 +20,8 @@
     ready = false; sel = null; wsel = null; adding = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
-    $('file').textContent = 'sites/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
-    fr.src = '/jeu.html?site=' + id + '&mode=sandbox&editeur=' + Date.now();
+    $('file').textContent = 'lieux/parc/asterix/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
+    fr.src = '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox&editeur=' + Date.now();
   }
   fr.addEventListener('load', () => {
     W = fr.contentWindow; E = s => W.eval(s);
@@ -332,7 +332,7 @@
     const pc0 = E('PLAT_COL');
     const WS = qways(), ow = O.ways || {};
     h.push('<h3>Sol d\'un chemin de file</h3>');
-    if (!WS.length) h.push('<p class="note">Aucun chemin de file OSM dans ce site (régénérer <code>sites/&lt;site&gt;.data.js</code> avec tools/make_site.py).</p>');
+    if (!WS.length) h.push('<p class="note">Aucun chemin de file OSM dans ce site (régénérer <code>lieux/parc/asterix/&lt;el&gt;.data.js</code> avec tools/make_site.py).</p>');
     else {
       const lab = a => a.id + ' · ' + Math.round(a.l) + ' m · ' + (a.t && a.t.surface ? a.t.surface : 'sans surface');
       h.push(`<div class="wl" style="margin:4px 0"><span>Chemin</span> <select data-wsel style="max-width:100%"><option value=""${wsel ? '' : ' selected'}>cliquer une allée sur la carte, ou choisir</option>${WS.map(a => `<option value="${a.id}"${a.id === wsel ? ' selected' : ''}>${esc(lab(a))}${(L.ways || {})[a.id] ? ' *' : ''}</option>`).join('')}</select></div>`);
@@ -488,7 +488,7 @@
   async function showDiff() {
     if (!ready) return;
     const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: tMax() }) });
-    $('mFile').textContent = 'sites/' + site + '.game.js'; $('modal').classList.add('on');
+    $('mFile').textContent = 'lieux/parc/asterix/' + site + '.game.js'; $('modal').classList.add('on');
     $('mBefore').innerHTML = '<b>Avant</b><br>' + (orig.exists ? esc(summary(orig.game)) : 'fichier absent');
     $('mAfter').innerHTML = '<b>Après</b><br>' + esc(summary(g));
     if (!r.ok) { $('mMsg').innerHTML = '<span class="err">Refusé :<br>' + r.errors.map(esc).join('<br>') + '</span>'; $('diff').textContent = ''; $('bSave').disabled = true; return; }

@@ -41,14 +41,14 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 ### Lot 1 — Éditeur v1 : barrières et salles de contrôle (fait 2026-11-17 : `editor/README.md`, test `tools/editor-test.js`)
 
 - **Objectif** : premier éditeur local, WYSIWYG, sur les 4 attractions existantes.
-- **Fonctions** : choisir une attraction ; voir file, barrières (entrée, fourches) et salles de contrôle sur le vrai rendu du jeu ; sélectionner, déplacer, tourner une barrière, ajuster sa longueur, revenir au calcul automatique ; salles : sélectionner, déplacer, tourner, redimensionner, créer, supprimer ; diff avant sauvegarde ; sauvegarde dans `sites/<site>.game.js` ; rechargement à l'identique.
+- **Fonctions** : choisir une attraction ; voir file, barrières (entrée, fourches) et salles de contrôle sur le vrai rendu du jeu ; sélectionner, déplacer, tourner une barrière, ajuster sa longueur, revenir au calcul automatique ; salles : sélectionner, déplacer, tourner, redimensionner, créer, supprimer ; diff avant sauvegarde ; sauvegarde dans `lieux/parc/asterix/<el>.game.js` ; rechargement à l'identique.
 - **Tâches** :
-  1. Moteur : charger `sites/<site>.game.js` (facultatif) dans `jeu.html` et `tools/build.py` ; `GAME.barriers` (surcharges par clé stable) dans `engine/queue.js` ; `GAME.controlRooms` dans `engine/render.js` / `engine/garage.js` (repli `SITE.booth`). — Opus, moyenne, risque : régression des files → `check.js` ×4.
+  1. Moteur : charger `lieux/parc/asterix/<el>.game.js` (facultatif) dans `jeu.html` et `tools/build.py` ; `GAME.barriers` (surcharges par clé stable) dans `engine/queue.js` ; `GAME.controlRooms` dans `engine/render.js` / `engine/garage.js` (repli `SITE.booth`). — Opus, moyenne, risque : régression des files → `check.js` ×4.
   2. Serveur `editor/server.js` (Node, sans dépendance) : fichiers statiques du dépôt, API liste des sites / lecture / validation / diff / écriture de `game.js` seulement. — Sonnet, faible.
   3. Interface `editor/index.html` : moteur réel + couche d'édition (sélection, poignées, panneau de valeurs, diff, sauvegarde). — Sonnet, moyenne.
   4. Docker : `compose.yaml`, documentation `editor/README.md`. — Haiku/Sonnet, faible.
   5. Tests : `tools/editor-test.js` (ouvrir, modifier, sauvegarder, relire, jouer) + `check.js` ×4. — Sonnet.
-- **Livrables** : `editor/`, `compose.yaml`, `sites/<site>.game.js` (créé à la première sauvegarde), moteur compatible, tests, doc.
+- **Livrables** : `editor/`, `compose.yaml`, `lieux/parc/asterix/<el>.game.js` (créé à la première sauvegarde), moteur compatible, tests, doc.
 - **Validation** : sur une attraction existante, une barrière et une salle modifiées, sauvegardées, relues après redémarrage du conteneur, visibles et fonctionnelles dans `jeu.html` ; `check.js` ×4 PASS ; attraction sans `game.js` inchangée.
 
 ### Lot 2 — Traçabilité OSM à l'import
@@ -68,7 +68,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 
 - **Objectif** : modifier, ajouter, supprimer un objet d'origine OSM (chemin, bâtiment, nœud) en gardant avant / après et l'identifiant.
 - **Avant de commencer** : `docs/OSM-LIMITES.md` (issue #30) : ce qui se corrige directement dans OSM, ce qui reste local ; proposition de lot réduit.
-- **Tâches** : format `sites/<site>.osmfix.json` (opérations par id + version d'origine) ; application au chargement (moteur) et dans l'éditeur ; affichage des objets corrigés. — Opus (format), Sonnet (outils), élevée.
+- **Tâches** : format `lieux/parc/asterix/<el>.osmfix.json` (opérations par id + version d'origine) ; application au chargement (moteur) et dans l'éditeur ; affichage des objets corrigés. — Opus (format), Sonnet (outils), élevée.
 
 ### Lot 5 — Files d'attente complètes
 

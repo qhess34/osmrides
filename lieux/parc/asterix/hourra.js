@@ -1,6 +1,6 @@
 'use strict';
 /* La Trace du Hourra — configuration de l'attraction pour le moteur (engine/*.js).
-   Tracé, gare, file, sortie et bâtiment du garage : sites/hourra.data.js (OpenStreetMap). Ce qui est estimé est signalé « estimé ». */
+   Tracé, gare, file, sortie et bâtiment du garage : lieux/parc/asterix/hourra.data.js (OpenStreetMap). Ce qui est estimé est signalé « estimé ». */
 const SITE=(()=>{
   const Q=OSM.paths.queue,LOOP=OSM.paths.queueLoop,PROM=OSM.paths.prom,ENTRY0=[59.2,16.15];
   // Rocher 1580139648 (propriétaire, 2026-11-16, lot 4) : les DEUX niveaux de voie passent DANS le rocher, en tunnel (OSM : 1580139650 voie haute, 1580221724 voie basse ;

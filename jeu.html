@@ -341,15 +341,17 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
 </div></div>
 
 <script>
-/* Charge l'attraction demandée (?site=zeus | hourra) : données, configuration, données de l'éditeur (facultatives), puis moteur. */
+/* Charge l'élément demandé (?type=parc&lieu=asterix&el=zeus, docs/hierarchie.md) : catalogue, données, configuration, données de l'éditeur (facultatives), puis moteur. */
 (function(){
-  const m=/[?&]site=([a-z0-9-]+)/.exec(location.search),site=m?m[1]:'zeus';
+  const q=n=>{const m=new RegExp('[?&]'+n+'=([a-z0-9-]+)').exec(location.search);return m?m[1]:'';};
+  const type=q('type')||'parc',lieu=q('lieu')||'asterix',el=q('el')||'zeus',dir='lieux/'+type+'/'+lieu+'/';
   const load=(src,next,opt)=>{const s=document.createElement('script');s.src=src;s.onload=next;
-    s.onerror=opt?next:()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">Attraction inconnue : '+site+'. <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
+    s.onerror=opt?next:()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">Attraction inconnue : '+type+' / '+lieu+' / '+el+'. <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
     document.body.appendChild(s);};
   const ENGINE=['core','garage','state','queue','sim','ui','render','save'].map(n=>'engine/'+n+'.js');
   const chain=i=>i<ENGINE.length?load(ENGINE[i],()=>chain(i+1)):0;
-  load('sites/'+site+'.data.js',()=>load('sites/'+site+'.js',()=>load('sites/'+site+'.game.js',()=>chain(0),1))); // game.js : données de l'éditeur, facultatif (absent : on continue)
+  // SITE.type et SITE.lieu : clé de sauvegarde (engine/save.js). game.js : données de l'éditeur, facultatif (absent : on continue)
+  load('lieux/index.js',()=>load(dir+el+'.data.js',()=>load(dir+el+'.js',()=>{SITE.type=type;SITE.lieu=lieu;load(dir+el+'.game.js',()=>chain(0),1);})));
 })();
 </script>
 

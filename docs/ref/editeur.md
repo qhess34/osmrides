@@ -1,13 +1,13 @@
 # Éditeur et clés `GAME`
 
-Quand la lire : éditeur local, `sites/<site>.game.js` (`barriers`, `controlRooms`, `boardAreas`, `board`, `site`, `queueEntry`, `look`…). Ne jamais écrire `game.js` à la main hors du format (`editor/schema.js`).
+Quand la lire : éditeur local, `lieux/parc/asterix/<el>.game.js` (`barriers`, `controlRooms`, `boardAreas`, `board`, `site`, `queueEntry`, `look`…). Ne jamais écrire `game.js` à la main hors du format (`editor/schema.js`).
 
 Fiche de référence (extraite d'`AGENTS.md`, 21/11). Une règle n'est écrite qu'ici ; ailleurs on renvoie.
 
 ## Fichiers de l'éditeur
 
-- `sites/<site>.game.js` | `const GAME={…}` (corps JSON strict) — données du jeu écrites **par l'éditeur** seulement (barrières, salle de contrôle) ; facultatif ; priorité `GAME` > `SITE` > calcul (`docs/ARCHITECTURE.md` D1-D3)
-- `editor/`, `compose.yaml` | éditeur local WYSIWYG (lot 1, `editor/README.md`) : `editor/server.js` (Node 22 sans dépendance, n'écrit que `sites/<site>.game.js`), `editor/index.html` + `editor.js` (couche d'édition sur `jeu.html` en cadre), `editor/schema.js` (format, validation, diff) ; `docker compose up -d` → http://127.0.0.1:8787/ ; non publié
+- `lieux/parc/asterix/<el>.game.js` | `const GAME={…}` (corps JSON strict) — données du jeu écrites **par l'éditeur** seulement (barrières, salle de contrôle) ; facultatif ; priorité `GAME` > `SITE` > calcul (`docs/ARCHITECTURE.md` D1-D3)
+- `editor/`, `compose.yaml` | éditeur local WYSIWYG (lot 1, `editor/README.md`) : `editor/server.js` (Node 22 sans dépendance, n'écrit que `lieux/parc/asterix/<el>.game.js`), `editor/index.html` + `editor.js` (couche d'édition sur `jeu.html` en cadre), `editor/schema.js` (format, validation, diff) ; `docker compose up -d` → http://127.0.0.1:8787/ ; non publié
 
 ## Données de l'éditeur (`GAME`)
 

@@ -1,7 +1,7 @@
 'use strict';
 /* Moteur du simulateur d'exploitation (jeu de fan, non officiel). L'attraction est décrite par OSM (données générées) et SITE (configuration), chargés avant ce fichier. Unités : mètres, secondes. */
 const $=id=>document.getElementById(id);
-// Données du jeu écrites par l'éditeur (sites/<site>.game.js, `const GAME={…}`, facultatif, docs/ARCHITECTURE.md D1) : priorité GAME > SITE > calcul du moteur.
+// Données du jeu écrites par l'éditeur (lieux/<type>/<lieu>/<el>.game.js, `const GAME={…}`, facultatif, docs/ARCHITECTURE.md D1) : priorité GAME > SITE > calcul du moteur.
 // Aperçu de l'éditeur (cadre `?editeur=`) : le brouillon complet voyage dans window.name (`t2z-draft:<JSON>`), pour que les modifications non enregistrées survivent au rechargement du jeu.
 const GM=(()=>{let g=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAME:{};try{if(/[?&]editeur=/.test(location.search)&&/^t2z-draft:/.test(window.name)){const d=JSON.parse(window.name.slice(10));if(d&&typeof d==='object')g=d;}}catch(e){}return g;})();
 // GAME.site (docs/ARCHITECTURE.md D9) : surcharges partielles de SITE, liste blanche, fusionnées ICI avant tout calcul (objets fusionnés en profondeur, tableaux remplacés). Clé hors liste : ignorée (l'éditeur la refuse, editor/schema.js).

@@ -5,7 +5,7 @@
 const { chromium } = require('playwright');
 const path = require('path'), root = path.resolve(__dirname, '..');
 const sites = process.argv.slice(2).filter(a => !a.startsWith('-')); if (!sites.length) sites.push('zeus', 'hourra', 'oziris', 'goudurix');
-const URL = (s, m) => `file://${root}/jeu.html?site=${s}` + (m ? '&mode=' + m : '');
+const URL = (s, m) => `file://${root}/jeu.html?type=parc&lieu=asterix&el=${s}` + (m ? '&mode=' + m : '');
 const INDEX = `file://${root}/index.html`;
 let fails = [];
 const ok = (name, c, info) => { if (!c) fails.push(name + (info !== undefined ? ' ' + JSON.stringify(info) : '')); return c; };
@@ -42,7 +42,7 @@ const drive = (page, minutes, o = {}) => page.evaluate(([min, o]) => {
 const load = async (ctx, url, errors, first) => {
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(String(e.message || e)));
-  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // lieux/parc/asterix/<el>.game.js facultatif : absent = erreur de chargement attendue
   errors.push('console: ' + m.text()); });
   await page.goto(url);
   await page.waitForFunction(() => window.G && window.t2zSave);
@@ -72,7 +72,7 @@ const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k
     await page.evaluate(() => { act('speed', 0); ui(); });
     const A = await page.evaluate(snap);
     await page.goto(INDEX);
-    const prog = await page.evaluate(s => document.querySelector(`a.card[data-site=${s}] .prog`).textContent, site);
+    const prog = await page.evaluate(s => document.querySelector(`a.card[data-el=${s}] .prog`).textContent, site);
     ok(site + ' index progress', /Partie en cours/.test(prog), prog);
     sizes[site] = await keySize(page);
     page = await load(ctx, URL(site, 'career'), errors, false);
@@ -121,9 +121,9 @@ const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k
     page = await load(ctx, URL(site, 'sandbox'), errors, false);
     const bad = cmp(A, await page.evaluate(snap)); ok('sandbox restore', !bad.length && await page.evaluate(() => G.sandbox), bad);
     const r2 = await drive(page, 30); ok('sandbox +30', r2.min >= 29.9 && await page.evaluate(() => G.money === 3000 && G.wx.type === 'clear'));
-    const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('t2z.save.' + SITE.id)));
-    await page.goto(INDEX); const keys2 = await page.evaluate(s => Object.keys(localStorage).filter(k => k.startsWith('t2z.save.' + s)), site);
-    ok('modes coexist', keys2.includes(`t2z.save.${site}.sandbox`), keys2);
+    const keys = await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('t2z.save.parc.asterix.' + SITE.id)));
+    await page.goto(INDEX); const keys2 = await page.evaluate(s => Object.keys(localStorage).filter(k => k.startsWith('t2z.save.parc.asterix.' + s)), site);
+    ok('modes coexist', keys2.includes(`t2z.save.parc.asterix.${site}.sandbox`), keys2);
     sizes.sandbox = await keySize(page);
   }
   // Jeu continu : l'horloge passe 19:00 et repart à 10:00 sans rien remettre à zéro ; salaires horaires ; fin de partie à tout moment ; ancienne sauvegarde (journées) relue
@@ -158,6 +158,13 @@ const keySize = (page) => page.evaluate(() => Object.keys(localStorage).filter(k
     const errs = []; const p = await c2.newPage(); p.on('pageerror', e => errs.push(String(e.message)));
     await p.goto(URL(sites[0], 'career')); await p.waitForFunction(() => typeof act === 'function' && (act('help'), true)); await p.click('[data-act=closeHelp]');
     const r = await drive(p, 5); ok('no storage', r.min >= 4.9 && !errs.length, errs.slice(0, 2)); await c2.close();
+  }
+  { // migration unique : ancienne clé t2z.save.<el>.<mode> -> nouvelle clé, ancienne effacée
+    const p = await (await browser.newContext()).newPage();
+    await p.goto(INDEX); await p.evaluate(() => { localStorage.clear(); localStorage.setItem('t2z.save.zeus.career', '{"x":1}'); });
+    await p.goto(INDEX);
+    const r = await p.evaluate(() => [localStorage.getItem('t2z.save.zeus.career'), localStorage.getItem('t2z.save.parc.asterix.zeus.career')]);
+    ok('migration anciennes clés', r[0] === null && r[1] === '{"x":1}', r);
   }
   await browser.close();
   console.log('sizes:', JSON.stringify(sizes));

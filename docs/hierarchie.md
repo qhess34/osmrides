@@ -1,6 +1,6 @@
 # Hiérarchie du jeu : type → lieu → éléments (analyse, issue #48)
 
-Statut : proposition, rien n'est codé. À valider par le propriétaire (questions en §4). Vision : `docs/ROADMAP.md`.
+Statut (23/11) : migration faite (étapes 1 à 5 de §3), réponses du propriétaire du 23/11 : URL en français `type` / `lieu` / `el` ; fichiers déplacés tout de suite ; second lieu prévu = station de ski Vars Les Claux (pas encore fait) ; station = lieu, remontées = éléments ; **aucune compatibilité** des anciens liens `?site=` ni `parc.html` ; migration unique des sauvegardes au chargement (`lieux/index.js`). Réalisé en KISS : un seul `lieux/index.js` (catalogue) au lieu d'un `lieu.js` par lieu ; `plan.html` remplace `parc.html` ; l'éditeur ne gère que `lieux/parc/asterix/`. Le reste du texte est l'analyse d'origine. Vision : `docs/ROADMAP.md`.
 
 Hiérarchie voulue : **type (n) → lieu (n) → éléments (n)**.
 - Type « parc d'attractions » : lieux Parc Astérix, un autre parc… ; éléments = attractions.

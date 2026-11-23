@@ -1,6 +1,6 @@
 'use strict';
 /* Tonnerre 2 Zeus — configuration de l'attraction pour le moteur (engine/*.js).
-   Les coordonnées viennent de sites/zeus.data.js (OpenStreetMap) ; ce qui est estimé est signalé. */
+   Les coordonnées viennent de lieux/parc/asterix/zeus.data.js (OpenStreetMap) ; ce qui est estimé est signalé. */
 const SITE=(()=>{
   // File d'attente dans le sens de marche : entrée sous la statue → escalier de la gare (OSM 93696870, relue le 2026-11-17 : barrière d'entrée, fourche est en (-12,2 ; 28,4)),
   // puis haut de l'escalier couvert OSM 1353118268 (entrée du quai). Réimport complet du 2026-11-20 (issue #33) : voie, gare, garage et file relus dans OSM.

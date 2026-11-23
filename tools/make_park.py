@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fabrique la carte du parc entier à partir de l'extrait OpenStreetMap du parc.
 
-Usage : python3 tools/make_park.py extrait.osm parc/parc.data.js
+Usage : python3 tools/make_park.py extrait.osm lieux/parc/asterix/plan.data.js
 
 Extrait : https://api.openstreetmap.org/api/0.6/map?bbox=2.560,49.130,2.582,49.142 (non versionné).
 Projection identique à make_site.py : mètres, x vers l'est, z vers le sud, origine = origine de la Trace du Hourra

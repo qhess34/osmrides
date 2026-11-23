@@ -57,6 +57,7 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
 }
 @media(max-height:620px) and (orientation:portrait){.hero h1{font-size:60px}.mrow{min-height:46px}.menu{gap:7px}}
 @media(prefers-reduced-motion:reduce){.screen,.screen.off{transition:none}}
+.tiles[hidden],.card[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -73,7 +74,7 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
     <div class="lcd" id="lcd" role="status" aria-live="polite">Aucune partie en cours.</div>
     <a class="btn green mrow" id="rCont" href="#" hidden><i class="lp"></i>Continuer<small id="contInfo"></small></a>
     <a class="btn blue mrow lit" id="rPlay" href="#jouer"><i class="lp"></i>Jouer</a>
-    <a class="btn mrow" href="parc.html"><i class="lp"></i>Plan du parc</a>
+    <a class="btn mrow" id="rPlan" href="plan.html"><i class="lp"></i>Plan du parc</a>
     <a class="btn mrow" href="tutos.html"><i class="lp"></i>Tutoriels</a>
     <button class="btn amber mrow" id="rInst" type="button" hidden><i class="lp"></i>Installer</button>
   </nav>
@@ -83,22 +84,24 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
 <section id="pickScr" class="screen pick off" aria-label="Choix de l'attraction">
   <div class="bar">
     <a class="btn" id="back" href="#">Retour</a>
-    <h2>Choisir une attraction</h2>
+    <h2 id="pickTitre">Choisir une attraction</h2>
     <div class="seg" role="group" aria-label="Mode de jeu">
       <button class="btn" id="mCareer" type="button" aria-pressed="true"><i class="lp"></i>Carrière</button>
       <button class="btn" id="mSand" type="button" aria-pressed="false"><i class="lp"></i>Bac à sable</button>
     </div>
   </div>
   <div class="lcd bar" id="modeTxt" style="width:min(960px,100%);min-height:0">budget, météo et pannes</div>
-  <div class="tiles">
-    <a class="tile card" href="jeu.html?site=zeus" data-site="zeus"><img src="img/accueil/zeus.jpg" width="630" height="360" alt="Gare de Tonnerre 2 Zeus vue de dessus"><h3>Tonnerre 2 Zeus</h3><p>Montagnes russes en bois, 1 100 m</p><small class="prog"></small></a>
-    <a class="tile card" href="jeu.html?site=hourra" data-site="hourra"><img src="img/accueil/hourra.jpg" width="630" height="360" alt="Gare de la Trace du Hourra vue de dessus"><h3>La Trace du Hourra</h3><p>Bobsleigh, 780 m</p><small class="prog"></small></a>
-    <a class="tile card" href="jeu.html?site=oziris" data-site="oziris"><img src="img/accueil/oziris.jpg" width="630" height="360" alt="Gare d'OzIris vue de dessus"><h3>OzIris</h3><p>Coaster inversé, 1 000 m</p><small class="prog"></small></a>
-    <a class="tile card" href="jeu.html?site=goudurix" data-site="goudurix"><img src="img/accueil/goudurix.jpg" width="630" height="360" alt="Gare de Goudurix vue de dessus"><h3>Goudurix</h3><p>Acier à rails tubulaires, 950 m</p><small class="prog"></small></a>
+  <div class="tiles" id="niv" hidden></div>
+  <div class="tiles" id="els">
+    <a class="tile card" href="jeu.html?type=parc&amp;lieu=asterix&amp;el=zeus" data-type="parc" data-lieu="asterix" data-el="zeus"><img src="img/accueil/zeus.jpg" width="630" height="360" alt="Gare de Tonnerre 2 Zeus vue de dessus"><h3>Tonnerre 2 Zeus</h3><p>Montagnes russes en bois, 1 100 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?type=parc&amp;lieu=asterix&amp;el=hourra" data-type="parc" data-lieu="asterix" data-el="hourra"><img src="img/accueil/hourra.jpg" width="630" height="360" alt="Gare de la Trace du Hourra vue de dessus"><h3>La Trace du Hourra</h3><p>Bobsleigh, 780 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?type=parc&amp;lieu=asterix&amp;el=oziris" data-type="parc" data-lieu="asterix" data-el="oziris"><img src="img/accueil/oziris.jpg" width="630" height="360" alt="Gare d'OzIris vue de dessus"><h3>OzIris</h3><p>Coaster inversé, 1 000 m</p><small class="prog"></small></a>
+    <a class="tile card" href="jeu.html?type=parc&amp;lieu=asterix&amp;el=goudurix" data-type="parc" data-lieu="asterix" data-el="goudurix"><img src="img/accueil/goudurix.jpg" width="630" height="360" alt="Gare de Goudurix vue de dessus"><h3>Goudurix</h3><p>Acier à rails tubulaires, 950 m</p><small class="prog"></small></a>
   </div>
 </section>
 
-<script src="parc/parc.data.js"></script>
+<script src="lieux/index.js"></script>
+<script>document.write('<script src="'+lieuDir(LIEUX[0].type,LIEUX[0].id)+'plan.data.js"><\/script>');</script><!-- fond : plan du premier lieu (un seul pour l'instant) -->
 <script>
 'use strict';
 /* ───────── fond animé : plan du parc en lent travelling, assombri ───────── */
@@ -142,36 +145,50 @@ a.tile .prog:empty::before{content:'Nouvelle partie';color:#4f8e69}
 
 /* ───────── menu : dernière partie, choix d'attraction et de mode ───────── */
 (function(){
-  const NAMES={zeus:'Tonnerre 2 Zeus',hourra:'La Trace du Hourra',oziris:'OzIris',goudurix:'Goudurix'};
+  const NAMES={};for(const l of LIEUX)for(const e of l.elements)NAMES[l.type+'.'+l.id+'.'+e.id]=e.nom;
   const MODES={career:'Carrière',sandbox:'Bac à sable'};
   const $=id=>document.getElementById(id);
   const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.floor(m)%60).padStart(2,'0');
   let mode='career';try{if(localStorage.getItem('t2z.mode')==='sandbox')mode='sandbox';}catch(e){}
   // dernière partie sauvegardée (horodatage ts de engine/save.js), tous sites et modes confondus
   let last=null;
-  for(const s in NAMES)for(const m in MODES){try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+m)||'null');if(d&&d.time!=null&&(!last||(d.ts||0)>(last.ts||0)))last={s,m,time:d.time,ts:d.ts||0};}catch(e){}}
+  for(const s in NAMES)for(const m in MODES){try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+m)||'null');if(d&&d.time!=null&&(!last||(d.ts||0)>(last.ts||0)))last={s,m,time:d.time,ts:d.ts||0};}catch(e){}} // s = type.lieu.el
   const lcd=$('lcd'),cont=$('rCont');
   if(last){const t=NAMES[last.s]+' · '+MODES[last.m]+' · '+fmt(last.time);
-    cont.hidden=false;cont.href='jeu.html?site='+last.s+'&mode='+last.m;cont.classList.add('lit');$('contInfo').textContent=NAMES[last.s];
+    cont.hidden=false;const [lt,ll,le]=last.s.split('.');cont.href='jeu.html?type='+lt+'&lieu='+ll+'&el='+le+'&mode='+last.m;cont.classList.add('lit');$('contInfo').textContent=NAMES[last.s];
     lcd.textContent='Dernière partie : '+t;}
   function paint(){
     $('mCareer').setAttribute('aria-pressed',mode==='career');$('mSand').setAttribute('aria-pressed',mode==='sandbox');
     $('mCareer').classList.toggle('lit',mode==='career');$('mSand').classList.toggle('lit',mode==='sandbox');
     $('mCareer').classList.toggle('blue',mode==='career');$('mSand').classList.toggle('blue',mode==='sandbox');
     $('modeTxt').textContent=mode==='sandbox'?'Bac à sable : sans budget, météo ni pannes':'Carrière : budget, météo et pannes';
-    for(const a of document.querySelectorAll('a.card[data-site]')){
-      const s=a.dataset.site;a.href='jeu.html?site='+s+'&mode='+mode;const p=a.querySelector('.prog');p.textContent='';
+    for(const a of document.querySelectorAll('a.card[data-el]')){
+      const d0=a.dataset,s=d0.type+'.'+d0.lieu+'.'+d0.el;a.href='jeu.html?type='+d0.type+'&lieu='+d0.lieu+'&el='+d0.el+'&mode='+mode;const p=a.querySelector('.prog');p.textContent='';
       try{const d=JSON.parse(localStorage.getItem('t2z.save.'+s+'.'+mode)||'null');if(d&&d.time!=null)p.textContent='Partie en cours \u2014 '+fmt(d.time);}catch(e){}
     }
   }
   for(const [id,m] of [['mCareer','career'],['mSand','sandbox']])$(id).onclick=()=>{mode=m;try{localStorage.setItem('t2z.mode',m);}catch(e){}paint();};
   paint();
+  /* Écran de choix à 3 niveaux : type -> lieu -> éléments. Un niveau à un seul choix est sauté (aujourd'hui : un type, un lieu, donc seuls les éléments s'affichent). */
+  let selT=TYPES.length===1?TYPES[0].id:'',selL='';
+  const lieuxDe=t=>LIEUX.filter(l=>l.type===t);
+  if(selT&&lieuxDe(selT).length===1)selL=lieuxDe(selT)[0].id;
+  function niveaux(){
+    const niv=$('niv'),els=$('els'),fin=!!(selT&&selL);niv.hidden=fin;els.hidden=!fin;niv.textContent='';
+    $('pickTitre').textContent=!selT?'Choisir un type':!selL?'Choisir un lieu':'Choisir une attraction';
+    if(!fin){for(const o of (!selT?TYPES.map(t=>({id:t.id,nom:t.nom,t:1})):lieuxDe(selT).map(l=>({id:l.id,nom:l.nom})))){
+      const b=document.createElement('a');b.className='tile card';b.href='#jouer';const h=document.createElement('h3');h.textContent=o.nom;b.appendChild(h);
+      b.onclick=e=>{e.preventDefault();if(o.t){selT=o.id;const ls=lieuxDe(selT);if(ls.length===1)selL=ls[0].id;}else selL=o.id;niveaux();};niv.appendChild(b);}}
+    for(const a of document.querySelectorAll('a.card[data-el]'))a.hidden=!(a.dataset.type===selT&&a.dataset.lieu===selL);
+    $('rPlan').href=selT&&selL?'plan.html?type='+selT+'&lieu='+selL:'plan.html';
+  }
+  niveaux();
   // deux écrans, sans défilement : #jouer = choix de l'attraction
   const home=$('home'),pick=$('pickScr');
   function route(){const p=location.hash==='#jouer';home.classList.toggle('off',p);pick.classList.toggle('off',!p);
     (p?$('back'):$('rPlay')).focus({preventScroll:true});}
   addEventListener('hashchange',route);
-  $('back').onclick=e=>{e.preventDefault();if(history.length>1&&location.hash==='#jouer')history.back();else location.hash='';};
+  $('back').onclick=e=>{e.preventDefault();if(location.hash==='#jouer'&&(selL&&lieuxDe(selT).length>1)){selL='';niveaux();return;}if(location.hash==='#jouer'&&selT&&TYPES.length>1&&!selL){selT='';niveaux();return;}if(history.length>1&&location.hash==='#jouer')history.back();else location.hash='';};
   addEventListener('keydown',e=>{if(e.key==='Escape'&&location.hash==='#jouer')$('back').click();});
   home.classList.toggle('off',location.hash==='#jouer');pick.classList.toggle('off',location.hash!=='#jouer');
 })();

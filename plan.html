@@ -54,7 +54,13 @@ header{padding-top:max(8px,env(safe-area-inset-top));padding-left:max(14px,env(s
 <div id="info"></div>
 </div>
 </div>
-<script src="parc/parc.data.js"></script>
+<script src="lieux/index.js"></script>
+<script>
+/* Plan du lieu : ?type=parc&lieu=asterix (défaut : le seul lieu), données lieux/<type>/<lieu>/plan.data.js */
+const PQ=n=>{const m=new RegExp('[?&]'+n+'=([a-z0-9-]+)').exec(location.search);return m?m[1]:'';};
+const PT=PQ('type')||'parc',PL=PQ('lieu')||'asterix';
+document.write('<script src="'+lieuDir(PT,PL)+'plan.data.js"><\/script>');
+</script>
 <script>
 'use strict';
 const cv=document.getElementById('c'),ctx=cv.getContext('2d'),view=document.getElementById('view'),info=document.getElementById('info');
@@ -156,7 +162,7 @@ function hover(px,py){cv.classList.toggle('hit',!!pick(px,py))}
 function tap(px,py){
   const a=pick(px,py);
   if(!a){info.style.display='none';return}
-  if(a.site){location.href='jeu.html?site='+encodeURIComponent(a.site);return} // toute attraction avec simulateur
+  if(a.site){location.href='jeu.html?type='+PT+'&lieu='+PL+'&el='+encodeURIComponent(a.site);return} // toute attraction avec simulateur
   info.style.display='block';
   info.innerHTML='<h2></h2><p></p>';info.firstChild.textContent=a.name;
   info.lastChild.textContent='Pas de simulateur pour cette attraction.';

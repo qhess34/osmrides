@@ -1,6 +1,6 @@
 # Ce qu'OSM peut porter, et ce qui reste au jeu (issue #30)
 
-Décision du propriétaire : **OSM reste la référence**. Avant les lots 4 (corrections locales d'objets OSM) et 5 (files dans l'éditeur), ce document recense tout ce qui est aujourd'hui écrit à la main ou estimé **hors d'OSM** (`sites/<site>.js`, `tools/specs/<site>.json`, `sites/<site>.game.js`) et dit où cela devrait vivre.
+Décision du propriétaire : **OSM reste la référence**. Avant les lots 4 (corrections locales d'objets OSM) et 5 (files dans l'éditeur), ce document recense tout ce qui est aujourd'hui écrit à la main ou estimé **hors d'OSM** (`lieux/parc/asterix/<el>.js`, `tools/specs/<el>.json`, `lieux/parc/asterix/<el>.game.js`) et dit où cela devrait vivre.
 
 Analyse seule, aucun changement de code. Relevé du 19/11/2026.
 
@@ -23,7 +23,7 @@ Appliqué dans `tools/make_site.py` et le moteur ; les 4 attractions sont réimp
 | Hauteurs | `ele` sur les nœuds de la voie, sinon profil ESTIMÉ | lu (`OSM.ele`) ; **aucun nœud de voie n'a `ele`** le 20/11 : les 4 profils restent ESTIMÉS. |
 | `roller_coaster:element` | gardé et lu, pour un réglage du tangage / roulis dans l'éditeur | `OSM.elements` (Goudurix : butterfly, batwing, loop, corkscrew). |
 | Zeus | réimport complet | fin du mode `base` : voie, gare, garage, file relus dans OSM (tracé identique à 0,3 m près ; profil ESTIMÉ recopié de l'ancien import). |
-| Garage H | ajouté dans OSM | 6 voies, rail du chariot : distances, écart et longueurs lus dans OSM (`sites/hourra.js`). |
+| Garage H | ajouté dans OSM | 6 voies, rail du chariot : distances, écart et longueurs lus dans OSM (`lieux/parc/asterix/hourra.js`). |
 
 **Corrections OSM encore à faire (relevées à l'import du 20/11)**
 
@@ -97,7 +97,7 @@ Abréviations : Z = Tonnerre 2 Zeus, H = Trace du Hourra, O = OzIris, G = Goudur
 | Barrière ajoutée Z `add:raccourci est:1` | `GAME.barriers` | 4 | Choix de jeu, gardé dans l'éditeur (plus de nœud OSM à ajouter). | — |
 | Côté du poteau | jeu (à droite du sens de la file) ; éditeur | 4 | `swing_gate:hinge` n'est plus lu (issue #34). | — |
 | Bouche de file (`mouth`, `mouthMax`), barrière déplacée au bout (`gateAtMouth`, Z) | `SITE.queue` | 4 | Ajustement du jeu, contraire à la position OSM (Z : nœud « Entrée T2Z » sous la statue). Si la barrière réelle est devant la statue : **déplacer le nœud dans OSM**, puis retirer `gateAtMouth`. | lot 5 : réglage de jeu |
-| `entry0`, `link` (point d'arrivée, raccord vers la file) | `SITE.queue` (coordonnées écrites) | 1 | Raccord = chemin OSM entre la zone piétonne et la barrière d'entrée ; à dessiner dans OSM s'il manque (G : `w1580408092`, cité dans `sites/goudurix.js`). | lot 5 |
+| `entry0`, `link` (point d'arrivée, raccord vers la file) | `SITE.queue` (coordonnées écrites) | 1 | Raccord = chemin OSM entre la zone piétonne et la barrière d'entrée ; à dessiner dans OSM s'il manque (G : `w1580408092`, cité dans `lieux/parc/asterix/goudurix.js`). | lot 5 |
 | Accès promeneurs (`approach`, Z `PROM_W` / `PROM_N` en coordonnées) | `SITE` | 1 | Ce sont des allées réelles du parc : leurs chemins OSM peuvent être nommés dans la spec au lieu de coordonnées. Largeur de foule (`w`) : cat. 4. | lot 5 |
 | Sortie (`exit.path`) | OSM (chemins de sortie) | 1 | Déjà OSM pour H, O, G ; Z : chemin écrit à la main par la boutique (coordonnées). À dessiner dans OSM si absent. | lot 5 |
 | Fins de sortie (`exit.tails`), raccords ESTIMÉS de G vers l'allée est et le pont de bois | `SITE` | 1 | S'il existe un vrai chemin, le dessiner dans OSM ; sinon le raccord est un artifice de jeu (cat. 4). | lot 5 |

@@ -5,7 +5,7 @@ figures (facultatif) : "Nom:s0:s1:n;Nom:s0:s1:n;..." (n = inversions) : trace en
 import sys, json, math
 from PIL import Image, ImageDraw, ImageFont
 site, out, title = sys.argv[1], sys.argv[2], sys.argv[3]
-src = open('sites/%s.data.js' % site, encoding='utf8').read()
+src = open('lieux/parc/asterix/%s.data.js' % site, encoding='utf8').read()
 D = json.loads(src[src.index('=') + 1:].rstrip().rstrip(';'))
 cps = D['cps']; n = len(cps)
 tag = {}

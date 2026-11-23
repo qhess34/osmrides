@@ -1,7 +1,7 @@
 'use strict';
 /* Goudurix — configuration de l'attraction pour le moteur (engine/*.js).
    Montagnes russes en acier Vekoma MK-1200 à rails tubulaires, Parc Astérix (1989), sept inversions annoncées. Tracé, gare, chemins, voie de maintenance :
-   sites/goudurix.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/goudurix-notes.md. */
+   lieux/parc/asterix/goudurix.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/goudurix-notes.md. */
 const SITE=(()=>{
   const PROM=OSM.paths.prom,PROM2=OSM.paths.prom2,QL=OSM.paths.qlink;
   // Embarquement à l'OUEST de la gare, portillons à l'ouest (propriétaire, 2026-11-15). OSM ne cartographie pas la file : on prend la promenade « Gouduriiiix Promenade »

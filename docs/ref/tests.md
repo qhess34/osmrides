@@ -8,7 +8,7 @@ Fiche de référence (extraite d'`AGENTS.md`, 21/11). Une règle n'est écrite q
 
 Playwright et Chromium sont préinstallés (`require('playwright')`, `chromium.launch()` sans option).
 
-Ouvrir `file:///…/jeu.html?site=<site>` (l'aide n'est plus ouverte au lancement, seulement au bouton « ? » `[data-act=help]` ; les scripts l'ouvrent avec `act('help')` puis cliquent `[data-act=closeHelp]`), puis dans `page.evaluate` :
+Ouvrir `file:///…/jeu.html?type=parc&lieu=asterix&el=<site>` (l'aide n'est plus ouverte au lancement, seulement au bouton « ? » `[data-act=help]` ; les scripts l'ouvrent avec `act('help')` puis cliquent `[data-act=closeHelp]`), puis dans `page.evaluate` :
 
 - avancer vite : `act('speed',0)` puis boucler `step(.025)` ; figer la météo avec `G.wx.next=1e6` ;
 - exploitation de 9 h (plus de journée : jeu continu, rien ne se réinitialise, `docs/manoeuvres.md`) : boucler tant que `G.played - p0 < 540` (minutes de jeu cumulées ; `G.time` boucle 10:00–19:00), en dépannant (`act('job','liftFix')`, `'brakeFix'`, `act('rearm',i)`) ;
@@ -19,7 +19,7 @@ cliquer les vrais boutons du pupitre (libellés en texte court, aucun pictogramm
 
 ## Mobile
 
-mobile et plein écran : `node tools/mobile.js [zeus hourra] [--shots=DIR] [--montage=f.jpg]` (iPhone 13 portrait 390x844, 360x640, paysage 844x390, tactile réel CDP : un doigt = déplacement, deux doigts = zoom, toucher barrière / numéro du synoptique, onglets, plein écran en repli CSS, rotation, `parc.html`)
+mobile et plein écran : `node tools/mobile.js [zeus hourra] [--shots=DIR] [--montage=f.jpg]` (iPhone 13 portrait 390x844, 360x640, paysage 844x390, tactile réel CDP : un doigt = déplacement, deux doigts = zoom, toucher barrière / numéro du synoptique, onglets, plein écran en repli CSS, rotation, `plan.html`)
 
 - ids : `#bFs` (Plein écran / Quitter le plein écran, dans `#cams`), `#fsBar` (barre du plein écran : `#fsHud`, `#fsMsg`, `#bDesk` = tiroir du pupitre, Quitter), `#tabs` (`data-act=tab` : `carte`, `pupitre`, `journal`)
 - classes de `body` : `dm` (téléphone / tablette étroite : pupitre et journal en tiroirs), `fs` (plein écran), `fsdesk` (tiroir ouvert en plein écran)
@@ -30,7 +30,7 @@ mobile et plein écran : `node tools/mobile.js [zeus hourra] [--shots=DIR] [--mo
 
 sauvegarde et bac à sable : `node tools/save.js [zeus hourra oziris]` (2 h de jeu, état identique après `pagehide` / retour, passage de 19:00 sans remise à zéro, bilan, fin de partie, ancienne sauvegarde à journées, alternance entre attractions, Nouvelle partie, bac à sable, stockage indisponible)
 
-- `jeu.html?site=<id>&mode=sandbox` (`G.sandbox` : ni budget, ni météo, ni pannes ; en-tête `#hMode`)
+- `jeu.html?type=parc&lieu=asterix&el=<id>&mode=sandbox` (`G.sandbox` : ni budget, ni météo, ni pannes ; en-tête `#hMode`)
 - les tests `check.js` repartent d'un état vide ;
 
 ## `check.js`

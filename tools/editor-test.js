@@ -8,7 +8,7 @@
 // calcul affiché, poignée glissée, valeur saisie, bornes, retour au calcul, valeur écrite ; dans le jeu, avec et sans zone éditée : visiteurs dans les rangs ajoutés.
 // apparence de la file et du quai (issue #45, GAME.look) : choix enregistré, relu, appliqué à chaud et dans le jeu.
 // paramètres de l'attraction (lot 3, GAME.site) : couleur d'un train, nombre de trains, sous-type, physique, hors bornes refusé, sauvegarde, relecture, effet dans le jeu.
-// --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, bars). Les sites/<site>.game.js créés sont retirés à la fin (ceux qui existaient
+// --check : tools/check.js de l'attraction avec ce game.js (offpath, strollQ, bars). Les lieux/parc/asterix/<el>.game.js créés sont retirés à la fin (ceux qui existaient
 // avant sont restaurés).
 const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('child_process');
@@ -19,7 +19,7 @@ const args = process.argv.slice(2), SITES = args.filter(a => !a.startsWith('--')
 const SHOT = (args.find(a => a.startsWith('--shot=')) || '').slice(7);
 if (!SITES.length) SITES.push('goudurix', 'zeus');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const gp = id => path.join(ROOT, 'sites', id + '.game.js');
+const gp = id => path.join(ROOT, 'lieux', 'parc', 'asterix', id + '.game.js');
 
 let srv = null;
 async function startServer() {
@@ -223,7 +223,7 @@ const ed = (page, s) => page.evaluate(s);
       ok(nAdd > 5 && !(await page.isDisabled('#bSave')), `diff affiché (${nAdd} lignes ajoutées)`);
       await page.click('#bSave'); await page.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 5000 });
       const exp = await ed(page, `ED.draft()`);
-      ok(fs.existsSync(gp(id)) && fs.readFileSync(gp(id), 'utf8') === S.text(exp), 'sites/' + id + '.game.js écrit (JSON strict, normalisé)');
+      ok(fs.existsSync(gp(id)) && fs.readFileSync(gp(id), 'utf8') === S.text(exp), 'lieux/parc/asterix/' + id + '.game.js écrit (JSON strict, normalisé)');
       ok(!(await ed(page, `ED.dirty`)), 'plus de modification en attente');
       await page.close();
       // ── redémarrage du serveur, relecture ──
@@ -238,7 +238,7 @@ const ed = (page, s) => page.evaluate(s);
       // ── jeu.html (file://) ──
       const jp = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
       await jp.waitForFunction(() => typeof gateList === 'function' && typeof render === 'function', null, { timeout: 30000 });
       await jp.evaluate(() => { localStorage.clear(); act('speed', 0); G.wx.next = 1e6; });
       const ov = exp.barriers.b1;
@@ -273,7 +273,7 @@ const ed = (page, s) => page.evaluate(s);
       // zone d'attente appliquée : polygone, visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone
       const jp2 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp2.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp2.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp2.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
       await jp2.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
       const za = await jp2.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
         let n=0,out=0,wout=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.plat.forEach((r,j)=>{if(r&&r.on){n++;const s=slotPos(j);if(!pipA(BAREA,s[0],s[2]))out++;}});
@@ -294,7 +294,7 @@ const ed = (page, s) => page.evaluate(s);
       // travées réglées sans zone éditée (GAME.boardAreas retiré dans la page) : rangs supplémentaires remplis, visiteurs à la profondeur choisie, évacuation
       const jp3 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp3.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp3.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+      await jp3.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
       await jp3.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
       const zc = await jp3.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;delete GM.boardAreas;reBoard();if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
         let mx=0,n=0,bad=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.platR.forEach((r,j)=>{if(r&&r.on){n++;const l=latA(BRES[j][0],BRES[j][2])-PGATE;mx=Math.max(mx,l);if(!BRES[j].t||l>GDEPTH-.39)bad++;}});}
@@ -351,7 +351,7 @@ const ed = (page, s) => page.evaluate(s);
         ok(/"site"/.test(await ed(ps, `document.getElementById('diff').textContent`)), 'attraction : diff lisible (clé site)');
         await ps.click('#bSave'); await ps.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 30000 });
         const expS = await ed(ps, `ED.draft()`), txt = fs.readFileSync(gp(id), 'utf8');
-        ok(txt === S.text(expS) && S.parse(txt).site.trains[0].col === '#123456' && S.parse(txt).site.kind === k1, 'attraction : sites/' + id + '.game.js écrit avec "site"');
+        ok(txt === S.text(expS) && S.parse(txt).site.trains[0].col === '#123456' && S.parse(txt).site.kind === k1, 'attraction : lieux/parc/asterix/' + id + '.game.js écrit avec "site"');
         await ps.close(); await stopServer(); await startServer();
         const p3 = await browser.newPage({ viewport: { width: 1200, height: 760 } });
         p3.on('pageerror', e => errors.push('site: ' + String(e.message || e)));
@@ -361,7 +361,7 @@ const ed = (page, s) => page.evaluate(s);
         // jeu.html (file://) : SITE fusionné
         const jq = await browser.newPage({ viewport: { width: 1100, height: 760 } });
         jq.on('pageerror', e => errors.push('jeu site: ' + String(e.message || e)));
-        await jq.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+        await jq.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
         await jq.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
         const jg = await jq.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<400;i++)step(.05);render(.05);return {kind:SITE.kind,c:SITE.trains[0].col,n:SITE.trains.length,nt:trains.length,tc:trains[0].col,drag:PH.drag,car:SITE.car.len};})()`);
         ok(jg.kind === k1 && jg.c === '#123456' && jg.tc === '#123456' && jg.n === jg.nt && jg.drag === dr1 && jg.car === base.car.len, `attraction : SITE fusionné dans le jeu (kind ${jg.kind}, ${jg.n} trains, train 1 ${jg.c}, traînée ${jg.drag})`);
@@ -397,7 +397,7 @@ const ed = (page, s) => page.evaluate(s);
         ok(/"look"/.test(await ed(pl, `document.getElementById('diff').textContent`)), 'apparence : diff lisible (clé look)');
         await pl.click('#bSave'); await pl.waitForFunction(() => window.ED.saved >= 1, null, { timeout: 30000 });
         const expL = await ed(pl, `ED.draft()`), txtL = fs.readFileSync(gp(id), 'utf8'), LL = S.parse(txtL).look;
-        ok(txtL === S.text(expL) && LL.queue.tex === 'deck' && LL.queue.col === '#7a5c40' && LL.plat.col === '#b8b2a6' && !LL.plat.tex && LL.rail === 'stone' && LL.gate === '#3c5a78', 'apparence : sites/' + id + '.game.js écrit avec "look"');
+        ok(txtL === S.text(expL) && LL.queue.tex === 'deck' && LL.queue.col === '#7a5c40' && LL.plat.col === '#b8b2a6' && !LL.plat.tex && LL.rail === 'stone' && LL.gate === '#3c5a78', 'apparence : lieux/parc/asterix/' + id + '.game.js écrit avec "look"');
         await pl.close(); await stopServer(); await startServer();
         const p4 = await browser.newPage({ viewport: { width: 1200, height: 760 } });
         p4.on('pageerror', e => errors.push('look: ' + String(e.message || e)));
@@ -406,7 +406,7 @@ const ed = (page, s) => page.evaluate(s);
         await p4.close(); await stopServer();
         const jl = await browser.newPage({ viewport: { width: 1100, height: 760 } });
         jl.on('pageerror', e => errors.push('jeu look: ' + String(e.message || e)));
-        await jl.goto('file://' + ROOT + '/jeu.html?site=' + id + '&mode=sandbox');
+        await jl.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
         await jl.waitForFunction(() => typeof render === 'function' && typeof LK === 'object', null, { timeout: 30000 });
         const jL = await jl.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<200;i++)step(.05);cam.s=12;render(.05);render(.05);return LK.q!==TEX.stone&&LK.pf==='#b8b2a6'&&LK.prow&&LK.rail===RAILM.stone&&LK.gate==='#3c5a78';})()`);
         ok(jL === true, 'apparence : réglages appliqués dans jeu.html (file://)');

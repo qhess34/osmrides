@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fabrique les données d'une attraction à partir d'un extrait OpenStreetMap (.osm).
 
-Usage : python3 tools/make_site.py extrait.osm tools/specs/<site>.json sites/<site>.data.js [apercu.png]
+Usage : python3 tools/make_site.py extrait.osm tools/specs/<site>.json lieux/parc/asterix/<el>.data.js [apercu.png]
 
 Le fichier de spécification (JSON) décrit :
   origin        [lat, lon] du point (0, 0) ; x vers l'est, z vers le sud, en mètres

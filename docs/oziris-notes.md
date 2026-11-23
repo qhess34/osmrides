@@ -1,6 +1,6 @@
 # OzIris — notes
 
-Coaster inversé Bolliger & Mabillard, Parc Astérix (zone Égypte), ouvert le 7 avril 2012. Configuration : `sites/oziris.js` ; spec : `tools/specs/oziris.json` ; données : `sites/oziris.data.js`.
+Coaster inversé Bolliger & Mabillard, Parc Astérix (zone Égypte), ouvert le 7 avril 2012. Configuration : `lieux/parc/asterix/oziris.js` ; spec : `tools/specs/oziris.json` ; données : `lieux/parc/asterix/oziris.data.js`.
 
 ## Caractéristiques (sources)
 
@@ -80,7 +80,7 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/JOURNAL.md`.
 - **Embarquement à l'ouest** (réponse à la question 24 par OSM) : `entrance=main` (-12,6 ; -9,0) à l'ouest de la voie, `entrance=exit` (-7,5 ; -9,5) à l'est. `loadSide` passe à 1 ; poste de conduite déplacé côté ouest (ESTIMÉ).
 - **File** : fin de 1073325805 refaite (zigzag ouest), chemin 1580105930, **passage sous la gare** (1580105922, `tunnel=yes`, `layer=-1`), escaliers et passerelles 1580105924…1580105934 jusqu'à l'entrée ; dessinés quand le toit s'efface.
 - **Sortie** : passerelle 1580105927 (`layer=2`), escalier 1580105929, allée 1580105928 vers l'est (remplace l'escalier et le passage sous la gare estimés).
-- **Réponses du 2026-11-16** : la galerie 1580105918 (`tunnel=yes`, `layer=2`) est bien au-dessus du sol (toit de béton) ; aucun frein de bloc en parcours ; **pas de barrière dans la file** : file unique (fourche et barrière ESTIMÉES supprimées de `sites/oziris.js`). Escaliers OSM dessinés en marches, passerelles OSM en tablier.
+- **Réponses du 2026-11-16** : la galerie 1580105918 (`tunnel=yes`, `layer=2`) est bien au-dessus du sol (toit de béton) ; aucun frein de bloc en parcours ; **pas de barrière dans la file** : file unique (fourche et barrière ESTIMÉES supprimées de `lieux/parc/asterix/oziris.js`). Escaliers OSM dessinés en marches, passerelles OSM en tablier.
 - **File, 2e correction du propriétaire (2026-11-16, changesets 192031122 / 192031244)** : OzIris **a** des barrières. 1580173577 de l'entrée à la fourche (-15,5 ; 57,4) ; boucle ouest 1580173578 + 1580173579 qui revient à la fourche, deux barrières liées (entrée et sortie de la boucle) ; 1073325805 vers la gare, lacets sud évités par le raccourci 1580173580 (une barrière sur le raccourci). Emplacements exacts des barrières ESTIMÉS (1,6 m et 0,6 m des fourches).
 - **Pupitre** (propriétaire : « au sud-est, il dépasse de la gare ») : poste de conduite déplacé côté est, en tête de quai, juste derrière le quai de débarquement, dans le bâtiment OSM ; emplacement exact ESTIMÉ.
 
@@ -99,7 +99,7 @@ Voir `docs/plans/QUESTIONS.md` (section OzIris) et `docs/JOURNAL.md`.
 
 ### Issue #19 (propriétaire, 2026-11-18, changeset 192117430)
 
-- « Au final pas de barrière B2 » : raccourci 1580173580 et nœuds B2 supprimés dans OSM ; lacets sud obligatoires ; partie « lacets sud » retirée de `sites/oziris.js`, entrées `fork:lacets sud:*` retirées de `sites/oziris.game.js`.
+- « Au final pas de barrière B2 » : raccourci 1580173580 et nœuds B2 supprimés dans OSM ; lacets sud obligatoires ; partie « lacets sud » retirée de `lieux/parc/asterix/oziris.js`, entrées `fork:lacets sud:*` retirées de `lieux/parc/asterix/oziris.game.js`.
 - File souterraine revue : 1580105922 (niveau -2, plus de zigzag sous la gare), 1580105931 et escalier 1580105924 (-2), couloir 1580105925 (-1), escalier 1580105926 (`layer=-1`, `incline=up`) qui remonte au niveau 0 ; 1580105932 supprimé ; allées 1580105937 / 1580105923 / 1580105936 / 1580105935 (niveau 0) jusqu'à l'entrée du quai `entrance=main` (-15,9 ; -11,7).
 - Gare affichée : niveaux -1 et -2 cachés (ni tracé, ni visiteurs), fin d'escalier au débouché de 1580105926 ; allée 1580105923 rétrécie à 0,6 m (à 3,6 m de la voie, portillons à 2,2 m) : dégagement de 1,15 m au lieu de 1,2 m, l'axe OSM traverse encore les travées d'attente (question au propriétaire). Montage : `docs/plans/lot-oziris-gare.jpg`.
 - 2e demande (2026-11-18, changeset 192118796) : allées 1580105937 / 1580105923 / 1580105936 / 1580105935, haut de l'escalier 1580105926 et entrée `entrance=main` (-16,7 ; -12,0) déplacés d'environ 1 m vers l'ouest ; quai d'embarquement porté à 7,3 m (ESTIMÉ) pour atteindre l'entrée ; travées d'attente de 1,4 m (2 rangs de 2, ESTIMÉ) ; plus aucune allée visible dans la zone des portillons (1,16 m de marge). Montage : `docs/plans/lot-oziris-gare2.jpg`.

@@ -12,12 +12,12 @@ const root = path.resolve(__dirname, '..');
     const out = `/tmp/t1/${site}.html`;
     execFileSync('python3', [path.join(root, 'tools/build.py'), site, out], { stdio: 'ignore' });
     url = 'file://' + out;
-  } else url = `file://${root}/jeu.html?site=${site}`;
+  } else url = `file://${root}/jeu.html?type=parc&lieu=asterix&el=${site}`;
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const errors = [];
   page.on('pageerror', e => errors.push(String(e.message || e)));
-  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // sites/<site>.game.js facultatif : absent = erreur de chargement attendue
+  page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$/.test((m.location() || {}).url || '')) // lieux/parc/asterix/<el>.game.js facultatif : absent = erreur de chargement attendue
   errors.push('console: ' + m.text()); });
   await page.addInitScript(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('t2z.save.')) localStorage.removeItem(k); } catch (e) {} }); // départ propre : pas de partie sauvegardée
   await page.goto(url);

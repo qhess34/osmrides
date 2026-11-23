@@ -1,6 +1,6 @@
 # Goudurix — notes
 
-Montagnes russes en acier Vekoma (modèle MK-1200, rails tubulaires), Parc Astérix, ouvertes en 1989. Configuration : `sites/goudurix.js` ; spec : `tools/specs/goudurix.json` ; données : `sites/goudurix.data.js` (généré). Photo aérienne du propriétaire : `docs/sources/goudurix-vue-aerienne.jpg` (voie tubulaire jaune, supports rouges, tracé au-dessus d'un plan d'eau).
+Montagnes russes en acier Vekoma (modèle MK-1200, rails tubulaires), Parc Astérix, ouvertes en 1989. Configuration : `lieux/parc/asterix/goudurix.js` ; spec : `tools/specs/goudurix.json` ; données : `lieux/parc/asterix/goudurix.data.js` (généré). Photo aérienne du propriétaire : `docs/sources/goudurix-vue-aerienne.jpg` (voie tubulaire jaune, supports rouges, tracé au-dessus d'un plan d'eau).
 
 ## Caractéristiques (sources)
 
@@ -74,7 +74,7 @@ Profil ajusté : sommet 36 m (s 123) → petite descente 34 m → virage à 180�
 
 ### Passerelle et poste de l'aiguillage (dessin, 2026-11-15)
 
-Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique rouille avec garde-corps, escalier galvanisé, passerelle grillagée grise inclinée le long du tronçon mobile, opérateur debout avec un boîtier de commande. Dessinés vus du dessus dans `SITE.draw` (`floor`, `shadows`, `landmarks` de `sites/goudurix.js`), sans toucher au moteur ; étiquette « Poste aiguillage » (zoom proche). Capture : `docs/plans/goudurix-poste-aiguillage.jpg` (aiguillage sur P, en rotation, sur la voie 1).
+Demande du propriétaire, d'après la photo ci-dessus : plate-forme métallique rouille avec garde-corps, escalier galvanisé, passerelle grillagée grise inclinée le long du tronçon mobile, opérateur debout avec un boîtier de commande. Dessinés vus du dessus dans `SITE.draw` (`floor`, `shadows`, `landmarks` de `lieux/parc/asterix/goudurix.js`), sans toucher au moteur ; étiquette « Poste aiguillage » (zoom proche). Capture : `docs/plans/goudurix-poste-aiguillage.jpg` (aiguillage sur P, en rotation, sur la voie 1).
 - **ESTIMÉ** : position (côté est du retour, opposé à la voie de garage comme sur la photo ; plate-forme x -13,1 → -9,5, z -5,6 → -0,6 ; passerelle de 0,8 m le long du nœud railway=switch ; escalier vers le bout du raccord de la file en (-13,5 ; 5,2), le chemin de service n'étant pas dans OSM), dimensions, hauteur (≈ 2,4 m pour l'ombre) et couleurs. La photo n'est pas géoréférencée.
 - L'opérateur est dessiné avec `person()` ; il se tourne vers l'aiguillage pendant la rotation, le voyant du boîtier passe à l'ambre. Pur décor : il ne fait pas partie des opérateurs de lapbars et n'a aucun effet sur le jeu. Non testé : rendu sur mobile.
 

@@ -1,6 +1,6 @@
 # Éditeur OSMrides (local, Docker)
 
-Éditeur WYSIWYG des données **du jeu** d'une attraction (lot 1 : barrières de file et salle de contrôle ; issue #22 : zone d'attente du quai d'embarquement ; issue #27 : profondeur des travées d'attente ; lot 3 : paramètres de l'attraction). Il ouvre la vraie page `jeu.html` (bac à sable, simulation figée) et ajoute une couche d'édition par-dessus : ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier : `sites/<site>.game.js`. Décisions : `docs/ARCHITECTURE.md` (D1 à D9).
+Éditeur WYSIWYG des données **du jeu** d'une attraction (lot 1 : barrières de file et salle de contrôle ; issue #22 : zone d'attente du quai d'embarquement ; issue #27 : profondeur des travées d'attente ; lot 3 : paramètres de l'attraction). Il ouvre la vraie page `jeu.html` (bac à sable, simulation figée) et ajoute une couche d'édition par-dessus : ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier : `lieux/parc/asterix/<el>.game.js`. Décisions : `docs/ARCHITECTURE.md` (D1 à D9).
 
 Le dossier `editor/` et `compose.yaml` ne sont pas publiés par GitHub Pages ; le jeu publié n'a besoin ni de l'éditeur ni de Docker.
 
@@ -32,7 +32,7 @@ Sans Docker : `node editor/server.js` (Node 22, aucune dépendance ; `PORT`, `HO
 
 ## Format écrit
 
-`sites/<site>.game.js` = un en-tête de commentaires puis `const GAME = { … };` dont le corps est du **JSON strict** (D1). Chargé par `jeu.html` après `sites/<site>.js` (absent : ignoré) et inclus par `tools/build.py` s'il existe. Priorité : `GAME` > `SITE` > calcul du moteur.
+`lieux/parc/asterix/<el>.game.js` = un en-tête de commentaires puis `const GAME = { … };` dont le corps est du **JSON strict** (D1). Chargé par `jeu.html` après `lieux/parc/asterix/<el>.js` (absent : ignoré) et inclus par `tools/build.py` s'il existe. Priorité : `GAME` > `SITE` > calcul du moteur.
 
 ```js
 const GAME = {
@@ -68,14 +68,14 @@ Les valeurs envoyées sont contrôlées (liste blanche : `surface`, `colour`, `m
 ## Sécurité
 
 - Port publié sur `127.0.0.1` seulement ; le serveur refuse tout autre en-tête `Host` (rebinding DNS) et les écritures d'une autre origine ou non JSON.
-- Conteneur : utilisateur non root (`T2Z_UID:T2Z_GID`), système de fichiers en lecture seule (`/tmp` en tmpfs), `cap_drop: ALL`, `no-new-privileges`, pas de socket Docker. Dépôt monté **en lecture seule**, sauf `sites/`.
-- Le serveur sert le dépôt en lecture (GET), sans fichiers cachés (`.git`…) ni traversée de chemin, et n'écrit que `sites/<site>.game.js` pour un `<site>` dont `sites/<site>.js` existe, après validation (types, bornes, clés connues, 1 salle au plus ; `editor/schema.js`), par écriture atomique. Aucune opération Git, aucun accès réseau sortant.
+- Conteneur : utilisateur non root (`T2Z_UID:T2Z_GID`), système de fichiers en lecture seule (`/tmp` en tmpfs), `cap_drop: ALL`, `no-new-privileges`, pas de socket Docker. Dépôt monté **en lecture seule**, sauf `lieux/`.
+- Le serveur sert le dépôt en lecture (GET), sans fichiers cachés (`.git`…) ni traversée de chemin, et n'écrit que `lieux/parc/asterix/<el>.game.js` pour un `<el>` dont `lieux/parc/asterix/<el>.js` existe, après validation (types, bornes, clés connues, 1 salle au plus ; `editor/schema.js`), par écriture atomique. Aucune opération Git, aucun accès réseau sortant.
 
 ## Flux Git → Pages
 
 1. Éditer, voir les différences, enregistrer (fichier écrit sur l'hôte).
-2. Vérifier dans le jeu : ouvrir `jeu.html?site=<site>` (fichier local) ; tests : `node tools/check.js <site>`.
-3. `git diff sites/<site>.game.js`, puis commit et push sur `main` vous-même : GitHub Pages publie `sites/` (dont `game.js`) avec le jeu.
+2. Vérifier dans le jeu : ouvrir `jeu.html?type=parc&lieu=asterix&el=<el>` (fichier local) ; tests : `node tools/check.js <site>`.
+3. `git diff lieux/parc/asterix/<el>.game.js`, puis commit et push sur `main` vous-même : GitHub Pages publie `lieux/` (dont `game.js`) avec le jeu.
 
 ## Tests
 

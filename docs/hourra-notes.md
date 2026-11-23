@@ -2,7 +2,7 @@
 
 ## Fait (T4, 2026-11-14)
 
-- `sites/hourra.js` écrit : l'attraction est jouable (`jeu.html?site=hourra`), `node tools/check.js hourra` passe (journée complète, manœuvres au pupitre, 0 erreur).
+- `lieux/parc/asterix/hourra.js` écrit : l'attraction est jouable (`jeu.html?type=parc&lieu=asterix&el=hourra`), `node tools/check.js hourra` passe (journée complète, manœuvres au pupitre, 0 erreur).
 - Circuit fermé de 772 m (3D), 8 tronçons OSM, profil estimé, croisements ≥ 3,3 m, pointe ≈ 53 km/h avec `phys {roll: .13, drag: .0016}`.
 - Cantonnement : gare, lift, puis 4 cantons de parcours séparés par 3 freins de bloc `blk1` (s ≈ 288), `blk2` (≈ 474), `blk3` (≈ 633), frein final `brk` (≈ 713). Positions des freins de bloc **estimées** (choisies sur des passages peu pentus, non relevées). Six cantons pour cinq trains : vérifié sans blocage avec 5 trains en piste.
 - Chaque frein de bloc se ferme au pupitre (`#bBk1…3`), le frein final avec `#bHold`.
@@ -93,7 +93,7 @@ Toutes ces coordonnées sont calculées sur plan, pas vérifiées à l'écran.
 
 ## Pupitre par zones (T7) — estimé
 
-Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), frein avant gare, voies de garage (Reculer seulement) ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `sites/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
+Zones à moteurs (pneus) supposées : gare, frein final, rail mobile du parcours, rail du chariot (chariot), frein avant gare, voies de garage (Reculer seulement) ; freins de bloc B1…B3 sans moteurs. Réglable par `SITE.zones` dans `lieux/parc/asterix/hourra.js`. À confirmer par le propriétaire (Q4 de `docs/ROADMAP.md`).
 
 ## Mise à jour OpenStreetMap du propriétaire (2026-11-16)
 
@@ -134,7 +134,7 @@ Extrait OSM frais (`/tmp/osm5`) ; changesets du propriétaire depuis le lot 3 : 
 
 ## Réimport du 2026-11-20 (issue #33)
 
-- Garage dessiné dans OSM par le propriétaire : rail mobile du parcours 1580086185 (`moving`, rail A), rail du chariot 1582324008 (`moving`), 6 voies 1582324002…1582324007. `sites/hourra.js` lit dans OSM la distance de chaque voie à l'axe du rail A (7,1 / 9,4 / 11,8 / 14,2 / 16,7 / 20,3 m, au lieu de 8 à 24 m ESTIMÉS), leur longueur (16,4 à 16,6 m), l'écart A/B (3,6 m au lieu de 3,2) et le jeu rail / voies (0,4 m). Voies dessinées à la main dans OSM, pas tout à fait parallèles (± 0,3 m) : moyenne des deux bouts.
+- Garage dessiné dans OSM par le propriétaire : rail mobile du parcours 1580086185 (`moving`, rail A), rail du chariot 1582324008 (`moving`), 6 voies 1582324002…1582324007. `lieux/parc/asterix/hourra.js` lit dans OSM la distance de chaque voie à l'axe du rail A (7,1 / 9,4 / 11,8 / 14,2 / 16,7 / 20,3 m, au lieu de 8 à 24 m ESTIMÉS), leur longueur (16,4 à 16,6 m), l'écart A/B (3,6 m au lieu de 3,2) et le jeu rail / voies (0,4 m). Voies dessinées à la main dans OSM, pas tout à fait parallèles (± 0,3 m) : moyenne des deux bouts.
 - **À corriger dans OSM** : les 6 voies ont `roller_coaster:track=entretienlayer=1_roller_coaster=track_…` (copier-coller cassé) ; mettre `roller_coaster:track=maintenance`.
 - Frein final 1580086193 en `brake_run`, rail du pont en `moving` : repères inchangés (noms par la spec `osm_brakes`).
 - Restent ESTIMÉS : course du rail A escamotable (3,2 m), vitesses du chariot et des manœuvres, profil en hauteur (aucun `ele`).

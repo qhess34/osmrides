@@ -21,13 +21,14 @@ Règles d'ajout d'attraction : `docs/NOUVELLE-ATTRACTION.md`. Détail technique 
 Aucune dépendance, aucun serveur : tout marche en ouvrant le fichier (`file://`), sans `fetch` ni modules ES. Table détaillée : `docs/ref/fichiers.md`.
 
 | Fichier | Rôle |
-|---|---|
-| `index.html`, `apropos.html`, `tutos.html`, `parc.html` | écran titre, présentation, leçons, plan du parc |
-| `jeu.html` | page de jeu ; charge `sites/<site>.*` puis `engine/*.js` |
+| `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre (type, lieu, élément : niveau à un seul choix sauté), présentation, leçons, plan du lieu |
+| `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre, présentation, leçons, plan du parc |
+| `jeu.html` | page de jeu `?type=parc&lieu=asterix&el=<el>` ; charge `lieux/<type>/<lieu>/<el>.*` puis `engine/*.js` |
 | `engine/*.js` | moteur générique (core, garage, state, queue, sim, ui, render, save), aucune coordonnée ni texte d'attraction |
-| `sites/<site>.data.js` | `OSM` généré, jamais édité à la main |
-| `sites/<site>.js` | `SITE` écrit à la main (référence : `zeus.js`) |
-| `sites/<site>.game.js` | `GAME` écrit par l'éditeur seulement |
+| `lieux/index.js` | catalogue type, lieu, éléments ; migration des sauvegardes |
+| `lieux/parc/asterix/<el>.data.js` | `OSM` généré, jamais édité à la main |
+| `lieux/parc/asterix/<el>.js` | `SITE` écrit à la main (référence : `zeus.js`) |
+| `lieux/parc/asterix/<el>.game.js` | `GAME` écrit par l'éditeur seulement |
 | `editor/` | éditeur local WYSIWYG (`editor/README.md`) |
 | `tools/` | génération (`make_site.py`), tests, build, PWA |
 | `docs/` | conception, notes par attraction, `ref/`, `journal/` |
@@ -43,8 +44,8 @@ Aucune dépendance, aucun serveur : tout marche en ouvrant le fichier (`file://`
 
 1. Extrait OSM de la zone (« Accès réseau »).
 2. Repérer tronçons `roller_coaster=track`, gare, file, sortie ; écrire `tools/specs/<site>.json`.
-3. `python3 tools/make_site.py extrait.osm tools/specs/<site>.json sites/<site>.data.js apercu.png` ; croisements ≥ 3,2 m, vitesse plausible.
-4. `sites/<site>.js` depuis `sites/zeus.js` ; capacité manquante : l'ajouter au moteur, générique, piloté par `SITE`.
+3. `python3 tools/make_site.py extrait.osm tools/specs/<el>.json lieux/parc/asterix/<el>.data.js apercu.png` ; croisements ≥ 3,2 m, vitesse plausible.
+4. `lieux/parc/asterix/<el>.js` depuis `lieux/parc/asterix/zeus.js` ; capacité manquante : l'ajouter au moteur, générique, piloté par `SITE`.
 5. Carte dans `index.html`, ligne dans `README.md`. Procédure complète : `docs/NOUVELLE-ATTRACTION.md`.
 
 ## Vérifier avant de dire que c'est fait
@@ -80,7 +81,7 @@ Playwright et Chromium sont préinstallés. Détail (boutons, sorties) : `docs/r
 ## Économie de tokens (obligatoire)
 
 - Commencer par `docs/ROADMAP.md` ; lire seulement la fiche `docs/ref/` utile, la section utile de `docs/manoeuvres.md` (grep).
-- Ne jamais lire `sites/*.data.js` ni `parc/parc.data.js` en entier.
+- Ne jamais lire `lieux/parc/asterix/*.data.js` ni `lieux/parc/asterix/plan.data.js` en entier.
 - Journal = `docs/journal/<mois>.md`, ajout en fin de fichier sans relire.
 - Une règle n'est écrite qu'à un endroit ; ailleurs on renvoie.
 - Captures : aucune pour la logique ; une petite (≈ 600×450, JPEG ≈ 70) par point visuel, regardée une fois ; un montage final `docs/plans/lot-<n>.jpg` < 200 Ko ; vignettes et tutos seulement en fin de grande étape ou sur demande.
@@ -92,7 +93,7 @@ Playwright et Chromium sont préinstallés. Détail (boutons, sorties) : `docs/r
 - `file.md` : file, visiteurs, évacuation, barrières, `QPW`.
 - `quai.md` : quai, portillons, travées, zones d'attente, gare.
 - `garage.md` : commande par zones, cantonnement, garage (suite : `docs/manoeuvres.md`).
-- `site.md` : clés `SITE` ; écrire ou corriger `sites/<site>.js`.
+- `site.md` : clés `SITE` ; écrire ou corriger `lieux/parc/asterix/<el>.js`.
 - `editeur.md` : éditeur et clés `GAME` ; toucher `game.js` ou l'éditeur.
 - `tests.md` : ids des boutons, sorties des tests, mobile, toits, son.
 - `fichiers.md` : table détaillée des fichiers, PWA, sauvegarde.

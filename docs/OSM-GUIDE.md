@@ -142,4 +142,4 @@ Hors de ces listes, un tag n'est pas lu. Toute évolution de `make_site.py` qui 
 
 ### Réimport et dérive
 
-`make_site.py` régénère tout le fichier `sites/<site>.data.js` ; il n'y a pas encore de réimport sélectif (lot 7). Avant d'accepter un réimport : comparer à l'ancien fichier (ids et versions), signaler au propriétaire tout objet dont la géométrie ou le tag a changé (exemple 19/11/2026 : rocher d'Hourra retagué `natural=bare_rock`, voie de Goudurix retouchée de 0,5 m au plus le 18/11).
+`make_site.py` régénère tout le fichier `lieux/parc/asterix/<el>.data.js` ; il n'y a pas encore de réimport sélectif (lot 7). Avant d'accepter un réimport : comparer à l'ancien fichier (ids et versions), signaler au propriétaire tout objet dont la géométrie ou le tag a changé (exemple 19/11/2026 : rocher d'Hourra retagué `natural=bare_rock`, voie de Goudurix retouchée de 0,5 m au plus le 18/11).

@@ -1,7 +1,7 @@
 'use strict';
 /* OzIris — configuration de l'attraction pour le moteur (engine/*.js).
    Coaster inversé Bolliger & Mabillard (Parc Astérix, 2012). Tracé, gare, file, garage (pont transbordeur et 3 voies de
-   maintenance) : sites/oziris.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/oziris-notes.md. */
+   maintenance) : lieux/parc/asterix/oziris.data.js (OpenStreetMap). Ce qui est estimé est signalé « ESTIMÉ » ; caractéristiques et sources : docs/oziris-notes.md. */
 const SITE=(()=>{
   const Q=OSM.paths.queue,PROM=OSM.paths.prom,QL=OSM.paths.qlink,QIN=OSM.paths.qin,XO=OSM.paths.xout;
   // File (OSM 1580173577 + 1073325805, mise à jour du 2026-11-18, changeset 192117430) : boucle ouest de (-14,1 ; 57,4) = Q[F1] à (-14,1 ; 56,1) = Q[F1B] (nœuds des barrières OSM B1) ;

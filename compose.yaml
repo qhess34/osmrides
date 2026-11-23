@@ -2,7 +2,7 @@
 #   export T2Z_UID=$(id -u) T2Z_GID=$(id -g)   # propriétaire des fichiers écrits (défaut 1000:1000)
 #   docker compose up -d                        # puis http://127.0.0.1:8787/
 #   docker compose down
-# Dépôt monté en lecture seule, sauf sites/ (seul dossier où l'éditeur écrit : sites/<site>.game.js). Port lié à 127.0.0.1 : invisible depuis le réseau.
+# Dépôt monté en lecture seule, sauf lieux/ (seul dossier où l'éditeur écrit : lieux/<type>/<lieu>/<el>.game.js). Port lié à 127.0.0.1 : invisible depuis le réseau.
 services:
   editeur:
     image: node:22-alpine
@@ -19,8 +19,8 @@ services:
         target: /depot
         read_only: true
       - type: bind
-        source: ./sites
-        target: /depot/sites
+        source: ./lieux
+        target: /depot/lieux
     ports:
       - "127.0.0.1:8787:8787"
     read_only: true

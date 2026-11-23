@@ -4,12 +4,12 @@ Jeux de gestion en 2D vue du dessus : vous êtes chef d'attraction. Jeux de fan 
 
 | Attraction | État | Lien |
 |---|---|---|
-| Tonnerre 2 Zeus (montagnes russes en bois) | jouable | `jeu.html?site=zeus` |
-| La Trace du Hourra (bobsleigh) | jouable (garage et pont transbordeur estimés) | `jeu.html?site=hourra` |
-| OzIris (coaster inversé) | jouable (profil, garage et quais estimés) | `jeu.html?site=oziris` |
-| Goudurix (acier à rails tubulaires, 7 inversions) | jouable (profil, inversions, file, garage et quais estimés) | `jeu.html?site=goudurix` |
+| Tonnerre 2 Zeus (montagnes russes en bois) | jouable | `jeu.html?type=parc&lieu=asterix&el=zeus` |
+| La Trace du Hourra (bobsleigh) | jouable (garage et pont transbordeur estimés) | `jeu.html?type=parc&lieu=asterix&el=hourra` |
+| OzIris (coaster inversé) | jouable (profil, garage et quais estimés) | `jeu.html?type=parc&lieu=asterix&el=oziris` |
+| Goudurix (acier à rails tubulaires, 7 inversions) | jouable (profil, inversions, file, garage et quais estimés) | `jeu.html?type=parc&lieu=asterix&el=goudurix` |
 
-Plan du parc entier : `parc.html` (carte OpenStreetMap déplaçable et zoomable ; chaque attraction dotée d'un simulateur l'ouvre d'un clic).
+Plan du parc entier : `plan.html` (carte OpenStreetMap déplaçable et zoomable ; chaque attraction dotée d'un simulateur l'ouvre d'un clic).
 
 ## Jouer
 
@@ -36,7 +36,7 @@ Pour un fichier unique autonome : `python3 tools/build.py zeus dist/zeus.html`.
   - `engine/sim.js` : trains, gare, parcours, météo, `step` (jeu continu), `act`
   - `engine/ui.js` : pupitre et interface DOM
   - `engine/render.js` : dessin canvas, caméra, boucle d'animation
-- `sites/<site>.data.js` : données OpenStreetMap générées. `sites/<site>.js` : configuration écrite à la main.
+- `lieux/parc/asterix/<el>.data.js` : données OpenStreetMap générées. `lieux/parc/asterix/<el>.js` : configuration écrite à la main.
 - `tools/make_site.py` + `tools/specs/<site>.json` : fabrication des données. `tools/build.py` : fichier unique.
 - `AGENTS.md` : consignes de travail. `docs/` : notes de conception.
 

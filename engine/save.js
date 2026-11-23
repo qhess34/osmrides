@@ -1,12 +1,12 @@
 'use strict';
 /* ══════════ SAUVEGARDE AUTOMATIQUE (générique, rien de propre à une attraction) ══════════
-   Clé localStorage : t2z.save.<site>.<mode> (mode : career | sandbox). Écrite à la fermeture / au changement de page (pagehide,
+   Clé localStorage : t2z.save.<type>.<lieu>.<el>.<mode> (mode : career | sandbox). Écrite à la fermeture / au changement de page (pagehide,
    visibilitychange, beforeunload, clic sur un lien), à chaque lien, et toutes les 30 s. Restaurée au chargement avant la 1re image.
    Le temps de jeu ne court pas page fermée. Tout accès au stockage est protégé : sans stockage, le jeu se joue normalement.
    Un champ ajouté à G ou à un train est sauvegardé tout seul (copie générique des valeurs simples). */
 (function(){
   // Les clés localStorage t2z.* et window.t2zSave gardent volontairement l'ancien nom du jeu (T2Z) : sauvegardes des joueurs.
-  const VER=1,KEY='t2z.save.'+SITE.id+'.'+MODE;
+  const VER=1,KEY=cleSauvegarde(SITE.type,SITE.lieu,SITE.id,MODE);
   const sig=[L.toFixed(1),trains.length,LANES.length,ZONES.map(z=>z.id).join(','),SEATS,SEGS.length,LOOPS.length,BLK.length,NCARS,Math.round(SEGS.reduce((n,s)=>n+s.len,0)),S_HOLD.toFixed(1)].join('|'); // géométrie (circuit, garage, zones, file, arrêt au frein final) : une sauvegarde d'une autre géométrie est ignorée
   const rd=()=>{try{return localStorage.getItem(KEY);}catch(e){return null;}};
   const del=()=>{try{localStorage.removeItem(KEY);return true;}catch(e){return false;}};
@@ -93,7 +93,7 @@
   $('bNew').addEventListener('click',()=>{$('mHelp').classList.add('hidden');show(true);});
   $('bNewCancel').addEventListener('click',()=>{show(false);$('mHelp').classList.remove('hidden');});
   for(const [id,m] of [['bNewCareer','career'],['bNewSandbox','sandbox']])$(id).addEventListener('click',()=>{
-    noSave=true;try{localStorage.removeItem('t2z.save.'+SITE.id+'.'+m);localStorage.setItem('t2z.mode',m);}catch(e){}
-    location.href='jeu.html?site='+encodeURIComponent(SITE.id)+'&mode='+m;});
+    noSave=true;try{localStorage.removeItem(cleSauvegarde(SITE.type,SITE.lieu,SITE.id,m));localStorage.setItem('t2z.mode',m);}catch(e){}
+    location.href='jeu.html?type='+SITE.type+'&lieu='+SITE.lieu+'&el='+encodeURIComponent(SITE.id)+'&mode='+m;});
   window.t2zSave={save,capture,KEY};
 })();

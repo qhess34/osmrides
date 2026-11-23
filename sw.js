@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
   const r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
   e.respondWith(caches.open(CACHE).then(async c => {
-    const hit = await c.match(r, { ignoreSearch: true });   // jeu.html?site=zeus -> jeu.html
+    const hit = await c.match(r, { ignoreSearch: true });   // jeu.html?type=parc&lieu=asterix&el=zeus -> jeu.html
     if (hit) return hit;
     try {
       const res = await fetch(r);

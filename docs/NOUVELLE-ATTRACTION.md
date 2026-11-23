@@ -8,7 +8,7 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/ref/*.md` 
 
 ## 1. Principe
 
-- Un seul moteur (`engine/*.js`) pour toutes les attractions. Une attraction = **des données** (`sites/<id>.data.js`, générées depuis OpenStreetMap) + **une configuration** (`sites/<id>.js`, écrite à la main). Rien de propre à une attraction dans le moteur : ni coordonnée, ni nom, ni texte.
+- Un seul moteur (`engine/*.js`) pour toutes les attractions. Une attraction = **des données** (`lieux/parc/asterix/<id>.data.js`, générées depuis OpenStreetMap) + **une configuration** (`lieux/parc/asterix/<id>.js`, écrite à la main). Rien de propre à une attraction dans le moteur : ni coordonnée, ni nom, ni texte.
 - Si l'attraction a besoin d'une capacité absente (nouveau type de véhicule, de garage, de file…), on l'ajoute au moteur **de façon générique, pilotée par `SITE`**, on la documente ici, et on revérifie toutes les attractions existantes.
 - Le joueur est toujours **chef d'attraction** : il ouvre la file, commande le pupitre, valide les départs, gère les pannes, la météo et le garage. Pas de construction de parc, pas de gestion de boutiques.
 
@@ -68,14 +68,14 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/ref/*.md` 
 - Interface : thème de `jeu.html` (variables CSS `--bg #0f1626`, `--panel #18223a`, `--gold #f2c14e`, `--ok`, `--warn`, `--bad`, police système). Pupitre en boutons physiques (`.pb`, `.sel`, voyants `.lamp`), plaques de libellé `.plate`. Ne pas créer un autre style.
 - **Synoptique** (commun, rien à écrire par attraction) : plan technique du circuit en haut à gauche de la vue (`drawSyn()`, `engine/render.js`), alimenté par la voie, les repères `blk<n>`, `SITE.yard` et l'état de jeu ; bouton `#bSyn`. Il remplace le profil en hauteur. Pas de pictogramme : traits fins, couleurs sourdes.
 - **Plein écran et mobile** (commun, rien à écrire par attraction) : bouton « Plein écran » / « Quitter le plein écran » (`#bFs`, texte seulement) dans `#cams` ; API Fullscreen sur `#view`, repli CSS (la carte remplit la fenêtre) si indisponible (iOS) ; en plein écran le pupitre devient un tiroir (`#bDesk`) et la barre `#fsBar` donne heure, file, quai, dernier message, vitesse. Sous 900 px (ou paysage de téléphone) : carte pleine hauteur, pupitre et journal en tiroirs par les onglets `#tabs` (Carte / Pupitre / Journal), cibles tactiles >= 44 px, aucun défilement horizontal, `touch-action:none` sur le canevas (un doigt = déplacement, deux doigts = zoom, rayon de toucher >= 24 px sur barrières et numéros du synoptique). Tout nouveau contrôle doit respecter ces règles et rester utilisable au doigt ; ne pas ajouter de pictogramme.
-- Carte du parc (`parc.html`) : même palette ; les attractions avec simulateur sont en doré.
+- Carte du parc (`plan.html`) : même palette ; les attractions avec simulateur sont en doré.
 
 ## 4. Fidélité et honnêteté
 
 - Tracé, gare, file, sortie, garage : **pris dans OpenStreetMap**. Origine : `[lat, lon]` dans `tools/specs/<id>.json`, x vers l'est, z vers le sud.
 - **Ce qu'on lit dans OSM** (`tools/make_site.py`) : tronçons du circuit et leurs zones (`roller_coaster:track` ; `waiting`, `brake_run`, `moving` : zones où un train peut attendre, issue #33 ; frein final = dernière zone avant la gare ou avant le rail mobile, précédentes = freins de bloc), voies décoratives (tronçon `roller_coaster=track` non relié au circuit : `OSM.deco`, voie immobile), gares (`roller_coaster:station=load|unload`, quais déduits : un de chaque côté), salle de contrôle (bâtiment « Salle de contrôle »), hauteurs relevées (`ele` des nœuds de voie, sinon profil ESTIMÉ), figures (`roller_coaster:element`), tunnels (plusieurs, `layer` pour enterré / couvert), looping dessiné (`inversions … osm:true`), entrées / sorties (`entrance=*`), chemins couverts, zones piétonnes, voie de maintenance et nœud `railway=switch`. Quand le propriétaire met OSM à jour : nouvel extrait, comparer avec l'ancien (way ids, tags), refaire `track_ways`, `osm_brakes` et `paths` de la spec, recaler le profil (mêmes hauteurs aux mêmes endroits), puis `SITE`. Si OSM contredit une réponse du propriétaire, garder la réponse et poser la question.
 - **Filtrer une mise à jour OSM du propriétaire** : `/api/0.6/changesets?bbox=<parc>&time=<veille>T00:00:00Z` liste les changesets récents de la zone ; garder ceux de son compte (auteur des ways cités : `/api/0.6/way/<id>` → `user`, `changeset`) ; `/api/0.6/changeset/<id>/download` (osmChange) donne la liste exacte des objets créés / modifiés / supprimés : s'en servir pour savoir quoi intégrer (tronçons de voie découpés à ajouter à `track_ways`, chemins de file à chaîner dans `paths`, nouveaux décors), puis refaire un extrait frais de la carte.
-- Tout ce qui est estimé (hauteurs, profil, longueur des wagons, couleurs, position du pont, sens des voies, vitesses) est **commenté comme estimé** dans `sites/<id>.js` ou dans la spec, et **annoncé au propriétaire**. Jamais présenté comme mesuré.
+- Tout ce qui est estimé (hauteurs, profil, longueur des wagons, couleurs, position du pont, sens des voies, vitesses) est **commenté comme estimé** dans `lieux/parc/asterix/<id>.js` ou dans la spec, et **annoncé au propriétaire**. Jamais présenté comme mesuré.
 - Caractéristiques (longueur, hauteur, vitesse, nombre de trains) : sources citées dans `docs/<id>-notes.md` ; si elles se contredisent, le dire.
 - En cas de doute sur l'exploitation réelle (garage, sens d'une voie), **poser la question au propriétaire** (noter la question dans `docs/ROADMAP.md`) plutôt qu'inventer.
 
@@ -84,11 +84,11 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/ref/*.md` 
 0. **Préparer OSM** avec `docs/OSM-GUIDE.md` (§6 : liste de préparation).
 
 1. **Notes** : créer `docs/<id>-notes.md` (caractéristiques, sources, repères OSM, questions ouvertes).
-2. **Données** : extrait OSM (`https://api.openstreetmap.org/api/0.6/map?bbox=…`), spec `tools/specs/<id>.json` (`track_ways`, `osm_brakes` si les zones sont étiquetées, `paths` en listes de tronçons pour la file et la sortie), puis `python3 tools/make_site.py extrait.osm tools/specs/<id>.json sites/<id>.data.js apercu.png` : relire les zones OSM et repères imprimés. Croisements ≥ 3,2 m d'écart, vitesse plausible. Plan du parc : `python3 tools/make_park.py extrait.osm parc/parc.data.js` (tronçons des circuits lus dans les specs). Plan « tracé complet » : `python3 tools/make_plan.py <id> docs/plans/<id>-trace-complete.png "Titre"`.
-3. **Configuration** : `sites/<id>.js` en partant de `sites/zeus.js` (référence) ; garage dans `SITE.yard`, places par wagon dans `car.seats`. Ne jamais éditer `sites/<id>.data.js` à la main.
+2. **Données** : extrait OSM (`https://api.openstreetmap.org/api/0.6/map?bbox=…`), spec `tools/specs/<id>.json` (`track_ways`, `osm_brakes` si les zones sont étiquetées, `paths` en listes de tronçons pour la file et la sortie), puis `python3 tools/make_site.py extrait.osm tools/specs/<id>.json lieux/parc/asterix/<id>.data.js apercu.png` : relire les zones OSM et repères imprimés. Croisements ≥ 3,2 m d'écart, vitesse plausible. Plan du parc : `python3 tools/make_park.py extrait.osm lieux/parc/asterix/plan.data.js` (tronçons des circuits lus dans les specs). Plan « tracé complet » : `python3 tools/make_plan.py <id> docs/plans/<id>-trace-complete.png "Titre"`.
+3. **Configuration** : `lieux/parc/asterix/<id>.js` en partant de `lieux/parc/asterix/zeus.js` (référence) ; garage dans `SITE.yard`, places par wagon dans `car.seats`. Ne jamais éditer `lieux/parc/asterix/<id>.data.js` à la main.
 4. **Moteur** : seulement si nécessaire, générique, documenté ici, toutes les attractions revérifiées.
-5. **Branchement** : vignette dans l'écran de choix de `index.html` (carte `a.card[data-site]` + capture `img/accueil/<id>.jpg` 630x360), une note dans l'article « Garer et sortir un train » de `tutos.html` (et la file / la boucle si elle en a une),  `site` renseigné pour l'attraction dans `parc/parc.data.js` (via `tools/make_park.py`) et lien depuis `parc.html`, ligne dans `README.md`, tâche cochée dans `docs/ROADMAP.md`.
-5 bis. **Hors ligne** : rien à faire si les fichiers sont dans `sites/` (le workflow injecte la liste dans `sw.js` via `tools/make_sw.py`) ; seulement si un nouveau dossier ou fichier racine est créé, l'ajouter à la copie du workflow `pages.yml`.
+5. **Branchement** : vignette dans l'écran de choix de `index.html` (carte `a.card[data-el]` + capture `img/accueil/<id>.jpg` 630x360), une note dans l'article « Garer et sortir un train » de `tutos.html` (et la file / la boucle si elle en a une),  `site` renseigné pour l'attraction dans `lieux/parc/asterix/plan.data.js` (via `tools/make_park.py`) et lien depuis `plan.html`, ligne dans `README.md`, tâche cochée dans `docs/ROADMAP.md`.
+5 bis. **Hors ligne** : rien à faire si les fichiers sont dans `lieux/` (le workflow injecte la liste dans `sw.js` via `tools/make_sw.py`) ; seulement si un nouveau dossier ou fichier racine est créé, l'ajouter à la copie du workflow `pages.yml`.
 6. **Vérification** (voir § 6), puis commit.
 
 ## 6. Définition de « fait »
@@ -104,8 +104,8 @@ Lire aussi : `AGENTS.md` (organisation du code, vérification), `docs/ref/*.md` 
 
 ## 7. Économie de tokens
 
-- Ne jamais lire en entier `sites/*.data.js` ni `parc/parc.data.js`.
-- Lire seulement le module du moteur concerné ; partir de `sites/zeus.js` comme modèle.
+- Ne jamais lire en entier `lieux/parc/asterix/*.data.js` ni `lieux/parc/asterix/plan.data.js`.
+- Lire seulement le module du moteur concerné ; partir de `lieux/parc/asterix/zeus.js` comme modèle.
 - Une attraction = une session ; la conception moteur dans une session séparée si elle est lourde.
 
 ## 8. Tenue de ce document
