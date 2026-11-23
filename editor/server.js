@@ -3,7 +3,7 @@
    - sert en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) : editor/ et engine/ depuis cette copie d'osmrides (librairie,
      docs/versions.md : l'éditeur et le moteur d'une même version vont ensemble), le reste depuis le dépôt de jeu T2Z_ROOT (jeu.html, lieux/) ;
    - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
-   - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site>, <site> = <type>/<lieu>/<el> (docs/hierarchie.md) ;
+   - API : GET /api/couches (parties d'éditeur des couches du moteur), GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site>, <site> = <type>/<lieu>/<el> (docs/hierarchie.md) ;
    - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant), après validation (editor/schema.js) ; aucune opération Git.
    Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt de jeu, défaut : ce dépôt). */
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -22,6 +22,8 @@ const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referr
 const NOM = /^[a-z0-9-]{1,40}$/, dirs = d => { try { return fs.readdirSync(d, { withFileTypes: true }).filter(e => e.isDirectory() && NOM.test(e.name)).map(e => e.name); } catch (e) { return []; } };
 const siteIds = () => dirs(LIEUX).flatMap(t => dirs(path.join(LIEUX, t)).flatMap(l => fs.readdirSync(path.join(LIEUX, t, l))
   .filter(f => /^[a-z0-9-]{1,40}\.js$/.test(f) && f !== 'lieu.js' && !/\.(data|game)\.js$/.test(f)).map(f => t + '/' + l + '/' + f.slice(0, -3)))).sort();
+// Couches du moteur de cette version qui ont une partie d'éditeur (docs/ARCHITECTURE.md D14) : engine/<couche>/schema.js (sections de GAME), editeur.js (panneaux)
+const couches = () => dirs(path.join(LIB, 'engine')).map(nom => ({ nom, fichiers: ['schema.js', 'editeur.js'].filter(f => fs.existsSync(path.join(LIB, 'engine', nom, f))) })).filter(c => c.fichiers.length);
 const gamePath = id => path.join(LIEUX, id + '.game.js');
 const checkSite = id => typeof id === 'string' && /^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(id) && siteIds().includes(id);
 
@@ -67,6 +69,7 @@ const server = http.createServer(async (req, res) => {
         if (!/^application\/json/.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'JSON attendu' });
       }
       if (req.method === 'GET' && p === '/api/osm/status') return send(res, 200, OSM.status());
+      if (req.method === 'GET' && p === '/api/couches') return send(res, 200, couches());
       const mo = /^\/api\/osm\/send\/([^/]+\/[^/]+\/[^/]+)$/.exec(p);
       if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1].split('/')[2], await body(req)); /* tools/specs/<el>.json */ return send(res, r.code, r.body); }
       const m = /^\/api\/(sites|game|diff)(?:\/([^/]+\/[^/]+\/[^/]+))?$/.exec(p);

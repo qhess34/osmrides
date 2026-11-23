@@ -1,36 +1,54 @@
 'use strict';
+/* Noyau du moteur OSMrides (jeu de fan, non officiel ; docs/ARCHITECTURE.md D14) : commun à tous les types de jeux (carte, visiteurs, file, zone d'attente, météo,
+   partie, sauvegarde). Le lieu est décrit par OSM (données générées) et SITE (configuration), chargés avant le moteur ; le type d'attraction est une couche
+   inscrite par extension(). Unités : mètres, secondes. */
+const $=id=>document.getElementById(id);
+// Données du jeu écrites par l'éditeur (lieux/<type>/<lieu>/<el>.game.js, `const GAME={…}`, facultatif, docs/ARCHITECTURE.md D1) : priorité GAME > SITE > calcul du moteur.
+// Aperçu de l'éditeur (cadre `?editeur=`) : le brouillon complet voyage dans window.name (`t2z-draft:<JSON>`), pour que les modifications non enregistrées survivent au rechargement du jeu.
+const GM=(()=>{let g=typeof GAME!=='undefined'&&GAME&&typeof GAME==='object'?GAME:{};try{if(/[?&]editeur=/.test(location.search)&&/^t2z-draft:/.test(window.name)){const d=JSON.parse(window.name.slice(10));if(d&&typeof d==='object')g=d;}}catch(e){}return g;})();
+/* ══════════ COUCHES (docs/ARCHITECTURE.md D14) ══════════
+   Le noyau ne connaît aucun type d'attraction : chaque couche (engine/voies/, engine/montagnes-russes/…) s'inscrit par extension({nom, …}), une ou plusieurs fois,
+   depuis n'importe lequel de ses fichiers ; le noyau appelle ce qui est inscrit, dans l'ordre d'inscription. Champs reconnus :
+   - fichiers : {<étape> : [noms]} (manifeste <couche>/extension.js, lu par engine/moteur.js) ; surcharges : clés de SITE que GAME.site peut surcharger ;
+   - actions : {nom : fonction(arg)} (boutons data-act, act) ; sauvegarde : {horsEtat, signature(n), capture(d), marcheur(k, o), finMarcheur(o), restaure(d), cible(i)} ;
+     embarquement : repère et ligne du quai de la zone d'attente (engine/noyau/attente.js) ; textes : {bilanCorrect, bilanDifficile} ;
+   - fonctions (appel, vrai, fournit) : step(dt), bacASable(), ui(), hud(), bilan(), accueil(), alarme(), aEvacuer(), evacuer(), escaliers(), hauteurSous(P, r),
+     surVoieDeGarage(P), couvreVoie(P), sousVoie(P), pointsAbri(), presDeLaVoie(x, z, r), degagement(S), horsGardeCorps(x, z), hauteurRocher(P), angleQuai(),
+     surQuai(k), dessin(étape, s, dt, dry, vis), objets(items, dt, vis), dessinObjet(o), boutonsCamera(), suivi(i), sons(), clicEcran(x, y), surEcran(x, y). */
+const EXTENSIONS=[];
+function extension(def){if(def.surcharges)fusionSite(def.surcharges);EXTENSIONS.push(def);return def;}
+function appel(nom,...a){const r=[];for(const e of EXTENSIONS)if(typeof e[nom]==='function')r.push(e[nom](...a));return r;} // résultats de chaque couche qui déclare `nom`
+const vrai=(nom,...a)=>appel(nom,...a).some(Boolean); // une couche au moins répond oui
+function fournit(nom,def,...a){for(const e of EXTENSIONS)if(typeof e[nom]==='function'){const v=e[nom](...a);if(v!==undefined)return v;}return def;} // première réponse, sinon def
+// GAME.site (docs/ARCHITECTURE.md D9) : surcharges partielles de SITE, liste blanche déclarée par chaque couche (extension({surcharges})), fusionnées à son inscription,
+// avant tout calcul de la couche (objets fusionnés en profondeur, tableaux remplacés). Clé hors liste : ignorée (l'éditeur la refuse, editor/schema.js).
+const SITE_BASE={}; // valeurs d'origine de SITE (affichées par l'éditeur)
+function fusionSite(cles){cles.forEach(k=>{if(typeof SITE!=='undefined'&&SITE[k]!==undefined)SITE_BASE[k]=JSON.parse(JSON.stringify(SITE[k]));});
+  if(GM.site&&typeof GM.site==='object'&&typeof SITE!=='undefined'){const mg=(a,b)=>{for(const k of Object.keys(b)){const v=b[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))mg(a[k],v);else a[k]=JSON.parse(JSON.stringify(v));}};
+    cles.forEach(k=>{if(k in GM.site){const v=GM.site[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&SITE[k]&&typeof SITE[k]==='object'&&!Array.isArray(SITE[k]))mg(SITE[k],v);else SITE[k]=JSON.parse(JSON.stringify(v));}});}}
+class V3{
+  constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z;}
+  set(x,y,z){this.x=x;this.y=y;this.z=z;return this;}
+  copy(v){this.x=v.x;this.y=v.y;this.z=v.z;return this;}
+  clone(){return new V3(this.x,this.y,this.z);}
+  addScaledVector(v,k){this.x+=v.x*k;this.y+=v.y*k;this.z+=v.z*k;return this;}
+  multiplyScalar(k){this.x*=k;this.y*=k;this.z*=k;return this;}
+  normalize(){const l=Math.hypot(this.x,this.y,this.z)||1;return this.multiplyScalar(1/l);}
+  lerpVectors(a,b,k){this.x=a.x+(b.x-a.x)*k;this.y=a.y+(b.y-a.y)*k;this.z=a.z+(b.z-a.z)*k;return this;}
+  crossVectors(a,b){const x=a.y*b.z-a.z*b.y,y=a.z*b.x-a.x*b.z,z=a.x*b.y-a.y*b.x;return this.set(x,y,z);}
+}
+const rnd=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,k)=>a+(b-a)*k;
+
 /* ══════════ ÉTAT DU JEU ══════════ */
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
 /* Mode de jeu : carrière (budget, météo, pannes) ou bac à sable (?mode=sandbox, ou choix mémorisé t2z.mode) : ni budget, ni météo, ni pannes. */
 const MODE=(()=>{const m=/[?&]mode=([a-z]+)/.exec(location.search);if(m)return m[1]==='sandbox'?'sandbox':'career';try{return localStorage.getItem('t2z.mode')==='sandbox'?'sandbox':'career';}catch(e){return 'career';}})();
-const G={sandbox:MODE==='sandbox',time:600,played:0,wage:0,speed:1,money:3000,sat:75,open:false,auto:true,estop:false,
-  queue:[],walkers:[],plat:new Array(SEATS).fill(null),platT:0,platR:[],platRT:0,gatesOpen:false,gate:0,resOpen:false,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,crowd:1,patL:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,
-  wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false,job:null,
-  stats:null,over:false}; // jeu continu : stats cumulées, aucune journée (engine/sim.js step)
+const G={sandbox:MODE==='sandbox',time:600,played:0,wage:0,speed:1,money:3000,sat:75,open:false,
+  queue:[],walkers:[],crowd:1,patL:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,job:null,
+  stats:null,over:false}; // jeu continu : stats cumulées, aucune journée (engine/noyau/partie.js step) ; chaque couche y ajoute son propre état (Object.assign(G, …))
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});
 G.stats=newStats();
-function mkTrain(i,name,col,col2,wear,st){
-  return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,
-    depReq:false,toPre:false,fdrive:0,outReq:false,hold:0,fault:null,hs:false,entering:false,inBrake:false,inLift:false,failAt:-1,screamed:false,arms:0,rc:new Array(NCARS).fill(0),rcT:0}; // sécurités : rc[k] = ouverture du wagon k (0 verrouillées … 1 ouvertes, animée) ; rcT = wagons à garder ouverts (bits) après le verrouillage, jusqu'au passage d'un opérateur
-}
-/* Places d'attente des trains au départ (issue #32) : la gare (train 1), les voies de garage (cap), puis, sur le circuit, le frein avant gare (Pre), le frein final
-   (Fin, S_HOLD) et les freins de bloc du dernier au premier. TRAIN_MAX = nombre de ces places : SITE.trains (ou GAME.site.trains) est ramené à TRAIN_MAX
-   (l'éditeur refuse au-delà, editor/schema.js validate(g, {trainMax})). Les tronçons OSM waiting / brake_run / moving / block_brake donnent ces zones. */
-/* Retour d'un train sur le circuit, arrêté au point d'arrêt d'une zone d'attente (sortie de garage, places de départ TRAIN_SPOTS) : état de la zone (frein final :
-   déjà passé ses freins ; frein de bloc : arrêté au frein, roues de propulsion) ; la zone le relâche ensuite selon ses règles (cantonnement, appareil). */
-function placeAt(t,z){t.st='run';t.s=zStop(z);t.v=0;t.entering=false;t.toPre=false;t.fdrive=0;t.bgo=0;t.brs=0;t.bst=0;t.blk=false;
-  if(z==='Fin'){t.inBrake=true;t.hold=1;}else if(z==='Pre'){t.hold=0;}else{const i=+z.slice(1)-1;t.blk=true;if(BDRV[i])t.bst=i+1;}}
-const TRAIN_SPOTS=[].concat(PSB?[{s:S_PSB,z:'Pre'}]:[],[{s:S_HOLD,z:'Fin'}],BLK.map((b,i)=>({s:b,z:'B'+(i+1),i})).reverse());
-const TRAIN_MAX=1+LANES.reduce((n,l)=>n+(l.cap||1),0)+TRAIN_SPOTS.length;
-if(SITE.trains.length>TRAIN_MAX){console.warn('SITE.trains : '+SITE.trains.length+' trains pour '+TRAIN_MAX+' places d\'attente, les suivants sont ignorés');SITE.trains=SITE.trains.slice(0,TRAIN_MAX);}
-const trains=SITE.trains.map((c,i)=>mkTrain(i,c.name,c.col,c.col2,c.wear,i?'garage':'station'));
-// Trains au garage au départ : voie SITE.trains[i].lane (1…n) si elle a de la place, sinon première voie qui en a ; garage plein : places du circuit (TRAIN_SPOTS)
-{const n=LANES.map(()=>0);let k=0;trains.forEach((t,i)=>{if(t.st!=='garage')return;const c=SITE.trains[i].lane,free=j=>j>=0&&j<LANES.length&&n[j]<(LANES[j].cap||1);
-  const j=free(c-1)?c-1:LANES.findIndex((l,q)=>free(q));
-  if(j>=0){t.lane=j;t.g=LANES[j].stop-n[j]*GSTEP;n[j]++;return;}
-  const P=TRAIN_SPOTS[k++];placeAt(t,P.z);t.lane=0;t.g=0;});} // arrêté à son point de freinage, freins serrés
-const count=t=>t.seats.reduce((n,s)=>n+(s?1:0),0), seated=t=>t.seats.reduce((n,s)=>n+(s&&s.on?1:0),0);
 const fmtTime=m=>{m=Math.floor(m);return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');};
 function log(msg,cls){
   msg=msg.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu,'').trim();
@@ -120,60 +138,12 @@ const sfx=(()=>{
     }};
 })();
 
-/* ══════════ BLOCS, DÉPARTS, MAINTENANCE ══════════ */
-function stationBusy(self){
-  return trains.some(o=>o!==self&&(o.st==='station'||(YZ==='St'&&yardBusy(o))||(o.st==='run'&&(o.entering||o.s<S_ST+TLEN+2))));
-}
-// Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
-const LIFT_NEXT=BLK.length?BLK[0]:L; // fin de la zone qui suit le lift : 1er frein de bloc, sinon le frein final (fin du circuit) ; le train arrivé en haut du lift y est retenu tant que cette zone est occupée (SITE.singleCourse : ancien réglage, ignoré, devenu le comportement par défaut)
-const blkEnd=i=>i+1<BLK.length?BLK[i+1]:L;
-const onRaSt=o=>RA&&o.st==='run'&&o.s>S_PRE+.3&&o.s<R1+TLEN; // pont droit à rail mobile : o est (en partie) sur le rail mobile du parcours (zone de stockage RA)
-const onPsb=o=>PSB&&o.st==='run'&&(o.toPre||o.s>S_HOLD+.5); // o est sur le frein avant gare ou s'y rend (zone de stockage Pre)
-// frein avant gare occupé : train arrêté dessus, qui s'y rend, ou qui en sort vers la gare (arrière pas encore entré)
-const preBusy=self=>trains.some(o=>o!==self&&o.st==='run'&&(o.toPre||o.s>PSB_A-.5||o.s<TLEN+.3));
-const aheadBusy=t=>PSB?preBusy(t):stationBusy(t); // section après le frein final / le rail mobile : frein avant gare s'il existe, sinon la gare
-function occupied(a,b,self){
-  if(b>=L&&(RA||PSB)){ // dernier canton : frein final, rail mobile et frein avant gare stockent un train chacun (le suivant attend au frein final)
-    const z=trains.filter(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN);
-    return z.some(o=>!onRaSt(o)&&!onPsb(o))||yardBlocks(self,b);}
-  return trains.some(o=>o!==self&&o.st==='run'&&o.s>a&&o.s<b+TLEN)||yardBlocks(self,b); // canton qui mène à la zone de raccordement du garage (issue #36) ; train porté par le chariot : seulement chariot en ligne (yardBlocks, engine/garage.js)
-}
-function blockReason(t){
-  if(G.estop)return "arrêt d'urgence";
-  if(G.liftOff)return 'lift à l\'arrêt';
-  if(HOLD_Z==='St'&&devOff())return DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de retenue : la gare est la dernière zone d'attente avant l'appareil (HOLD_Z, engine/garage.js)
-  if(HOLD_Z==='St'&&trains.some(yardBusy))return 'manœuvre au garage';
-  if(G.liftBroken)return 'lift en panne';
-  if(G.job&&G.job.lock)return 'maintenance en cours';
-  if(G.wear.track>=100)return 'voie hors service';
-  if(trains.some(o=>o!==t&&o.st==='run'&&o.s>=S_ST&&o.s<S_LIFT0))return 'zone avant-lift occupée'; // un train attend au pied du lift ; un train sur le lift n'empêche pas de partir (le suivant attend au pied)
-  return '';
-}
-const liftBusy=t=>trains.some(o=>o!==t&&o.st==='run'&&o.s>=S_LIFT0&&o.s<S_REL); // un autre train est sur le lift (ou retenu en haut) : un seul train à la fois sur le lift
-const parked=t=>t.st==='garage'||t.st==='station';
-const held=t=>t.st==='run'&&t.v===0&&(zoneOf(t.s)==='brake'||t.blk);
-const JOBS={
-  liftFix:{label:'Dépannage du lift',dur:18,cost:250,ok:()=>G.liftBroken},
-  chainRev:{label:'Révision de la chaîne',dur:30,cost:450,lock:true,ok:()=>!trains.some(o=>o.st==='run'&&o.s>=S_ST&&o.s<S_REL)},
-  trackRev:{label:'Entretien de la voie',dur:55,cost:900,lock:true,ok:()=>trains.every(o=>parked(o)||held(o))},
-  brakeFix:{label:'Déblocage des freins',dur:14,cost:200,ok:()=>G.brakeFault},
-  brakeRev:{label:'Révision des freins',dur:25,cost:350,lock:true,ok:()=>trains.every(parked)},
-  trainRev:{label:'Révision',dur:40,cost:600,ok:t=>t.st==='garage'&&!t.mv},
-  rearm:{label:'Réarmement des lapbars',dur:8,cost:0,ok:t=>t.fault==='lapbars'}
-};
+/* ══════════ TRAVAUX DE MAINTENANCE ══════════
+   JOBS[type] = {label, dur (s), cost (€), lock (exploitation bloquée), ok(t) (possible ?), fin(t) (effet)}, déclarés par les couches ; t : cible facultative (un train…). */
+const JOBS={};
 function startJob(type,t){
   const j=JOBS[type];if(G.job||!j.ok(t))return;if(t)t.outReq=false;
   pay(j.cost);G.job={type,t,rem:j.dur,dur:j.dur,lock:!!j.lock,label:j.label+(t?' — '+t.name:'')};
   log('🔧 '+G.job.label+' en cours…');
 }
-function finishJob(){
-  const {type,t}=G.job;G.job=null;
-  if(type==='liftFix'){G.liftBroken=false;G.wear.chain=Math.max(0,G.wear.chain-15);log('Lift dépanné, la chaîne repart.','good');}
-  if(type==='chainRev'){G.liftBroken=false;G.wear.chain=0;log('Chaîne du lift révisée.','good');}
-  if(type==='trackRev'){G.wear.track=0;log('Voie remise en état.','good');}
-  if(type==='brakeFix'){G.brakeFault=false;G.wear.brake=Math.max(0,G.wear.brake-15);log('Freins débloqués.','good');}
-  if(type==='brakeRev'){G.brakeFault=false;G.wear.brake=0;log('Freins révisés.','good');}
-  if(type==='trainRev'){t.wear=0;t.hs=false;t.fault=null;log(t.name+' révisé, prêt à rouler.','good');}
-  if(type==='rearm'){t.fault=null;t.phase='ready';for(const o of OPS)o.ok=true;log('Lapbars réarmés sur '+t.name+'.','good');}
-}
-
+function finishJob(){const {type,t}=G.job;G.job=null;JOBS[type].fin(t);}

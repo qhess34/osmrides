@@ -1,4 +1,5 @@
 'use strict';
+/* ══════════ PUPITRE PAR ZONES, CARTES DES TRAINS, VOYANTS ══════════ */
 function bar(id,v){$(id).style.width=v+'%';$(id).style.background=v<50?'var(--ok)':v<80?'var(--warn)':'var(--bad)';$(id+'T').textContent='Usure '+Math.round(v)+' %';}
 function trainStatus(t){
   const n=count(t);
@@ -20,19 +21,38 @@ function trainStatus(t){
   return 'Entrée en gare';
 }
 const lamp=(id,st)=>{$(id).className='lamp'+(st===2?' err':st===1?' occ':'');};
-function ui(){
-  $('hTime').textContent=fmtTime(G.time);
-  $('hWx').textContent={clear:'Beau temps',rain:'Pluie',warn:'Orage en approche',storm:'ORAGE'}[G.wx.type];
-  $('hMoneyBox').style.display=G.sandbox?'none':'';$('hMode').style.display=G.sandbox?'':'none';$('hMoney').textContent=Math.round(G.money).toLocaleString('fr-FR')+' €';
-  $('hSat').textContent=Math.round(G.sat)+' %';
+$('trains').innerHTML=trains.map(t=>`<div class="card">
+  <div class="name"><span class="dot" style="background:${t.col}"></span>${t.name}</div>
+  <div class="st" id="tSt${t.i}"></div>
+  <div class="bar"><i id="tW${t.i}"></i><span id="tW${t.i}T"></span></div>
+  <div class="row">
+    <button id="tR${t.i}" data-act="revise" data-arg="${t.i}">Réviser (600 €)</button>
+    <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer lapbars</button>
+  </div></div>`).join('');
+/* Pupitre par zones : sections Gare, Lift, Zones de freinage, Garage (ids : AGENTS.md) */
+{const zb=(z,c,cls,txt,ti)=>`<button class="pb sq sm ${cls}" id="z${z}_${c}" data-act="zone" data-arg="${z}:${c}" title="${ti}">${txt}</button>`,E='<span></span>';
+  const head=`<div class="zrow"><span></span><span class="plate">Mode</span><span class="plate">Freins</span><span class="plate">Avant</span><span class="plate">Arrière</span><span class="plate">Arrêt</span></div>`;
+  const row=Z=>{const z=Z.id,nm=`<div class="plate zn"><span class="zl" id="lz${z}"></span>${Z.name}</div>`;
+    if(z==='Lift')return `<div class="zrow">${nm}${E}${zb(z,'on','green','MAR','Lift : marche')}${zb(z,'off','amber','ARR','Lift : arrêt (la chaîne s\'arrête, le train sur le lift y reste)')}${E}${E}</div>`;
+    return `<div class="zrow">${nm}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
+      +(Z.brake?zb(z,'k','amber','F','Freins de la zone : serrer / relâcher (relâchement refusé si la section suivante est occupée)'):z==='St'?'<span class="plate" id="zSt_fr" title="Freins de gare : serrés automatiquement tant qu\'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)">AUTO</span>':E)
+      +(Z.drive?zb(z,'f','green','AV','Moteurs de la zone : avancer le train qui s\'y trouve')+(Z.drive==='fwd'?E:zb(z,'b','green','AR','Moteurs de la zone : reculer le train qui s\'y trouve'))+zb(z,'x','amber','STOP','Moteurs de la zone : arrêt'):E+E+E)+'</div>';};
+  const lrow=Z=>`<div class="zrow"><div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>${E}`+zb(Z.id,'k','amber','F','Freins forcés de la voie : serrer (arrêt immédiat du train qui entre ou sort, Dispatch refusé) / relâcher (reprise au Dispatch)')+zb(Z.id,'d','green disp','DISPATCH','Dispatch : '+DEVN.toLowerCase()+' en place sur cette voie, fait entrer le train prêt (zone porteuse) ou sortir le train de tête vers '+DEVL+' ; le sens est choisi selon la position de l\'appareil')+'</div>';
+  const sec=(t,k,x,h=1)=>`<div class="dsec"><span>${t}</span>${x||''}</div>`+(h?head:'')+ZONES.filter(Z=>Z.sec===k).map(row).join('');
+  $('deskZones').innerHTML=sec('Gare','st')+sec('Lift','lift','',0)
+    +sec('Zones de freinage','brk','<button class="pb sq sm blue" id="zAuto" data-act="zauto" title="Toutes les zones de freinage en AUTO">TOUT AUTO</button>')
+    +`<div class="dsec"><span>Garage</span></div><div class="deskrow"><div class="ctl" style="flex:2"><div class="pair" id="yPos"></div><div class="plate"><span id="yName"></span><br><span id="yState"></span></div></div></div>`
+    +(LANES.length?'<div class="zrow"><span></span><span></span><span class="plate">Freins</span><span class="plate" style="grid-column:4/-1">Voie</span></div>':'')+ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
+$('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${p===PG?'position G, rail de garage sur le circuit':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit'}">${posId(p)}</button>`).join('');
+$('yName').textContent=DEVN;
+if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');
+$('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=(SITE.helpGarage||'')+(SITE.helpGarage&&LANES.length?' Le bouton F de chaque voie force ses freins : serrés, ils arrêtent aussitôt le train qui entre ou sort et Dispatch est refusé ; relâchés, la reprise se fait au Dispatch.':''); // phrase commune (issue #11)
+
+const inSynXY=(x,y)=>{const b=SYN.box;if(!synOn||!b)return false;return x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3];}; // point de l'écran sur le synoptique
+extension({nom:'montagnes-russes',
+  ui(){ // pupitre, voyants, trains (engine/noyau/interface.js ui)
   const active=trains.filter(t=>t.st!=='garage').length;
-  $('hQueue').textContent=G.queue.length+'/'+Math.floor(QLEN/SP);
   $('hWait').textContent=active?Math.round((G.queue.length+(G.platR||[]).filter(r=>r).length)/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
-  $('hRiders').textContent=G.stats.riders;
-  for(const b of document.querySelectorAll('[data-act=speed]'))b.classList.toggle('on',G.speed===+b.dataset.arg);
-  $('bOpen').classList.toggle('lit',G.open);$('bOpen').disabled=!G.open&&G.over;
-  $('bEvac').disabled=!evacCan();
-  {const ev=evacOn(),bk=[...EVW.bars.keys()];$('lEvac').className='lamp'+(!ev?' off':bk.length?' err':' occ');$('lEvacT').textContent=bk.length?'Évacuation bloquée — barrière n° '+bk.map(k=>k.replace(/^b/,'')).join(', '):'Évacuation en cours';} // issue #41 : voyant d'évacuation (ambre = en cours, rouge clignotant = bloquée par une barrière fermée)
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
   {const s=trains.find(o=>o.st==='station'),op=G.resOpen||!!(s&&s.rcT),mv=!!s&&s.rc.some((v,k)=>v>.02&&v<.98); // sécurités : bouton allumé = ouvertes ; voyant vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement
@@ -71,30 +91,16 @@ function ui(){
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);
   for(const [id,k] of [['bLiftFix','liftFix'],['bChainRev','chainRev'],['bTrackRev','trackRev'],['bBrakeFix','brakeFix'],['bBrakeRev','brakeRev']])
     $(id).disabled=!!G.job||!JOBS[k].ok();
-  $('tech').textContent=G.job?G.job.label:'Équipe technique disponible';
-  $('techBar').style.width=G.job?(100*(1-G.job.rem/G.job.dur))+'%':'0%';
-  $('techTxt').textContent=G.job?Math.ceil(G.job.rem*.5)+' min restantes':'';
-  if(document.body.classList.contains('fs')){ // barre du plein écran : heure, file, quai, dernier message du journal
-    $('fsHud').textContent=fmtTime(G.time)+' · File '+G.queue.length+' · Quai '+G.plat.filter(r=>r).length+'/'+SEATS+' · '+Math.round(G.money).toLocaleString('fr-FR')+' €';
-    const m=$('log').firstElementChild;$('fsMsg').textContent=m&&m.lastChild?m.firstChild.textContent+' '+m.lastChild.textContent:'';$('fsMsg').className=m?m.className:'';
-    $('bDesk').classList.toggle('on',document.body.classList.contains('fsdesk'));}
-  for(const b of document.querySelectorAll('#cams button[data-act=cam]'))b.classList.toggle('on',b.dataset.arg===cam.key);
-  $('bRoof').classList.toggle('on',!!G.roofOff);$('bRoof').textContent=G.roofOff?'Toits retirés':'Toits en place';
-  $('bHideSt').classList.toggle('on',!!G.hideSt);$('bHideSt').textContent=G.hideSt?'Gare masquée':'Masquer la gare';
-}
-
-/* ══════════ MOBILE ET PLEIN ÉCRAN : onglets Carte / Pupitre / Journal, mode « dm » (téléphone, tablette étroite) ══════════ */
-const MQ=matchMedia('(max-width:900px), (max-height:520px) and (orientation:landscape)');
-function setTab(t){
-  const b=document.body;if(t===b.dataset.tab&&t!=='carte')t='carte';
-  b.dataset.tab=t;for(const x of document.querySelectorAll('#tabs button'))x.classList.toggle('on',x.dataset.arg===t);
-}
-function layoutVars(){ // hauteurs réelles de l'en-tête et de la barre du plein écran (le tiroir se place dessous en paysage)
-  const b=document.body,h=document.querySelector('header'),f=$('fsBar');
-  b.style.setProperty('--st',h.offsetHeight+'px');if(f.offsetHeight)b.style.setProperty('--fsh',f.offsetHeight+'px');
-}
-function setDm(){document.body.classList.toggle('dm',MQ.matches);layoutVars();}
-document.body.dataset.tab='carte';setDm();
-if(MQ.addEventListener)MQ.addEventListener('change',setDm);else MQ.addListener(setDm);
-if(window.ResizeObserver){const ro=new ResizeObserver(layoutVars);ro.observe(document.querySelector('header'));ro.observe($('fsBar'));}
-addEventListener('resize',layoutVars);
+  },
+  hud:()=>' · Quai '+G.plat.filter(r=>r).length+'/'+SEATS, // barre du plein écran
+  boutonsCamera:()=>trains.map(t=>`<button data-act="cam" data-arg="suivi${t.i}">Suivre T${t.i+1}</button>`).join('')
+    +'<button data-act="syn" id="bSyn" title="Afficher ou masquer le synoptique du circuit">Synoptique</button>',
+  suivi(i){carFrame(trains[i],0,_cf);return _cf.p;}, // caméra « Suivre T<i> »
+  surEcran:(x,y)=>inSynXY(x,y),
+  clicEcran(x,y){if(!inSynXY(x,y))return;const h=SYN.hits.find(h=>Math.hypot(h.x-x,h.y-y)<=h.r);if(h)setCam('suivi'+h.i);}, // clic sur un train du synoptique : caméra qui le suit
+  dessinEcran(){drawSyn();},
+  sons(){const w=G.wx.type; // grondement des trains, vent du train suivi, chaîne du lift (sfx.update)
+  let vmax=0,chain=false;
+  for(const t of trains)if(t.st==='run'){const z=zoneOf(t.s);if(z==='lift'&&t.v>.05&&t.s<S_LIFT1&&!chain){frameAt(t.s-TLEN/2,_cf);chain={v:t.v,x:_cf.p.x,z:_cf.p.z};}if(z==='course'||z==='brake')vmax=Math.max(vmax,t.v);}
+  const f=cam.follow>=0?trains[cam.follow]:null;
+    return {rumble:Math.min(.5,vmax/24*(f?.45:.28)),wind:f&&f.st==='run'?Math.min(.18,f.v*f.v/3200):0,lift:chain||null};}});

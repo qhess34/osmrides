@@ -9,6 +9,10 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const api = (u, o) => fetch(u, Object.assign({ cache: 'no-store' }, o)).then(r => r.json());
   const GM = () => E('GM');
+  // Sections enfichables (docs/ARCHITECTURE.md D14) : engine/<couche>/editeur.js appelle T2ZEditeur.section({id, titre, avant, box, panel(X), panelLite(X), hit(p, tol, X),
+  // drag(p, X), draw(P, oc, X), selHTML(X), contexte(X), ed(X)}) ; une poignée renvoyée par hit est {t: id de la section, m}. X : outils de l'éditeur (plus bas).
+  const SECS = [], secOf = t => SECS.find(d => d.id === t); window.T2ZEditeur = { section: d => SECS.push(d) };
+  const vctx = () => Object.assign({}, ...SECS.map(d => d.contexte ? d.contexte(X) : {})); // contexte de validation (nombre de trains au plus…)
   // jeu.html du dépôt de jeu, avec le moteur de cette version de l'éditeur (moteur=local : engine/ servi par editor/server.js depuis la librairie)
   const jeuUrl = id => { const [t, l, e] = id.split('/'); return '/jeu.html?type=' + t + '&lieu=' + l + '&el=' + e + '&moteur=local&mode=sandbox&editeur=' + Date.now(); };
 
@@ -58,12 +62,6 @@
   const mids = P => P.map((q, i) => { const r = P[(i + 1) % P.length]; return [(q[0] + r[0]) / 2, (q[1] + r[1]) / 2]; });
   // fin de la file à raccorder (issue #24) : boardViaEnd() du moteur ; aimant : un sommet glissé ou créé se colle au point de fin de file (ou à un bord de l'allée au bout
   // de la file) à moins de SNAP_PX pixels écran, sauf Alt maintenue. SNAP_PX = 11 px (demande du propriétaire : 10-12 px).
-  // profondeur des travées d'attente (issue #27) : GAME.board={depth} ; boardDepth() du moteur donne la valeur, le calcul, les bornes et le repère de la poignée
-  // (ligne des portillons du portillon du milieu, direction vers l'arrière du quai)
-  const dep = () => E('boardDepth()'), depthEd = () => !!(GM().board && GM().board.depth != null);
-  const depthH = D => [D.u.o[0] + D.u.r[0] * D.depth, D.u.o[1] + D.u.r[1] * D.depth];
-  function setDepth(v) { const D = dep(); GM().board = { depth: R2(clamp(v, D.min, D.max)) }; E('reBoard()'); }
-  function revertDepth() { delete GM().board; E('reBoard()'); panel(); }
   // entrée de la file (issue #39) : GAME.queueEntry={len, ang} ; queueEntry() du moteur donne le début du chemin de file OSM (o), le bout (end), le calcul et la longueur
   // réellement retenue (ramenée sur une surface praticable). Le moteur ne la lit qu'au chargement : un réglage recharge le jeu en cadre (comme GAME.site).
   const qe = () => E('queueEntry()'), qeEd = () => !!(GM().queueEntry && typeof GM().queueEntry === 'object');
@@ -118,7 +116,7 @@
     if (sel && sel.t === 'area') { const P = areaPts(); for (let i = 0; i < P.length; i++) if (Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) < tol) return { t: 'area', m: 'v' + i };
       const M = mids(P); for (let i = 0; i < M.length; i++) if (Math.hypot(p[0] - M[i][0], p[1] - M[i][1]) < tol * .8) return { t: 'area', m: 'm' + i }; }
     { const Q = qe(); if (Math.hypot(p[0] - Q.end[0], p[1] - Q.end[1]) < tol) return { t: 'qe', m: 'end' }; } // poignée au bout de l'entrée de la file
-    { const D = dep(), q = depthH(D); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'depth', m: 'depth' }; } // poignée de profondeur des travées
+    for (const d of SECS) if (d.hit) { const h = d.hit(p, tol, X); if (h) return h; } // poignées des sections des couches (travées…)
     let best = null, bd = tol;
     for (const g of gates()) { const d = Math.min(Math.hypot(p[0] - g.g.h[0], p[1] - g.g.h[1]) * .8, dSeg(p, g.g.h, g.g.a), dSeg(p, g.g.h, g.g.b)); if (d < bd) { bd = d; best = { t: 'gate', key: g.key, m: 'move' }; } }
     if (best) return best;
@@ -135,7 +133,7 @@
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
       if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i], sn = snap(q, e.altKey); A.pts.splice(i + 1, 0, sn ? sn.p : [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); snapped = sn; E('reBoard()'); } // milieu d'un bord : nouveau sommet (aimanté)
-      sel = h.t === 'gate' ? { t: 'gate', key: h.key } : h.t === 'depth' ? { t: 'depth' } : h.t === 'qe' ? { t: 'qe' } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
+      sel = h.t === 'gate' ? { t: 'gate', key: h.key } : secOf(h.t) ? { t: h.t } : h.t === 'qe' ? { t: 'qe' } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
       if (h.t === 'room' && !migrated()) migrate(); // première modification de la salle : reprise de SITE.booth
       const r = h.t === 'room' ? GM().controlRooms[0] : null;
       drag = Object.assign({ p0: p, id: e.pointerId, moved: false, r0: r && Object.assign({}, r) }, h);
@@ -155,7 +153,7 @@
         else { const sn = barSnap(p, e.altKey, [o.x, o.z]), q = sn ? sn.p : p; snapped = sn; o.ang = R1(deg(Math.atan2(p[1] - o.z, p[0] - o.x))); o.len = R2(clamp(Math.hypot(q[0] - o.x, q[1] - o.z), .2, 20)); } // poignée A : orientation (celle du curseur, gardée) et longueur, bout aimanté au bord croisé
         E('reGates()');
       } else if (drag.t === 'qe') { const Q = qe(); setQe(Math.hypot(p[0] - Q.o[0], p[1] - Q.o[1]), deg(Math.atan2(p[1] - Q.o[1], p[0] - Q.o[0]))); // aperçu ; appliqué au lâcher (rechargement)
-      } else if (drag.t === 'depth') { const D = dep(); setDepth((p[0] - D.u.o[0]) * D.u.r[0] + (p[1] - D.u.o[1]) * D.u.r[1]); // profondeur = distance à la ligne des portillons
+      } else if (secOf(drag.t)) { secOf(drag.t).drag(p, X); // section d'une couche (travées…)
       } else if (drag.t === 'area') {
         const A = areaOvr();
         if (drag.m === 'move') A.pts = drag.a0.map(q => [R2(q[0] + dx), R2(q[1] + dz)]); else { const i = +drag.m.slice(1), q = [drag.a0[i][0] + dx, drag.a0[i][1] + dz], sn = snap(q, e.altKey); snapped = sn; A.pts[i] = sn ? sn.p : [R2(q[0]), R2(q[1])]; } // sommet aimanté à la fin de la file (Alt : libre)
@@ -210,10 +208,7 @@
       oc.fillStyle = '#7fb2ff'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.arc(o[0], o[1], 3.5, 0, 7); oc.fill(); oc.stroke();
       oc.fillStyle = on ? '#7fb2ff' : '#fff'; oc.beginPath(); oc.arc(q[0], q[1], 6.5, 0, 7); oc.fill(); oc.stroke();
       const t = 'entrée ' + L.toFixed(1).replace('.', ',') + ' m'; oc.font = '600 11px system-ui'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 10, q[1] + 14); oc.fillStyle = '#7fb2ff'; oc.fillText(t, q[0] + 10, q[1] + 14); }
-    { const D = dep(), o = P(D.u.o[0], D.u.o[1]), q = P(...depthH(D)), on = sel && sel.t === 'depth'; // profondeur des travées : trait depuis la ligne des portillons, poignée carrée
-      oc.strokeStyle = '#ff8a3d'; oc.lineWidth = on ? 2.5 : 1.6; oc.setLineDash(D.game ? [] : [4, 3]); oc.beginPath(); oc.moveTo(o[0], o[1]); oc.lineTo(q[0], q[1]); oc.stroke(); oc.setLineDash([]);
-      oc.fillStyle = on ? '#ff8a3d' : '#fff'; oc.strokeStyle = '#0b1120'; oc.lineWidth = 1.5; oc.beginPath(); oc.moveTo(q[0], q[1] - 6); oc.lineTo(q[0] + 6, q[1]); oc.lineTo(q[0], q[1] + 6); oc.lineTo(q[0] - 6, q[1]); oc.closePath(); oc.fill(); oc.stroke();
-      const t = 'travées ' + D.depth.toFixed(2).replace('.', ',') + ' m'; oc.font = '600 11px system-ui'; oc.lineWidth = 3; oc.strokeText(t, q[0] + 9, q[1] - 7); oc.fillStyle = '#ff8a3d'; oc.fillText(t, q[0] + 9, q[1] - 7); }
+    for (const d of SECS) if (d.draw) d.draw(P, oc, X); // poignées des sections des couches
     for (const g of gates()) {
       const col = g.g.open0 ? '#f0a23b' : '#5fd3e6', on = sel && sel.t === 'gate' && sel.key === g.key, h = P(g.g.h[0], g.g.h[1]), a = P(g.g.a[0], g.g.a[1]), b = P(g.g.b[0], g.g.b[1]);
       oc.strokeStyle = col; oc.lineWidth = on ? 3 : 2; oc.beginPath(); oc.moveTo(h[0], h[1]); oc.lineTo(a[0], a[1]); oc.stroke();
@@ -237,79 +232,6 @@
   let siteUndo = null, rt = 0, keep = null, sideTop = 0, reSel = null; // reSel : sélection rendue après le rechargement du cadre (entrée de la file)
   const setName = v => { try { fr.contentWindow.name = v; } catch (e) { } }; // window.name du cadre : survit à la navigation suivante (même origine)
   const reloadPreview = () => { try { const c = E('cam'); keep = { x: c.x, z: c.z, s: c.s }; } catch (e) { } sideTop = $('side').scrollTop; ready = false; window.ED.ready = false; sel = null; adding = null; clearTimeout(rt); rt = setTimeout(() => { setName('t2z-draft:' + JSON.stringify(draft())); fr.src = jeuUrl(site); }, 120); };
-  const SB = () => E('SITE_BASE'), SKIND = () => E('SITE.kind');
-  // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/state.js : gare, voies de garage, frein avant gare, frein final, freins de bloc), 8 au plus (editor/schema.js)
-  const tMax = () => { let m = S.SL.trains[1]; try { m = Math.min(m, E('TRAIN_MAX')); } catch (e) { } return m; };
-  function tPlaces() { let t = ''; try { const g = E('LANES.reduce((n,l)=>n+l.cap,0)'), z = E('TRAIN_SPOTS.map(p=>zName(p.z))'); t = `Au plus ${tMax()} trains : un par place où un train peut attendre (1 en gare, ${g} au garage${z.length ? ', ' + z.length + ' sur les zones de freinage : ' + z.join(', ') : ''}${E('TRAIN_MAX') > S.SL.trains[1] ? ' ; ' + S.SL.trains[1] + ' au plus dans l\'éditeur' : ''}). Les trains au-delà du garage partent arrêtés sur ces zones.`; } catch (e) { } return esc(t); }
-  const pth = (o, p) => p.reduce((a, k) => a == null ? undefined : a[k], o);
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  function siteChange(fn) { siteUndo = JSON.stringify(draft()); const M = GM(); if (!M.site) M.site = {}; fn(M.site); prune(M); reloadPreview(); }
-  function prune(M) { const s = M.site; if (!s) return; for (const k of Object.keys(s)) if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && !Object.keys(s[k]).length) delete s[k]; if (!Object.keys(s).length) delete M.site; }
-  function setSite(p, v) { // valeur égale à l'origine : surcharge retirée
-    siteChange(s => { const base = pth(SB(), p); if (v === '' || (base !== undefined && same(base, v))) return delSite(s, p); let o = s; for (const k of p.slice(0, -1)) { if (!o[k]) o[k] = {}; o = o[k]; } o[p[p.length - 1]] = v; });
-  }
-  function delSite(s, p) { let o = s; for (const k of p.slice(0, -1)) { o = o[k]; if (!o) return; } delete o[p[p.length - 1]]; }
-  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), rgbHex = a => '#' + a.map(c => ('0' + clamp(Math.round(c), 0, 255).toString(16)).slice(-2)).join('');
-  const SF = { // champs : chemin, libellé, type, défaut si SITE n'en donne pas (ESTIMÉ = valeur du moteur)
-    car: [{ p: ['car', 'len'], l: 'Longueur d\'un wagon (m)', t: 'num', st: .05, d: null }, { p: ['car', 'n'], l: 'Wagons par train', t: 'int', d: null }, { p: ['car', 'seats'], l: 'Places par wagon', t: 'int', d: 2 }, { p: ['car', 'abreast'], l: 'Places côte à côte', t: 'int', d: 2 },
-      { p: ['car', 'restraint'], l: 'Sécurités', t: 'enum', o: [['lapbar', 'lapbars'], ['otsr', 'harnais'], ['belt', 'ceintures']] }],
-    phys: [{ p: ['phys', 'roll'], l: 'Roulement (frottement)', t: 'num', st: .005, d: .098 }, { p: ['phys', 'drag'], l: 'Traînée (air)', t: 'num', st: .0001, d: .0006 }, { p: ['phys', 'vmin'], l: 'Vitesse minimale (m/s)', t: 'num', st: .5, d: 3 }],
-  };
-  const lim = p => { const L = S.SL[p[1]]; return L ? { min: L[0], max: L[1] } : {}; };
-  function effRestraint() { return E('RES_KIND'); }
-  function fieldHTML(f, kind) {
-    const p = f.p, key = p.join('.'), ov = pth(GM().site || {}, p), base = pth(SB(), p), mod = ov !== undefined;
-    let eff = mod ? ov : base !== undefined ? base : f.d; if (f.p[1] === 'restraint') eff = ov !== undefined ? ov : base !== undefined ? base : effRestraint();
-    const o = base !== undefined ? base : (f.d != null ? f.d + ' (défaut du moteur)' : f.p[1] === 'restraint' ? 'défaut du type' : '');
-    let ctl;
-    if (f.t === 'enum') ctl = `<select data-p="${key}">${f.o.map(([v, n]) => `<option value="${v}"${v === eff ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
-    else { const L = lim(p); ctl = `<input data-p="${key}" data-t="${f.t}" type="number" step="${f.st || 1}"${L.min != null ? ` min="${L.min}" max="${L.max}"` : ''} value="${eff}">`; }
-    return `<div class="fld${mod ? ' mod' : ''}"><span>${f.l}</span>${ctl}<span class="orig" title="Valeur d'origine de SITE">origine : ${esc(typeof o === 'object' ? JSON.stringify(o) : o)}</span><button data-rev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
-  }
-  function colorHTML(p, l, cur, base, mod, rgb) {
-    const key = p.join('.'), hex = rgb ? rgbHex(cur) : cur;
-    return `<div class="fld${mod ? ' mod' : ''}"><span>${l}</span><input data-p="${key}" data-t="${rgb ? 'rgb' : 'col'}" type="color" value="${hex}"><span class="orig">origine : ${base === undefined ? 'défaut du type' : esc(rgb ? rgbHex(base) : base)}</span><button data-rev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
-  }
-  function siteHTML() {
-    const ov = GM().site || {}, base = SB(), kind = SKIND(), h = [];
-    const km = ov.kind !== undefined;
-    h.push(`<div class="fld${km ? ' mod' : ''}"><span>Sous-type</span><select data-p="kind">${S.SK.kind.map(k => `<option value="${k}"${k === kind ? ' selected' : ''}>${{ wood: 'bois', bob: 'bobsleigh', inverted: 'inversé', steel: 'acier' }[k]}</option>`).join('')}</select><span class="orig">origine : ${esc(base.kind)}</span><button data-rev="kind" ${km ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`);
-    if (km) h.push('<p class="note warn">Changer le sous-type change le rendu, les sécurités par défaut et les supports ; voie, gare et garage ne sont pas refaits (ESTIMÉ : à vérifier dans le jeu).</p>');
-    h.push('<h3>Wagons</h3>', ...SF.car.map(f => fieldHTML(f, kind)));
-    const c = E('({len:CAR,n:NCARS})'), tl = c.len * c.n; h.push(`<p class="note${tl > S.SL.trainLen ? ' err' : ''}">Train : ${tl.toFixed(1).replace('.', ',')} m (${S.SL.trainLen} m au plus, ESTIMÉ). Les longueurs de wagon de SITE sont souvent ESTIMÉES (voir le commentaire de <code>sites/'+site+'.js</code>).</p>`);
-    // trains
-    const T = E('SITE.trains'), tm = ov.trains !== undefined, tmax = tMax(), full = T.length >= tmax;
-    h.push(`<h3>Trains (${T.length})</h3><div class="fld${tm ? ' mod' : ''}" style="display:block">` + T.map((t, i) => `<div class="trow" data-i="${i}"><input data-tf="name" value="${esc(t.name)}" title="Nom" style="width:96px"><input data-tf="col" type="color" value="${t.col}" title="Couleur"><input data-tf="col2" type="color" value="${t.col2}" title="Seconde couleur"><input data-tf="wear" type="number" min="0" max="100" step="1" value="${t.wear}" title="Usure (0 à 100)" style="width:48px"><input data-tf="lane" type="number" min="1" max="${Math.max(1, E('LANES.length'))}" step="1" value="${t.lane || ''}" placeholder="voie" title="Voie de garage au départ (vide : automatique ; le premier train est à quai)" style="width:48px"><button data-tdel="${i}" ${T.length > 1 ? '' : 'disabled'} title="Retirer ce train">x</button></div>`).join('')
-      + `<div class="row"><button id="bTAdd" ${full ? 'disabled' : ''}>Ajouter un train</button><button data-rev="trains" ${tm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div><span class="orig">origine : ${base.trains.length} train(s) ; couleur 1, couleur 2, usure, voie de garage. Le premier train est à quai ; chaque train garé a besoin d'une place au garage.</span><p class="note${full ? ' warn' : ''}">${tPlaces()}</p></div>`);
-    // couleurs de voie
-    if (kind === 'inverted' || kind === 'steel') { const K = E('TKC'), bt = base.track || {}; h.push('<h3>Couleurs de la voie</h3>', ...[['spine', 'Poutre'], ['rail', 'Rails'], ['support', 'Supports']].map(([f, l]) => colorHTML(['track', f], l, K[f], bt[f], pth(ov, ['track', f]) !== undefined))); }
-    if (kind === 'bob') { const K = E('TRO'), bt = base.trough || {}; h.push('<h3>Gouttière du bobsleigh</h3>', ...[['lo', 'Fond (bas)', 1], ['hi', 'Fond (haut)', 1], ['edge', 'Bord', 0], ['deck', 'Tablier', 0], ['rim', 'Rebord', 0]].map(([f, l, r]) => colorHTML(['trough', f], l, K[f], bt[f], pth(ov, ['trough', f]) !== undefined, r)));
-      const sm = pth(ov, ['trough', 'shine']) !== undefined; h.push(`<div class="fld${sm ? ' mod' : ''}"><span>Reflet</span><input data-p="trough.shine" data-t="txt" value="${esc(K.shine)}"><span class="orig">origine : ${esc(bt.shine || 'défaut du type')}</span><button data-rev="trough.shine" ${sm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`); }
-    h.push('<h3>Physique de base</h3>', ...SF.phys.map(f => fieldHTML(f, kind)), '<p class="note">Bornes sûres : roulement 0 à 0,3 ; traînée 0 à 0,01 ; vitesse minimale 1 à 6 m/s (ESTIMÉES). Les valeurs de SITE sont des réglages de jeu, pas des mesures.</p>');
-    return h.join('');
-  }
-  function bindSite() {
-    const B = $('siteBox');
-    for (const el of B.querySelectorAll('[data-p]')) el.addEventListener('change', () => {
-      const p = el.dataset.p.split('.'), t = el.dataset.t; let v = el.value;
-      if (t === 'num' || t === 'int') { if (v === '' || !isFinite(+v)) return; v = +v; } else if (t === 'rgb') v = hexRgb(v);
-      setSite(p, v);
-    });
-    for (const el of B.querySelectorAll('[data-rev]')) el.onclick = () => { const p = el.dataset.rev.split('.'); siteChange(s => delSite(s, p)); };
-    const trains = () => JSON.parse(JSON.stringify(E('SITE.trains')));
-    const putTrains = A => { // couleurs, noms, usure : appliqués à chaud au jeu en cadre ; nombre de trains ou voie de garage : jeu en cadre rechargé (vue gardée)
-      const cur = trains(), hot = A.length === cur.length && A.every((t, i) => (t.lane || null) === (cur[i].lane || null));
-      if (!hot) return siteChange(s => { if (same(A, SB().trains)) delete s.trains; else s.trains = A; });
-      siteUndo = JSON.stringify(draft()); const M = GM(); if (!M.site) M.site = {}; if (same(A, SB().trains)) delete M.site.trains; else M.site.trains = A; prune(M);
-      E('SITE.trains=' + JSON.stringify(A) + ';SITE.trains.forEach((c,i)=>{const t=trains[i];if(t){t.name=c.name;t.col=c.col;t.col2=c.col2;t.wear=c.wear;}});0');
-      panel(); };
-    for (const el of B.querySelectorAll('.trow [data-tf]')) el.addEventListener('change', () => { const A = trains(), i = +el.closest('.trow').dataset.i, f = el.dataset.tf; let v = el.value;
-      if (f === 'wear') v = clamp(+v || 0, 0, 100); else if (f === 'lane') { if (v === '') { delete A[i].lane; return putTrains(A); } v = Math.round(+v); }
-      A[i][f] = v; putTrains(A); });
-    for (const el of B.querySelectorAll('[data-tdel]')) el.onclick = () => { const A = trains(); A.splice(+el.dataset.tdel, 1); putTrains(A); };
-    const ba = $('bTAdd'); if (ba) ba.onclick = () => { if (trains().length >= tMax()) { panel(); return; } const A = trains(), l = A[A.length - 1], c = Object.assign({}, l, { name: 'Train ' + (A.length + 1), wear: 30 }); delete c.lane; A.push(c); putTrains(A); };
-  }
-
   // ── apparence de la file et du quai (issue #45, D11) : GAME.look = {queue:{col, tex}, plat:{col, tex}, rail, gate} ; le moteur relit GAME.look à chaque image
   // (engine/render.js look()) : appliqué à chaud, sans recharger le cadre. Clé absente = rendu d'origine (TEX.stone, PLAT_COL, garde-corps métal, portillons vert / rouge).
   const TEXN = { concrete: 'béton', asphalt: 'asphalte', sand: 'sable stabilisé', pavers: 'pavés', deck: 'platelage bois' }, RAILN = { metal: 'métal', wood: 'bois', stone: 'pierre (muret)' };
@@ -389,7 +311,7 @@
         <div class="row"><label>Ouverture <select id="gSw"><option value="1"${G.sw !== -1 ? ' selected' : ''}>sens direct</option><option value="-1"${G.sw === -1 ? ' selected' : ''}>sens inverse</option></select></label></div>
         <div class="row"><button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
-    if (sel.t === 'depth') { const D = dep(); return `<div><b>Profondeur des travées d'attente</b> ${D.game ? '<span class="tag t-ovr">réglée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${D.depth.toFixed(2).replace('.', ',')} m depuis la ligne des portillons : ${D.rows} rang(s) par travée (calcul : ${D.calc.toFixed(2).replace('.', ',')} m). Glisser la poignée (losange orange) ou saisir la valeur dans la section « Zone d'attente du quai ».</div>`; }
+    if (secOf(sel.t)) return secOf(sel.t).selHTML(X);
     if (sel.t === 'qe') { const Q = qe(); return `<div><b>Entrée de la file</b> ${qeEd() ? '<span class="tag t-ovr">réglée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${qeTxt(Q)} Glisser la poignée (rond bleu) ou saisir les valeurs dans la section « Entrée de la file ».</div>`; }
     if (sel.t === 'area') {
       const Ps = areaPts(), v = sel.v != null && sel.v < Ps.length ? sel.v : null;
@@ -402,13 +324,11 @@
       <div class="grid" style="margin-top:6px"><span>Centre x, z (m)</span><span>${inp('x', r.x)} ${inp('z', r.z)}</span><span>Angle (°)</span><span>${inp('angle', r.angle, 1)}</span>
       <span>Largeur, profondeur (m)</span><span>${inp('w', r.w)} ${inp('d', r.d)}</span></div><p class="note">La vitre (côté du rond) est tournée vers la voie.</p>`;
   }
-  function panelLite() { $('selBox').innerHTML = selHTML(); bindSel(); const di = $('depth'); if (di && document.activeElement !== di) { const D = dep(); di.value = D.depth.toFixed(2); $('depthInfo').textContent = depthTxt(D); } status(); }
+  function panelLite() { $('selBox').innerHTML = selHTML(); bindSel(); for (const d of SECS) if (d.panelLite) d.panelLite(X); status(); }
   const fr1 = v => (+v).toFixed(1).replace('.', ','), qeTxt = Q => `Prolongement de ${fr1(Q.len)} m depuis le début du chemin de file OSM, orienté à ${fr1(Q.ang)}° (0 = est, 90 = sud)${Q.game && Q.clamped ? ` ; ${fr1(Q.want)} m demandés, ramenés au bord de la surface praticable (zone piétonne, chemin)` : ''}. Calcul : ${fr1(Q.calc.len)} m à ${fr1(Q.calc.ang)}°.`;
-  const depthTxt = D => `${D.rows} rang(s) par travée ; ${D.game ? 'réglée' : 'calcul auto'} (calcul : ${D.calc.toFixed(2).replace('.', ',')} m ; de ${D.min.toFixed(2).replace('.', ',')} à ${D.max} m).`;
   function bindSel() {
     for (const el of $('selBox').querySelectorAll('input[data-k]')) el.addEventListener('change', () => {
       const v = +el.value, k = el.dataset.k; if (!isFinite(v)) return;
-      if (sel.t === 'depth') { const D = dep(); return `<div><b>Profondeur des travées d'attente</b> ${D.game ? '<span class="tag t-ovr">réglée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${D.depth.toFixed(2).replace('.', ',')} m depuis la ligne des portillons : ${D.rows} rang(s) par travée (calcul : ${D.calc.toFixed(2).replace('.', ',')} m). Glisser la poignée (losange orange) ou saisir la valeur dans la section « Zone d'attente du quai ».</div>`; }
     if (sel.t === 'area') { const A = areaOvr(); A.pts[sel.v] = k === 'vx' ? [v, A.pts[sel.v][1]] : [A.pts[sel.v][0], v]; areaApplied(); }
       else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); o[k] = k === 'len' ? R2(clamp(v, .2, 20)) : v; applied(); }
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
@@ -422,7 +342,6 @@
   function panel() {
     if (!ready) return;
     $('secMig').hidden = migrated() || !E('!!B0');
-    $('siteBox').innerHTML = siteHTML(); bindSite();
     $('lookBox').innerHTML = lookHTML(); bindLook();
     panelLite();
     const R = migrated() ? GM().controlRooms : null;
@@ -432,10 +351,7 @@
     if ($('bNewRoom')) $('bNewRoom').onclick = createRoom;
     if ($('bDelRoom')) $('bDelRoom').onclick = deleteRoom;
     $('areaBox').innerHTML = `<p class="note">${areaEd() ? `Zone éditée (<code>game.js</code>) : ${GM().boardAreas[0].pts.length} sommets. Les visiteurs y attendent derrière les portillons.` : 'Zone calculée (travées et couloir d\'attente, en tirets). La première modification la reprend dans <code>game.js</code>.'} Trait vert : fin de la file (losange plein = point où les visiteurs entrent dans la zone) ; un sommet glissé s'y colle (Alt : sans aimant). La zone se remplit : places des portillons, puis réserve dans tout le polygone.</p><div class="row"><button id="bSelArea">Sélectionner</button><button id="bAreaAuto2" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
-    { const D = dep(); $('areaBox').insertAdjacentHTML('beforeend', `<h3 style="margin:10px 0 4px;font-size:12px">Profondeur des travées d'attente</h3><p class="note">Distance de la ligne des portillons au bout des séparateurs : nombre de rangs des travées ; les rangs au-delà des places des portillons servent de réserve. Poignée : losange orange sur la carte.</p>
-      <div class="grid"><span>Profondeur (m)</span><span><input id="depth" type="number" step="0.1" min="${D.min}" max="${D.max}" value="${D.depth.toFixed(2)}"></span></div><p class="note" id="depthInfo">${depthTxt(D)}</p><div class="row"><button id="bDepthAuto" ${D.game ? '' : 'disabled'}>Revenir au calcul auto</button></div>`);
-      $('depth').onchange = () => { const v = +$('depth').value; if (isFinite(v) && v > 0) { setDepth(v); sel = { t: 'depth' }; panel(); } };
-      $('bDepthAuto').onclick = revertDepth; }
+    for (const d of SECS) if (d.panel) d.panel(X); // sections des couches (Attraction, travées dans la zone d'attente…)
     { const Q = qe(), G = GM().queueEntry; $('qeBox').innerHTML = `<p class="note">Prolongement de la file depuis le début du chemin de file OSM vers la zone piétonne ou l'accès : les visiteurs arrivent par là. Poignée : rond bleu sur la carte (trait plein = réglé, tirets = calcul). Le jeu se recharge à chaque réglage ; les barrières posées à la main ne bougent pas.</p>
       <div class="grid"><span>Longueur (m)</span><span><input id="qeLen" type="number" step="0.1" min="0" max="${Q.max}" value="${(+(G ? G.len : Q.len)).toFixed(1)}"></span><span>Orientation (°)</span><span><input id="qeAng" type="number" step="1" min="-180" max="180" value="${(+(G ? G.ang : Q.ang)).toFixed(1)}"></span></div>
       <p class="note" id="qeInfo">${qeTxt(Q)}</p><div class="row"><button id="bSelQe">Sélectionner</button><button id="bQeAuto" ${qeEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
@@ -455,7 +371,7 @@
   }
   function focus(x, z) { E('cam.g=null;cam.follow=-1;cam.key="";0'); const c = E('cam'); c.x = x; c.z = z; if (c.s < 8) c.s = 12; }
   function status() {
-    const d = draft(), v = S.validate(d, { trainMax: tMax() }), t = S.text(d), dirty = orig.exists ? t !== orig.text : Object.keys(d).length > 0;
+    const d = draft(), v = S.validate(d, vctx()), t = S.text(d), dirty = orig.exists ? t !== orig.text : Object.keys(d).length > 0;
     $('dirty').textContent = dirty ? 'modifications non enregistrées' : 'aucune modification'; $('dirty').classList.toggle('on', dirty);
     $('valBox').innerHTML = (v.errors.length ? '<div class="err">' + v.errors.map(esc).join('<br>') + '</div>' : '<div>Validation : correcte.</div>') + (v.warnings.length ? '<div class="warn">' + v.warnings.map(esc).join('<br>') + '</div>' : '')
       + `<div>${gates().length} barrière(s) de file ; salle : ${Array.isArray(d.controlRooms) ? d.controlRooms.length : 'OSM ou SITE.booth (repli)'} ; zone d'attente : ${d.boardAreas && d.boardAreas.length ? 'éditée (' + d.boardAreas[0].pts.length + ' sommets)' : 'calcul auto'} ; travées : ${d.board ? d.board.depth + ' m' : 'calcul auto'} ; entrée de la file : ${d.queueEntry ? d.queueEntry.len + ' m à ' + d.queueEntry.ang + '°' : 'calcul auto'}.</div>`;
@@ -496,7 +412,7 @@
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · entrée de la file : ${g && g.queueEntry ? g.queueEntry.len + ' m à ' + g.queueEntry.ang + '°' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {
     if (!ready) return;
-    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: tMax() }) });
+    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: vctx().trainMax }) });
     $('mFile').textContent = 'lieux/' + site + '.game.js'; $('modal').classList.add('on');
     $('mBefore').innerHTML = '<b>Avant</b><br>' + (orig.exists ? esc(summary(orig.game)) : 'fichier absent');
     $('mAfter').innerHTML = '<b>Après</b><br>' + esc(summary(g));
@@ -506,7 +422,7 @@
     $('bSave').disabled = r.same;
   }
   async function save() {
-    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft(), trainMax: tMax() }) });
+    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft(), trainMax: vctx().trainMax }) });
     if (!r.written) { $('mMsg').innerHTML = '<span class="err">Échec : ' + esc((r.errors || [r.error]).join(' ; ')) + '</span>'; return; }
     orig = r; $('mMsg').textContent = 'Enregistré : ' + r.written + '. Rien n\'est envoyé à Git : relire, puis committer soi-même.'; $('bSave').disabled = true;
     $('file').textContent = r.written + ' : présent'; window.ED.saved = (window.ED.saved || 0) + 1; status();
@@ -516,7 +432,14 @@
   $('bMig').onclick = () => { migrate(); sel = { t: 'room' }; panel(); };
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
+  // Outils passés aux sections des couches : cadre du jeu, brouillon, panneau, rechargement, sélection
+  const X = { E: s => E(s), GM: () => GM(), S, $, esc, clamp, R2, draft, panel, panelLite, reloadPreview, focus, getSel: () => sel, setSel: v => { sel = v; }, setUndo: v => { siteUndo = v; } };
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, depth: () => dep(), qe: () => qe(), snapped: () => snapped, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel() };
-  loadSites();
+  window.ED = { ready: false, secs: () => SECS.map(d => d.id), isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, qe: () => qe(), snapped: () => snapped, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel() };
+  // couches du moteur servies par editor/server.js (GET /api/couches) : schéma (sections de GAME) puis panneau, avant l'ouverture d'une attraction
+  (async () => { let C = []; try { C = await api('/api/couches'); } catch (e) { }
+    for (const c of C) for (const f of c.fichiers) await new Promise(ok => { const sc = document.createElement('script'); sc.src = '/engine/' + c.nom + '/' + f; sc.onload = sc.onerror = ok; document.head.appendChild(sc); });
+    for (const d of SECS) if (d.titre) { const el = document.createElement('section'); el.id = d.id; el.innerHTML = '<h2>' + d.titre + '</h2><div id="' + d.box + '"></div>'; $('side').insertBefore(el, $(d.avant) || null); }
+    for (const d of SECS) if (d.ed) Object.assign(window.ED, d.ed(X));
+    loadSites(); })();
 })();
