@@ -2,7 +2,7 @@
 /* Éditeur T2Z : format de lieux/<type>/<lieu>/<el>.game.js, validation et diff. Partagé par le serveur (Node, require) et l'interface (navigateur, window.T2ZSchema).
    Format (docs/ARCHITECTURE.md D1) : un en-tête de commentaires, puis `const GAME = <JSON strict>;`. */
 (function (root) {
-  const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (sites/<site>.js).\n'
+  const HEAD = '// Données du jeu écrites par l\'éditeur T2Z (editor/, docs/ARCHITECTURE.md D1-D3) : priorité sur SITE (lieux/<type>/<lieu>/<el>.js).\n'
     + '// Le corps est du JSON strict : à modifier de préférence avec l\'éditeur (docker compose up -d, http://127.0.0.1:8787/).\n';
   const KNOWN = ['version', 'barriers', 'controlRooms', 'boardAreas', 'board', 'queueEntry', 'site', 'look'];
   // GAME.look (issue #45, D11) : apparence de la file et des quais ; textures et matériaux générés par le moteur (engine/render.js mkLook).

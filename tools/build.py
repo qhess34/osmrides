@@ -5,7 +5,7 @@ site, out = sys.argv[1], sys.argv[2]
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIEU = 'lieux/parc/asterix'  # type/lieu des attractions (une seule pour l'instant)
 rd = lambda p: open(os.path.join(root, p), encoding='utf8').read()
-ENGINE = ('core', 'garage', 'state', 'queue', 'sim', 'ui', 'render', 'save')  # même ordre que jeu.html
+ENGINE = ('core', 'garage', 'state', 'queue', 'sim', 'ui', 'render', 'save')  # même ordre que engine/moteur.js
 h = rd('jeu.html')
 a = h.index('<script>\n/* Charge l\'élément demandé'); b = h.index('</script>', a) + 9
 def tag(code): return '<script>' + code.replace('</script>', '<\\/script>') + '</script>\n'

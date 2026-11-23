@@ -84,7 +84,7 @@ const nCs = () => LOG.filter(l => l.p === '/api/0.6/changeset/create').length;
     let st = await get('/api/osm/status'); ok(st.configured && !st.loggedIn && st.api === FAKE, 'état : configuré, non connecté');
     const items = [{ type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'surface', from: 'asphalt', to: 'wood' }, { type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'colour', from: '', to: '#8a6c4c' },
       { type: 'create', role: 'plat', id: 'new1', v: 0, key: 'polygone du quai 1', from: '', to: '', tags: { 'area:highway': 'footway', covered: 'yes', level: '0', surface: 'wood' }, pts: [[0, 0], [10, 0], [10, 3], [0, 3]] }];
-    let r = await post('/api/osm/send/zeus', { comment: 'Essai', items }); ok(r.s === 401, 'envoi refusé sans connexion (401)');
+    let r = await post('/api/osm/send/parc/asterix/zeus', { comment: 'Essai', items }); ok(r.s === 401, 'envoi refusé sans connexion (401)');
     ok(nCs() === 0, 'aucun changeset ouvert sans connexion');
     // 3. connexion OAuth2 PKCE simulée
     let l = await fetch(BASE + '/osm/login', { redirect: 'manual' }); const loc = new URL(l.headers.get('location'));
@@ -94,13 +94,13 @@ const nCs = () => LOG.filter(l => l.p === '/api/0.6/changeset/create').length;
     const c1 = await fetch(cb); ok(c1.status === 200, 'callback accepté'); ok(LOG.some(x => x.p === '/oauth2/token' && x.tokenOk), 'échange du jeton : code_verifier conforme au challenge S256');
     st = await get('/api/osm/status'); ok(st.loggedIn && st.user === 'Testeur', 'connecté (nom lu)'); ok(!JSON.stringify(st).includes(TOKEN), 'le jeton n\'est jamais renvoyé à la page');
     // 4. refus : valeur hors liste blanche, version changée
-    r = await post('/api/osm/send/zeus', { comment: 'Essai', items: [{ type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'highway', to: 'path' }] }); ok(r.s === 422 && nCs() === 0, 'clé hors liste blanche refusée (422), aucun changeset');
-    r = await post('/api/osm/send/zeus', { comment: 'Essai', items: [{ type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'surface', to: '<x>' }] }); ok(r.s === 422, 'valeur hors liste refusée');
-    r = await post('/api/osm/send/zeus', { comment: '', items }); ok(r.s === 422, 'commentaire vide refusé');
-    versions[100] = 8; r = await post('/api/osm/send/zeus', { comment: 'Essai', items }); ok(r.s === 409 && r.j.conflicts && r.j.conflicts[0].id === 'w100' && r.j.conflicts[0].have === 7 && r.j.conflicts[0].now === 8, 'version changée depuis l\'import : refus 409 avec la liste');
+    r = await post('/api/osm/send/parc/asterix/zeus', { comment: 'Essai', items: [{ type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'highway', to: 'path' }] }); ok(r.s === 422 && nCs() === 0, 'clé hors liste blanche refusée (422), aucun changeset');
+    r = await post('/api/osm/send/parc/asterix/zeus', { comment: 'Essai', items: [{ type: 'modify', role: 'queue', id: 'w100', v: 7, key: 'surface', to: '<x>' }] }); ok(r.s === 422, 'valeur hors liste refusée');
+    r = await post('/api/osm/send/parc/asterix/zeus', { comment: '', items }); ok(r.s === 422, 'commentaire vide refusé');
+    versions[100] = 8; r = await post('/api/osm/send/parc/asterix/zeus', { comment: 'Essai', items }); ok(r.s === 409 && r.j.conflicts && r.j.conflicts[0].id === 'w100' && r.j.conflicts[0].have === 7 && r.j.conflicts[0].now === 8, 'version changée depuis l\'import : refus 409 avec la liste');
     ok(nCs() === 0, 'aucun changeset ouvert après un refus de version'); versions[100] = 7;
     // 5. envoi
-    r = await post('/api/osm/send/zeus', { comment: 'Sol de la file de Zeus : surface et couleur', items });
+    r = await post('/api/osm/send/parc/asterix/zeus', { comment: 'Sol de la file de Zeus : surface et couleur', items });
     ok(r.s === 200 && r.j.ok && r.j.changeset === '4242' && r.j.url === FAKE + '/changeset/4242', 'envoi accepté, changeset 4242');
     const cs = LOG.find(x => x.p === '/api/0.6/changeset/create'), up = LOG.find(x => x.p === '/api/0.6/changeset/4242/upload'), cl = LOG.find(x => x.p === '/api/0.6/changeset/4242/close');
     ok(cs.auth === 'Bearer ' + TOKEN && cs.b.includes('k="created_by" v="OSMrides editor"') && cs.b.includes('k="comment" v="Sol de la file de Zeus : surface et couleur"'), 'changeset ouvert avec created_by et comment, jeton Bearer');

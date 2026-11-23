@@ -23,7 +23,7 @@ Aucune dépendance, aucun serveur : tout marche en ouvrant le fichier (`file://`
 | Fichier | Rôle |
 | `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre (type, lieu, élément : niveau à un seul choix sauté), présentation, leçons, plan du lieu |
 | `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre, présentation, leçons, plan du parc |
-| `jeu.html` | page de jeu `?type=parc&lieu=asterix&el=<el>` ; charge `lieux/<type>/<lieu>/<el>.*` puis `engine/*.js` |
+| `jeu.html` | page de jeu `?type=parc&lieu=asterix&el=<el>` ; charge `lieux/<type>/<lieu>/<el>.*` puis `engine/moteur.js` (version : `docs/versions.md`) |
 | `engine/*.js` | moteur générique (core, garage, state, queue, sim, ui, render, save), aucune coordonnée ni texte d'attraction |
 | `lieux/index.js` | catalogue type, lieu, éléments ; migration des sauvegardes |
 | `lieux/parc/asterix/<el>.data.js` | `OSM` généré, jamais édité à la main |

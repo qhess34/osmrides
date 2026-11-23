@@ -343,15 +343,20 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
 <script>
 /* Charge l'élément demandé (?type=parc&lieu=asterix&el=zeus, docs/hierarchie.md) : catalogue, données, configuration, données de l'éditeur (facultatives), puis moteur. */
 (function(){
+  // Version du moteur (docs/versions.md) : 'local' = dossier engine/ de ce dépôt ; 'v1', 'v2'… = version publiée, chargée en ligne.
+  // Essai d'une autre version sans rien modifier : jeu.html?…&moteur=v2 (ou moteur=local, ou un dossier voisin : moteur=../osmrides/engine/)
+  const MOTEUR='local';
   const q=n=>{const m=new RegExp('[?&]'+n+'=([a-z0-9-]+)').exec(location.search);return m?m[1]:'';};
   const type=q('type')||'parc',lieu=q('lieu')||'asterix',el=q('el')||'zeus',dir='lieux/'+type+'/'+lieu+'/';
-  const load=(src,next,opt)=>{const s=document.createElement('script');s.src=src;s.onload=next;
-    s.onerror=opt?next:()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">Attraction inconnue : '+type+' / '+lieu+' / '+el+'. <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
+  const mq=/[?&]moteur=(v[0-9.]+|main|local|(?:\.\.\/)+[a-z0-9_.\/-]+\/)(?:&|$)/.exec(location.search),moteur=mq?mq[1]:MOTEUR;
+  const ENGINE=moteur==='local'?'engine/':moteur.startsWith('.')?moteur:'https://cdn.jsdelivr.net/gh/qhess34/osmrides@'+moteur+'/engine/';
+  const erreur=msg=>()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">'+msg+' <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
+  const load=(src,next,opt,msg)=>{const s=document.createElement('script');s.src=src;s.onload=next;
+    s.onerror=opt?next:erreur(msg||'Attraction inconnue : '+type+' / '+lieu+' / '+el+'.');
     document.body.appendChild(s);};
-  const ENGINE=['core','garage','state','queue','sim','ui','render','save'].map(n=>'engine/'+n+'.js');
-  const chain=i=>i<ENGINE.length?load(ENGINE[i],()=>chain(i+1)):0;
+  const moteurJs=()=>load(ENGINE+'moteur.js',null,0,'Moteur '+moteur+' introuvable (connexion Internet ?).');
   // SITE.type et SITE.lieu : clé de sauvegarde (engine/save.js). game.js : données de l'éditeur, facultatif (absent : on continue)
-  load('lieux/index.js',()=>load(dir+el+'.data.js',()=>load(dir+el+'.js',()=>{SITE.type=type;SITE.lieu=lieu;load(dir+el+'.game.js',()=>chain(0),1);})));
+  load('lieux/index.js',()=>load(dir+el+'.data.js',()=>load(dir+el+'.js',()=>{SITE.type=type;SITE.lieu=lieu;load(dir+el+'.game.js',moteurJs,1);})));
 })();
 </script>
 

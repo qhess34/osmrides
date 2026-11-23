@@ -16,13 +16,15 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const r = e.request;
-  if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
+  // Moteur chargé en ligne à une version (docs/versions.md) : gardé aussi, pour rejouer hors ligne après un premier lancement
+  const u = new URL(r.url), moteur = u.origin === 'https://cdn.jsdelivr.net' && u.pathname.startsWith('/gh/qhess34/osmrides@');
+  if (r.method !== 'GET' || (u.origin !== location.origin && !moteur)) return;
   e.respondWith(caches.open(CACHE).then(async c => {
     const hit = await c.match(r, { ignoreSearch: true });   // jeu.html?type=parc&lieu=asterix&el=zeus -> jeu.html
     if (hit) return hit;
     try {
       const res = await fetch(r);
-      if (res.ok) c.put(r, res.clone());
+      if (res.ok || (moteur && res.type === 'opaque')) c.put(r, res.clone());   // <script> d'un autre site : réponse opaque
       return res;
     } catch (err) {
       return (await c.match('index.html')) || Response.error();

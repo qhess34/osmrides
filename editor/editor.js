@@ -9,25 +9,28 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const api = (u, o) => fetch(u, Object.assign({ cache: 'no-store' }, o)).then(r => r.json());
   const GM = () => E('GM');
+  // jeu.html du dépôt de jeu, avec le moteur de cette version de l'éditeur (moteur=local : engine/ servi par editor/server.js depuis la librairie)
+  const jeuUrl = id => { const [t, l, e] = id.split('/'); return '/jeu.html?type=' + t + '&lieu=' + l + '&el=' + e + '&moteur=local&mode=sandbox&editeur=' + Date.now(); };
 
   // ── ouverture d'une attraction ──
   async function loadSites() {
     const L = await api('/api/sites'), s0 = new URLSearchParams(location.search).get('site');
     $('site').innerHTML = L.map(s => `<option value="${s.id}">${s.id}${s.game ? ' (game.js)' : ''}</option>`).join('');
-    open(L.some(s => s.id === s0) ? s0 : L[0].id);
+    const s1 = L.find(s => s.id === s0) || L.find(s => s.id.split('/')[2] === s0); // ?site=parc/asterix/zeus (ou zeus seul)
+    open(s1 ? s1.id : L[0].id);
   }
   async function open(id) {
     ready = false; sel = null; wsel = null; adding = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
-    $('file').textContent = 'lieux/parc/asterix/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
-    fr.src = '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox&editeur=' + Date.now();
+    $('file').textContent = 'lieux/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
+    fr.src = jeuUrl(id);
   }
   fr.addEventListener('load', () => {
     W = fr.contentWindow; E = s => W.eval(s);
     const t0 = Date.now(), wait = () => {
       let ok = false; try { ok = E("typeof gateList==='function'&&typeof ctlRooms==='function'&&typeof reBoard==='function'&&typeof cam==='object'"); } catch (e) { }
-      if (!ok) { if (Date.now() - t0 < 20000) return setTimeout(wait, 60); $('valBox').innerHTML = '<span class="err">Le jeu ne s\'est pas chargé' + (siteUndo ? ' avec ces paramètres de l\'attraction (par exemple pas de place au garage pour tous les trains).</span> <button id="bUndoSite">Annuler la dernière modification</button>' : '.</span>'); if (siteUndo && $('bUndoSite')) $('bUndoSite').onclick = () => { setName('t2z-draft:' + siteUndo); siteUndo = null; fr.src = '/jeu.html?site=' + site + '&mode=sandbox&editeur=' + Date.now(); }; return; }
+      if (!ok) { if (Date.now() - t0 < 20000) return setTimeout(wait, 60); $('valBox').innerHTML = '<span class="err">Le jeu ne s\'est pas chargé' + (siteUndo ? ' avec ces paramètres de l\'attraction (par exemple pas de place au garage pour tous les trains).</span> <button id="bUndoSite">Annuler la dernière modification</button>' : '.</span>'); if (siteUndo && $('bUndoSite')) $('bUndoSite').onclick = () => { setName('t2z-draft:' + siteUndo); siteUndo = null; fr.src = jeuUrl(site); }; return; }
       const st = W.document.createElement('style'); // seulement la carte : pupitre, en-tête, journal masqués
       st.textContent = 'header,#side,#log,#tabs,#fsBar,#hint,#cams{display:none!important}#view{min-height:0!important}';
       W.document.head.appendChild(st); W.dispatchEvent(new W.Event('resize'));
@@ -233,7 +236,7 @@
   // voyage dans window.name du cadre (`t2z-draft:<JSON>`, lu seulement avec `?editeur=`), donc rien de non enregistré n'est perdu.
   let siteUndo = null, rt = 0, keep = null, sideTop = 0, reSel = null; // reSel : sélection rendue après le rechargement du cadre (entrée de la file)
   const setName = v => { try { fr.contentWindow.name = v; } catch (e) { } }; // window.name du cadre : survit à la navigation suivante (même origine)
-  const reloadPreview = () => { try { const c = E('cam'); keep = { x: c.x, z: c.z, s: c.s }; } catch (e) { } sideTop = $('side').scrollTop; ready = false; window.ED.ready = false; sel = null; adding = null; clearTimeout(rt); rt = setTimeout(() => { setName('t2z-draft:' + JSON.stringify(draft())); fr.src = '/jeu.html?site=' + site + '&mode=sandbox&editeur=' + Date.now(); }, 120); };
+  const reloadPreview = () => { try { const c = E('cam'); keep = { x: c.x, z: c.z, s: c.s }; } catch (e) { } sideTop = $('side').scrollTop; ready = false; window.ED.ready = false; sel = null; adding = null; clearTimeout(rt); rt = setTimeout(() => { setName('t2z-draft:' + JSON.stringify(draft())); fr.src = jeuUrl(site); }, 120); };
   const SB = () => E('SITE_BASE'), SKIND = () => E('SITE.kind');
   // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/state.js : gare, voies de garage, frein avant gare, frein final, freins de bloc), 8 au plus (editor/schema.js)
   const tMax = () => { let m = S.SL.trains[1]; try { m = Math.min(m, E('TRAIN_MAX')); } catch (e) { } return m; };
@@ -332,7 +335,7 @@
     const pc0 = E('PLAT_COL');
     const WS = qways(), ow = O.ways || {};
     h.push('<h3>Sol d\'un chemin de file</h3>');
-    if (!WS.length) h.push('<p class="note">Aucun chemin de file OSM dans ce site (régénérer <code>lieux/parc/asterix/&lt;el&gt;.data.js</code> avec tools/make_site.py).</p>');
+    if (!WS.length) h.push('<p class="note">Aucun chemin de file OSM dans ce site (régénérer <code>lieux/' + esc(site) + '.data.js</code> avec tools/make_site.py).</p>');
     else {
       const lab = a => a.id + ' · ' + Math.round(a.l) + ' m · ' + (a.t && a.t.surface ? a.t.surface : 'sans surface');
       h.push(`<div class="wl" style="margin:4px 0"><span>Chemin</span> <select data-wsel style="max-width:100%"><option value=""${wsel ? '' : ' selected'}>cliquer une allée sur la carte, ou choisir</option><option value="*"${wsel === '*' ? ' selected' : ''}>Tous</option>${WS.map(a => `<option value="${a.id}"${a.id === wsel ? ' selected' : ''}>${esc(lab(a))}${(L.ways || {})[a.id] ? ' *' : ''}</option>`).join('')}</select></div>`);
@@ -494,7 +497,7 @@
   async function showDiff() {
     if (!ready) return;
     const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: tMax() }) });
-    $('mFile').textContent = 'lieux/parc/asterix/' + site + '.game.js'; $('modal').classList.add('on');
+    $('mFile').textContent = 'lieux/' + site + '.game.js'; $('modal').classList.add('on');
     $('mBefore').innerHTML = '<b>Avant</b><br>' + (orig.exists ? esc(summary(orig.game)) : 'fichier absent');
     $('mAfter').innerHTML = '<b>Après</b><br>' + esc(summary(g));
     if (!r.ok) { $('mMsg').innerHTML = '<span class="err">Refusé :<br>' + r.errors.map(esc).join('<br>') + '</span>'; $('diff').textContent = ''; $('bSave').disabled = true; return; }

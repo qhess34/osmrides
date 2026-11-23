@@ -1,14 +1,16 @@
 'use strict';
 /* Éditeur OSMrides — serveur local (Node 22, sans dépendance npm). docs/ARCHITECTURE.md D4, editor/README.md.
-   - sert le dépôt en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) ;
+   - sert en LECTURE (GET seulement, pas de fichier caché, pas de traversée de chemin) : editor/ et engine/ depuis cette copie d'osmrides (librairie,
+     docs/versions.md : l'éditeur et le moteur d'une même version vont ensemble), le reste depuis le dépôt de jeu T2Z_ROOT (jeu.html, lieux/) ;
    - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
-   - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site> ;
-   - n'écrit QUE lieux/parc/asterix/<el>.game.js (liste blanche : <el> = un lieux/parc/asterix/<el>.js existant), après validation (editor/schema.js) ; aucune opération Git.
-   Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt, défaut : parent de editor/). */
+   - API : GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site>, <site> = <type>/<lieu>/<el> (docs/hierarchie.md) ;
+   - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant), après validation (editor/schema.js) ; aucune opération Git.
+   Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt de jeu, défaut : ce dépôt). */
 const http = require('http'), fs = require('fs'), path = require('path');
 const S = require('./schema.js');
-const ROOT = path.resolve(process.env.T2Z_ROOT || path.join(__dirname, '..'));
-const SITES = path.join(ROOT, 'lieux', 'parc', 'asterix'); // un seul lieu pour l'instant (docs/hierarchie.md)
+const LIB = path.resolve(__dirname, '..');                    // cette copie d'osmrides : editor/, engine/
+const ROOT = path.resolve(process.env.T2Z_ROOT || LIB);       // dépôt de jeu : jeu.html, lieux/
+const LIEUX = path.join(ROOT, 'lieux');
 const PORT = +process.env.PORT || 8787, HOST = process.env.HOST || '127.0.0.1';
 // Envoi vers OSM (issue #46, D12) : editor/osm-sync.js ; configuration locale non versionnée editor/osm.local.json (OSM_CONFIG).
 const OSM = require('./osm-sync.js')({ configPath: process.env.OSM_CONFIG || path.join(__dirname, 'osm.local.json'), port: PORT, root: ROOT });
@@ -16,10 +18,12 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8' };
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN' };
 
-// Attractions = lieux/parc/asterix/<id>.js écrits à la main (ni .data.js ni .game.js).
-const siteIds = () => fs.readdirSync(SITES).filter(f => /^[a-z0-9-]{1,40}\.js$/.test(f) && f !== 'lieu.js' && !/\.(data|game)\.js$/.test(f)).map(f => f.slice(0, -3)).sort();
-const gamePath = id => path.join(SITES, id + '.game.js');
-const checkSite = id => typeof id === 'string' && /^[a-z0-9-]{1,40}$/.test(id) && siteIds().includes(id);
+// Éléments = lieux/<type>/<lieu>/<el>.js écrits à la main (ni .data.js ni .game.js) ; identifiant « <type>/<lieu>/<el> ».
+const NOM = /^[a-z0-9-]{1,40}$/, dirs = d => { try { return fs.readdirSync(d, { withFileTypes: true }).filter(e => e.isDirectory() && NOM.test(e.name)).map(e => e.name); } catch (e) { return []; } };
+const siteIds = () => dirs(LIEUX).flatMap(t => dirs(path.join(LIEUX, t)).flatMap(l => fs.readdirSync(path.join(LIEUX, t, l))
+  .filter(f => /^[a-z0-9-]{1,40}\.js$/.test(f) && f !== 'lieu.js' && !/\.(data|game)\.js$/.test(f)).map(f => t + '/' + l + '/' + f.slice(0, -3)))).sort();
+const gamePath = id => path.join(LIEUX, id + '.game.js');
+const checkSite = id => typeof id === 'string' && /^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(id) && siteIds().includes(id);
 
 function send(res, code, body, type) {
   res.writeHead(code, Object.assign({ 'Content-Type': type || 'application/json; charset=utf-8' }, SEC));
@@ -63,9 +67,9 @@ const server = http.createServer(async (req, res) => {
         if (!/^application\/json/.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'JSON attendu' });
       }
       if (req.method === 'GET' && p === '/api/osm/status') return send(res, 200, OSM.status());
-      const mo = /^\/api\/osm\/send\/([^/]+)$/.exec(p);
-      if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1], await body(req)); return send(res, r.code, r.body); }
-      const m = /^\/api\/(sites|game|diff)(?:\/([^/]+))?$/.exec(p);
+      const mo = /^\/api\/osm\/send\/([^/]+\/[^/]+\/[^/]+)$/.exec(p);
+      if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1].split('/')[2], await body(req)); /* tools/specs/<el>.json */ return send(res, r.code, r.body); }
+      const m = /^\/api\/(sites|game|diff)(?:\/([^/]+\/[^/]+\/[^/]+))?$/.exec(p);
       if (!m) return send(res, 404, { error: 'inconnu' });
       if (m[1] === 'sites' && req.method === 'GET') return send(res, 200, siteIds().map(id => ({ id, game: fs.existsSync(gamePath(id)) })));
       if (!checkSite(m[2])) return send(res, 404, { error: 'attraction inconnue' });
@@ -78,7 +82,7 @@ const server = http.createServer(async (req, res) => {
         const tmp = gamePath(id) + '.tmp-' + process.pid;
         fs.writeFileSync(tmp, r.after, { mode: 0o644 }); fs.renameSync(tmp, gamePath(id)); // écriture atomique, seul fichier écrit par l'éditeur
         console.log(new Date().toISOString(), 'écrit', path.relative(ROOT, gamePath(id)));
-        return send(res, 200, Object.assign(readGame(id), { written: 'lieux/parc/asterix/' + id + '.game.js', warnings: r.warnings }));
+        return send(res, 200, Object.assign(readGame(id), { written: 'lieux/' + id + '.game.js', warnings: r.warnings }));
       }
       return send(res, 405, { error: 'méthode refusée' });
     }
@@ -86,8 +90,8 @@ const server = http.createServer(async (req, res) => {
     if (p === '/' ) { res.writeHead(302, { Location: '/editor/' }); return res.end(); }
     if (p === '/sw.js') return send(res, 404, 'pas de service worker dans l\'éditeur', 'text/plain'); // évite tout cache hors ligne de game.js
     const rel = path.normalize(p.endsWith('/') ? p + 'index.html' : p).replace(/^([/\\])+/, '');
-    const f = path.resolve(ROOT, rel);
-    if (!f.startsWith(ROOT + path.sep) || /\.local\.json$/.test(f) || rel.split(/[/\\]/).some(s => s.startsWith('.')) || rel.split(/[/\\]/)[0] === 'node_modules') return send(res, 404, 'introuvable', 'text/plain');
+    const base = /^(editor|engine)[/\\]/.test(rel) ? LIB : ROOT, f = path.resolve(base, rel); // éditeur et moteur : ceux de cette version
+    if (!f.startsWith(base + path.sep) || /\.local\.json$/.test(f) || rel.split(/[/\\]/).some(s => s.startsWith('.')) || rel.split(/[/\\]/)[0] === 'node_modules') return send(res, 404, 'introuvable', 'text/plain');
     fs.stat(f, (e, st) => {
       if (e || !st.isFile()) return send(res, 404, '', TYPES[path.extname(f).toLowerCase()] || 'text/plain'); // script absent (game.js facultatif) : simple 404
       res.writeHead(200, Object.assign({ 'Content-Type': TYPES[path.extname(f).toLowerCase()] || 'application/octet-stream', 'Content-Length': st.size }, SEC));
@@ -96,5 +100,5 @@ const server = http.createServer(async (req, res) => {
     });
   } catch (e) { send(res, 400, { error: e.message }); }
 });
-server.listen(PORT, HOST, () => console.log('Éditeur OSMrides : http://127.0.0.1:' + PORT + '/ (dépôt ' + ROOT + ')'));
+server.listen(PORT, HOST, () => console.log('Éditeur OSMrides : http://127.0.0.1:' + PORT + '/ (dépôt de jeu ' + ROOT + ', éditeur et moteur ' + LIB + ')'));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => server.close(() => process.exit(0)));

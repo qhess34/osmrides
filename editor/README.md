@@ -16,6 +16,8 @@ docker compose down
 
 Sans Docker : `node editor/server.js` (Node 22, aucune dépendance ; `PORT`, `HOST`, `T2Z_ROOT` facultatifs).
 
+Depuis un dépôt de jeu (`osmrides_parks`, `osmrides_skiresort`) : `sh ../osmrides/tools/editeur.sh v1` ; l'éditeur et le moteur viennent de la version, `jeu.html` et `lieux/` du dépôt de jeu (`docs/versions.md`). Tous les `lieux/<type>/<lieu>/<el>` du dépôt sont proposés (`?site=parc/asterix/zeus`).
+
 ## Utilisation
 
 - Choisir l'attraction en haut. La carte se déplace et se zoome comme dans le jeu.
