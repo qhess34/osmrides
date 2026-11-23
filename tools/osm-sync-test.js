@@ -7,7 +7,7 @@
 const http = require('http'), crypto = require('crypto'), fs = require('fs'), path = require('path'), vm = require('vm'), os = require('os');
 const { spawn } = require('child_process');
 const S = require('../editor/schema.js');
-const ROOT = path.resolve(__dirname, '..'), EP = 18787, FP = 18790, BASE = 'http://127.0.0.1:' + EP, FAKE = 'http://127.0.0.1:' + FP;
+const LIB = path.resolve(__dirname, '..'), ROOT = path.resolve(process.env.JEU || path.join(LIB, '..', 'osmrides_parks')), EP = 18787, FP = 18790, BASE = 'http://127.0.0.1:' + EP, FAKE = 'http://127.0.0.1:' + FP;
 const args = process.argv.slice(2), UI = args.includes('--ui'), SHOT = (args.find(a => a.startsWith('--shot=')) || '').slice(7);
 const TOKEN = 'TOK-' + 'SECRET'; // construit pour que ce fichier ne contienne pas le jeton recherché dans le dépôt
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -49,7 +49,7 @@ const fake = http.createServer((req, res) => {
 let srv = null;
 async function startEditor(cfg) {
   const cf = path.join(os.tmpdir(), 'osm-sync-test-' + process.pid + '.json'); fs.writeFileSync(cf, JSON.stringify(cfg));
-  srv = spawn(process.execPath, [path.join(ROOT, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(EP), T2Z_ROOT: ROOT, OSM_CONFIG: cf }), stdio: ['ignore', 'pipe', 'inherit'] });
+  srv = spawn(process.execPath, [path.join(LIB, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(EP), T2Z_ROOT: ROOT, OSM_CONFIG: cf }), stdio: ['ignore', 'pipe', 'inherit'] });
   for (let i = 0; i < 100; i++) { try { if ((await fetch(BASE + '/api/sites')).ok) return cf; } catch (e) { } await sleep(50); }
   throw new Error('serveur injoignable');
 }
@@ -117,7 +117,7 @@ const nCs = () => LOG.filter(l => l.p === '/api/0.6/changeset/create').length;
     // 6. interface (facultatif)
     if (UI) await ui();
     // 7. le jeton n'est écrit nulle part dans le dépôt
-    const hit = require('child_process').spawnSync('grep', ['-rl', TOKEN, ROOT, '--exclude-dir=.git', '--exclude-dir=node_modules'], { encoding: 'utf8' }).stdout.trim(); ok(!hit, 'jeton absent des fichiers du dépôt' + (hit ? ' : ' + hit : ''));
+    const hit = require('child_process').spawnSync('grep', ['-rl', TOKEN, LIB, ROOT, '--exclude-dir=.git', '--exclude-dir=node_modules'], { encoding: 'utf8' }).stdout.trim(); ok(!hit, 'jeton absent des fichiers du dépôt' + (hit ? ' : ' + hit : ''));
   } catch (e) { fails++; console.log('ERREUR', e.stack); }
   if (srv) { const p = new Promise(r => srv.once('exit', r)); srv.kill('SIGTERM'); await p; }
   fs.rmSync(cf, { force: true }); fake.close();

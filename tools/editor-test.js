@@ -14,7 +14,9 @@ const { chromium } = require('playwright');
 const { spawn, execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path');
 const S = require('../editor/schema.js');
-const ROOT = path.resolve(__dirname, '..'), PORT = 8791, BASE = 'http://127.0.0.1:' + PORT;
+// LIB = ce dépôt (éditeur, moteur) ; ROOT = dépôt de jeu cloné à côté (JEU=…, défaut ../osmrides_parks), ouvert avec le moteur de LIB (?moteur=, docs/versions.md)
+const LIB = path.resolve(__dirname, '..'), ROOT = path.resolve(process.env.JEU || path.join(LIB, '..', 'osmrides_parks')), PORT = 8791, BASE = 'http://127.0.0.1:' + PORT;
+const MOT = '&moteur=' + path.relative(ROOT, path.join(LIB, 'engine')) + '/';
 const args = process.argv.slice(2), SITES = args.filter(a => !a.startsWith('--')), CHECK = args.includes('--check');
 const SHOT = (args.find(a => a.startsWith('--shot=')) || '').slice(7);
 if (!SITES.length) SITES.push('goudurix', 'zeus');
@@ -23,7 +25,7 @@ const gp = id => path.join(ROOT, 'lieux', 'parc', 'asterix', id + '.game.js');
 
 let srv = null;
 async function startServer() {
-  srv = spawn(process.execPath, [path.join(ROOT, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), T2Z_ROOT: ROOT }), stdio: ['ignore', 'pipe', 'inherit'] });
+  srv = spawn(process.execPath, [path.join(LIB, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), T2Z_ROOT: ROOT }), stdio: ['ignore', 'pipe', 'inherit'] });
   for (let i = 0; i < 100; i++) { try { const r = await fetch(BASE + '/api/sites'); if (r.ok) return; } catch (e) { } await sleep(50); }
   throw new Error('serveur injoignable');
 }
@@ -238,7 +240,7 @@ const ed = (page, s) => page.evaluate(s);
       // ── jeu.html (file://) ──
       const jp = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
+      await jp.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
       await jp.waitForFunction(() => typeof gateList === 'function' && typeof render === 'function', null, { timeout: 30000 });
       await jp.evaluate(() => { localStorage.clear(); act('speed', 0); G.wx.next = 1e6; });
       const ov = exp.barriers.b1;
@@ -273,7 +275,7 @@ const ed = (page, s) => page.evaluate(s);
       // zone d'attente appliquée : polygone, visiteurs à leur place dans le polygone, deux par portillon, évacuation depuis le polygone
       const jp2 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp2.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp2.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
+      await jp2.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
       await jp2.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
       const za = await jp2.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
         let n=0,out=0,wout=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.plat.forEach((r,j)=>{if(r&&r.on){n++;const s=slotPos(j);if(!pipA(BAREA,s[0],s[2]))out++;}});
@@ -294,7 +296,7 @@ const ed = (page, s) => page.evaluate(s);
       // travées réglées sans zone éditée (GAME.boardAreas retiré dans la page) : rangs supplémentaires remplis, visiteurs à la profondeur choisie, évacuation
       const jp3 = await browser.newPage({ viewport: { width: 1100, height: 760 } });
       jp3.on('pageerror', e => errors.push('jeu: ' + String(e.message || e)));
-      await jp3.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
+      await jp3.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
       await jp3.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
       const zc = await jp3.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;delete GM.boardAreas;reBoard();if(!G.open)act('open');for(const l of LOOPS)l.on=true;buildQueue();
         let mx=0,n=0,bad=0;for(let i=0;i<6000;i++){step(.05);if(i%25)continue;G.platR.forEach((r,j)=>{if(r&&r.on){n++;const l=latA(BRES[j][0],BRES[j][2])-PGATE;mx=Math.max(mx,l);if(!BRES[j].t||l>GDEPTH-.39)bad++;}});}
@@ -361,7 +363,7 @@ const ed = (page, s) => page.evaluate(s);
         // jeu.html (file://) : SITE fusionné
         const jq = await browser.newPage({ viewport: { width: 1100, height: 760 } });
         jq.on('pageerror', e => errors.push('jeu site: ' + String(e.message || e)));
-        await jq.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
+        await jq.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
         await jq.waitForFunction(() => typeof reBoard === 'function' && typeof render === 'function', null, { timeout: 30000 });
         const jg = await jq.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<400;i++)step(.05);render(.05);return {kind:SITE.kind,c:SITE.trains[0].col,n:SITE.trains.length,nt:trains.length,tc:trains[0].col,drag:PH.drag,car:SITE.car.len};})()`);
         ok(jg.kind === k1 && jg.c === '#123456' && jg.tc === '#123456' && jg.n === jg.nt && jg.drag === dr1 && jg.car === base.car.len, `attraction : SITE fusionné dans le jeu (kind ${jg.kind}, ${jg.n} trains, train 1 ${jg.c}, traînée ${jg.drag})`);
@@ -410,7 +412,7 @@ const ed = (page, s) => page.evaluate(s);
         await p4.close(); await stopServer();
         const jl = await browser.newPage({ viewport: { width: 1100, height: 760 } });
         jl.on('pageerror', e => errors.push('jeu look: ' + String(e.message || e)));
-        await jl.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox');
+        await jl.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
         await jl.waitForFunction(() => typeof render === 'function' && typeof LK === 'object', null, { timeout: 30000 });
         const jL = await jl.evaluate(`(()=>{localStorage.clear();act('speed',0);G.wx.next=1e6;for(let i=0;i<200;i++)step(.05);cam.s=12;render(.05);render(.05);return LK.q!==TEX.stone&&LK.pf==='#b8b2a6'&&LK.prow&&LK.rail===RAILM.stone&&LK.gate==='#3c5a78';})()`);
         ok(jL === true, 'apparence : réglages appliqués dans jeu.html (file://)');

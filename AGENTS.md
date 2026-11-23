@@ -2,102 +2,56 @@
 
 ## Le projet
 
-Simulateurs d'exploitation d'attractions du Parc Astérix, en 2D vue du dessus, sur le tracé réel d'OpenStreetMap. Le joueur est chef d'attraction : pupitre, trains, quai, file, garage, maintenance, météo. Jeu de fan non officiel. Interface et textes en français.
+`osmrides` = **moteur et éditeur** génériques des jeux OSMrides, publiés par version (`docs/versions.md`, décision D13). Les jeux sont dans d'autres dépôts : `qhess34/osmrides_parks` (Parc Astérix), `qhess34/osmrides_skiresort` (stations). Organisation : `docs/ORGANISATION.md`. Jeu de fan non officiel ; textes en français.
 
 ## Attentes du propriétaire
 
-Règles d'ajout d'attraction : `docs/NOUVELLE-ATTRACTION.md`. Détail technique : fiches `docs/ref/` (ci-dessous).
-
 - **Réalisme avant tout** : rendu aérien crédible, couleurs sourdes, aucun pictogramme ni emoji, rien d'enfantin.
-- **Fidélité** : tracé, gare, file, garage pris dans OSM ; ce qui est estimé (hauteurs, longueurs, couleurs, pont transbordeur) est signalé dans le code et dit au propriétaire, jamais présenté comme mesuré.
-- **Synchronisation vers OSM** (propriétaire 21/11, issue #46) : tout réglage de l'éditeur qui a un équivalent en attribut OSM (revêtement `surface`, `colour`, `material`, `barrier`, `width`…) est lu dans OSM par défaut et doit pouvoir être renvoyé vers OSM à la demande ; à prévoir dès la conception de chaque nouveau réglage (`docs/ARCHITECTURE.md` D12).
-- **Commande par zones, jamais par train** (gare, lift, freinage AUTO/MANU, appareil, voies) ; portillons et sécurités ouverts / verrouillés au bouton seulement ; barrières de file posées à la main dans l'éditeur, cliquées sur la carte.
-- **Visiteurs** : ils ne marchent que sur les chemins, ne franchissent que les barrières ouvertes (évacués compris), ne se chevauchent jamais, sont tournés face à leur marche.
-- **Code lisible par des humains, KISS** ; briques génériques réutilisables pour d'autres simulations OSM (transports, domaines skiables) : vision dans `docs/ROADMAP.md`.
+- **Fidélité** : ce qui vient d'OSM est lu dans OSM ; ce qui est estimé est signalé dans le code et dit au propriétaire.
+- **Synchronisation vers OSM** (issue #46, `docs/ARCHITECTURE.md` D12) : tout réglage de l'éditeur qui a un équivalent OSM est lu dans OSM et peut y être renvoyé à la demande.
+- **Commande par zones, jamais par train** ; portillons et sécurités au bouton seulement ; barrières de file posées à la main.
+- **Visiteurs** : seulement sur les chemins, seulement par les barrières ouvertes, jamais l'un sur l'autre, face à leur marche.
+- **Générique, KISS, lisible** : aucune coordonnée ni texte propre à un lieu dans `engine/` ou `editor/` ; ce qui est propre aux parcs ou au ski est codé dans leur dépôt (#51).
 - Vocabulaire : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur.
 
 ## Organisation du code
 
-Aucune dépendance, aucun serveur : tout marche en ouvrant le fichier (`file://`), sans `fetch` ni modules ES. Table détaillée : `docs/ref/fichiers.md`.
+Aucune dépendance, aucun serveur pour le jeu : `file://`, sans `fetch` ni modules ES.
 
 | Fichier | Rôle |
-| `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre (type, lieu, élément : niveau à un seul choix sauté), présentation, leçons, plan du lieu |
-| `index.html`, `apropos.html`, `tutos.html`, `plan.html` | écran titre, présentation, leçons, plan du parc |
-| `jeu.html` | page de jeu `?type=parc&lieu=asterix&el=<el>` ; charge `lieux/<type>/<lieu>/<el>.*` puis `engine/moteur.js` (version : `docs/versions.md`) |
-| `engine/*.js` | moteur générique (core, garage, state, queue, sim, ui, render, save), aucune coordonnée ni texte d'attraction |
-| `lieux/index.js` | catalogue type, lieu, éléments ; migration des sauvegardes |
-| `lieux/parc/asterix/<el>.data.js` | `OSM` généré, jamais édité à la main |
-| `lieux/parc/asterix/<el>.js` | `SITE` écrit à la main (référence : `zeus.js`) |
-| `lieux/parc/asterix/<el>.game.js` | `GAME` écrit par l'éditeur seulement |
-| `editor/` | éditeur local WYSIWYG (`editor/README.md`) |
-| `tools/` | génération (`make_site.py`), tests, build, PWA |
-| `docs/` | conception, notes par attraction, `ref/`, `journal/` |
+|---|---|
+| `index.html` | présentation du moteur (GitHub Pages) ; à mettre à jour à chaque version |
+| `jeu.html`, `sw.js` | redirection de l'ancienne adresse du jeu, retrait de l'ancien mode hors ligne |
+| `engine/moteur.js` | point d'entrée : charge les autres fichiers du moteur depuis son dossier |
+| `engine/*.js` | core, garage, state, queue, sim, ui, render, save |
+| `editor/` | éditeur local (`editor/README.md`) : sert `editor/` et `engine/` d'ici, `jeu.html` et `lieux/` du dépôt de jeu (`T2Z_ROOT`) |
+| `tools/jeu/compose.yaml`, `tools/editeur.sh` | lancer l'éditeur d'une version depuis un dépôt de jeu |
+| `docs/` | `ARCHITECTURE.md` (décisions), `versions.md`, `ref/` (référence du moteur), `ROADMAP.md`, `journal/` |
 
-### Repères du moteur
-
-- Unités : mètres, secondes ; `x` est, `z` sud ; `s` = abscisse le long de la voie (0 = début de gare).
-- `OSM.cps` = `[x, hauteur, z, dévers, repère…]`. Repères obligatoires : `st0`, `st1`, `lift0`, `lift1`, `brk` ; le reste : `docs/ref/voie.md`.
-- Zones d'attente équivalentes (gare, freins de bloc, frein final) : `docs/ref/garage.md`, `docs/manoeuvres.md`.
-- État `G`, trains `trains[]`, `act(nom, arg)`, `step(dt)`, `render(dt)`.
-
-## Ajouter une attraction
-
-1. Extrait OSM de la zone (« Accès réseau »).
-2. Repérer tronçons `roller_coaster=track`, gare, file, sortie ; écrire `tools/specs/<site>.json`.
-3. `python3 tools/make_site.py extrait.osm tools/specs/<el>.json lieux/parc/asterix/<el>.data.js apercu.png` ; croisements ≥ 3,2 m, vitesse plausible.
-4. `lieux/parc/asterix/<el>.js` depuis `lieux/parc/asterix/zeus.js` ; capacité manquante : l'ajouter au moteur, générique, piloté par `SITE`.
-5. Carte dans `index.html`, ligne dans `README.md`. Procédure complète : `docs/NOUVELLE-ATTRACTION.md`.
+Repères du moteur : mètres, secondes ; `x` est, `z` sud ; `s` = abscisse le long de la voie. `OSM.cps` = `[x, hauteur, z, dévers, repère…]` (`docs/ref/voie.md`). État `G`, `trains[]`, `act(nom, arg)`, `step(dt)`, `render(dt)`.
 
 ## Vérifier avant de dire que c'est fait
 
-Playwright et Chromium sont préinstallés. Détail (boutons, sorties) : `docs/ref/tests.md`.
+Cloner `osmrides_parks` à côté (`../osmrides_parks`). Playwright et Chromium sont préinstallés.
 
-- `NODE_PATH=$(npm root -g) node tools/check.js <site> 2>&1 | tail -3` (PASS/FAIL, `offpath`, `overlapQ`…) ; `tools/mobile.js`, `tools/save.js`, `tools/editor-test.js` de même.
-- Une attraction après l'autre, jamais en parallèle (clics ratés sous la charge).
-- Moteur modifié : revérifier chaque attraction. Relever `pageerror`.
-- Dire au propriétaire ce qui a été testé et non testé (souris réelle, son).
+- Éditeur : `NODE_PATH=$(npm root -g) node tools/editor-test.js 2>&1 | tail -2` puis `tools/osm-sync-test.js` (variable `JEU=` pour un autre dépôt de jeu).
+- Moteur modifié : les tests de jeu de `osmrides_parks` (`check.js`, `save.js`, `mobile.js`) sur chaque attraction, une après l'autre, avec le moteur local (`jeu.html?…&moteur=../osmrides/engine/`). Relever `pageerror`.
+- Dire au propriétaire ce qui a été testé et non testé.
 
-## Accès réseau (sessions cloud)
+## Versions
 
-- `api.openstreetmap.org` fonctionne (`/api/0.6/map?bbox=2.560,49.130,2.582,49.142` = parc entier, ≈ 6 Mo, non versionné) ; mise à jour du propriétaire : ses changesets du jour (`docs/NOUVELLE-ATTRACTION.md` §4).
-- `overpass-api.de` et miroirs : inutilisables. YouTube : connexion exigée, ne pas contourner, demander captures ou horodatages.
-- Recherche web (RCDB, Coasterpedia) : les sources se contredisent parfois, le dire.
+Publier : `docs/versions.md` (tests, note de version, mise à jour de `index.html`). L'étiquette est posée par le propriétaire (les sessions cloud ne peuvent pas pousser d'étiquette), puis issue `inter-equipe` aux chefs des jeux.
 
 ## Git
 
-- Dépôt `qhess34/osmrides`, branche `main`, commits directs, messages en anglais à l'impératif.
-- Rien poussé ailleurs sans demande ; pas de pull request sauf demande.
+- Dépôt `qhess34/osmrides`, branche `main`, commits directs, messages en anglais à l'impératif ; pas de pull request sauf demande.
 
-## Skills et sous-agents
+## Sous-agents
 
-- Skills `.claude/skills/` : `nouvelle-attraction`, `corriger-attraction`, `verifier-attraction`, `captures-jeu`, `maj-tutos`, `compte-rendu-proprietaire`.
-- Agents `.claude/agents/` : `explorateur` (Haiku, lecture seule), `attraction` (Sonnet, `SITE`), `moteur` (Sonnet par défaut, Opus sur demande, `engine/*.js`, revérifie les 4 attractions), `testeur` (Haiku, réservé au pilote : un seul, tests l'un après l'autre).
-- Petite correction : directement, sans sous-agent. Une session par tâche, `/compact` en fin.
+`.claude/agents/` : `explorateur` (Haiku, lecture seule), `moteur` (Sonnet par défaut, Opus sur demande), `testeur` (Haiku). Petite correction : directement.
 
-## Pilotage
+## Pilotage et économie de tokens
 
-`docs/PILOTAGE.md` (à lire en premier par une session de pilotage).
-
-## Économie de tokens (obligatoire)
-
-- Commencer par `docs/ROADMAP.md` ; lire seulement la fiche `docs/ref/` utile, la section utile de `docs/manoeuvres.md` (grep).
-- Ne jamais lire `lieux/parc/asterix/*.data.js` ni `lieux/parc/asterix/plan.data.js` en entier.
-- Journal = `docs/journal/<mois>.md`, ajout en fin de fichier sans relire.
-- Une règle n'est écrite qu'à un endroit ; ailleurs on renvoie.
-- Captures : aucune pour la logique ; une petite (≈ 600×450, JPEG ≈ 70) par point visuel, regardée une fois ; un montage final `docs/plans/lot-<n>.jpg` < 200 Ko ; vignettes et tutos seulement en fin de grande étape ou sur demande.
-
-## Fiches de référence (`docs/ref/`)
-
-- `voie.md` : tracé, repères, lecture OSM, tunnels, inversions, voies décoratives, rendu de la voie.
-- `decor.md` : zones piétonnes, chemins couverts, passerelles, escaliers, paliers, rochers, bâtiments survolés, toits.
-- `file.md` : file, visiteurs, évacuation, barrières, `QPW`.
-- `quai.md` : quai, portillons, travées, zones d'attente, gare.
-- `garage.md` : commande par zones, cantonnement, garage (suite : `docs/manoeuvres.md`).
-- `site.md` : clés `SITE` ; écrire ou corriger `lieux/parc/asterix/<el>.js`.
-- `editeur.md` : éditeur et clés `GAME` ; toucher `game.js` ou l'éditeur.
-- `tests.md` : ids des boutons, sorties des tests, mobile, toits, son.
-- `fichiers.md` : table détaillée des fichiers, PWA, sauvegarde.
-
-## État et suite
-
-`docs/ROADMAP.md` (lots), `docs/ARCHITECTURE.md` (décisions), `docs/JOURNAL.md` (historique), notes `docs/hourra-notes.md`, `oziris-notes.md`, `goudurix-notes.md`. `tools/make_plan.py <site> out.png "Titre" ["Nom:s0:s1:n;…"]` : plans de `docs/plans/`.
+- `docs/PILOTAGE.md` (« État courant ») à lire en premier par le Chef moteur.
+- Lire seulement la fiche `docs/ref/` utile ; une règle n'est écrite qu'à un endroit ; journal = `docs/journal/<mois>.md`, ajout en fin sans relire.
+- Captures : aucune pour la logique ; une petite par point visuel.

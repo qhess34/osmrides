@@ -22,11 +22,12 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Assembler le site (fichiers du jeu uniquement)
+      # Page de présentation du moteur ; jeu.html = redirection de l'ancienne adresse du jeu vers osmrides_parks ;
+      # sw.js = retrait de l'ancien mode hors ligne. Le moteur lui-même est servi par version (docs/versions.md).
+      - name: Assembler le site (présentation du moteur)
         run: |
           mkdir _site
-          cp -r *.html *.css *.webmanifest sw.js engine lieux icons img _site/
-          python3 tools/make_sw.py _site
+          cp index.html jeu.html sw.js _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:

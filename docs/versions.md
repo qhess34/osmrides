@@ -6,7 +6,7 @@ _Décision du propriétaire, 23/11/2026 (issue #50, décision D13 de `docs/ARCHI
 
 ## Utiliser une version dans un dépôt de jeu
 
-**Jeu** : `jeu.html` (copié depuis `osmrides`), une seule ligne à régler :
+**Jeu** : `jeu.html` (page de jeu ; modèle : celle d'`osmrides_parks`), une seule ligne à régler :
 
 ```js
 const MOTEUR='0.0.1';
@@ -26,7 +26,7 @@ et ouvrir http://127.0.0.1:8787/. Le conteneur télécharge l'éditeur de la ver
 
 **Éditeur sans Docker** (Node 22) : `sh ../osmrides/tools/editeur.sh 0.0.1` depuis le dépôt de jeu.
 
-**Tests** : `tools/check.js` et les autres outils de test restent dans `osmrides` pour l'instant. Une session cloud d'un dépôt de jeu ne joint pas jsDelivr sans l'ajouter au réseau de son environnement (`cdn.jsdelivr.net`) ; sinon tester avec un clone voisin d'osmrides à l'étiquette voulue (`moteur=../osmrides/engine/`).
+**Tests** : les tests de jeu (`check.js`, `save.js`, `mobile.js`) sont dans le dépôt de jeu ; ceux de l'éditeur dans `osmrides` (sur un dépôt de jeu cloné à côté). Une session cloud d'un dépôt de jeu ne joint pas jsDelivr sans l'ajouter au réseau de son environnement (`cdn.jsdelivr.net`) ; sinon tester avec un clone voisin d'osmrides à l'étiquette voulue (`moteur=../osmrides/engine/`).
 
 ## Publier une version (Chef moteur)
 
@@ -36,4 +36,4 @@ et ouvrir http://127.0.0.1:8787/. Le conteneur télécharge l'éditeur de la ver
 
 ## Notes de version
 
-- **0.0.1** (23/11/2026, commit 7330a04) : moteur au moment de la séparation des dépôts (montagnes russes du Parc Astérix : gare, lift, freins, garage, file, visiteurs, météo, sauvegarde ; éditeur : barrières, salle de contrôle, zone d'attente, travées, entrée de file, attraction, apparence, envoi vers OSM). Point d'entrée `engine/moteur.js`. Éditeur ouvert sur tout `lieux/<type>/<lieu>/<el>` d'un dépôt de jeu. `jeu.html` à copier depuis `main` (sa copie de 0.0.1 n'accepte en `?moteur=` que des versions de la forme `v1`). Le code propre aux montagnes russes est encore dans le moteur : séparation prévue (#51).
+- **0.0.1** (23/11/2026, commit 7330a04) : moteur au moment de la séparation des dépôts (montagnes russes du Parc Astérix : gare, lift, freins, garage, file, visiteurs, météo, sauvegarde ; éditeur : barrières, salle de contrôle, zone d'attente, travées, entrée de file, attraction, apparence, envoi vers OSM). Point d'entrée `engine/moteur.js`. Éditeur ouvert sur tout `lieux/<type>/<lieu>/<el>` d'un dépôt de jeu. Page de jeu de référence : `jeu.html` d'`osmrides_parks` (celle de l'étiquette 0.0.1 n'accepte en `?moteur=` que des versions de la forme `v1`). Le code propre aux montagnes russes est encore dans le moteur : séparation prévue (#51).

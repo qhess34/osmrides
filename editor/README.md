@@ -1,22 +1,22 @@
 # Éditeur OSMrides (local, Docker)
 
-Éditeur WYSIWYG des données **du jeu** d'une attraction (lot 1 : barrières de file et salle de contrôle ; issue #22 : zone d'attente du quai d'embarquement ; issue #27 : profondeur des travées d'attente ; lot 3 : paramètres de l'attraction). Il ouvre la vraie page `jeu.html` (bac à sable, simulation figée) et ajoute une couche d'édition par-dessus : ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier : `lieux/parc/asterix/<el>.game.js`. Décisions : `docs/ARCHITECTURE.md` (D1 à D9).
+Éditeur WYSIWYG des données **du jeu** d'une attraction (lot 1 : barrières de file et salle de contrôle ; issue #22 : zone d'attente du quai d'embarquement ; issue #27 : profondeur des travées d'attente ; lot 3 : paramètres de l'attraction). Il ouvre la vraie page `jeu.html` (bac à sable, simulation figée) et ajoute une couche d'édition par-dessus : ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier : `lieux/<type>/<lieu>/<el>.game.js`. Décisions : `docs/ARCHITECTURE.md` (D1 à D9).
 
-Le dossier `editor/` et `compose.yaml` ne sont pas publiés par GitHub Pages ; le jeu publié n'a besoin ni de l'éditeur ni de Docker.
+L'éditeur se lance **depuis un dépôt de jeu** (`osmrides_parks`, `osmrides_skiresort`) : il sert `editor/` et `engine/` de sa version d'osmrides, `jeu.html` et `lieux/` du dépôt de jeu (`docs/versions.md`). Le jeu publié n'a besoin ni de l'éditeur ni de Docker.
 
 ## Démarrer / arrêter
 
+Dans le dépôt de jeu, avec `compose.yaml` copié depuis `tools/jeu/compose.yaml` :
+
 ```sh
 export T2Z_UID=$(id -u) T2Z_GID=$(id -g)   # les fichiers écrits appartiendront à votre utilisateur (défaut 1000:1000)
-docker compose up -d                        # image node:22-alpine, aucune installation npm
+docker compose up -d                        # image node:22-alpine ; télécharge l'éditeur de la version écrite dans jeu.html
 # ouvrir http://127.0.0.1:8787/  (redirige vers /editor/?site=…)
 docker compose logs -f                      # chaque écriture est journalisée
 docker compose down
 ```
 
-Sans Docker : `node editor/server.js` (Node 22, aucune dépendance ; `PORT`, `HOST`, `T2Z_ROOT` facultatifs).
-
-Depuis un dépôt de jeu (`osmrides_parks`, `osmrides_skiresort`) : `docker compose up -d` avec le modèle `tools/jeu/compose.yaml`, ou `sh ../osmrides/tools/editeur.sh 0.0.1` ; l'éditeur et le moteur viennent de la version, `jeu.html` et `lieux/` du dépôt de jeu (`docs/versions.md`). Tous les `lieux/<type>/<lieu>/<el>` du dépôt sont proposés (`?site=parc/asterix/zeus`).
+Sans Docker (Node 22, aucune dépendance) : `sh ../osmrides/tools/editeur.sh 0.0.1` depuis le dépôt de jeu, ou `T2Z_ROOT=../osmrides_parks node editor/server.js` depuis ce dépôt (éditeur en cours de développement ; `PORT`, `HOST`, `OSM_CONFIG` facultatifs). Tous les `lieux/<type>/<lieu>/<el>` du dépôt de jeu sont proposés (`?site=parc/asterix/zeus`).
 
 ## Utilisation
 
@@ -34,7 +34,7 @@ Depuis un dépôt de jeu (`osmrides_parks`, `osmrides_skiresort`) : `docker comp
 
 ## Format écrit
 
-`lieux/parc/asterix/<el>.game.js` = un en-tête de commentaires puis `const GAME = { … };` dont le corps est du **JSON strict** (D1). Chargé par `jeu.html` après `lieux/parc/asterix/<el>.js` (absent : ignoré) et inclus par `tools/build.py` s'il existe. Priorité : `GAME` > `SITE` > calcul du moteur.
+`lieux/<type>/<lieu>/<el>.game.js` = un en-tête de commentaires puis `const GAME = { … };` dont le corps est du **JSON strict** (D1). Chargé par `jeu.html` après `lieux/parc/asterix/<el>.js` (absent : ignoré) et inclus par `tools/build.py` s'il existe. Priorité : `GAME` > `SITE` > calcul du moteur.
 
 ```js
 const GAME = {
@@ -60,7 +60,7 @@ const GAME = {
 Connexion OAuth2 avec PKCE, envoi direct depuis l'éditeur local (aucun mot de passe ne passe par l'éditeur ; le jeton reste en mémoire du serveur, jamais écrit ni commité : se reconnecter après un redémarrage).
 
 1. Sur openstreetmap.org, compte connecté : **Mon profil > Paramètres > Applications OAuth 2 > Enregistrer une nouvelle application**. Nom libre (« OSMrides editor »), **URI de redirection** `http://127.0.0.1:8787/osm/callback`, **application confidentielle : non** (client public, PKCE), permission **Modifier la carte** (`write_api`). Copier l'**identifiant client** (pas de secret).
-2. `cp editor/osm.local.example.json editor/osm.local.json`, y coller l'identifiant client (`clientId`). Le fichier est ignoré par git (`.gitignore`) et jamais servi par l'éditeur. `api` : serveur d'API (défaut `https://api.openstreetmap.org`) ; `auth` : serveur OAuth (défaut `https://www.openstreetmap.org`). **Pour essayer sans toucher à la vraie carte**, enregistrer l'application sur le serveur de développement OSM (`https://master.apis.dev.openstreetmap.org`, compte à créer là-bas) et mettre ce site dans `api` et `auth` (et `web`).
+2. Copier `editor/osm.local.example.json` d'osmrides en `osm.local.json` à la racine du dépôt de jeu (chemin lu par `compose.yaml` : `OSM_CONFIG`), y coller l'identifiant client (`clientId`). Le fichier doit être ignoré par git (`.gitignore` du dépôt de jeu) ; il n'est jamais servi par l'éditeur. `api` : serveur d'API (défaut `https://api.openstreetmap.org`) ; `auth` : serveur OAuth (défaut `https://www.openstreetmap.org`). **Pour essayer sans toucher à la vraie carte**, enregistrer l'application sur le serveur de développement OSM (`https://master.apis.dev.openstreetmap.org`, compte à créer là-bas) et mettre ce site dans `api` et `auth` (et `web`).
 3. `docker compose up -d` (le fichier est lu à chaque demande, pas de reconstruction) ; ouvrir http://127.0.0.1:8787/ (pas `localhost` : l'adresse doit être celle de l'URI de redirection).
 4. Dans l'éditeur : **Envoyer vers OSM > Se connecter à OSM** (fenêtre OSM, autoriser), cocher les écarts, relire le commentaire, **Envoyer**. Le serveur relit chaque objet, refuse si sa version a changé depuis l'import (relancer alors `tools/make_site.py`), ouvre un changeset (`created_by=OSMrides editor`), envoie, le ferme et donne son numéro.
 5. Après un envoi : relancer l'import (`docs/NOUVELLE-ATTRACTION.md` §4) pour relire les nouvelles versions ; les écarts disparaissent alors.
@@ -71,12 +71,12 @@ Les valeurs envoyées sont contrôlées (liste blanche : `surface`, `colour`, `m
 
 - Port publié sur `127.0.0.1` seulement ; le serveur refuse tout autre en-tête `Host` (rebinding DNS) et les écritures d'une autre origine ou non JSON.
 - Conteneur : utilisateur non root (`T2Z_UID:T2Z_GID`), système de fichiers en lecture seule (`/tmp` en tmpfs), `cap_drop: ALL`, `no-new-privileges`, pas de socket Docker. Dépôt monté **en lecture seule**, sauf `lieux/`.
-- Le serveur sert le dépôt en lecture (GET), sans fichiers cachés (`.git`…) ni traversée de chemin, et n'écrit que `lieux/parc/asterix/<el>.game.js` pour un `<el>` dont `lieux/parc/asterix/<el>.js` existe, après validation (types, bornes, clés connues, 1 salle au plus ; `editor/schema.js`), par écriture atomique. Aucune opération Git, aucun accès réseau sortant.
+- Le serveur sert le dépôt en lecture (GET), sans fichiers cachés (`.git`…) ni traversée de chemin, et n'écrit que `lieux/<type>/<lieu>/<el>.game.js` pour un `<el>` dont `lieux/parc/asterix/<el>.js` existe, après validation (types, bornes, clés connues, 1 salle au plus ; `editor/schema.js`), par écriture atomique. Aucune opération Git, aucun accès réseau sortant.
 
 ## Flux Git → Pages
 
 1. Éditer, voir les différences, enregistrer (fichier écrit sur l'hôte).
-2. Vérifier dans le jeu : ouvrir `jeu.html?type=parc&lieu=asterix&el=<el>` (fichier local) ; tests : `node tools/check.js <site>`.
+2. Vérifier dans le jeu : ouvrir `jeu.html?type=parc&lieu=asterix&el=<el>` (fichier local) ; tests : `node tools/check.js <site>` du dépôt de jeu.
 3. `git diff lieux/parc/asterix/<el>.game.js`, puis commit et push sur `main` vous-même : GitHub Pages publie `lieux/` (dont `game.js`) avec le jeu.
 
 ## Tests
