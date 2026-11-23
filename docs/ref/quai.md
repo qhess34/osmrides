@@ -30,3 +30,5 @@ Gare : arrêt `S_ST` avancé (jusqu'à `st1`) si l'arrière du train dépasserai
 ## Ordre d'arrivée sur le quai (issue #44, 23/11)
 
 Un arrivant de la file ne dépasse jamais ceux qui attendent : jamais de place de portillon devant quelqu'un qui attend derrière elle dans la même colonne de travée (`behind`, `pick`, `engine/sim.js`) ; il prend la place permise la plus en avant du wagon le moins occupé (la travée se remplit de l'avant vers l'arrière), sinon la réserve. Une place libérée est reprise par celui qui attend juste derrière (rang par rang, portillons ouverts ou fermés, avec ou sans `GAME.boardAreas`). Test : `passQ` de `tools/check.js` (arrivants dont la place est devant quelqu'un qu'ils ont dû dépasser), en échec si > 0.
+
+Premier arrivé, premier servi sur tout le quai : tant que quelqu'un attend en réserve (n'importe quelle travée), un arrivant de la file va derrière, jamais à une place de portillon (`rb`, `engine/sim.js`). Mesure `jumpQ` (`tools/check.js`) : arrivants qui obtiennent une place de portillon alors que quelqu'un attend en réserve ou à un rang plus en arrière ; en échec si > 0.

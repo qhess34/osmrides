@@ -371,7 +371,7 @@ function updatePlatform(dt){
     if(q<0||BAREA&&platCross(p,plen3([slotPos(q),p])/2.4))continue;
     const o=G.plat[q],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.plat[q]=null;G.plat[i]=r;G.platAT=.25;walker([slotPos(q),p],r.ci,()=>{r.on=true;},2.4,0,'wait');break;}
   if(G.platT<=0&&fr&&fr.r<.4){
-    let i=pick();const rb=NR&&(BAREA?G.platR.some(r=>r):i>=0&&G.platR.some((r,k)=>r&&sameU(k,i)));
+    let i=pick();const rb=NR&&G.platR.some(r=>r); // premier arrivé, premier servi sur tout le quai (23/11) : tant que quelqu'un attend en réserve (toute travée), l'arrivant va derrière, jamais à une place de portillon
     if(rb||(i<0&&NR)){i=-1;const j=resFree(); // places des portillons prises, ou d'autres attendent déjà : dans la réserve (la plus proche des portillons)
       if(j>=0){removeVisitor(fr);const r={ci:fr.ci,w:fr.w,on:false,ph:fr.ph};G.platR[j]=r;G.platT=.22;walker([[fr.x,0,fr.z]].concat(boardInA(BRES[j])),fr.ci,()=>{r.on=true;},4.2,0,'wait');}}
     if(i>=0&&BAREA&&platCross(slotPos(i),plen3(boardInA(slotPos(i)))/4.2))i=-1;

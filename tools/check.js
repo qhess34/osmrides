@@ -412,7 +412,7 @@ const root = path.resolve(__dirname, '..');
     act('speed', 0); G.wx.next = 1e6; __opStroll();
     if (!G.open) act('open');
     let it = 0, opened = null, gp = 0;
-    let rp = 0, ev = null, evN = 0, zMax = 0, ovQ = 0, ovA = 0, passQ = 0; const passEx = []; const ovEx = []; const evBad = [];
+    let rp = 0, ev = null, evN = 0, zMax = 0, ovQ = 0, ovA = 0, passQ = 0, jumpQ = 0; const passEx = []; const ovEx = []; const evBad = [];
     const press = () => { ui(); $('bGate').click(); gp++; }; // le joueur ouvre et ferme les portillons au bouton du pupitre
     const pressRes = () => { ui(); $('bRes').click(); rp++; }; // et les sécurités : ouvrir à l'arrivée, verrouiller portillons fermés (les opérateurs les ferment et les vérifient)
     const p0 = G.played; let tPrev = G.time, wraps = 0; // jeu continu : 9 h de jeu simulées (ancienne journée 10:00-19:00)
@@ -429,6 +429,11 @@ const root = path.resolve(__dirname, '..');
       for (const k of G.walkers) if (k.kind === 'wait' && !k.pq) { // passQ (issue #44) : à son départ, un arrivant dont la place est devant quelqu'un qui attend déjà dans sa colonne de travée (même abscisse) qu'il a dû dépasser (plus en arrière que sa place, plus en avant que son départ)
         k.pq = 1; const e = k.pts[k.pts.length - 1], b0 = latP(k.pts[0]), W = []; G.plat.forEach((r, i) => { if (r) W.push(slotPos(i)); }); (G.platR || []).forEach((r, j) => { if (r && BRES[j]) W.push(BRES[j]); });
         if (W.some(q => sameCol(q, e) && latP(q) > latP(e) + .05 && latP(q) < b0 - .05)) { passQ++; if (passEx.length < 4) passEx.push([+e[0].toFixed(1), +e[2].toFixed(1)]); } }
+      for (const k of G.walkers) if (k.kind === 'wait' && !k.jq) { // jumpQ (issue #44, 23/11) : arrivant de la file qui obtient une place de portillon alors que quelqu'un attend déjà en réserve (toutes travées) ou à un rang plus en arrière de sa colonne
+        k.jq = 1; const e = k.pts[k.pts.length - 1], o = k.pts[0], near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < .05;
+        const own = G.plat.some((r, i) => near(slotPos(i), o)) || BRES.some(q => near(q, o)); // déplacement interne (réserve, rang) : pas un arrivant
+        const seat = G.plat.findIndex((r, i) => r && near(slotPos(i), e));
+        if (!own && seat >= 0 && ((G.platR || []).some(r => r) || G.plat.some((r, i) => r && i !== seat && sameCol(slotPos(i), e) && latP(slotPos(i)) > latP(e) + .05))) jumpQ++; }
       if (it % 200 === 0 && it > 4000) { // overlapQ (issue #28) : paires de visiteurs de file (allées, fourches, escaliers, passerelles ; même niveau) et des travées / réserve à moins d'une épaisseur dessinée (QPW)
         const W = G.queue.filter(v => v.mode === 'q').map(v => [v.x, v.z, v.lv | 0]); G.plat.forEach((r, i) => { if (r && r.on) { const q = slotPos(i); W.push([q[0], q[2], 'p', 'slot']); } }); (G.platR || []).forEach((r, j) => { if (r && r.on && BRES[j]) W.push([BRES[j][0], BRES[j][2], 'p', 'res']); });
         for (const k of G.walkers) if (k.kind === 'wait' && k.i > 1 && k.i < k.pts.length) W.push([k.x, k.z, 'p', 'walk' + (k.pts.length - k.i)]); // issue #44 : visiteurs qui gagnent leur place sur le quai, comptés contre ceux qui attendent (jamais au travers ni par-dessus eux), pas entre eux (en marche)
@@ -450,15 +455,15 @@ const root = path.resolve(__dirname, '..');
       trains.forEach((t, i) => { if (t.fault === 'lapbars') act('rearm', i); });
     }
     const s = G.stats || {};
-    return { done: G.played - p0 >= 540 && !G.over && $('mBil').classList.contains('hidden'), wraps, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6), evN, evBad, zMax, ovQ, ovA, ovEx, passQ, passEx, zSeats: SEATS, zRes: BAREA ? BRES.length : 0 };
+    return { done: G.played - p0 >= 540 && !G.over && $('mBil').classList.contains('hidden'), wraps, it, gp, rp, time: G.time, riders: s.riders, disp: s.disp, money: Math.round(G.money), off: __op.bad, offN: __op.n, strollQ: __op.strollQ, offBy: __op.byKind, offEx: __op.ex.slice(0, 6), evN, evBad, zMax, ovQ, ovA, ovEx, passQ, passEx, jumpQ, zSeats: SEATS, zRes: BAREA ? BRES.length : 0 };
   });
   await page.evaluate(() => { cam.g = null; for (let i = 0; i < 4; i++) render(.05); });
   await page.screenshot({ path: `/tmp/t1/${site}.png` });
   await browser.close();
-  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0 && !r.evBad.length && r.ovQ === 0 && r.passQ === 0;
+  const ok = r.done && errors.length === 0 && r.riders > 0 && !/FAIL/.test(man) && r.off <= 2 && r.strollQ === 0 && !r.evBad.length && r.ovQ === 0 && r.passQ === 0 && r.jumpQ === 0;
   console.log(`site ${site}${build ? ' (build)' : ''}: 9h done=${r.done} (clock wraps=${r.wraps}) after ${r.it} steps, gate presses=${r.gp}, restraint presses=${r.rp}`);
   console.log(`riders=${r.riders} dispatches=${r.disp} money=${r.money}`);
-  console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ} overlapQ=${r.ovQ}${r.ovQ ? ' ex ' + JSON.stringify(r.ovEx) : ''} (arrivants ${r.ovA}) passQ=${r.passQ}${r.passQ ? ' ex ' + JSON.stringify(r.passEx) : ''} evacPlat=${r.evBad.length ? 'FAIL ' + r.evBad.join(',') : 'ok'} (${r.evN} aux portillons)` + (r.zRes ? ` zone=${r.zMax} (${r.zSeats} places aux portillons + réserve ${r.zRes})` : '') + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
+  console.log(`offpath=${r.off} (sur ${r.offN} positions) strollQ=${r.strollQ} overlapQ=${r.ovQ}${r.ovQ ? ' ex ' + JSON.stringify(r.ovEx) : ''} (arrivants ${r.ovA}) jumpQ=${r.jumpQ} passQ=${r.passQ}${r.passQ ? ' ex ' + JSON.stringify(r.passEx) : ''} evacPlat=${r.evBad.length ? 'FAIL ' + r.evBad.join(',') : 'ok'} (${r.evN} aux portillons)` + (r.zRes ? ` zone=${r.zMax} (${r.zSeats} places aux portillons + réserve ${r.zRes})` : '') + (r.off ? ' -> ' + JSON.stringify(r.offBy) + ' ex ' + JSON.stringify(r.offEx) : ''));
   console.log(`manoeuvre: ${man}`);
   console.log(`page errors=${errors.length}` + (errors.length ? ' -> ' + errors.slice(0, 3).join(' | ') : ''));
   console.log(ok ? 'PASS' : 'FAIL');
