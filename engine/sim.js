@@ -346,13 +346,17 @@ const resGrp=k=>BAREA?0:BRES[k].u; // groupe de la réserve : toute la zone édi
 function resFree(){const R=G.platR;let f=-1;for(let j=0,n=0;j<R.length&&n<6;j++)if(!R[j]&&!R.some((r,q)=>r&&resGrp(q)===resGrp(j)&&sameCol(BRES[q],BRES[j])&&latP(BRES[q])>latP(BRES[j])+.05)){if(platCross(BRES[j],plen3(boardInA(BRES[j]))/4.2))continue;if(platReach(BRES[j]))return j;if(f<0)f=j;n++;}return f;} // première place libre sans personne derrière elle dans sa colonne, atteignable sans frôler personne (sinon la première, trajet direct)
 function updatePlatform(dt){
   G.platT-=dt;G.platRT-=dt;const fr=SEG_OUT.list[0];
-  const pick=()=>{let best=[],bo=CSEATS;for(let k=0;k<NCARS;k++){let o=0;for(let r=0;r<CSEATS;r++)if(G.plat[k*CSEATS+r])o++;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
-    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;if(kb>=0)for(let r=0;r<CSEATS;r++)if(!G.plat[kb*CSEATS+r])return kb*CSEATS+r;return -1;};
+  // ordre d'arrivée (propriétaire, issue #44, 23/11) : on ne prend jamais une place devant quelqu'un qui attend déjà derrière elle dans la même colonne (behind) ; parmi les places
+  // permises du wagon le moins occupé, la plus en avant : la travée se remplit rang par rang, de l'avant vers l'arrière
+  const behind=i=>{const p=slotPos(i);return G.plat.some((r,q)=>r&&q!==i&&sameCol(slotPos(q),p)&&latP(slotPos(q))>latP(p)+.05);};
+  const pick=()=>{let best=[],bo=CSEATS;const ok=new Array(SEATS);for(let i=0;i<SEATS;i++)ok[i]=!G.plat[i]&&!behind(i);
+    for(let k=0;k<NCARS;k++){let o=0,f=0;for(let r=0;r<CSEATS;r++){if(G.plat[k*CSEATS+r])o++;else if(ok[k*CSEATS+r])f++;}if(!f)continue;if(o<bo){bo=o;best=[k];}else if(o===bo&&o<CSEATS)best.push(k);}
+    const kb=best.length?best[Math.floor(Math.random()*best.length)]:-1;let bi=-1;if(kb>=0)for(let r=0;r<CSEATS;r++){const i=kb*CSEATS+r;if(ok[i]&&(bi<0||latP(slotPos(i))<latP(slotPos(bi))))bi=i;}return bi;};
   // réserve de la zone d'attente éditée (BRES, engine/garage.js, issue #24) : un visiteur arrivé avance à une place de portillon libérée (le plus proche d'elle)
   // travées réglées sans zone éditée (GAME.board.depth, issue #27) : rangs supplémentaires = réserve de leur portillon ; on n'avance que dans sa travée
   const NR=BRES.length,sameU=(k,i)=>BAREA||BRES[k].u===seatUnit(i).u;if(!Array.isArray(G.platR))G.platR=[];if(G.platR.length!==NR){G.platR.length=NR;for(let j=0;j<NR;j++)if(!G.platR[j])G.platR[j]=null;}
   if(NR&&G.platRT<=0){let i=pick(),j=-1;
-    if(!BAREA){i=-1;for(let s=0;s<SEATS&&j<0;s++)if(!G.plat[s]){let bd=1e9;const p=slotPos(s);G.platR.forEach((r,k)=>{if(r&&r.on&&sameU(k,s)){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;i=s;}}});}}
+    if(!BAREA){i=-1;for(let s=0;s<SEATS&&j<0;s++)if(!G.plat[s]&&!behind(s)){let bd=1e9;const p=slotPos(s);G.platR.forEach((r,k)=>{if(r&&r.on&&sameU(k,s)){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;i=s;}}});}}
     else if(i>=0){const p=slotPos(i);let bd=1e9;G.platR.forEach((r,k)=>{if(r&&r.on){const d=Math.hypot(BRES[k][0]-p[0],BRES[k][2]-p[2]);if(d<bd){bd=d;j=k;}}});}
     if(i>=0&&j>=0&&BAREA&&platCross(slotPos(i),plen3(platTo(BRES[j],slotPos(i))||resTo(j,i))/3.2))i=-1; // place sur le trajet d'un visiteur en marche : plus tard (issue #44)
     if(i>=0&&j>=0){const o=G.platR[j],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.platR[j]=null;G.plat[i]=r;G.platRT=.3;walker(platTo(BRES[j],slotPos(i))||resTo(j,i),r.ci,()=>{r.on=true;},3.2,0,'wait');}}
@@ -361,6 +365,11 @@ function updatePlatform(dt){
   // d'entre elles qu'il peut atteindre sans frôler personne (resFree, platReach), par un trajet qui les contourne (boardInA, platPath) : ni devant, ni au travers d'eux
   if(NR&&(G.platCT=(G.platCT||0)-dt)<=0)for(let j=0;j<NR;j++){if(G.platR[j])continue;let k=-1,kl=1e9;G.platR.forEach((r,q)=>{const d=latP(BRES[q])-latP(BRES[j]);if(r&&r.on&&d>.05&&d<kl&&sameCol(BRES[q],BRES[j])&&resGrp(q)===resGrp(j)){kl=d;k=q;}});if(k<0||BAREA&&platCross(BRES[j],plen3(platTo(BRES[k],BRES[j])||resStep(k,j))/2.4))continue;
     const o=G.platR[k],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.platR[k]=null;G.platR[j]=r;G.platCT=.25;walker(platTo(BRES[k],BRES[j])||resStep(k,j),r.ci,()=>{r.on=true;},2.4,0,'wait');break;}
+  // avance rang par rang : une place de portillon libérée est reprise par celui qui attend juste derrière elle dans sa colonne (le plus proche), tout droit
+  if((G.platAT=(G.platAT||0)-dt)<=0)for(let i=0;i<SEATS;i++){if(G.plat[i])continue;const p=slotPos(i);let q=-1,ql=1e9;
+    G.plat.forEach((r,m)=>{if(!r||!r.on)return;const d=latP(slotPos(m))-latP(p);if(d>.05&&d<ql&&sameCol(slotPos(m),p)){ql=d;q=m;}});
+    if(q<0||BAREA&&platCross(p,plen3([slotPos(q),p])/2.4))continue;
+    const o=G.plat[q],r={ci:o.ci,w:o.w,on:false,ph:o.ph};G.plat[q]=null;G.plat[i]=r;G.platAT=.25;walker([slotPos(q),p],r.ci,()=>{r.on=true;},2.4,0,'wait');break;}
   if(G.platT<=0&&fr&&fr.r<.4){
     let i=pick();const rb=NR&&(BAREA?G.platR.some(r=>r):i>=0&&G.platR.some((r,k)=>r&&sameU(k,i)));
     if(rb||(i<0&&NR)){i=-1;const j=resFree(); // places des portillons prises, ou d'autres attendent déjà : dans la réserve (la plus proche des portillons)

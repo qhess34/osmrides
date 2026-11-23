@@ -26,3 +26,7 @@ Gare : arrêt `S_ST` avancé (jusqu'à `st1`) si l'arrière du train dépasserai
 - **zone d'attente éditée** (issue #22, `GAME.boardAreas`, ci-dessous) : remplace travées et couloir pour les visiteurs qui attendent
 - allée de file visible le long du quai d'embarquement : bord à `GDEPTH + 0,2` m au moins des portillons (`QGATE_CLR`), sinon rétrécie jusqu'à 0,6 m (`QGATE_WMIN`, `gateClear`)
 - valeurs ESTIMÉES. Bouton « Masquer la gare » (`#bHideSt`, `act('hidest')`, `G.hideSt`) : bâtiment de gare, toits effaçables, couvertures de tunnels et rochers masqués, couloirs couverts éclairés visibles — **seul moyen** de voir les files couvertes et leurs visiteurs (masquées au zoom et toits retirés).
+
+## Ordre d'arrivée sur le quai (issue #44, 23/11)
+
+Un arrivant de la file ne dépasse jamais ceux qui attendent : jamais de place de portillon devant quelqu'un qui attend derrière elle dans la même colonne de travée (`behind`, `pick`, `engine/sim.js`) ; il prend la place permise la plus en avant du wagon le moins occupé (la travée se remplit de l'avant vers l'arrière), sinon la réserve. Une place libérée est reprise par celui qui attend juste derrière (rang par rang, portillons ouverts ou fermés, avec ou sans `GAME.boardAreas`). Test : `passQ` de `tools/check.js` (arrivants dont la place est devant quelqu'un qu'ils ont dû dépasser), en échec si > 0.
