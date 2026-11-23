@@ -1051,7 +1051,8 @@ function drawStationPeople(){drawGateLeaves();
 }
 function drawQSide(P,PP){if(!PP.length)return;railDraw(P,PP,.08,1,.06,[.1,.08]);}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
-  ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&(LK.roof||SITE.stationRoofCol)?(LK.roof||SITE.stationRoofCol):b.col; // toit de la gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)ctx.fill(b.p);
+  ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&(LK.roof||SITE.stationRoofCol)?(LK.roof||SITE.stationRoofCol):b.col; // toit de la gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
+  ctx.fill(b.p);
   ctx.save();ctx.clip(b.p);
   if(s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha*=.35;ctx.fill(b.p);ctx.globalAlpha=bldA(b);}
   if(b.st&&SITE.draw&&SITE.draw.stationRoof)SITE.draw.stationRoof(ctx,b,API);
