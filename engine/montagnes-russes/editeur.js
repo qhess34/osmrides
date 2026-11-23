@@ -86,7 +86,12 @@
     const ba = $('bTAdd'); if (ba) ba.onclick = () => { if (trains().length >= tMax()) { panel(); return; } const A = trains(), l = A[A.length - 1], c = Object.assign({}, l, { name: 'Train ' + (A.length + 1), wear: 30 }); delete c.lane; A.push(c); putTrains(A); };
   }
   T2ZEditeur.section({ id: 'secSite', titre: 'Attraction', avant: 'secLook', box: 'siteBox',
-    panel(x) { X = x; $('siteBox').innerHTML = siteHTML(); bindSite(); },
+    panel(x) {
+      X = x;
+      // Clé d'origine absente de SITE (kind, car, trains, track, trough, phys) : message clair plutôt qu'une section vide (osmrides#53)
+      try { $('siteBox').innerHTML = siteHTML(); bindSite(); }
+      catch (e) { $('siteBox').innerHTML = '<p class="err">Section « Attraction » illisible : SITE doit garder ses valeurs d\'origine (kind, car, trains, track ou trough, phys) ; GAME.site ne contient que les modifications. Détail : ' + String(e.message).replace(/</g, '&lt;') + '</p>'; console.error(e); }
+    },
     contexte(x) { X = x; return { trainMax: tMax() }; } }); // validation : nombre de trains au plus
   T2ZEditeur.section({ id: 'depth', // travées d'attente : poignée (losange orange) et champ ajouté à la section « Zone d'attente du quai »
     hit(p, tol, x) { X = x; const D = dep(), q = depthH(D); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'depth', m: 'depth' }; },

@@ -69,7 +69,7 @@ Règle : on ne déplace rien tant qu'un second type n'existe pas. Quand il arriv
 
 - **Type** : rien (choix du jeu).
 - **Lieu** : un parc = relation ou way `leisure=theme_park` (+ `name`, `wikidata`, emprise pour `bbox`). Un réseau = relation `type=network` (`network=*`) ou agrégat de lignes. Un domaine = zone `landuse=winter_sports` ou relation `site=piste` / `type=site`, `name`. Sert au nom, à l'emprise, au plan.
-- **Élément** : une attraction = ways `roller_coaster=track`, gare, file, sortie (déjà fait, `docs/OSM-GUIDE.md`). Une ligne = relation `route=bus|tram|subway|train` avec arrêts `public_transport=stop_position|platform`. Une remontée = way `aerialway=chair_lift|gondola|drag_lift…` avec `aerialway=station`, pylônes `aerialway=pylon` ; pistes voisines `piste:type=downhill`.
+- **Élément** : une attraction = ways `roller_coaster=track`, gare, file, sortie (déjà fait, `osmrides_parks/docs/OSM-GUIDE.md`). Une ligne = relation `route=bus|tram|subway|train` avec arrêts `public_transport=stop_position|platform`. Une remontée = way `aerialway=chair_lift|gondola|drag_lift…` avec `aerialway=station`, pylônes `aerialway=pylon` ; pistes voisines `piste:type=downhill`.
 
 ### 2.6 Écran titre à 3 niveaux
 

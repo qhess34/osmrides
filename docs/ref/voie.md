@@ -29,7 +29,7 @@ Voies décoratives (issue #33, propriétaire 20/11) : tout tronçon `roller_coas
 
 Rendu : chaîne du lift et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
 
-- un wagon est dessiné après le plus haut tronçon qu'il couvre (`docs/NOUVELLE-ATTRACTION.md` §3).
+- un wagon est dessiné après le plus haut tronçon qu'il couvre (`osmrides_parks/docs/NOUVELLE-ATTRACTION.md` §3).
 
 ## Gare droite
 

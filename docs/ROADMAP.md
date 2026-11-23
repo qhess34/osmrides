@@ -56,7 +56,7 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 - **Objectif** : chaque objet importé garde son origine.
 - **Tâches** : `make_site.py` ajoute l'id OSM (`w123`, `n456`) et la version aux `feats`, `others`, `stairs`, `doors`, `barriers` ; liste des catégories réellement lues, tirée du code de l'importeur (base du réimport sélectif) ; réimport des 4 sites sans changement de géométrie.
 - **Validation** : diff des `data.js` limité aux nouveaux champs ; `check.js` ×4 PASS. — Sonnet, faible.
-- **Fait (19/11/2026)** : champs `id` / `v` (+ `OSM.src`), catégories lues dans `docs/OSM-GUIDE.md` §7, 4 sites réimportés avec géométrie inchangée (diff = champs de traçabilité seuls) ; changements OSM détectés depuis le dernier import (rocher d'Hourra retagué `bare_rock`, voie de Goudurix retouchée, `lv` des chemins souterrains) **non repris**, à décider avec le propriétaire (lot 7).
+- **Fait (19/11/2026)** : champs `id` / `v` (+ `OSM.src`), catégories lues dans `osmrides_parks/docs/OSM-GUIDE.md` §7, 4 sites réimportés avec géométrie inchangée (diff = champs de traçabilité seuls) ; changements OSM détectés depuis le dernier import (rocher d'Hourra retagué `bare_rock`, voie de Goudurix retouchée, `lv` des chemins souterrains) **non repris**, à décider avec le propriétaire (lot 7).
 
 ### Lot 3 — Paramètres d'instance éditables
 
@@ -67,13 +67,13 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 ### Lot 4 — Corrections locales des objets OSM
 
 - **Objectif** : modifier, ajouter, supprimer un objet d'origine OSM (chemin, bâtiment, nœud) en gardant avant / après et l'identifiant.
-- **Avant de commencer** : `docs/OSM-LIMITES.md` (issue #30) : ce qui se corrige directement dans OSM, ce qui reste local ; proposition de lot réduit.
+- **Avant de commencer** : `osmrides_parks/docs/OSM-LIMITES.md` (issue #30) : ce qui se corrige directement dans OSM, ce qui reste local ; proposition de lot réduit.
 - **Tâches** : format `lieux/parc/asterix/<el>.osmfix.json` (opérations par id + version d'origine) ; application au chargement (moteur) et dans l'éditeur ; affichage des objets corrigés. — Opus (format), Sonnet (outils), élevée.
 
 ### Lot 5 — Files d'attente complètes
 
 - **Objectif** : définir dans l'éditeur les tronçons, les fourches, les raccords et la bouche de file (aujourd'hui `SITE.queue.parts`, écrit à la main), avec validation (visiteurs uniquement sur des chemins).
-- Avant de commencer : `docs/OSM-LIMITES.md` (issue #30) : tronçons, boucles et raccourcis déductibles d'OSM (chemins à sens unique et nœuds communs ; barrières OSM plus lues, issue #34).
+- Avant de commencer : `osmrides_parks/docs/OSM-LIMITES.md` (issue #30) : tronçons, boucles et raccourcis déductibles d'OSM (chemins à sens unique et nœuds communs ; barrières OSM plus lues, issue #34).
 - Sonnet, moyenne ; dépend du lot 1 (barrières liées aux fourches).
 - **Fait en partie (20/11, issue #34)** : barrières de file **déduites** par le moteur (entrée au début de la file, une par pointe de fourche, liées), nœuds OSM `barrier=*` ignorés, `GAME.barriers` inchangé (aucune clé orpheline) ; **tronçons, boucles et raccourcis déduits** des chemins de file OSM et de leur sens (`SITE.queue.ways`, `engine/queue.js` `deduceParts`) pour Trace du Hourra, OzIris, Goudurix ; `SITE.queue.parts` gardé en repli (Zeus : raccourci ouest absent d'OSM, file à la main). Ligne `queue=auto(…)|manuel gameOrphans=` de `tools/check.js`.
 - **Reste** : trouver les chemins de file sans liste d'ids dans la spec (importeur : `oneway`, de la barrière d'entrée à `entrance=main`) ; montrer la file déduite dans l'éditeur ; raccord d'entrée, bouche, accès encore dans `SITE`.
