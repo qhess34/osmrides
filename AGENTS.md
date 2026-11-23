@@ -24,8 +24,8 @@ Aucune dépendance, aucun serveur pour le jeu : `file://`, sans `fetch` ni modul
 | `jeu.html`, `sw.js` | redirection de l'ancienne adresse du jeu, retrait de l'ancien mode hors ligne |
 | `engine/moteur.js` | point d'entrée : charge le noyau puis les couches de `SITE.extensions` (manifeste `extension.js`), étape par étape (`docs/ARCHITECTURE.md` D14) |
 | `engine/noyau/` | commun à tous les jeux : inscription des couches (`base.js`), carte, visiteurs, file, zone d'attente, météo, partie, sauvegarde |
-| `engine/voies/` | mécanique partagée sans dessin : tracé, abscisse `s`, cantonnement facultatif |
-| `engine/montagnes-russes/` | propre au type : physique, freins, garage, quai, pupitre, dessin ; `schema.js`, `editeur.js` (sections de l'éditeur) |
+| `engine/voies/` | mécanique partagée sans dessin : tracé, abscisse `s`, cantonnement facultatif, zones d'attente et arrêt, garage, aiguillage et pont transbordeur, commande par zones (le type déclare ses zones : `reseau.js`) |
+| `engine/montagnes-russes/` | propre au type : physique, lift, freins, zones de freinage déclarées à `voies/`, quai à portillons, pupitre, tout le dessin ; `schema.js`, `editeur.js` (sections de l'éditeur) |
 | `editor/` | éditeur local (`editor/README.md`) : sert `editor/` et `engine/` d'ici, `jeu.html` et `lieux/` du dépôt de jeu (`T2Z_ROOT`) |
 | `tools/jeu/compose.yaml`, `tools/editeur.sh` | lancer l'éditeur d'une version depuis un dépôt de jeu |
 | `docs/` | `ARCHITECTURE.md` (décisions), `versions.md`, `ref/` (référence du moteur), `ROADMAP.md`, `journal/` |

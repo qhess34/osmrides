@@ -93,7 +93,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
     <li>sauvegarde automatique, son, jeu sur téléphone et hors ligne</li>
   </ul></div>
 </div>
-<p class="note">En 0.0.1, la voie, les trains, le quai à portillons et le garage étaient mêlés au reste du moteur. Depuis 0.1.0, le moteur est rangé en trois couches : un <b>noyau</b> commun à tous les jeux (carte, visiteurs, file, zone d'attente, météo, partie, sauvegarde), une couche <b>voies</b> partagée (tracé, abscisse le long de la voie, cantonnement facultatif) et une couche par type, ici <b>montagnes-russes</b> (profil, physique, freins, garage, quai à portillons, tout le dessin de la voie et des trains). La couche d'un type pourra vivre dans le dépôt du jeu (<a href="https://github.com/qhess34/osmrides/issues/51">issue 51</a>).</p>
+<p class="note">En 0.0.1, la voie, les trains, le quai à portillons et le garage étaient mêlés au reste du moteur. Depuis 0.1.0, le moteur est rangé en trois couches : un <b>noyau</b> commun à tous les jeux (carte, visiteurs, file, zone d'attente, météo, partie, sauvegarde), une couche <b>voies</b> partagée, sans dessin (tracé, abscisse le long de la voie, cantonnement facultatif ; depuis 0.2.0 : arrêt et zones d'attente, garage, aiguillage et pont transbordeur, commande par zones), qui servira aussi à un tram, un métro ou un bus, et une couche par type, ici <b>montagnes-russes</b> (profil, physique, lift, freins, quai à portillons, tout le dessin de la voie, des trains, du garage et de la gare), qui déclare ses zones à la couche voies. La couche d'un type pourra vivre dans le dépôt du jeu (<a href="https://github.com/qhess34/osmrides/issues/51">issue 51</a>).</p>
 
 <h2>Ce que le moteur offre à un jeu</h2>
 
@@ -119,7 +119,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
 <h3>Couches et extensions</h3>
 <p><code>engine/moteur.js</code> charge le noyau (<code>engine/noyau/</code>), puis les couches listées dans <code>SITE.extensions</code> (sans cette clé : <code>['voies','montagnes-russes']</code>, transitoire). Une couche est un nom (dossier voisin dans <code>engine/</code>) ou un chemin finissant par <code>/</code>, relatif à <code>jeu.html</code> : dossier pris dans le dépôt du jeu. Son manifeste <code>extension.js</code> déclare ses fichiers par étape ; chaque fichier s'inscrit auprès du noyau :</p>
 <pre><code>extension({nom:'montagnes-russes',
-  fichiers:{modele:['train','quai'], carte:['voie-dessin'], decor:['dessin']},
+  fichiers:{modele:['train','quai'], reseau:['zones','etat','exploitation'], carte:['voie-dessin'], decor:['dessin']},
   surcharges:['car','trains'],            // clés de SITE réglables par GAME.site
   step(dt){…}, ui(){…}, bilan(){…},        // appelés par le noyau
   actions:{depart(){…}}, sauvegarde:{capture(d){…}, restaure(d){…}},

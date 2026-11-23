@@ -22,6 +22,6 @@ Zones toutes équivalentes (issue #36, `docs/manoeuvres.md` « Modèle ») : la 
 
 - garage branché sur une zone quelconque (`SITE.yard.at` = `'St'|'B<k>'|'Fin'|'Pre'`, alias `'station'`, `'brake'` ; `YZ`, `ANCH`, `CARR`, `yardBlocks(self,b)`, `anchorFree`, `placeAt` ; pont droit : frein final seulement ; aiguillage en amont `back` : gare ou zone à marche arrière, issue #38 ; essai `node tools/yard-zone.js <site> <zone> [back]`).
 
-Règle de retenue : appareil hors de P (ou manœuvre de garage), la dernière zone d'attente avant l'appareil (`HOLD_Z`, `engine/garage.js`) retient le train
+Règle de retenue : appareil hors de P (ou manœuvre de garage), la dernière zone d'attente avant l'appareil (`HOLD_Z`, `engine/voies/garage.js`) retient le train
 
 - si c'est la gare, départ refusé avec la raison (`docs/manoeuvres.md`).

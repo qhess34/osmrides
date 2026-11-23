@@ -108,7 +108,7 @@ Fait en T7 (ci-dessous). Les verrouillages restent valables.
 
 ## Commandes au pupitre par zones (T7, implémenté)
 
-Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/garage.js`) ; une commande agit sur le train qui se trouve dans la zone (`zoneCmd` dans `engine/sim.js`, `act('zone', '<zone>:<cmd>')`).
+Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/montagnes-russes/zones.js`) ; une commande agit sur le train qui se trouve dans la zone (`zoneCmd` dans `engine/voies/zones.js`, `act('zone', '<zone>:<cmd>')`).
 
 | Zone | Id | Commandes | Mode |
 |---|---|---|---|
@@ -199,7 +199,7 @@ Chaque refus s'affiche dans le journal avec la raison (« Voie 3 occupée », «
 
 « Le train peut partir de la gare si l'aiguillage est activé, tant qu'une zone de frein peut le mettre en attente avant. »
 
-- Appareil hors de `P` (ou manœuvre de garage en cours) : la **dernière zone d'attente avant l'appareil** (`HOLD_Z`, `engine/garage.js`) retient le train, quelle qu'elle soit. Candidates : la zone de raccordement, puis toute zone d'attente dont le point d'arrêt est après le sien (gare : une fois le train sorti du quai) et à plus de 0,5 m avant l'appareil (un train arrêté plus près verrouillerait l'appareil).
+- Appareil hors de `P` (ou manœuvre de garage en cours) : la **dernière zone d'attente avant l'appareil** (`HOLD_Z`, `engine/voies/garage.js`) retient le train, quelle qu'elle soit. Candidates : la zone de raccordement, puis toute zone d'attente dont le point d'arrêt est après le sien (gare : une fois le train sorti du quai) et à plus de 0,5 m avant l'appareil (un train arrêté plus près verrouillerait l'appareil).
 - Frein de bloc, frein final, frein avant gare : le train y est **retenu automatiquement** (AUTO ou MANU) tant que l'appareil n'est pas revenu sur `P` ; relâcher la zone au pupitre est refusé (« … hors de P ») ; AV de la zone de raccordement : « entre au garage au bouton Dispatch de la voie ». Journal au départ : « Départ avec l'aiguillage hors de P : … sera retenu au frein de bloc n ».
 - Gare (aucune autre zone avant l'appareil : aiguillage juste après le quai, Tonnerre 2 Zeus) : « retenir » = **départ refusé**, raison au journal (« … aiguillage hors de P, aucune zone de freinage entre la gare et l'aiguillage pour retenir le train »), au bouton Départ comme à Gare AV.
 - Pont transbordeur droit (Trace du Hourra, OzIris) : le train est retenu avant le chariot quand aucun rail n'est en ligne (`S_PRE`, `circIn`) ; départ toujours autorisé.
