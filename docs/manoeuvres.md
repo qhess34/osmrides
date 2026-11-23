@@ -92,6 +92,8 @@ Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane
 
 **Le joueur ne commande pas les trains, il commande les zones.** Chaque zone de voie a ses actionneurs ; les trains réagissent à ce qui se trouve sous eux.
 
+Code (0.1.0, `docs/ARCHITECTURE.md` D14) : tout ce document est propre aux montagnes russes (`engine/montagnes-russes/`) ; seul le **cantonnement** (occupation d'un canton, `dansCanton`) est dans la couche partagée `engine/voies/cantons.js`, **facultatif** : les montagnes russes l'activent (`voies:{cantonnement:true}`), un tram ou un bus pourra rouler à vue.
+
 | Zone | Actionneurs au pupitre |
 |---|---|
 | Gare | freins liés au départ (pas de bouton), moteurs (pneus) avancer / reculer |

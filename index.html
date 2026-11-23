@@ -93,7 +93,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
     <li>sauvegarde automatique, son, jeu sur téléphone et hors ligne</li>
   </ul></div>
 </div>
-<p class="note">En 0.0.1, la voie, les trains, le quai à portillons et le garage sont encore dans le moteur. Ils seront sortis vers le dépôt des parcs pour ne garder ici qu'un noyau commun (carte, visiteurs, file, pupitre, sauvegarde), réutilisable par les stations de ski et d'autres réseaux (<a href="https://github.com/qhess34/osmrides/issues/51">issue 51</a>).</p>
+<p class="note">En 0.0.1, la voie, les trains, le quai à portillons et le garage étaient mêlés au reste du moteur. Depuis 0.1.0, le moteur est rangé en trois couches : un <b>noyau</b> commun à tous les jeux (carte, visiteurs, file, zone d'attente, météo, partie, sauvegarde), une couche <b>voies</b> partagée (tracé, abscisse le long de la voie, cantonnement facultatif) et une couche par type, ici <b>montagnes-russes</b> (profil, physique, freins, garage, quai à portillons, tout le dessin de la voie et des trains). La couche d'un type pourra vivre dans le dépôt du jeu (<a href="https://github.com/qhess34/osmrides/issues/51">issue 51</a>).</p>
 
 <h2>Ce que le moteur offre à un jeu</h2>
 
@@ -115,6 +115,16 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
   <tr><td>sauvegarde</td><td>clé <code>t2z.save.&lt;type&gt;.&lt;lieu&gt;.&lt;el&gt;.&lt;mode&gt;</code>, écrite à la fermeture et à intervalles</td></tr>
   <tr><td>page de jeu</td><td><code>jeu.html?type=parc&amp;lieu=asterix&amp;el=zeus</code> charge les données puis <code>engine/moteur.js</code></td></tr>
 </table>
+
+<h3>Couches et extensions</h3>
+<p><code>engine/moteur.js</code> charge le noyau (<code>engine/noyau/</code>), puis les couches listées dans <code>SITE.extensions</code> (sans cette clé : <code>['voies','montagnes-russes']</code>, transitoire). Une couche est un nom (dossier voisin dans <code>engine/</code>) ou un chemin finissant par <code>/</code>, relatif à <code>jeu.html</code> : dossier pris dans le dépôt du jeu. Son manifeste <code>extension.js</code> déclare ses fichiers par étape ; chaque fichier s'inscrit auprès du noyau :</p>
+<pre><code>extension({nom:'montagnes-russes',
+  fichiers:{modele:['train','quai'], carte:['voie-dessin'], decor:['dessin']},
+  surcharges:['car','trains'],            // clés de SITE réglables par GAME.site
+  step(dt){…}, ui(){…}, bilan(){…},        // appelés par le noyau
+  actions:{depart(){…}}, sauvegarde:{capture(d){…}, restaure(d){…}},
+  dessin(etape, D){…}, objets(items){…}});</code></pre>
+<p>La liste complète des points d'appel est en tête de <code>engine/noyau/base.js</code>. L'éditeur suit le même principe : <code>schema.js</code> et <code>editeur.js</code> d'une couche ajoutent leurs sections (ici « Attraction » et les travées).</p>
 
 <h2>L'éditeur</h2>
 <p>Éditeur local, sans intelligence artificielle : il ouvre la vraie page du jeu et ajoute une couche d'édition par-dessus ; ce qui est affiché est exactement le rendu du jeu. Il n'écrit qu'un fichier par élément, <code>&lt;el&gt;.game.js</code>, après un aperçu des différences.</p>
