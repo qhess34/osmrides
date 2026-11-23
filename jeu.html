@@ -343,12 +343,12 @@ body.fs #fsBar{padding-top:max(6px,env(safe-area-inset-top))}
 <script>
 /* Charge l'élément demandé (?type=parc&lieu=asterix&el=zeus, docs/hierarchie.md) : catalogue, données, configuration, données de l'éditeur (facultatives), puis moteur. */
 (function(){
-  // Version du moteur (docs/versions.md) : 'local' = dossier engine/ de ce dépôt ; 'v1', 'v2'… = version publiée, chargée en ligne.
-  // Essai d'une autre version sans rien modifier : jeu.html?…&moteur=v2 (ou moteur=local, ou un dossier voisin : moteur=../osmrides/engine/)
+  // Version du moteur (docs/versions.md) : 'local' = dossier engine/ de ce dépôt ; '0.0.1', '0.1.0'… = version publiée (étiquette git), chargée en ligne.
+  // Essai d'une autre version sans rien modifier : jeu.html?…&moteur=0.0.2 (ou moteur=local, ou un dossier voisin : moteur=../osmrides/engine/)
   const MOTEUR='local';
   const q=n=>{const m=new RegExp('[?&]'+n+'=([a-z0-9-]+)').exec(location.search);return m?m[1]:'';};
   const type=q('type')||'parc',lieu=q('lieu')||'asterix',el=q('el')||'zeus',dir='lieux/'+type+'/'+lieu+'/';
-  const mq=/[?&]moteur=(v[0-9.]+|main|local|(?:\.\.\/)+[a-z0-9_.\/-]+\/)(?:&|$)/.exec(location.search),moteur=mq?mq[1]:MOTEUR;
+  const mq=/[?&]moteur=(v?[0-9][0-9.]*|main|local|(?:\.\.\/)+[a-z0-9_.\/-]+\/)(?:&|$)/.exec(location.search),moteur=mq?mq[1]:MOTEUR;
   const ENGINE=moteur==='local'?'engine/':moteur.startsWith('.')?moteur:'https://cdn.jsdelivr.net/gh/qhess34/osmrides@'+moteur+'/engine/';
   const erreur=msg=>()=>{document.body.innerHTML='<p style="padding:2em;color:#fff">'+msg+' <a href="index.html" style="color:#f2c14e">Retour au choix</a></p>';};
   const load=(src,next,opt,msg)=>{const s=document.createElement('script');s.src=src;s.onload=next;

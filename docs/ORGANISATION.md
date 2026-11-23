@@ -11,7 +11,7 @@ _Décision du propriétaire, 23/11/2026. Proposition de mise en œuvre par la se
 | `qhess34/osmrides_skiresort` | stations de ski : `lieux/ski/<lieu>/…`, ce qui est propre aux remontées, pages de jeu | jeux des stations |
 | `qhess34/osmrides_website` | site d'accueil : présentation, jeux (liens), concepts, contribution (OSM, éditeur) | site d'accueil |
 
-**Partage du moteur et de l'éditeur (propriétaire, 23/11)** : `osmrides` est une librairie publiée par version (`v1`, `v2`… étiquettes git). Chaque jeu **indique** sa version et charge le moteur **en ligne** à cette version ; l'éditeur de la même version se lance sur le dépôt de jeu. Le code propre aux parcs ou au ski est écrit dans `osmrides_parks` / `osmrides_skiresort`. Monter de version = une tâche du chef de dépôt, tests à l'appui. Mode d'emploi : `docs/versions.md`.
+**Partage du moteur et de l'éditeur (propriétaire, 23/11)** : `osmrides` est une librairie publiée par version (étiquettes git `0.0.1`, `0.0.2`…). Chaque jeu **indique** sa version et charge le moteur **en ligne** à cette version ; l'éditeur de la même version se lance sur le dépôt de jeu. Le code propre aux parcs ou au ski est écrit dans `osmrides_parks` / `osmrides_skiresort`. Monter de version = une tâche du chef de dépôt, tests à l'appui. Mode d'emploi : `docs/versions.md`.
 
 ## Agents
 
@@ -49,7 +49,7 @@ Sous-agents (`.claude/agents/` de chaque dépôt), modèle selon la complexité 
 
 1. Propriétaire : installer l'application GitHub Claude sur les trois nouveaux dépôts (accès en écriture).
 2. Chef moteur (session actuelle) : écrire `AGENTS.md`, `.claude/agents/` et `docs/PILOTAGE.md` de chaque dépôt ; créer l'étiquette `inter-equipe`.
-3. Déplacer Parc Astérix vers `osmrides_parks` (données, pages, tutos), `MOTEUR='v1'` ; vérifier les 4 attractions et la sauvegarde.
+3. Déplacer Parc Astérix vers `osmrides_parks` (données, pages, tutos), `MOTEUR='0.0.1'` ; vérifier les 4 attractions et la sauvegarde.
 4. Déplacer l'écran titre, « À propos » et la présentation vers `osmrides_website` ; liens vers les jeux.
-5. Créer `osmrides_skiresort` sur le moteur v1 et la note `docs/vars-notes.md` ; démarrer #49 (Escondus V15).
+5. Créer `osmrides_skiresort` sur le moteur 0.0.1 et la note `docs/vars-notes.md` ; démarrer #49 (Escondus V15).
 6. Propriétaire : lancer les quatre sessions de chefs avec la consigne de démarrage de leur `docs/PILOTAGE.md`.

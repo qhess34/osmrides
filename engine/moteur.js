@@ -1,5 +1,5 @@
 /* Point d'entrée du moteur (docs/versions.md). Le jeu charge seulement ce fichier, local (engine/moteur.js)
-   ou en ligne à une version (https://cdn.jsdelivr.net/gh/qhess34/osmrides@v1/engine/moteur.js) ;
+   ou en ligne à une version (https://cdn.jsdelivr.net/gh/qhess34/osmrides@0.0.1/engine/moteur.js) ;
    il charge ensuite les autres fichiers du moteur, dans l'ordre, depuis le même dossier.
    La liste suit la version : un fichier ajouté au moteur n'oblige pas à changer les jeux. */
 (function(){

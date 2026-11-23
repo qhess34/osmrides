@@ -16,7 +16,7 @@ docker compose down
 
 Sans Docker : `node editor/server.js` (Node 22, aucune dépendance ; `PORT`, `HOST`, `T2Z_ROOT` facultatifs).
 
-Depuis un dépôt de jeu (`osmrides_parks`, `osmrides_skiresort`) : `sh ../osmrides/tools/editeur.sh v1` ; l'éditeur et le moteur viennent de la version, `jeu.html` et `lieux/` du dépôt de jeu (`docs/versions.md`). Tous les `lieux/<type>/<lieu>/<el>` du dépôt sont proposés (`?site=parc/asterix/zeus`).
+Depuis un dépôt de jeu (`osmrides_parks`, `osmrides_skiresort`) : `docker compose up -d` avec le modèle `tools/jeu/compose.yaml`, ou `sh ../osmrides/tools/editeur.sh 0.0.1` ; l'éditeur et le moteur viennent de la version, `jeu.html` et `lieux/` du dépôt de jeu (`docs/versions.md`). Tous les `lieux/<type>/<lieu>/<el>` du dépôt sont proposés (`?site=parc/asterix/zeus`).
 
 ## Utilisation
 
