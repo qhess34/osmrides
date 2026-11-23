@@ -45,24 +45,25 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-23 par la session de pilotage n° 8._
+_Mis à jour le 2026-11-23 (fin de matinée) par la session de pilotage n° 9._
 
-**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local (Docker), création d'attraction sans IA ; OSM reste la référence ; réglages synchronisables avec OSM (D12). **Vision long terme ajoutée** (`docs/ROADMAP.md`) : code lisible et KISS ; briques réutilisables pour d'autres simulations OSM (transports en commun, domaines skiables) ; hiérarchie type → lieu (plusieurs par type) → éléments (#48, analyse seule d'abord).
+**Orientation (propriétaire)** : moteur générique + éditeur WYSIWYG local, création sans IA ; OSM reste la référence ; réglages synchronisables avec OSM (D12) ; code KISS ; briques réutilisables pour d'autres simulations OSM. **Hiérarchie type → lieu → éléments en place** (#48, `docs/hierarchie.md`).
 
-**Publié sur `main` pendant la session n° 8 (21-23/11)** :
-- Vision KISS / réutilisable / hiérarchie dans `docs/ROADMAP.md` et une ligne dans `AGENTS.md`.
-- #47 : toits des bâtiments verts (remplissage commenté par erreur dans `drawBld`), corrigé, fermé.
-- #45 suite : sol par chemin de file (`GAME.look.ways`), garde-corps dessinés comme le vantail de la barrière d'entrée (interprétation à confirmer), couleur des portillons sur les séparateurs des travées.
-- #44 2e passe : premier arrivé premier servi sur tout le quai, mesures `passQ` / `jumpQ` dans `check.js` ; **cas du propriétaire non reproduit** (jumpQ=0 avant correction) : capture et attraction demandées dans l'issue.
-- #30 fermée ; #5 : valeurs estimées à rendre réglables dans l'éditeur en synchro OSM (roll : aucun tag OSM établi).
+**Publié sur `main` pendant la session n° 9 (23/11)** :
+- #44 : l'arrivant entre toujours dans la zone d'attente, avance au portillon par ordre d'arrivée (mesure `directQ` dans `check.js`).
+- #45 : en métal, garde-corps de l'entrée prolongée (`QSIDE`, main courante sur poteaux) sur toutes les bordures de file (`QSIDE0`).
+- #48 : migration faite. Fichiers dans `lieux/<type>/<lieu>/` (`lieux/index.js` = catalogue, `lieux/parc/asterix/<el>.data.js|.js|.game.js`, `plan.data.js`) ; `sites/`, `parc/` supprimés, `parc.html` → `plan.html` ; URL `jeu.html?type=parc&lieu=asterix&el=zeus` (`?site=` plus lu, sauf adresse interne de l'éditeur) ; sauvegardes `t2z.save.<type>.<lieu>.<el>.<mode>` (anciennes converties une fois). Points laissés : en-tête écrit par `editor/schema.js` cite encore `sites/` ; `tools/build.py` pose type/lieu en dur ; éditeur figé sur `lieux/parc/asterix`.
+- Éditeur : choix « Tous » dans la liste des chemins de file (même sol sur chaque way).
+- `docs/vars-notes.md` : étude OSM de Vars Les Claux (#49).
 
-**Issues ouvertes** : #44 (attente capture), #45 (à valider), #46 (OAuth2 OSM à enregistrer par le propriétaire), #5 (à détailler), #48 (hiérarchie, analyse).
+**Issues ouvertes** : #49 (Vars : réponses reçues, **prochaine grande tâche**), #48 (migration faite, à valider), #44 / #45 (à valider), #46 (OAuth2 OSM à enregistrer par le propriétaire), #5.
 
-**Prochaine tâche** : réponses du propriétaire sur #44 / #45 ; proposition d'analyse #48 ; lot 5 (file trouvée dans OSM sans liste, file visible dans l'éditeur) ; réimport Hourra / OzIris.
+**Prochaine tâche : #49, premier jeu « télésiège »** (Escondus V15, Vars Les Claux) dans `lieux/ski/vars/` : décisions du propriétaire : sièges, vitesse, sens, altitude **estimés et signalés** ; pistes affichées avec choix été / hiver ; premier jalon = cadence et embarquement seulement (pas de météo). Réutiliser visiteurs, file, pupitre, sauvegarde ; isoler ce qui est propre aux montagnes russes (KISS). Données OSM : tuiles ≤ 0,045 × 0,05° (limite 50 000 nœuds de l'API). Tâche lourde : session dédiée ou agent `moteur` en Opus.
 
 **Points de vigilance** :
-- Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'lieux/parc/asterix/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner.
-- `.claude/worktrees/` à ajouter à `.git/info/exclude` dans chaque nouveau conteneur (sinon le hook d'arrêt réclame un commit).
-- Un agent `moteur` relancé par SendMessage peut renvoyer son compte rendu plusieurs fois : l'arrêter (TaskStop) une fois le rapport reçu.
-- Deux agents en parallèle (le second en worktree) ont fonctionné ; conflit attendu sur `docs/journal/2026-11.md` (garder les deux lignes).
+- Un seul `editor-test` à la fois ; vérifier `git diff origin/main -- 'lieux/**/*.game.js'` avant de publier ; toujours `git fetch origin main` et fusionner (le propriétaire publie ses `game.js`, désormais dans `lieux/parc/asterix/`).
+- `.claude/worktrees/` à ajouter à `.git/info/exclude` dans chaque nouveau conteneur.
+- Conflit attendu sur `docs/journal/2026-11.md` à chaque fusion de worktree : garder toutes les lignes.
+- `check.js` peut échouer une fois sur un clic sous la charge : relancer seul.
+- Les sous-agents ne lisent pas toujours les issues (GraphQL bloqué) : leur donner les réponses du propriétaire dans la consigne.
 - Renouveler la session de pilotage après 3 ou 4 demandes.
