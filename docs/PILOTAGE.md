@@ -48,18 +48,16 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-24 par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
+_Mis à jour le 2026-11-24 (après-midi) par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
 
-**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs), `osmrides_skiresort` (Chef stations). La session a accès en écriture à `osmrides_parks` (issues `inter-equipe`, pas de commit sur leur code).
+**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations). Accès en écriture à `osmrides_parks` pour les issues `inter-equipe` (pas de commit sur leur code).
 
-**Versions** : étiquettes posées par le propriétaire seulement. Posées : `0.0.1`, `0.2.0`. Non posées : `0.1.0` (8e5f090, facultative), **`0.3.0`** (5bd63d4, lot 1 de #53, publié sur `main`).
+**Versions** (étiquettes posées par le propriétaire seulement) : posées `0.0.1`, `0.2.0`. **À poser** : `0.3.0` (5bd63d4, lot 1 de #53), `0.4.0` (ad582b4, #55 sol de file fusionné), `0.5.0` (48831c0, lot 2 de #53 : `GAME.profile` hauteurs du circuit, couleurs de voie plus envoyées vers OSM). `0.1.0` (8e5f090) facultative. Le Chef parcs attend l'étiquette 0.3.0 pour monter de version (son `lieu.js` et ses filtres de test sont prêts).
 
-**Décisions du propriétaire (24/11)** : hauteurs vers OSM = `ele` (altitude du sol **saisie dans l'éditeur** + hauteur de voie ; une IA peut aider, pas obligatoire) ; nouveaux réglages = version mineure (0.x.0), corrections = 0.x.1 ; horaires par lieu dans `lieux/<type>/<lieu>/lieu.js` (section « Lieu »). Le propriétaire a demandé si la couche montagnes russes n'est pas le travail du Chef parcs : réponse donnée (faite ici par accord du 23/11 dans #53, avant son déplacement) ; il peut demander de laisser le reste au Chef parcs.
+**Décisions du propriétaire (24/11)** : hauteurs = profil du circuit dans l'éditeur seulement, **pas** d'altitude du sol ni d'envoi `ele` pour le moment ; couleurs de voie dans l'éditeur, sans OSM ; nouveaux réglages = 0.x.0, corrections = 0.x.1 ; horaires par lieu `lieux/<type>/<lieu>/lieu.js` ; `layer` du tunnel d'OzIris corrigé dans OSM (réimport côté parcs).
 
-**#53** : lot 1 fait (0.3.0). Reste lot 2 (couleurs de voie sans OSM, hauteurs `ele`, tunnel d'OzIris, `dropAfter` depuis le profil) puis lot 3 (ponts transbordeurs). Limites connues du lot 1 : `preBrake` seulement s'il existe dans `SITE` ; caméra de `SITE` non supprimable ; seuls les freins de bloc par zone. Puis **#54**.
+**#53** : lots 1 et 2 faits. Reste **lot 3 : ponts transbordeurs** (point 5 : voie qui bouge, positions successives, aimantation ; remplace `yard.move`, `laneGap`, `post`, course 3,2 m ESTIMÉE, `d` d'OzIris). Plus tard : altitude du sol + `ele` si le propriétaire le demande. Limites connues : `preBrake` seulement s'il existe dans `SITE` ; seuls les freins de bloc par zone ; faisabilité du profil sans freins de bloc ; dessin du tunnel d'OzIris avec profil négatif non regardé en image. Puis **#54**.
 
-**Inter-équipe** : `osmrides_parks#7` (adoption de 0.3.0 : créer `lieu.js` ou élargir le filtre des tests, sinon `check/save/mobile` échouent sur l'erreur « fichier introuvable »).
+**Tests** : depuis `../osmrides_parks` (à jour, avec `lieu.js`), `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`) ; ici `JEU=../osmrides_parks node tools/editor-test.js` (rend désormais le `lieu.js` du jeu intact) et `tools/osm-sync-test.js` : PASS au 24/11. `check.js zeus` : échec isolé `overlapQ=1` vu une fois (non reproduit). Mesures : agent Sonnet lot 1 ≈ 307 k tokens, #55 ≈ 112 k, lot 2 ≈ 211 k.
 
-**Tests** : depuis `../osmrides_parks`, `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`) ; sans `lieu.js` ils échouent avec 0.3.0 (créer un `lieu.js` temporaire pour tester, puis le retirer). Ici : `tools/editor-test.js` (avec `JEU=../osmrides_parks`), `tools/osm-sync-test.js` : PASS au 24/11. Mesure : agent `moteur` Sonnet lot 1 ≈ 307 000 tokens, 33 min.
-
-**Points de vigilance** : Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; ne pas lire les transcriptions des agents ; renouveler la session après 3 ou 4 demandes (2 traitées dans cette session).
+**Points de vigilance** : Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; ne pas lire les transcriptions des agents ; **session à renouveler** (3 demandes traitées : 0.3.0, #55, lot 2).

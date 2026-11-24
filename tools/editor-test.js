@@ -40,6 +40,7 @@ const ed = (page, s) => page.evaluate(s);
 
 (async () => {
   const backup = {}; for (const id of SITES) if (fs.existsSync(gp(id))) backup[id] = fs.readFileSync(gp(id), 'utf8');
+  const LIEU_F = path.join(ROOT, 'lieux', 'parc', 'asterix', 'lieu.js'), lieuBak = fs.existsSync(LIEU_F) ? fs.readFileSync(LIEU_F, 'utf8') : null; // lieu.js du dépôt de jeu, rendu tel quel à la fin
   const browser = await chromium.launch(); let fail = 0;
   try {
     for (const id of SITES) {
@@ -530,7 +531,7 @@ const ed = (page, s) => page.evaluate(s);
     }
   } finally {
     await browser.close(); await stopServer();
-    try { fs.unlinkSync(path.join(ROOT, 'lieux', 'parc', 'asterix', 'lieu.js')); } catch (e) { } // lieu.js du test
+    if (lieuBak != null) fs.writeFileSync(LIEU_F, lieuBak); else try { fs.unlinkSync(LIEU_F); } catch (e) { } // lieu.js d'origine rendu (ou celui du test retiré)
     for (const id of SITES) { if (backup[id] != null) fs.writeFileSync(gp(id), backup[id]); else if (fs.existsSync(gp(id))) fs.unlinkSync(gp(id)); }
   }
   console.log(fail ? 'FAIL (' + fail + ')' : 'PASS');
