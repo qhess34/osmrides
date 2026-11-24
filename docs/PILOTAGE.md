@@ -52,7 +52,7 @@ _Mis à jour le 2026-11-24 (après-midi) par le Chef moteur, session n° 1 (cons
 
 **Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations). Accès en écriture à `osmrides_parks` pour les issues `inter-equipe` (pas de commit sur leur code).
 
-**Versions** (étiquettes posées par le propriétaire seulement) : posées `0.0.1`, `0.2.0`. **À poser** : `0.3.0` (5bd63d4, lot 1 de #53), `0.4.0` (ad582b4, #55 sol de file fusionné), `0.5.0` (48831c0, lot 2 de #53 : `GAME.profile` hauteurs du circuit, couleurs de voie plus envoyées vers OSM). `0.1.0` (8e5f090) facultative. Le Chef parcs attend l'étiquette 0.3.0 pour monter de version (son `lieu.js` et ses filtres de test sont prêts).
+**Versions** (étiquettes posées par le propriétaire seulement) : posées `0.0.1`, `0.2.0`, **`0.5.0`** (ed57e53 ; contient 0.3.0 = lot 1 de #53, 0.4.0 = #55, 0.5.0 = lot 2 de #53). `0.1.0`, `0.3.0`, `0.4.0` non posées (inutile). Chef parcs prévenu (osmrides_parks#7 + message) : monter directement en 0.5.0.
 
 **Décisions du propriétaire (24/11)** : hauteurs = profil du circuit dans l'éditeur seulement, **pas** d'altitude du sol ni d'envoi `ele` pour le moment ; couleurs de voie dans l'éditeur, sans OSM ; nouveaux réglages = 0.x.0, corrections = 0.x.1 ; horaires par lieu `lieux/<type>/<lieu>/lieu.js` ; `layer` du tunnel d'OzIris corrigé dans OSM (réimport côté parcs).
 
