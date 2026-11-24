@@ -54,8 +54,8 @@ yard: {
   at: 'brake', device: 'traverser',
   side: 1,                 // côté du garage (1 = droite du sens de marche) ; le rail mobile du parcours sort du circuit du côté opposé
   gap: 3.2,                // écart entre les axes des rails A (circuit) et B (garage) sur le chariot
-  pre: .6, post: .6,       // rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
-  laneGap: .8,             // jeu entre le bout du rail du chariot et le début des voies
+  pre: .6, post: .6,       // (post, retract.d, lanes[].d : réglables dans l'éditeur) rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
+  laneGap: .8,             // jeu entre le bout du rail du chariot et le début des voies (réglable dans l'éditeur, docs/ref/editeur.md)
   lanes: [ {name, d, len, cap}, … ],  // voies droites parallèles aux rails ; d = distance de l'axe du circuit à l'axe de la voie
   move: { v: 1.8, vc: .6, t: 4 },     // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
   retract: { d: 3.2, name: 'Rail mobile du parcours', short: 'Rail parcours', rest: 1 }  // facultatif : rail mobile du parcours escamotable, indépendant du chariot (ci-dessous)

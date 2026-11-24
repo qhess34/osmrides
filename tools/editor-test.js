@@ -529,6 +529,62 @@ const ed = (page, s) => page.evaluate(s);
       ok(!errors.length, 'aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ':\n  ' + out.join('\n  '));
     }
+    // ── pont transbordeur réglable (osmrides#53, lot 3) : GAME.site.yard.post / laneGap / retract.d / laneD.<n> ──
+    //    seulement sur les attractions à pont droit (oziris, hourra) ; sans réglage rien ne change ; aimantation, Origine, bornes (serveur) ; jamais d'envoi OSM
+    for (const id of ['oziris', 'hourra']) {
+      const out = [], errors = []; let isT = false;
+      const ok = (c, m) => { out.push((c ? '' : 'FAIL ') + m); if (!c) fail++; };
+      if (!fs.existsSync(path.join(ROOT, 'lieux', 'parc', 'asterix', id + '.js'))) continue;
+      const had = fs.existsSync(gp(id)) ? fs.readFileSync(gp(id), 'utf8') : null; if (had != null) fs.unlinkSync(gp(id));
+      try {
+        await startServer();
+        const pn = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        pn.on('pageerror', e => errors.push('pont: ' + String(e.message || e)));
+        await pn.goto(BASE + '/editor/?site=' + id);
+        const rdn = async () => { for (;;) { await pn.waitForFunction(() => window.ED && window.ED.ready && window.ED.isReady(), null, { timeout: 60000 }); await sleep(700); if (await pn.evaluate(() => window.ED.ready && window.ED.isReady())) return; } };
+        await rdn();
+        isT = await ed(pn, `ED.E('TRAV')`);
+        if (!isT) { ok(true, `pont : ${id} sans pont droit, ignoré`); await pn.close(); continue; }
+        const nl = await ed(pn, `ED.E('LANES.length')`), RA = await ed(pn, `ED.E('RA')`);
+        const snap = await ed(pn, `JSON.stringify(ED.E('({d:LANES.map(l=>l.d),off:OFF,r1:R1-ANCH,ug:U_LANE-(R1-R0),ret:RET})'))`), b0 = JSON.parse(snap);
+        const set = async (sel, v) => { await pn.fill(sel, String(v)); await pn.dispatchEvent(sel, 'change'); await rdn(); };
+        ok(await ed(pn, `document.querySelectorAll('#siteBox input[data-p^="yard.laneD."]').length`) === nl && !!(await pn.$('#siteBox input[data-p="yard.post"]')) && !!(await pn.$('#siteBox input[data-p="yard.laneGap"]')) && (!!(await pn.$('#siteBox input[data-p="yard.retract.d"]')) === !!RA), `pont ${id} : champs du pont dans la section « Attraction » (${nl} voie(s)${RA ? ', rail mobile' : ''})`);
+        ok(!(await ed(pn, `!!ED.draft().site`)) && /Positions du chariot/.test(await ed(pn, `document.getElementById('siteBox').textContent`)), 'pont : valeurs d\'origine, aucun GAME.site, positions affichées');
+        // rail au-delà du train, jeu rail/voies
+        await set('#siteBox input[data-p="yard.post"]', 1.4);
+        ok(Math.abs((await ed(pn, `ED.E('R1-ANCH')`)) - 1.4) < 1e-6 && await ed(pn, `ED.draft().site.yard.post`) === 1.4, 'pont : rail au-delà du train (post) 1,4 m écrit et appliqué');
+        await set('#siteBox input[data-p="yard.laneGap"]', 1.5);
+        ok(Math.abs((await ed(pn, `ED.E('U_LANE-(R1-R0)')`)) - 1.5) < 1e-6, 'pont : jeu rail/voies (laneGap) 1,5 m appliqué');
+        // décalage de la voie 1 : saisie, puis aimantation sur la voie 2 (s'il y en a une) ou sur le rail de garage
+        await set('#siteBox input[data-p="yard.laneD.1"]', +(b0.d[0] + .3).toFixed(2));
+        ok(Math.abs((await ed(pn, `ED.E('LANES[0].d')`)) - (b0.d[0] + .3)) < 1e-6 && Math.abs((await ed(pn, `ED.E('LANES[0].off')`)) - (b0.off[1] - .3)) < 1e-6 && Object.keys(await ed(pn, `ED.draft().site.yard.laneD`)).join() === '1', 'pont : décalage de la voie 1 (+0,3 m) appliqué, position du chariot suivie');
+        if (nl > 1) {
+          const lab = await pn.evaluate(() => [...document.querySelectorAll('#siteBox select[data-snap="yard.laneD.1"] option')].find(o => /^voie 2 /.test(o.textContent)).textContent);
+          await pn.selectOption('#siteBox select[data-snap="yard.laneD.1"]', { label: lab }); await rdn();
+          ok(Math.abs((await ed(pn, `ED.E('LANES[0].d')`)) - b0.d[1]) < .006, `pont : aimantation de la voie 1 sur la voie 2 (${b0.d[1]} m)`);
+        }
+        // valeur égale à l'origine : réglage retiré
+        await set('#siteBox input[data-p="yard.laneD.1"]', b0.d[0]);
+        ok(!(await ed(pn, `!!(ED.draft().site&&ED.draft().site.yard&&ED.draft().site.yard.laneD)`)) && Math.abs((await ed(pn, `ED.E('LANES[0].d')`)) - b0.d[0]) < 1e-6, 'pont : décalage égal à l\'origine = réglage retiré');
+        if (RA) {
+          await set('#siteBox input[data-p="yard.retract.d"]', 5);
+          ok(await ed(pn, `ED.E('RET')`) === 5 && await ed(pn, `ED.draft().site.yard.retract.d`) === 5 && await ed(pn, `ED.E('SITE_BASE.yard.retract.d')`) === b0.ret, 'pont : course du rail mobile 5 m appliquée, SITE_BASE intact');
+          await pn.click('#siteBox [data-rev="yard.retract.d"]'); await rdn();
+          ok(await ed(pn, `ED.E('RET')`) === b0.ret, 'pont : Origine de la course du rail mobile');
+        }
+        await pn.click('#siteBox [data-rev="yard.post"]'); await rdn(); await pn.click('#siteBox [data-rev="yard.laneGap"]'); await rdn();
+        ok(JSON.stringify(await ed(pn, `ED.E('({d:LANES.map(l=>l.d),off:OFF,r1:R1-ANCH,ug:U_LANE-(R1-R0),ret:RET})')`)) === JSON.stringify(b0) && !(await ed(pn, `!!ED.draft().site`)), 'pont : tout réinitialisé = rendu et positions identiques à l\'origine, GAME.site absent');
+        // bornes (serveur) : refus hors bornes, clés inconnues, voie inexistante
+        const bad = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{yard:{post:9,laneGap:-1,retract:{d:0},laneD:{'1':99,'${nl + 1}':1,x:2},gap:3}}},ctx:{lanes:${nl}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=6)`);
+        ok(bad === true, 'pont : valeurs hors bornes, voie inexistante et clé non listée refusées par le serveur');
+        const good = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{yard:{post:1.234,laneD:{'1':1.236}}}},ctx:{lanes:${nl}}})}).then(r=>r.json()).then(j=>j.ok!==false)`);
+        ok(good === true, 'pont : valeurs dans les bornes acceptées');
+        ok(S.normalize({ site: { yard: { post: 1.234, laneD: { 2: 3, 1: 1.236 } } } }).site.yard.laneD['1'] === 1.24, 'pont : valeurs arrondies au centimètre à l\'écriture');
+        await pn.close();
+      } finally { await stopServer(); if (had != null) fs.writeFileSync(gp(id), had); }
+      ok(!errors.length, 'pont : aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
+      console.log(id + ' (pont) :\n  ' + out.join('\n  '));
+    }
   } finally {
     await browser.close(); await stopServer();
     if (lieuBak != null) fs.writeFileSync(LIEU_F, lieuBak); else try { fs.unlinkSync(LIEU_F); } catch (e) { } // lieu.js d'origine rendu (ou celui du test retiré)

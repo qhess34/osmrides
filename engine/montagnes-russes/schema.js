@@ -10,10 +10,11 @@
     lap: [30, 600], stopBack: [0, 15], maxRun: [1, 8], holdBack: [0, 300], dropAfter: [0, 300], // tour (s), arrêt en gare avant la fin de gare (m), trains en ligne, arrêt au frein final avant la fin du circuit (m), cri après le haut du lift (m)
     zoneV: [1, 30], zoneHold: [0, 300], // frein de bloc : vitesse limite / de lancement (m/s), temps d'arrêt (s)
     move: { v: [0.2, 10], vc: [0.1, 5], t: [0.5, 30] }, // manœuvre de l'appareil de voie : vitesse, vitesse de chariot (m/s), durée (s)
+    yard: { post: [0, 5], laneGap: [0, 5], ret: [0.5, 10], d: [-40, 40] }, // pont transbordeur (m) : rail au-delà du train, jeu rail/voies, course du rail mobile, décalage d'une voie (ESTIMÉES)
     plat: { load: [1.5, 30], exit: [0, 30], back: [0, 10], front: [0, 10] }, // profondeurs des quais (m) : embarquement, sortie, au-delà de l'arrière du dernier wagon, devant le premier
     pre: { back: [0, 200], len: [3, 120] }, txt: 40 }; // les bornes ci-dessus sont ESTIMÉES (sûres pour le moteur, pas des mesures)
   const SITE_KEYS = { kind: 'enum', car: ['len', 'n', 'seats', 'abreast', 'restraint', 'w', 'inline', 'pitch'], trains: 'list', track: ['spine', 'rail', 'support'], trough: ['lo', 'hi', 'edge', 'deck', 'rim', 'shine'], phys: ['roll', 'drag', 'vmin'],
-    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel'], plat: ['load', 'exit', 'back', 'front'] };
+    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel', 'post', 'laneGap', 'retract', 'laneD'], plat: ['load', 'exit', 'back', 'front'] };
   const ZKEYS = ['trim', 'launch', 'hold', 'stop']; // par frein de bloc B<k> : vitesse limite (trim.v), vitesse de lancement, temps d'arrêt, arrêt obligatoire (engine/montagnes-russes/zones.js)
   const DEPTH = [0.5, 6]; // profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
@@ -64,10 +65,20 @@
       else if (!S.num(v, SL.pre[f][0], SL.pre[f][1])) E.push(p + ' : de ' + SL.pre[f][0] + ' à ' + SL.pre[f][1] + ' m');
     });
     sub('plat', SITE_KEYS.plat, (f, v, p) => { if (!S.num(v, SL.plat[f][0], SL.plat[f][1])) E.push(p + ' : profondeur de ' + SL.plat[f][0] + ' à ' + SL.plat[f][1] + ' m'); });
-    sub('yard', SITE_KEYS.yard, (f, v, p) => { // appareil de voie : seulement vitesses, durée et noms (le reste décrit la voie)
+    sub('yard', SITE_KEYS.yard, (f, v, p) => { // appareil de voie : vitesses, durée, noms ; pont transbordeur : rail au-delà du train, jeu rail/voies, course du rail mobile, décalage des voies (le reste décrit la voie)
       if (f === 'move') {
         if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push(p + ' : objet {v, vc, t} attendu'); return; }
         for (const m of Object.keys(v)) if (!SL.move[m]) E.push(p + '.' + m + ' : clé refusée'); else if (!S.num(v[m], SL.move[m][0], SL.move[m][1])) E.push(p + '.' + m + ' : de ' + SL.move[m][0] + ' à ' + SL.move[m][1]);
+      } else if (f === 'post' || f === 'laneGap') { if (!S.num(v, SL.yard[f][0], SL.yard[f][1])) E.push(p + ' : de ' + SL.yard[f][0] + ' à ' + SL.yard[f][1] + ' m'); }
+      else if (f === 'retract') { // course du rail mobile (seulement d ; le rail doit exister dans SITE)
+        if (!v || typeof v !== 'object' || Array.isArray(v) || Object.keys(v).some(m => m !== 'd')) E.push(p + ' : objet {d} attendu');
+        else if (!S.num(v.d, SL.yard.ret[0], SL.yard.ret[1])) E.push(p + '.d : course de ' + SL.yard.ret[0] + ' à ' + SL.yard.ret[1] + ' m');
+      } else if (f === 'laneD') { // décalage de chaque voie du pont, par numéro de voie : {"1": d, "2": d}
+        if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push(p + ' : objet {"<n° de voie>": décalage} attendu'); return; }
+        for (const k of Object.keys(v)) {
+          if (!/^[1-9]\d?$/.test(k) || (Number.isInteger(ctx.lanes) && +k > ctx.lanes)) E.push(p + '.' + k + ' : numéro de voie' + (Number.isInteger(ctx.lanes) ? ' de 1 à ' + ctx.lanes : ' attendu'));
+          else if (!S.num(v[k], SL.yard.d[0], SL.yard.d[1])) E.push(p + '.' + k + ' : décalage de ' + SL.yard.d[0] + ' à ' + SL.yard.d[1] + ' m');
+        }
       } else if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)');
     });
     if ('zones' in T) { // freins de bloc B1…Bn : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
@@ -105,7 +116,7 @@
           else if (key === 'trains') o.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }
           else if (key === 'zones') { const q = {}; for (const id of Object.keys(v).sort((a, b) => +a.slice(1) - +b.slice(1))) { const z = {}; for (const f of ZKEYS) if (f in v[id]) z[f] = f === 'trim' ? { v: S.r2(v[id].trim.v) } : typeof v[id][f] === 'number' ? S.r2(v[id][f]) : v[id][f]; q[id] = z; } o.zones = q; }
-          else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])])) : v[f]; o.yard = q; }
+          else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])])) : f === 'retract' ? { d: S.r2(v.retract.d) } : f === 'laneD' ? Object.fromEntries(Object.keys(v.laneD).sort((a, b) => a - b).map(k => [k, S.r2(v.laneD[k])])) : typeof v[f] === 'number' ? S.r2(v[f]) : v[f]; o.yard = q; }
           else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : S.r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o[key] = q; }
         }
       },

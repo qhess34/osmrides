@@ -44,8 +44,10 @@ const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=
    voie) ; seule la géométrie est retournée : l'avant du train est en u = 2·G_B − g (repère du chariot), son orientation ne change pas.
    laneU(g) : abscisse u (repère du chariot) d'un point de voie d'abscisse g, pour le dessin des voies fixes. */
 const LREV=TRAV&&!!YD.rev,laneU=g=>LREV?2*G_B-VL-g:g;
-const LANES=TRAV?YD.lanes.map((ln,j)=>{
-  const end=U_LANE+(ln.len||VL+BUF+.2),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
+/* Décalage d'une voie du pont (GAME.site.yard.laneD, réglé dans l'éditeur : {"<n° de voie>": d}) : prime sur yard.lanes[j].d de SITE ; absent = valeur de SITE. */
+const laneD=(ln,j)=>YD.laneD&&YD.laneD[j+1]!=null?YD.laneD[j+1]:ln.d;
+const LANES=TRAV?YD.lanes.map((ln0,j)=>{
+  const ln=Object.assign({},ln0,{d:laneD(ln0,j)}),end=U_LANE+(ln.len||VL+BUF+.2),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
   return {name:ln.name||'Voie '+(j+1),path,d:ln.d,dev:U_LANE,end,off:GAP-ln.d,cap:ln.cap||Math.max(1,Math.floor((end-U_LANE-VL)/GSTEP)+1)};
 }):LBK?YD.lanes.map((ln,j)=>{
   const path=[],P=ln.pts;let acc=0,prev=null,link=YD.b-YD.a;
