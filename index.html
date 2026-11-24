@@ -42,7 +42,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
 <p class="lead">Une librairie sans dépendance pour simuler l'exploitation d'installations réelles, vues du dessus, sur le tracé d'OpenStreetMap. Le joueur tient le pupitre : trains, quai, file d'attente, garage, maintenance, météo. Le moteur et l'éditeur sont publiés par version ; chaque jeu choisit la sienne.</p>
 
 <div class="grid">
-  <div class="card"><h3>Version courante</h3><p><b>0.4.0</b> (24/11/2026, à étiqueter). Notes de version : <a href="https://github.com/qhess34/osmrides/blob/main/docs/versions.md">docs/versions.md</a>.</p></div>
+  <div class="card"><h3>Version courante</h3><p><b>0.5.0</b> (24/11/2026, à étiqueter). Notes de version : <a href="https://github.com/qhess34/osmrides/blob/main/docs/versions.md">docs/versions.md</a>.</p></div>
   <div class="card"><h3>Jeux qui l'utilisent</h3><p><a href="https://qhess34.github.io/osmrides_parks/">Parcs d'attractions</a> : quatre montagnes russes du Parc Astérix. <a href="https://github.com/qhess34/osmrides_skiresort">Stations de ski</a> : en préparation.</p></div>
   <div class="card"><h3>Code source</h3><p><a href="https://github.com/qhess34/osmrides">qhess34/osmrides</a> : <code>engine/</code> (moteur), <code>editor/</code> (éditeur). Jeu de fan, non officiel.</p></div>
 </div>
@@ -147,6 +147,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
 <h2>Versions</h2>
 <table>
   <tr><th>Version</th><th>Date</th><th>Contenu</th></tr>
+  <tr><td><b>0.5.0</b></td><td>24/11/2026</td><td>Éditeur : section « Hauteurs du circuit » (<code>GAME.profile</code> : graphique, points déplaçables, alertes de pente et de faisabilité), appliquée par le moteur (gare et inversions gardées) ; tunnel enterré réglable par une hauteur négative ; couleurs de voie réglées dans « Attraction », plus renvoyées vers OSM. Sans <code>GAME.profile</code>, rien ne change.</td></tr>
   <tr><td><b>0.4.0</b></td><td>24/11/2026</td><td>Éditeur : une seule section « Sol de la file » (« Tous » par défaut, un chemin au choix) ; le sol commun est écrit sur chaque chemin (renvoyable vers OSM) et sur le prolongement d'entrée. Moteur inchangé.</td></tr>
   <tr><td><b>0.3.0</b></td><td>24/11/2026</td><td>Éditeur : réglages de <code>SITE</code> dans <code>GAME.site</code> (liste blanche avec bornes) : objectif, caméras, textes, éclairs, postes de maintenance, tour, trains en ligne, quais, wagons, appareil de voie ; freins de bloc par zone (vitesse limite, vitesse de lancement, arrêt obligatoire, temps d'arrêt) ; gyrophare et étiquette de la salle de contrôle ; section « Lieu » (horaires d'ouverture du lieu, <code>lieux/&lt;type&gt;/&lt;lieu&gt;/lieu.js</code>). Moteur : <code>holdBack</code>, <code>dropAfter</code> et <code>loadSide</code> déduits ; profondeur des travées bornée par le quai.</td></tr>
   <tr><td><b>0.2.0</b></td><td>23/11/2026</td><td>Couche <code>voies</code> : arrêt et zones d'attente, garage, aiguillage et pont transbordeur, commande par zones, sans dessin.</td></tr>

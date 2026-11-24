@@ -148,4 +148,85 @@
       $('bDepthAuto').onclick = revertDepth; }
     },
     ed(x) { X = x; return { depth: () => dep() }; } }); // accès de test (tools/editor-test.js ED.depth)
+  // ── Hauteurs du circuit (GAME.profile, osmrides#53 lot 2) : graphique s / hauteur, points déplaçables, repères du circuit ; le moteur (engine/voies/trace.js, PROF) applique ──
+  let pf = null, psel = -1, pdrag = null;
+  const fr1 = v => String(Math.round(v * 10) / 10).replace('.', ','), PL = () => S.PROF, pEd = () => Array.isArray(GM().profile), pts = () => (GM().profile || []).map(q => q.slice());
+  function pfLoad() { pf = JSON.parse(E('JSON.stringify({L0:PROF.L0,on:PROF.on,tag:PROF.tag0,tun:PROF.tun0,inv:PROF.inv0,fix:PROF.fix,s0:PROF.s0,h0:PROF.h0,faisa:faisabilite(),cur:Array.from({length:Math.ceil(PROF.L0/2)+1},(_,i)=>+PROF.h(Math.min(i*2,PROF.L0-1e-6)).toFixed(2))})')); }
+  const inFixP = s => pf.fix.some(f => s >= f[0] - .01 && s <= f[1] + .01), curAt = s => { const f = Math.max(0, Math.min(pf.cur.length - 1, s / 2)), a = Math.floor(f); return pf.cur[a] + ((pf.cur[Math.min(a + 1, pf.cur.length - 1)] - pf.cur[a]) * (f - a)); };
+  function rdp(P, eps) { // simplification de la courbe d'origine (Douglas-Peucker) pour le premier profil
+    const keep = new Array(P.length).fill(false); keep[0] = keep[P.length - 1] = true; const st = [[0, P.length - 1]];
+    while (st.length) { const [a, b] = st.pop(); let m = -1, d = eps; for (let i = a + 1; i < b; i++) { const t = (P[i][0] - P[a][0]) / ((P[b][0] - P[a][0]) || 1), e = Math.abs(P[i][1] - (P[a][1] + (P[b][1] - P[a][1]) * t)); if (e > d) { d = e; m = i; } } if (m > 0) { keep[m] = true; st.push([a, m], [m, b]); } }
+    return P.filter((_, i) => keep[i]); }
+  function pSample() { // points de départ : courbe d'origine simplifiée (écart de 0,4 m, plus large si trop de points), sans les zones figées
+    const P0 = pf.s0.map((s, i) => [s, pf.h0[i]]); let eps = .4, R; do { R = rdp(P0, eps).filter(q => !inFixP(q[0])); eps *= 1.4; } while (R.length > PL().n[1] - 6);
+    const o = []; for (const q of R) { const s = Math.round(q[0] * 10) / 10, h = Math.round(q[1] * 100) / 100; if (!o.length || s - o[o.length - 1][0] >= PL().gap + .2) o.push([s, Math.max(PL().h[0], Math.min(PL().h[1], h))]); }
+    // affinage : la courbe lisse du moteur (profilLisse) ne suit pas les segments droits de la simplification ; ajoute le point d'origine le plus écarté jusqu'à 0,5 m d'écart
+    try { const lisse = E('profilLisse'); for (let k = 0; k < 40 && o.length < PL().n[1] - 6; k++) { const f = lisse(o.map(q => q.slice()), pf.L0); let w = -1, d = .5;
+        P0.forEach((q, i) => { if (inFixP(q[0]) || o.some(p => Math.abs(p[0] - q[0]) < PL().gap + .2)) return; const e = Math.abs(f(q[0]) - q[1]); if (e > d) { d = e; w = i; } });
+        if (w < 0) break; o.push([Math.round(P0[w][0] * 10) / 10, Math.round(P0[w][1] * 100) / 100]); o.sort((a, b) => a[0] - b[0]); } } catch (e) { }
+    return o; }
+  function pCommit(P, keepSel) { P.sort((a, b) => a[0] - b[0]); X.setUndo(JSON.stringify(draft())); GM().profile = P.map(q => q.length > 2 && q[2] === 'lin' ? [R2(q[0]), R2(q[1]), 'lin'] : [R2(q[0]), R2(q[1])]); if (!keepSel) psel = -1; reloadPreview(); }
+  const pInit = () => { pfLoad(); pCommit(pSample()); };
+  const pReset = () => { if (!pEd()) return; X.setUndo(JSON.stringify(draft())); delete GM().profile; psel = -1; reloadPreview(); };
+  function pAdd(s) { if (!pEd() || !pf) return false; s = Math.round(s * 10) / 10; const P = pts(); if (s < 0 || s > pf.L0 || inFixP(s) || P.some(q => Math.abs(q[0] - s) < PL().gap) || P.length >= PL().n[1]) return false;
+    P.push([s, Math.round(curAt(s) * 100) / 100]); P.sort((a, b) => a[0] - b[0]); psel = P.findIndex(q => q[0] === s); pCommit(P, true); return true; }
+  function pSet(i, s, h, lin) { const P = pts(); if (!P[i]) return false; const a = i ? P[i - 1][0] + PL().gap : 0, b = i < P.length - 1 ? P[i + 1][0] - PL().gap : pf.L0;
+    s = Math.round(Math.max(a, Math.min(b, s)) * 10) / 10; h = Math.round(Math.max(PL().h[0], Math.min(PL().h[1], h)) * 100) / 100; if (inFixP(s)) return false;
+    P[i] = lin ? [s, h, 'lin'] : [s, h]; psel = i; pCommit(P, true); return true; }
+  function pDel(i) { const P = pts(); if (!P[i] || P.length <= PL().n[0]) return false; P.splice(i, 1); pCommit(P); return true; }
+  // dessin : bandes des repères (gare, lift, freins, tunnels, inversions), courbe d'origine (gris), courbe réglée (or), points
+  const PW = 300, PH_ = 210, M = { l: 34, r: 6, t: 8, b: 18 };
+  function pRange(P) { let lo = 0, hi = 10; for (const v of pf.h0.concat(pf.cur, (P || []).map(q => q[1]))) { lo = Math.min(lo, v); hi = Math.max(hi, v); } return [Math.floor(lo - 2), Math.ceil(hi + 2)]; }
+  function pDraw(P) {
+    const cv = $('profCv'); if (!cv || !pf) return; const c = cv.getContext('2d'), [lo, hi] = pRange(P), X0 = s => M.l + s / pf.L0 * (PW - M.l - M.r), Y0 = h => PH_ - M.b - (h - lo) / (hi - lo) * (PH_ - M.t - M.b);
+    c.clearRect(0, 0, PW, PH_); c.fillStyle = '#141d33'; c.fillRect(0, 0, PW, PH_); c.font = '9px system-ui'; c.textBaseline = 'top';
+    const band = (a, b, col, lab) => { c.fillStyle = col; c.fillRect(X0(a), M.t, Math.max(1.5, X0(b) - X0(a)), PH_ - M.t - M.b); if (lab) { c.fillStyle = '#c9d3ea'; c.fillText(lab, X0(a) + 1, M.t + 1); } };
+    const T = pf.tag; if (T.st0 != null && T.st1 != null) band(T.st0, T.st1, 'rgba(76,195,138,.28)', 'gare'); if (T.lift0 != null && T.lift1 != null) band(T.lift0, T.lift1, 'rgba(79,140,255,.25)', 'lift');
+    for (let k = 1; T['blk' + k] != null; k++) band(T['bz' + k] != null ? T['bz' + k] : T['blk' + k] - 6, T['blk' + k], 'rgba(229,72,77,.3)', 'B' + k);
+    if (T.brk != null) band(T.brk, T.fin != null ? T.fin : T.brk + 6, 'rgba(229,72,77,.3)', 'frein');
+    pf.tun.forEach(t => band(t[0], t[1], 'rgba(200,170,110,.32)', 'tunnel')); pf.inv.forEach(v => band(v.s0, v.s1, 'rgba(180,120,220,.28)', v.type === 'loop' ? 'looping' : 'vrille'));
+    c.lineWidth = 1; c.fillStyle = '#9aa7c4'; c.textBaseline = 'middle'; c.textAlign = 'right';
+    const stp = hi - lo > 60 ? 20 : hi - lo > 25 ? 10 : 5; for (let h = Math.ceil(lo / stp) * stp; h <= hi; h += stp) { c.beginPath(); c.moveTo(M.l, Y0(h)); c.lineTo(PW - M.r, Y0(h)); c.strokeStyle = h === 0 ? '#5a6e9f' : '#2a3a5f'; c.stroke(); c.fillText(h + '', M.l - 3, Y0(h)); }
+    c.textAlign = 'center'; c.textBaseline = 'top'; for (let s = 0; s <= pf.L0; s += pf.L0 > 600 ? 200 : 100) c.fillText(s + '', X0(s), PH_ - M.b + 3); c.textAlign = 'left';
+    c.strokeStyle = '#7d8aa8'; c.lineWidth = 1; c.setLineDash(pEd() ? [3, 3] : []); c.beginPath(); pf.s0.forEach((s, i) => { if (i) c.lineTo(X0(s), Y0(pf.h0[i])); else c.moveTo(X0(s), Y0(pf.h0[i])); }); c.stroke(); c.setLineDash([]);
+    if (pEd()) { c.strokeStyle = '#f2c14e'; c.lineWidth = 2; c.beginPath(); if (pdrag) (P || []).forEach((q, i) => (i ? c.lineTo(X0(q[0]), Y0(q[1])) : c.moveTo(X0(q[0]), Y0(q[1])))); else pf.cur.forEach((h, i) => { const sx = X0(Math.min(i * 2, pf.L0)); if (i) c.lineTo(sx, Y0(h)); else c.moveTo(sx, Y0(h)); }); c.stroke();
+      (P || []).forEach((q, i) => { const on = i === psel; c.beginPath(); c.arc(X0(q[0]), Y0(q[1]), on ? 5.5 : 4, 0, 7); c.fillStyle = on ? '#ff8a3d' : q[2] === 'lin' ? '#5fd3e6' : '#fff'; c.fill(); c.strokeStyle = '#0b1120'; c.lineWidth = 1.5; c.stroke(); }); }
+    pf._m = { lo, hi, X0, Y0 }; }
+  const pHit = (P, x, y) => { const m = pf._m; let b = -1, d = 9; P.forEach((q, i) => { const e = Math.hypot(m.X0(q[0]) - x, m.Y0(q[1]) - y); if (e < d) { d = e; b = i; } }); return b; };
+  function profilHTML() {
+    pfLoad(); const P = pts(), ed = pEd(), h = [];
+    h.push(`<p class="note">Hauteur de la voie au-dessus de la gare (m) selon l'abscisse <i>s</i> du tracé d'origine (m). ${ed ? 'Courbe réglée : <span style="color:var(--gold)">or</span> ; origine : tirets gris.' : 'Origine (grise) : aucune modification.'} Gare et inversions gardent leurs hauteurs (zones colorées : gare, lift, freins, tunnels, inversions). Hauteur de ${PL().h[0]} à ${PL().h[1]} m, ${PL().n[0]} à ${PL().n[1]} points (ESTIMÉS).</p>`,
+      `<canvas id="profCv" width="${PW}" height="${PH_}" style="width:100%;max-width:${PW}px;touch-action:none;border-radius:6px"></canvas>`);
+    if (!ed) h.push('<div class="row"><button id="bProfInit" class="go">Régler les hauteurs</button></div><p class="note">Crée un profil de départ qui suit la courbe d\'origine (' + pSample().length + ' points, écart de 0,4 m environ), puis chaque point se déplace. Tunnel enterré (par exemple sous l\'eau) : descendre les points sous 0 m.</p>');
+    else {
+      h.push(`<p class="note">Clic sur la courbe : ajoute un point ; glisser un point : le déplace ; <span style="color:#5fd3e6">cyan</span> = segment droit jusqu'au point suivant. ${P.length} point(s).</p>`);
+      if (psel >= 0 && P[psel]) { const q = P[psel]; h.push(`<div class="fld mod" style="display:block"><div><b>Point ${psel + 1}</b></div><div>s <input id="pS" type="number" step="0.5" min="0" max="${R2(pf.L0)}" value="${q[0]}" style="width:70px"> m, hauteur <input id="pH" type="number" step="0.1" min="${PL().h[0]}" max="${PL().h[1]}" value="${q[1]}" style="width:62px"> m</div><label style="display:block;margin-top:4px"><input id="pLin" type="checkbox"${q[2] === 'lin' ? ' checked' : ''} style="width:auto"> segment droit jusqu'au point suivant</label><div class="row"><button id="bPDel" ${P.length <= PL().n[0] ? 'disabled' : ''}>Supprimer le point</button></div></div>`); }
+      else h.push('<p class="note">Aucun point sélectionné.</p>');
+      h.push('<div class="row"><button id="bProfRev" title="Revenir aux hauteurs d\'origine">Origine</button></div>');
+      // alertes : pente, circuit infaisable (estimation du moteur : pente, roulement, traînée, sans freins de bloc)
+      const sl = []; P.forEach((q, i) => { if (!i) return; const a = P[i - 1], g = Math.abs(q[1] - a[1]) / (q[0] - a[0]); if (g > PL().slope) sl.push(`${Math.round(g * 100)} % entre s = ${fr1(a[0])} et ${fr1(q[0])} m`); });
+      if (sl.length) h.push(`<p class="note warn">Pente de plus de ${PL().slope * 100} % (ESTIMÉ) : ${esc(sl.join(' ; '))}.</p>`);
+      const F = pf.faisa; if (F) h.push(F.bloque ? `<p class="note err">Circuit infaisable : le train s'arrêterait vers s = ${fr1(F.sOrig)} m (vitesse estimée ${fr1(F.vMin)} m/s, minimum du moteur ${fr1(F.vmin)} m/s).</p>` : `<p class="note">Vitesse la plus basse estimée après le lift : ${fr1(F.vMin)} m/s vers s = ${fr1(F.sOrig)} m (minimum du moteur ${fr1(F.vmin)} m/s ; estimation sans les freins de bloc).</p>`);
+    }
+    return h.join('');
+  }
+  function bindProfil() {
+    const cv = $('profCv'); if (!cv) return; pDraw(pts());
+    const bi = $('bProfInit'); if (bi) bi.onclick = pInit; const br = $('bProfRev'); if (br) br.onclick = pReset;
+    const xy = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * PW / r.width, (e.clientY - r.top) * PH_ / r.height]; };
+    const sOf = x => (x - M.l) / (PW - M.l - M.r) * pf.L0;
+    cv.onpointerdown = e => { if (!pEd()) return; const [x, y] = xy(e), P = pts(), i = pHit(P, x, y);
+      if (i >= 0) { psel = i; pdrag = { i, P, moved: false }; cv.setPointerCapture(e.pointerId); pDraw(P); }
+      else if (x >= M.l) { if (!pAdd(sOf(x))) panel(); } e.preventDefault(); };
+    cv.onpointermove = e => { if (!pdrag) return; const [x, y] = xy(e), m = pf._m, P = pdrag.P, i = pdrag.i, q = P[i];
+      const a = i ? P[i - 1][0] + PL().gap : 0, b = i < P.length - 1 ? P[i + 1][0] - PL().gap : pf.L0, s = Math.max(a, Math.min(b, sOf(x))), h = Math.max(PL().h[0], Math.min(PL().h[1], m.lo + (PH_ - M.b - y) / (PH_ - M.t - M.b) * (m.hi - m.lo)));
+      if (!inFixP(s)) { P[i] = q[2] === 'lin' ? [s, h, 'lin'] : [s, h]; pdrag.moved = true; } pDraw(P); };
+    cv.onpointerup = () => { if (!pdrag) return; const d = pdrag; pdrag = null; if (d.moved) pCommit(d.P, true); else panel(); };
+    const ps = $('pS'), ph = $('pH'), pl = $('pLin'), bd = $('bPDel');
+    if (ps) { const ap = () => { if (isFinite(+ps.value) && isFinite(+ph.value)) pSet(psel, +ps.value, +ph.value, pl.checked); }; ps.onchange = ph.onchange = pl.onchange = ap; bd.onclick = () => pDel(psel); }
+  }
+  T2ZEditeur.section({ id: 'secProfil', titre: 'Hauteurs du circuit', avant: 'secLook', box: 'profBox',
+    panel(x) { X = x; try { $('profBox').innerHTML = profilHTML(); bindProfil(); } catch (e) { $('profBox').innerHTML = '<p class="err">Section « Hauteurs du circuit » illisible : ' + String(e.message).replace(/</g, '&lt;') + '</p>'; console.error(e); } },
+    contexte(x) { X = x; const c = {}; try { c.profileL = E('PROF.L0'); c.faisa = JSON.parse(E('JSON.stringify(faisabilite())')); } catch (e) { } return c; },
+    ed(x) { X = x; return { prof: { pts: () => pts(), on: () => pEd(), info: () => { pfLoad(); return pf; }, sample: () => { pfLoad(); return pSample(); }, init: () => pInit(), add: s => (pfLoad(), pAdd(s)), set: (i, s, h, lin) => pSet(i, s, h, lin), del: i => pDel(i), reset: () => pReset(), sel: () => psel, select: i => { psel = i; panel(); } } }; } });
 })();

@@ -333,6 +333,46 @@ const ed = (page, s) => page.evaluate(s);
         await ps.click('#bTAdd'); await rdy();
         const nAddT = await ed(ps, `ED.E('trains.length')`);
         ok(nAddT === n0 || (nAddT === n0 - 1 && (await ed(ps, `document.getElementById('bUndoSite')`)) === null), `attraction : train ajouté (${nAddT} trains)`);
+        // hauteurs du circuit (GAME.profile, osmrides#53 lot 2) : origine affichée, profil de départ, point déplacé, ajouté, supprimé, segment droit, bornes, gare gardée, dropAfter, Origine
+        { const PF = 'ED.prof', pj = s => ed(ps, s), L0 = await pj(`ED.E('PROF.L0')`), stMid = await pj(`ED.E('(TAG.st0+TAG.st1)/2')`), hSt0 = await pj(`ED.E('hAt((TAG.st0+TAG.st1)/2)')`);
+          ok(!(await pj(`ED.prof.on()`)) && !(await pj(`ED.E('PROF.on')`)) && await pj(`!!document.getElementById('profCv')`) && await pj(`!!document.getElementById('bProfInit')`), 'hauteurs : origine affichée (graphique), aucun profil : jeu inchangé');
+          ok(!(await pj(`'profile' in ED.draft()`)) && Math.abs((await pj(`ED.E('L')`)) - L0) < 1e-6, 'hauteurs : sans GAME.profile, longueur du circuit d\'origine');
+          await ps.click('#bProfInit'); await rdy();
+          const P1 = await pj(`ED.draft().profile`), dev = await pj(`ED.E('Math.max(...PROF.s0.map((s,i)=>Math.abs(PROF.h(s)-PROF.h0[i])))')`);
+          ok(Array.isArray(P1) && P1.length >= 2 && P1.length <= 60 && await pj(`ED.E('PROF.on')`) && dev < 1, `hauteurs : profil de départ (${P1.length} points) fidèle à l'origine (écart max ${dev.toFixed(2)} m)`);
+          ok(Math.abs((await pj(`ED.E('hAt((TAG.st0+TAG.st1)/2)')`)) - hSt0) < .01, 'hauteurs : gare gardée à sa hauteur');
+          // sommet abaissé de 4 m (point le plus haut hors zones figées)
+          const iTop = P1.reduce((b, q, i) => q[1] > P1[b][1] ? i : b, 0), hTop = P1[iTop][1], sTop = P1[iTop][0], Lb = await pj(`ED.E('L')`), hb = await pj(`ED.E('Math.max(...Array.from({length:Math.floor(L)},(_,i)=>hAt(i)))')`);
+          ok(await pj(`ED.prof.set(${iTop},${sTop},${hTop - 4})`), 'hauteurs : point déplacé (saisie)'); await rdy();
+          ok(Math.abs((await pj(`ED.draft().profile[${iTop}][1]`)) - (hTop - 4)) < .01 && Math.abs((await pj(`ED.E('PROF.h(${sTop})')`)) - (hTop - 4)) < .05, `hauteurs : point le plus haut abaissé de 4 m, appliqué au jeu (max ${hb.toFixed(1)} -> ${(await pj(`ED.E('Math.max(...Array.from({length:Math.floor(L)},(_,i)=>hAt(i)))')`)).toFixed(1)} m)`);
+          ok(Math.abs((await pj(`ED.E('hAt((TAG.st0+TAG.st1)/2)')`)) - hSt0) < .01, 'hauteurs : gare toujours à sa hauteur');
+          const lift1 = await pj(`ED.E('TAG.lift1')`), dd = await pj(`ED.E('(()=>{const a=TAG.lift1;let top=-1e9,sTop=a;for(let s=a;s<=a+60&&s<L-5;s+=.5){const h=hAt(s);if(h>top){top=h;sTop=s;}}for(let s=sTop;s<=a+150&&s<L-5;s+=.5)if(hAt(s)<top-1)return +(s-a).toFixed(1);return null;})()')`);
+          ok(lift1 == null || dd === await pj(`ED.E('DEDUIT.dropAfter')`), `hauteurs : dropAfter déduit du profil effectif (${dd} m)`);
+          // point ajouté (clic) sur la courbe, hors zones figées et des autres points
+          const fixes = await pj(`ED.prof.info().fix`), Pcur = await pj(`ED.draft().profile`);
+          let sAdd = null; for (let s = 5; s < L0 - 5; s += 3.7) if (!fixes.some(f => s >= f[0] - 1 && s <= f[1] + 1) && Pcur.every(q => Math.abs(q[0] - s) > 3)) { sAdd = Math.round(s * 10) / 10; break; }
+          ok(sAdd != null && await pj(`ED.prof.add(${sAdd})`), 'hauteurs : point ajouté'); await rdy();
+          ok(await pj(`ED.draft().profile.length`) === Pcur.length + 1 && await pj(`ED.draft().profile.some(q=>q[0]===${sAdd})`), `hauteurs : ${Pcur.length + 1} points`);
+          const iA = await pj(`ED.draft().profile.findIndex(q=>q[0]===${sAdd})`);
+          ok(await pj(`ED.prof.set(${iA},${sAdd},${(await pj(`ED.draft().profile[${iA}][1]`))},true)`), 'hauteurs : segment droit'); await rdy();
+          ok(await pj(`ED.draft().profile[${iA}][2]`) === 'lin' && await pj(`ED.E('PROF.on')`), 'hauteurs : segment droit écrit (lin)');
+          await ps.click('#bPDel'); await rdy();
+          ok(await pj(`ED.draft().profile.length`) === Pcur.length && !(await pj(`ED.draft().profile.some(q=>q[0]===${sAdd})`)), 'hauteurs : point supprimé');
+          // bornes : hauteur limitée à 80 m par l'éditeur, refusée par le serveur au-delà ; pente d'alerte
+          ok(await pj(`ED.prof.set(${iTop},${sTop},500)`), 'hauteurs : valeur saisie hors bornes ramenée à la borne'); await rdy();
+          ok(await pj(`ED.draft().profile[${iTop}][1]`) === 80, 'hauteurs : borne haute 80 m');
+          const bP = await pj(`fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{profile:[[0,0],[10,200]]}})}).then(r=>r.json()).then(j=>j.ok===false&&/hauteur/.test(j.error||JSON.stringify(j)))`);
+          ok(bP === true, 'hauteurs : serveur refuse une hauteur hors bornes');
+          const vv = S.validate({ profile: [[0, 0], [10, 50], [20, 0]] }, { profileL: 1000 }), vo = S.validate({ profile: [[0, 0], [0.5, 1]] }, { profileL: 1000 }), vs = S.validate({ profile: [[0, 0], [10, 1]] }, { profileL: 5 });
+          ok(JSON.stringify(vv).includes('pente') && JSON.stringify(vo).includes('au moins') && JSON.stringify(vs).includes('longueur'), 'hauteurs : pente d\'alerte, écart minimal, longueur du circuit (validation)');
+          const vf = S.validate({ profile: [[0, 0], [10, 1]] }, { profileL: 1000, faisa: { bloque: true, sOrig: 130, vMin: 0, vmin: 3 } }); ok(JSON.stringify(vf).includes('infaisable'), 'hauteurs : circuit infaisable signalé (validation)');
+          await ps.click('#bProfRev'); await rdy();
+          ok(!(await pj(`'profile' in ED.draft()`)) && !(await pj(`ED.E('PROF.on')`)) && Math.abs((await pj(`ED.E('L')`)) - L0) < 1e-6 && Math.abs((await pj(`ED.E('hAt(${stMid})')`)) - hSt0) < 1e-6, 'hauteurs : Origine retire GAME.profile, jeu d\'origine'); }
+        // couleurs de la voie (GAME.site.track / trough) : champ, application au jeu, Origine
+        { const tk = await ed(ps, `ED.E('SITE.kind')`), key = tk === 'bob' ? 'trough.lo' : 'track.spine', has = await ps.$(`#siteBox input[data-p="${key}"]`);
+          if (has) { const v0 = await ed(ps, `ED.E('JSON.stringify(SITE.${key})')`); await ps.fill(`#siteBox input[data-p="${key}"]`, '#336699'); await ps.dispatchEvent(`#siteBox input[data-p="${key}"]`, 'change'); await rdy();
+            ok(await ed(ps, `JSON.stringify(ED.E('SITE.${key}'))`) !== v0 && /336699|51,102,153/.test(await ed(ps, `JSON.stringify(ED.E('SITE.${key}'))`)) && !!(await ed(ps, `ED.draft().site.${key.split('.')[0]}`)), `voie : couleur ${key} réglée dans l'éditeur et appliquée au jeu`);
+            await ps.click(`#siteBox [data-rev="${key}"]`); await rdy(); ok(await ed(ps, `JSON.stringify(ED.E('SITE.${key}'))`) === v0 && !(await ed(ps, `'track' in (ED.draft().site||{})||'trough' in (ED.draft().site||{})`)), 'voie : Origine rend la couleur d\'origine'); } }
         // sous-type
         const k1 = base.kind === 'steel' ? 'wood' : 'steel';
         await ps.selectOption('#siteBox select[data-p="kind"]', k1); await rdy();

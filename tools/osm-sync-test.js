@@ -71,7 +71,7 @@ const nCs = () => LOG.filter(l => l.p === '/api/0.6/changeset/create').length;
     ok(d.filter(x => x.id === 'w100' && x.key === 'surface' && x.from === 'asphalt' && x.to === 'compacted').length === 1, 'asphalte -> sable : surface=compacted proposée');
     ok(!d.some(x => x.id === 'w101'), 'fine_gravel = sable : pas d\'écart');
     ok(!d.some(x => x.role === 'rail' || x.role === 'roof'), 'matériau et toit identiques : pas d\'écart');
-    ok(d.some(x => x.role === 'track' && x.key === 'colour' && x.to === '#336699'), 'couleur de la voie : écart');
+    ok(!d.some(x => x.role === 'track'), 'couleur de la voie : jamais renvoyée vers OSM');
     const cr = d.filter(x => x.type === 'create'); ok(cr.length === 1 && cr[0].tags.surface === 'wood' && cr[0].tags.colour === '#8a6c4c' && cr[0].tags['area:highway'] === 'footway' && cr[0].tags.covered === 'yes', 'création du polygone du quai proposée (surface=wood, colour)');
     d = S.osmDiff({ look: { queue: { col: '#808080' }, roof: '#112233' } }, attrs, { plats });
     ok(!d.some(x => x.id === 'w101') && d.some(x => x.role === 'roof' && x.from === '#a24e38' && x.to === '#112233'), 'grey = #808080 sans écart ; toit modifié');

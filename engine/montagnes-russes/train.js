@@ -28,6 +28,13 @@ function stationStop(){const s0=TAG.stp!=null?TAG.stp:TAG.st1-(SITE.stopBack||0)
 const D_DROP=(()=>{if(TAG.lift1==null)return null;const a=TAG.lift1;let top=-1e9,sTop=a;for(let s=a;s<=a+60&&s<L-5;s+=.5){const h=hAt(s);if(h>top){top=h;sTop=s;}}
   for(let s=sTop;s<=a+150&&s<L-5;s+=.5)if(hAt(s)<top-1)return +(s-a).toFixed(1);return null;})();
 const S_ST=stationStop(),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=SITE.holdBack!=null?L-SITE.holdBack:SITE.yard&&SITE.yard.device==='traverser'&&TAG.tr1!=null?TAG.tr1-(SITE.yard.post!=null?SITE.yard.post:.6):TAG.fin!=null?TAG.fin:L-4,S_DROP=S_LIFT1+(SITE.dropAfter!=null?SITE.dropAfter:D_DROP!=null?D_DROP:14);
+
+/* Faisabilité du profil (osmrides#53 lot 2, éditeur) : le train part du haut du lift (S_REL, 5,5 m/s) et suit la gravité jusqu'au début du premier frein de bloc (sinon le frein final),
+   avec l'accélération de exploitation.js (pente, roulement, traînée ; usure 30, ESTIMÉE), sans le plancher de vitesse PH.vmin. Rend la vitesse la plus basse et son abscisse ;
+   « bloque » = le train s'arrêterait (ou ne dépasserait pas PH.vmin) avant la fin : profil infaisable. Estimation, hors freins de bloc et trim. null sans lift. */
+function faisabilite(){if(S_LIFT1==null)return null;const end=typeof BZ0!=='undefined'&&BZ0.length?BZ0[0]:S_BRK!=null?S_BRK:L-4,ds=.25;let e=5.5*5.5/2,vm=5.5,sm=S_REL;
+  for(let s=S_REL;s<end;s+=ds){const v=Math.sqrt(Math.max(0,2*e)),a=-9.81*(hAt(s)-hAt(s-TLEN))/TLEN-(PH.roll+30*.0003)-PH.drag*v*v;e+=a*ds;if(e<0)e=0;const w=Math.sqrt(2*e);if(w<vm){vm=w;sm=s;}}
+  return {vMin:+vm.toFixed(2),s:+sm.toFixed(1),sOrig:+(sm*PROF.L0/L).toFixed(1),bloque:vm<PH.vmin,vmin:PH.vmin,fin:+end.toFixed(1)};}
 // Repères lus dans OSM par tools/make_site.py (roller_coaster:track) : blkN = arrêt du frein de bloc N, bzN = début de sa zone ; brk/fin = début / fin du frein final ;
 // tr0/tr1 = rail de transfert (pont transbordeur) ; pre0/pre1 = frein avant gare. S_HOLD (arrêt au frein final) : SITE.holdBack s'il est donné, sinon fin du rail de transfert
 // (pont droit), sinon fin du frein final OSM (fin), sinon 4 m avant la gare.

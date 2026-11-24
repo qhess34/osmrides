@@ -50,6 +50,8 @@ function body(req) {
 // contexte de validation envoyé par l'éditeur (calculé par le moteur dans la page) : seuls les nombres sont retenus (trainMax, blocs : entiers ; depthMax : m, bornes des travées selon le quai)
 function ctxOf(b) { const c = (b && b.ctx && typeof b.ctx === 'object') ? b.ctx : {}, o = {}, ti = (v, a, z) => Number.isInteger(v) && v >= a && v <= z;
   const tm = b && b.trainMax != null ? b.trainMax : c.trainMax; if (ti(tm, 1, 8)) o.trainMax = tm; if (ti(c.blocs, 0, 50)) o.blocs = c.blocs; if (typeof c.depthMax === 'number' && isFinite(c.depthMax) && c.depthMax >= 0.5 && c.depthMax <= 6) o.depthMax = c.depthMax;
+  if (typeof c.profileL === 'number' && isFinite(c.profileL) && c.profileL >= 1 && c.profileL <= 1e5) o.profileL = c.profileL; // longueur du circuit (GAME.profile)
+  const fz = c.faisa; if (fz && typeof fz === 'object' && fz.bloque === true && [fz.sOrig, fz.vMin, fz.vmin].every(v => typeof v === 'number' && isFinite(v))) o.faisa = { bloque: true, sOrig: fz.sOrig, vMin: fz.vMin, vmin: fz.vmin };
   if (Array.isArray(c.jobs) && c.jobs.length <= 20 && c.jobs.every(j => typeof j === 'string' && /^[A-Za-z]{2,24}$/.test(j))) o.jobs = c.jobs; return o; }
 function propose(id, game, ctx) {
   const v = S.validate(game, ctx || {}), cur = readGame(id);

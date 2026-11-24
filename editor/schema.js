@@ -242,7 +242,7 @@
   const SURF_OUT = { concrete: 'concrete', asphalt: 'asphalt', sand: 'compacted', pavers: 'paving_stones', deck: 'wood' };
   const SURF_IN = { concrete: 'concrete', asphalt: 'asphalt', compacted: 'sand', fine_gravel: 'sand', paving_stones: 'pavers', sett: 'pavers', wood: 'deck' };
   const MAT_IN = { metal: 'metal', steel: 'metal', iron: 'metal', wood: 'wood', stone: 'stone', brick: 'stone', concrete: 'stone' };
-  const OSM_TAGS = { queue: ['surface', 'colour'], plat: ['surface', 'colour'], rail: ['material'], roof: ['roof:colour'], track: ['colour'] }; // clés que l'envoi peut écrire, par rôle
+  const OSM_TAGS = { queue: ['surface', 'colour'], plat: ['surface', 'colour'], rail: ['material'], roof: ['roof:colour'] }; // clés que l'envoi peut écrire, par rôle
   const hexOf = (a, k) => ((a.h && a.h[k]) || (a.t && HEX.test(a.t[k] || '') ? a.t[k] : '') || '').toLowerCase();
   function osmDiff(game, attrs, ctx) {
     const out = [], L = (game && game.look) || {}, A = Array.isArray(attrs) ? attrs : [];
@@ -259,8 +259,7 @@
     tex('plat', L.plat);
     if (L.rail) for (const a of A) if (a.role === 'rail' && MAT_IN[(a.t || {}).material] !== L.rail) push(a, 'material', (a.t || {}).material, L.rail);
     if (L.roof) for (const a of A) if (a.role === 'roof' && hexOf(a, 'roof:colour') !== L.roof.toLowerCase()) push(a, 'roof:colour', (a.t || {})['roof:colour'], L.roof.toLowerCase());
-    const sp = game && game.site && game.site.track && game.site.track.spine;
-    if (sp) for (const a of A) if (a.role === 'track' && hexOf(a, 'colour') !== String(sp).toLowerCase()) push(a, 'colour', (a.t || {}).colour, String(sp).toLowerCase());
+    // couleurs de la voie (GAME.site.track / trough) : réglage du jeu seulement, jamais renvoyé vers OSM (osmrides#53 lot 2, propriétaire 24/11)
     // polygone de sol du quai : proposé seulement si un réglage de quai existe et qu'aucun polygone n'existe dans OSM (une case par quai, décochée par défaut)
     const P = L.plat || {};
     if ((P.tex || P.col) && !A.some(a => a.role === 'plat')) (ctx && ctx.plats || []).forEach((pts, i) => {

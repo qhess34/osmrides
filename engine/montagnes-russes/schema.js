@@ -121,6 +121,25 @@
       }
     }
   });
-  Object.assign(S, { SK, SL, SITE_KEYS, ZKEYS }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
+  // GAME.profile (osmrides#53 lot 2) : hauteurs du circuit, [[s, h(, 'lin')], …] ; s = abscisse du tracé d'origine (m), h = hauteur de la voie au-dessus de la gare (m, négative en tunnel enterré), 'lin' = segment droit
+  // jusqu'au point suivant (sinon courbe lisse). Remplace les hauteurs d'origine hors gare et inversions (engine/voies/trace.js). Bornes ESTIMÉES (sûres pour le moteur, pas des mesures).
+  const PROF = { n: [2, 60], h: [-15, 80], gap: 1, slope: 1 }; // points (nombre), hauteur (m), écart minimal entre deux points (m), pente d'alerte (100 % = 45°)
+  S.section({ cle: 'profile',
+    normalize: P => P.map(q => { const o = [S.r2(q[0]), S.r2(q[1])]; if (q[2] === 'lin') o.push('lin'); return o; }),
+    validate(P, E, W, ctx) {
+      if (!Array.isArray(P)) { E.push('profile : liste de points [s, hauteur] attendue'); return; }
+      if (P.length < PROF.n[0] || P.length > PROF.n[1]) { E.push('profile : de ' + PROF.n[0] + ' à ' + PROF.n[1] + ' points'); return; }
+      const Lm = ctx && S.num(ctx.profileL, 1, 1e5) ? ctx.profileL : 1e5; let ok = true;
+      P.forEach((q, i) => { const p = 'profile[' + i + ']';
+        if (!Array.isArray(q) || q.length < 2 || q.length > 3 || (q.length === 3 && q[2] !== 'lin')) { E.push(p + ' : [s, hauteur] ou [s, hauteur, "lin"] attendu'); ok = false; return; }
+        if (!S.num(q[0], 0, Lm)) { E.push(p + '.s : de 0 à ' + (Lm < 1e5 ? Math.round(Lm * 10) / 10 + ' m (longueur du circuit)' : 'la longueur du circuit')); ok = false; }
+        if (!S.num(q[1], PROF.h[0], PROF.h[1])) { E.push(p + '.hauteur : de ' + PROF.h[0] + ' à ' + PROF.h[1] + ' m'); ok = false; }
+        if (i && ok && !(q[0] - P[i - 1][0] >= PROF.gap)) { E.push(p + '.s : au moins ' + PROF.gap + ' m après le point précédent'); ok = false; } });
+      if (!ok) return;
+      P.forEach((q, i) => { if (!i) return; const a = P[i - 1], g = Math.abs(q[1] - a[1]) / (q[0] - a[0]);
+        if (g > PROF.slope) W.push('profile : pente de ' + Math.round(g * 100) + ' % entre s = ' + a[0] + ' et ' + q[0] + ' m (au-delà de ' + PROF.slope * 100 + ' %, ESTIMÉ : à vérifier dans le jeu)'); });
+      if (ctx && ctx.faisa && ctx.faisa.bloque) W.push('profile : le train s\'arrêterait vers s = ' + ctx.faisa.sOrig + ' m (vitesse estimée ' + ctx.faisa.vMin + ' m/s, minimum du moteur ' + ctx.faisa.vmin + ' m/s) : circuit infaisable');
+    } });
+  Object.assign(S, { SK, SL, SITE_KEYS, ZKEYS, PROF }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
   });
 })(typeof module !== 'undefined' && module.exports ? f => { module.exports = f; } : f => f(window.T2ZSchema));
