@@ -445,7 +445,8 @@ const ed = (page, s) => page.evaluate(s);
         ok(await ed(pl, `document.querySelectorAll('#lookBox .fld').length`) === 7 && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 0 && await ed(pl, `ED.E('((OSML.queue&&OSML.queue.tex&&OSML.queue.tex!=="concrete")?LK.q!==TEX.stone:LK.q===TEX.stone)&&LK.pf===PLAT_COL&&LK.rail===RAILM[OSML.rail||"metal"]&&LK.gate===null')`), 'apparence : formulaire sans réglage, rendu d\'origine (ou valeurs OSM, issue #46)');
         await ed(pl, `ED.E('window.__mk=1')`);
         const chg = async (sel, v, fill) => { if (fill) { await pl.fill(sel, v); await pl.dispatchEvent(sel, 'change'); } else await pl.selectOption(sel, v); await sleep(250); };
-        await chg('#lookBox select[data-l="queue.tex"]', 'deck'); await chg('#lookBox input[data-l="queue.col"]', '#7a5c40', 1);
+        await chg('#lookBox select[data-l="ways.*.tex"]', 'deck'); await chg('#lookBox input[data-l="ways.*.col"]', '#7a5c40', 1); // section unique « Sol de la file » (issue #55) : « Tous » écrit chaque chemin et look.queue
+        ok(await ed(pl, `ED.E('GM.look.queue.tex==="deck"&&GM.look.queue.col==="#7a5c40"&&(QWAYS.length===0||QWAYS.every(a=>GM.look.ways&&GM.look.ways[a.id]&&GM.look.ways[a.id].tex==="deck"))')`), 'apparence : « Tous » (défaut) écrit chaque chemin et look.queue');
         await chg('#lookBox select[data-l="plat.tex"]', 'pavers'); await chg('#lookBox select[data-l="rail"]', 'stone'); await chg('#lookBox input[data-l="gate"]', '#3c5a78', 1);
         const hot = await ed(pl, `ED.E('window.__mk===1&&LK.q!==TEX.stone&&typeof LK.pf==="object"&&!LK.prow&&LK.rail===RAILM.stone&&LK.gate==="#3c5a78"')`);
         ok(hot && await ed(pl, `document.querySelectorAll('#lookBox .fld.mod').length`) === 5, 'apparence : platelage brun, pavés, pierre, portillons bleus appliqués à chaud (cadre non rechargé)');
@@ -454,11 +455,12 @@ const ed = (page, s) => page.evaluate(s);
           if (wid) { await pl.selectOption('#lookBox select[data-wsel]', wid); await sleep(250); await chg(`#lookBox select[data-l="ways.${wid}.tex"]`, 'pavers');
             ok(await ed(pl, `ED.E('GM.look.ways&&GM.look.ways["${wid}"].tex==="pavers"&&LK.qw["${wid}"]&&LK.qw["${wid}"]!==TEX.stone')`), 'apparence : sol d\'un chemin de file (' + wid + ') appliqué à chaud');
             await pl.click(`#lookBox button[data-lrev="ways.${wid}.tex"]`); await sleep(250);
-            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine retire le sol du chemin');
-            await pl.selectOption('#lookBox select[data-wsel]', '*'); await sleep(250); await chg('#lookBox select[data-l="ways.*.tex"]', 'pavers'); // « Tous » (23/11)
+            ok(await ed(pl, `ED.E('!(GM.look.ways&&GM.look.ways["${wid}"]&&GM.look.ways["${wid}"].tex==="pavers")')`), 'apparence : Origine retire le sol du chemin');
+            await pl.selectOption('#lookBox select[data-wsel]', '*'); await sleep(250); await chg('#lookBox select[data-l="ways.*.tex"]', 'pavers'); // « Tous »
             ok(await ed(pl, `ED.E('QWAYS.length>0&&QWAYS.every(a=>GM.look.ways&&GM.look.ways[a.id]&&GM.look.ways[a.id].tex==="pavers")')`), 'apparence : « Tous » applique le sol à chaque chemin de file');
             await pl.click('#lookBox button[data-lrev="ways.*.tex"]'); await sleep(250);
-            ok(await ed(pl, `ED.E('!GM.look.ways')`), 'apparence : Origine de « Tous » remet chaque chemin'); await pl.selectOption('#lookBox select[data-wsel]', ''); await sleep(250); } }
+            ok(await ed(pl, `ED.E('!Object.values(GM.look.ways||{}).some(w=>w.tex)&&!(GM.look.queue&&GM.look.queue.tex)')`), 'apparence : Origine de « Tous » remet chaque chemin et le sol des allées'); await pl.selectOption('#lookBox select[data-wsel]', '*'); await sleep(250);
+            await chg('#lookBox select[data-l="ways.*.tex"]', 'deck'); await chg('#lookBox input[data-l="ways.*.col"]', '#7a5c40', 1); } }
         await pl.click('#lookBox [data-lrev="plat.tex"]'); await sleep(250);
         ok(await ed(pl, `!('plat' in ED.draft().look)`) && await ed(pl, `ED.E('LK.pf===PLAT_COL&&LK.prow')`), 'apparence : Origine (texture du quai) revient au béton lissé');
         await chg('#lookBox input[data-l="plat.col"]', '#b8b2a6', 1);

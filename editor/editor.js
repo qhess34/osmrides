@@ -24,7 +24,7 @@
     open(s1 ? s1.id : L[0].id);
   }
   async function open(id) {
-    ready = false; sel = null; wsel = null; adding = null; picking = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
+    ready = false; sel = null; wsel = '*'; adding = null; picking = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
     $('file').textContent = 'lieux/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
@@ -185,7 +185,7 @@
     if (!ready) return;
     let segs; try { segs = E('SEGS.map(s=>s.P)'); } catch (e) { return; }
     const P = (x, z) => toScr(x, z);
-    if (wsel) for (const a of qways().filter(x => wsel === '*' || x.id === wsel)) { { oc.strokeStyle = 'rgba(242,193,78,.9)'; oc.lineWidth = 5; oc.lineCap = 'round'; oc.beginPath(); a.p.forEach((q, i) => { const s2 = P(q[0], q[1]); i ? oc.lineTo(s2[0], s2[1]) : oc.moveTo(s2[0], s2[1]); }); oc.stroke(); oc.lineCap = 'butt'; } } // chemin de file choisi (sol par chemin)
+    if (wsel && wsel !== '*') for (const a of qways().filter(x => x.id === wsel)) { { oc.strokeStyle = 'rgba(242,193,78,.9)'; oc.lineWidth = 5; oc.lineCap = 'round'; oc.beginPath(); a.p.forEach((q, i) => { const s2 = P(q[0], q[1]); i ? oc.lineTo(s2[0], s2[1]) : oc.moveTo(s2[0], s2[1]); }); oc.stroke(); oc.lineCap = 'butt'; } } // chemin de file choisi (sol par chemin)
     oc.setLineDash([5, 5]); oc.strokeStyle = 'rgba(255,255,255,.55)'; oc.lineWidth = 1.2; // axe des tronçons de file
     for (const L of segs) { oc.beginPath(); L.forEach((q, i) => { const a = P(q[0], q[1]); i ? oc.lineTo(a[0], a[1]) : oc.moveTo(a[0], a[1]); }); oc.stroke(); }
     oc.setLineDash([]);
@@ -242,7 +242,7 @@
     if (L.ways) { for (const id of Object.keys(L.ways)) if (!Object.keys(L.ways[id]).length) delete L.ways[id]; if (!Object.keys(L.ways).length) delete L.ways; }
     if (!Object.keys(L).length) delete M.look; panel(); }
   // Sol par chemin de file (issue #45, 23/11) : GAME.look.ways = {"w123": {tex, col}} ; chemin choisi dans la liste ou en cliquant une allée sur la carte (wsel = identifiant OSM).
-  let wsel = null;
+  let wsel = '*'; // « Tous » par défaut (issue #55)
   const qways = () => { try { return E('QWAYS') || []; } catch (e) { return []; } };
   function pickWay(p) { let b = null, bd = 1.6; for (const a of qways()) { const d = E('dPl(' + p[0] + ',' + p[1] + ',QWAYS.find(a=>a.id==="' + a.id + '").p)'); if (d < bd) { bd = d; b = a.id; } } return b; }
   // Origine des réglages (issue #46, D12) : valeur lue dans OSM (engine/render.js OSML, depuis OSM.attrs) ou valeur du jeu ; étiquette « OSM » (valeur d'OSM, GAME absent ou identique) ou « modifié » (GAME écarte de OSM ou règle une valeur sans équivalent lu).
@@ -253,27 +253,23 @@
     const texSel = (key, cur, first) => `<select data-l="${key}"><option value=""${cur ? '' : ' selected'}>${first}</option>${S.LOOK.tex.map(t => `<option value="${t}"${t === cur ? ' selected' : ''}>${TEXN[t]}</option>`).join('')}</select>`;
     const q = L.queue || {}, p = L.plat || {}, oq = O.queue || {}, op = O.plat || {};
     const tx = (o, def) => o.tex ? TEXN[o.tex] + ' (OSM)' : def, cl = (o, def) => o.col ? o.col + ' (OSM)' : def;
-    h.push('<h3>Sol des allées de file</h3>');
-    h.push(fld('queue.tex', 'Texture', texSel('queue.tex', q.tex, tx(oq, 'béton (origine)')), tx(oq, 'béton clair'), !!q.tex, q.tex, oq.tex));
-    h.push(fld('queue.col', 'Couleur', `<input data-l="queue.col" type="color" value="${q.col || oq.col || (q.tex || oq.tex ? fd[q.tex || oq.tex] : '#c4c0b6')}">`, cl(oq, 'béton clair #c4c0b6'), !!q.col, q.col, oq.col));
-    const pc0 = E('PLAT_COL');
-    const WS = qways(), ow = O.ways || {};
-    h.push('<h3>Sol d\'un chemin de file</h3>');
-    if (!WS.length) h.push('<p class="note">Aucun chemin de file OSM dans ce site (régénérer <code>lieux/' + esc(site) + '.data.js</code> avec tools/make_site.py).</p>');
-    else {
+    const pc0 = E('PLAT_COL'), WS = qways(), ow = O.ways || {};
+    h.push('<h3>Sol de la file</h3>'); // une seule section (issue #55) : « Tous » (défaut) écrit chaque chemin ET look.queue (prolongement d'entrée, raccords au quai) ; un chemin choisi garde son réglage propre
+    if (WS.length) {
       const lab = a => a.id + ' · ' + Math.round(a.l) + ' m · ' + (a.t && a.t.surface ? a.t.surface : 'sans surface');
-      h.push(`<div class="wl" style="margin:4px 0"><span>Chemin</span> <select data-wsel style="max-width:100%"><option value=""${wsel ? '' : ' selected'}>cliquer une allée sur la carte, ou choisir</option><option value="*"${wsel === '*' ? ' selected' : ''}>Tous</option>${WS.map(a => `<option value="${a.id}"${a.id === wsel ? ' selected' : ''}>${esc(lab(a))}${(L.ways || {})[a.id] ? ' *' : ''}</option>`).join('')}</select></div>`);
-      if (wsel === '*') { // « Tous » (propriétaire, 23/11) : même réglage écrit sur chaque chemin de file (GAME.look.ways), chacun renvoyable vers OSM
-        const all = k => { const v = WS.map(a => ((L.ways || {})[a.id] || {})[k]); return v.every(x => x === v[0]) ? v[0] : undefined; }, at = all('tex'), ac = all('col'), mt = WS.some(a => ((L.ways || {})[a.id] || {}).tex), mc = WS.some(a => ((L.ways || {})[a.id] || {}).col);
-        h.push(fld('ways.*.tex', 'Texture', texSel('ways.*.tex', at, at === undefined && mt ? 'valeurs différentes' : 'comme les allées'), 'chaque chemin', mt, at, null));
-        h.push(fld('ways.*.col', 'Couleur', `<input data-l="ways.*.col" type="color" value="${ac || q.col || oq.col || '#c4c0b6'}">`, 'chaque chemin', mc, ac, null));
-        h.push(`<p class="note">Appliqué aux ${WS.length} chemins de file ; « Origine » les remet tous à leur valeur d'origine.</p>`); }
-      else if (wsel) { const w = (L.ways || {})[wsel] || {}, o = ow[wsel] || {}, base = { tex: q.tex || oq.tex, col: q.col || oq.col };
-        const wt = (o2, def) => o2.tex ? TEXN[o2.tex] + ' (OSM)' : def, wc = (o2, def) => o2.col ? o2.col + ' (OSM)' : def;
-        h.push(fld('ways.' + wsel + '.tex', 'Texture', texSel('ways.' + wsel + '.tex', w.tex, wt(o, 'comme les allées')), wt(o, 'comme les allées'), !!w.tex, w.tex, o.tex));
-        h.push(fld('ways.' + wsel + '.col', 'Couleur', `<input data-l="ways.${wsel}.col" type="color" value="${w.col || o.col || base.col || (w.tex || o.tex || base.tex ? fd[w.tex || o.tex || base.tex] : '#c4c0b6')}">`, wc(o, 'comme les allées'), !!w.col, w.col, o.col));
-        h.push('<p class="note">Ce chemin seulement ; renvoyé vers OSM sur ce way (surface, colour).</p>'); }
+      h.push(`<div class="wl" style="margin:4px 0"><span>Chemin</span> <select data-wsel style="max-width:100%"><option value="*"${wsel === '*' ? ' selected' : ''}>Tous (cliquer une allée sur la carte pour un seul chemin)</option>${WS.map(a => `<option value="${a.id}"${a.id === wsel ? ' selected' : ''}>${esc(lab(a))}${(L.ways || {})[a.id] ? ' *' : ''}</option>`).join('')}</select></div>`);
     }
+    if (wsel === '*' || !WS.length) { // « Tous » : valeur commune écrite sur chaque chemin (renvoyable vers OSM) et sur look.queue (prolongement, raccords)
+      const all = k => { const v = WS.map(a => ((L.ways || {})[a.id] || {})[k]); return WS.length && v.every(x => x === v[0]) && v[0] ? v[0] : (WS.length && v.some(x => x) ? undefined : q[k]); },
+        at = all('tex'), ac = all('col'), mt = !!q.tex || WS.some(a => ((L.ways || {})[a.id] || {}).tex), mc = !!q.col || WS.some(a => ((L.ways || {})[a.id] || {}).col), mixT = at === undefined && mt;
+      h.push(fld('ways.*.tex', 'Texture', texSel('ways.*.tex', at, mixT ? 'valeurs différentes' : tx(oq, 'béton (origine)')), tx(oq, 'béton clair'), mt, at, oq.tex));
+      h.push(fld('ways.*.col', 'Couleur', `<input data-l="ways.*.col" type="color" value="${ac || oq.col || (at || oq.tex ? fd[at || oq.tex] : '#c4c0b6')}">`, cl(oq, 'béton clair #c4c0b6'), mc, ac, oq.col));
+      h.push(`<p class="note">${WS.length ? 'Appliqué aux ' + WS.length + ' chemins de file, au prolongement de l\'entrée et aux raccords du quai ; « Origine » remet tout.' : 'Prolongement de l\'entrée et raccords du quai.'}</p>`); }
+    else { const w = (L.ways || {})[wsel] || {}, o = ow[wsel] || {}, base = { tex: q.tex || oq.tex, col: q.col || oq.col };
+      const wt = (o2, def) => o2.tex ? TEXN[o2.tex] + ' (OSM)' : def, wc = (o2, def) => o2.col ? o2.col + ' (OSM)' : def;
+      h.push(fld('ways.' + wsel + '.tex', 'Texture', texSel('ways.' + wsel + '.tex', w.tex, wt(o, 'comme les allées')), wt(o, 'comme les allées'), !!w.tex, w.tex, o.tex));
+      h.push(fld('ways.' + wsel + '.col', 'Couleur', `<input data-l="ways.${wsel}.col" type="color" value="${w.col || o.col || base.col || (w.tex || o.tex || base.tex ? fd[w.tex || o.tex || base.tex] : '#c4c0b6')}">`, wc(o, 'comme les allées'), !!w.col, w.col, o.col));
+      h.push('<p class="note">Ce chemin seulement ; renvoyé vers OSM sur ce way (surface, colour).</p>'); }
     h.push('<h3>Sol des quais</h3>');
     h.push(fld('plat.tex', 'Texture', texSel('plat.tex', p.tex, tx(op, 'béton lissé (origine)')), tx(op, 'béton lissé'), !!p.tex, p.tex, op.tex));
     h.push(fld('plat.col', 'Couleur', `<input data-l="plat.col" type="color" value="${p.col || op.col || (p.tex || op.tex ? fd[p.tex || op.tex] : pc0)}">`, cl(op, pc0 + (E('SITE.platCol') ? ' (SITE.platCol)' : ' (défaut)')), !!p.col, p.col, op.col));
@@ -290,12 +286,12 @@
   }
   function bindLook() {
     const B = $('lookBox');
-    const allW = p => p[0] === 'ways' && p[1] === '*' ? qways().map(a => ['ways', a.id, p[2]]) : [p]; // « Tous » : un chemin après l'autre
+    const allW = p => p[0] === 'ways' && p[1] === '*' ? qways().map(a => ['ways', a.id, p[2]]).concat([['queue', p[2]]]) : [p]; // « Tous » : un chemin après l'autre
     for (const el of B.querySelectorAll('[data-l]')) el.addEventListener('change', () => { const v = el.value;
       lookChange(L => { for (const p of allW(el.dataset.l.split('.'))) { if (p.length === 1) { if (v === '' || (p[0] === 'rail' && v === ((E('OSML') || {}).rail || 'metal'))) delete L[p[0]]; else L[p[0]] = v; return; }
         let o = L; for (const k of p.slice(0, -1)) o = o[k] || (o[k] = {}); if (v === '') delete o[p[p.length - 1]]; else o[p[p.length - 1]] = v; } }); });
     for (const el of B.querySelectorAll('[data-lrev]')) el.onclick = () => lookChange(L => { for (const p of allW(el.dataset.lrev.split('.'))) { let o = L; for (const k of p.slice(0, -1)) { o = o[k]; if (!o) break; } if (o) delete o[p[p.length - 1]]; } });
-    const ws = B.querySelector('[data-wsel]'); if (ws) ws.onchange = () => { wsel = ws.value || null; panel(); };
+    const ws = B.querySelector('[data-wsel]'); if (ws) ws.onchange = () => { wsel = ws.value || '*'; panel(); };
   }
 
   // ── panneau ──
