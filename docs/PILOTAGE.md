@@ -48,16 +48,18 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-23 (soir) par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
+_Mis à jour le 2026-11-24 par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
 
-**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, Parc Astérix, publié sur https://qhess34.github.io/osmrides_parks/), `osmrides_skiresort` (Chef stations), futur `osmrides_transports` (décision du propriétaire, rien à faire maintenant). Pages d'osmrides = présentation du moteur (`index.html`), ancien `jeu.html` = redirection, `sw.js` = retrait du hors-ligne.
+**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs), `osmrides_skiresort` (Chef stations). La session a accès en écriture à `osmrides_parks` (issues `inter-equipe`, pas de commit sur leur code).
 
-**Versions** : étiquettes posées par le propriétaire seulement (push d'étiquette refusé aux sessions cloud). `0.0.1` posée. `0.1.0` (8e5f090 : noyau / voies / montagnes-russes, D14) et `0.2.0` (d2a6db9 : garage, appareils, arrêts, commande par zones dans `voies/`) publiées sur `main`, **étiquettes non posées** à ce jour.
+**Versions** : étiquettes posées par le propriétaire seulement. Posées : `0.0.1`, `0.2.0`. Non posées : `0.1.0` (8e5f090, facultative), **`0.3.0`** (5bd63d4, lot 1 de #53, publié sur `main`).
 
-**Décisions du propriétaire (23/11)** : trois couches (#51) ; `voies/` = mécanique sans dessin, cantonnement facultatif (trams et bus peuvent se rattraper) ; zone d'attente et météo dans le noyau ; le plus économique ; ordre : 0.2.0 (fait) → #53 → #54 ; décor de Zeus (`SITE.draw`) → « décors personnalisés » ajoutés dans l'éditeur (générique) ; quais OSM `railway=platform` + `roller_coaster:station=load|unload` ; hauteurs renvoyées en `ele` sur les nœuds de voie ; import gardé en Python (`make_site.py`, dans osmrides_parks), image Docker avec Node + Python ; horaires d'ouverture par lieu (nouveau niveau de configuration `lieux/<type>/<lieu>/`).
+**Décisions du propriétaire (24/11)** : hauteurs vers OSM = `ele` (altitude du sol **saisie dans l'éditeur** + hauteur de voie ; une IA peut aider, pas obligatoire) ; nouveaux réglages = version mineure (0.x.0), corrections = 0.x.1 ; horaires par lieu dans `lieux/<type>/<lieu>/lieu.js` (section « Lieu »). Le propriétaire a demandé si la couche montagnes russes n'est pas le travail du Chef parcs : réponse donnée (faite ici par accord du 23/11 dans #53, avant son déplacement) ; il peut demander de laisser le reste au Chef parcs.
 
-**Prochaine tâche : #53** (réglages dans l'éditeur, lots : 6+4 → 0.2.x, puis 1+3, puis 5 ; plus décors personnalisés, horaires par lieu, freins par zone, `holdBack` / `dropAfter` / `loadSide` déduits, borne des travées selon le quai). Le Chef parcs attend la fin de #53 pour copier `montagnes-russes/`. Puis **#54** (bouton d'import et « Vérifier » appelant les outils du dépôt de jeu).
+**#53** : lot 1 fait (0.3.0). Reste lot 2 (couleurs de voie sans OSM, hauteurs `ele`, tunnel d'OzIris, `dropAfter` depuis le profil) puis lot 3 (ponts transbordeurs). Limites connues du lot 1 : `preBrake` seulement s'il existe dans `SITE` ; caméra de `SITE` non supprimable ; seuls les freins de bloc par zone. Puis **#54**.
 
-**Tests** : clone `../osmrides_parks` ; tests de jeu avec moteur local `MOTEUR=../osmrides/engine/ node tools/check.js <el>` (depuis le clone) ; `tools/editor-test.js` et `osm-sync-test.js` ici. `editor-test.js` : 1 FAIL connu (Goudurix, travées, quai 3,9 m), à corriger dans #53. `cdn.jsdelivr.net` est autorisé dans l'environnement cloud.
+**Inter-équipe** : `osmrides_parks#7` (adoption de 0.3.0 : créer `lieu.js` ou élargir le filtre des tests, sinon `check/save/mobile` échouent sur l'erreur « fichier introuvable »).
 
-**Points de vigilance** : Docker du propriétaire sans DNS (`codeload.github.com` introuvable) ; `apropos.html` non repris (Webmestre, historique 11d4e28) ; fiches `docs/ref/` citent parfois les anciens fichiers du moteur ; ne pas lire les transcriptions des agents ; renouveler la session après 3 ou 4 demandes.
+**Tests** : depuis `../osmrides_parks`, `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`) ; sans `lieu.js` ils échouent avec 0.3.0 (créer un `lieu.js` temporaire pour tester, puis le retirer). Ici : `tools/editor-test.js` (avec `JEU=../osmrides_parks`), `tools/osm-sync-test.js` : PASS au 24/11. Mesure : agent `moteur` Sonnet lot 1 ≈ 307 000 tokens, 33 min.
+
+**Points de vigilance** : Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; ne pas lire les transcriptions des agents ; renouveler la session après 3 ou 4 demandes (2 traitées dans cette session).
