@@ -142,16 +142,17 @@ const ed = (page, s) => page.evaluate(s);
       const D0 = await ed(page, `ED.depth()`), dTxt = async () => +(await page.inputValue('#depth'));
       ok(!D0.game && D0.depth === D0.calc && await page.isDisabled('#bDepthAuto') && Math.abs(await dTxt() - D0.calc) < .01, `travées : calcul affiché (${D0.calc} m, ${D0.rows} rang(s))`);
       const dH = d => [D0.u.o[0] + D0.u.r[0] * d, D0.u.o[1] + D0.u.r[1] * d];
+      const DL = Math.min(1.5, Math.max(.25, D0.max - D0.depth)); // quai court (Goudurix, 3,9 m) : la borne haute dépend du quai (osmrides#53)
       await ed(page, `ED.E('cam.g=null;cam.follow=-1;cam.key="";cam.x=${dH(D0.depth)[0]};cam.z=${dH(D0.depth)[1]};cam.s=22;0')`); await sleep(100);
-      await drag(page, await ed(page, `ED.toScr(${dH(D0.depth).join(',')})`), await ed(page, `ED.toScr(${dH(D0.depth + 1.5).join(',')})`));
+      await drag(page, await ed(page, `ED.toScr(${dH(D0.depth).join(',')})`), await ed(page, `ED.toScr(${dH(D0.depth + DL).join(',')})`));
       let D1 = await ed(page, `ED.depth()`);
-      ok(D1.game && Math.abs(D1.depth - D0.depth - 1.5) < .15 && (await ed(page, `ED.draft().board.depth`)) === D1.depth && D1.rows > D0.rows && await ed(page, `ED.sel().t==='depth'`), `travées : poignée glissée (${D0.depth} -> ${D1.depth} m, ${D1.rows} rangs)`);
+      ok(D1.game && Math.abs(D1.depth - Math.min(D0.max, D0.depth + DL)) < .15 && (await ed(page, `ED.draft().board.depth`)) === D1.depth && D1.rows >= D0.rows && await ed(page, `ED.sel().t==='depth'`), `travées : poignée glissée (${D0.depth} -> ${D1.depth} m, ${D1.rows} rangs)`);
       const setD = async v => { await page.fill('#depth', String(v)); await page.$eval('#depth', e => e.dispatchEvent(new Event('change'))); await sleep(80); return ed(page, `ED.depth()`); };
       D1 = await setD(20); ok(D1.depth === D1.max && (await ed(page, `ED.draft().board.depth`)) === D1.max, `travées : borne haute (${D1.depth} m)`);
       D1 = await setD(.1); ok(D1.depth === D1.min && D1.rows === 1, `travées : borne basse, un rang (${D1.depth} m)`);
       await page.click('#bDepthAuto'); await sleep(80); D1 = await ed(page, `ED.depth()`);
       ok(!(await ed(page, `'board' in ED.draft()`)) && D1.depth === D0.calc && !D1.game, 'travées : retour au calcul auto (clé retirée de GAME)');
-      const DT = Math.round((D0.calc + 1.9) * 100) / 100; D1 = await setD(DT);
+      const DT = Math.round(Math.min(D0.max, D0.calc + 1.9) * 100) / 100; D1 = await setD(DT);
       ok(D1.depth === DT && D1.rows === Math.floor((DT - D1.min) / .6 + 1e-6) + 1 && await ed(page, `ED.E('GDEPTH===${DT}&&BWALK>=PGATE+GDEPTH+.5-.31')`), `travées : profondeur saisie ${DT} m, ${D1.rows} rangs (écrite)`);
       // ── zone d'attente du quai (GAME.boardAreas) ──
       await page.click('#bSelArea'); await sleep(150);
@@ -369,6 +370,70 @@ const ed = (page, s) => page.evaluate(s);
         ok(jg.kind === k1 && jg.c === '#123456' && jg.tc === '#123456' && jg.n === jg.nt && jg.drag === dr1 && jg.car === base.car.len, `attraction : SITE fusionné dans le jeu (kind ${jg.kind}, ${jg.n} trains, train 1 ${jg.c}, traînée ${jg.drag})`);
         await jq.close();
       }
+      // ── réglages de SITE de 0.3.0 (osmrides#53, lot 1) : objectif, caméra, freins de bloc par zone, valeurs déduites, gyrophare, horaires du lieu ──
+      //    écrits dans GAME.site / GAME.controlRooms / lieu.js, appliqués dans le jeu ; hors bornes refusé ; lieu.js retiré à la fin
+      {
+        await startServer();
+        const pn = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        pn.on('pageerror', e => errors.push('lot1: ' + String(e.message || e)));
+        await pn.goto(BASE + '/editor/?site=' + id);
+        const rdn = async () => { for (;;) { await pn.waitForFunction(() => window.ED && window.ED.ready && window.ED.isReady(), null, { timeout: 60000 }); await sleep(700); if (await pn.evaluate(() => window.ED.ready && window.ED.isReady())) return; } };
+        await rdn();
+        const nb = await ed(pn, `ED.E('BLK.length')`), ded = await ed(pn, `JSON.stringify(ED.E('DEDUIT'))`), ls0 = await ed(pn, `ED.E('LS')`);
+        // objectif
+        const g1 = 777; await pn.fill('#explBox input[data-n="goal"]', String(g1)); await pn.dispatchEvent('#explBox input[data-n="goal"]', 'change'); await rdn();
+        ok(await ed(pn, `ED.draft().site.goal`) === g1 && await ed(pn, `ED.E('SITE.goal')`) === g1, `lot 1 : objectif ${g1} écrit dans GAME.site et appliqué`);
+        // caméra : ajout au cadrage courant
+        const nc = await ed(pn, `ED.E('Object.keys(CAMS).length')`); await pn.click('#bCamAdd'); await rdn();
+        ok(await ed(pn, `ED.E('Object.keys(CAMS).length')`) === nc + 1 && await ed(pn, `Object.keys(ED.draft().site.cams).length`) === 1, 'lot 1 : caméra ajoutée (cadrage courant)');
+        // freins de bloc par zone
+        if (nb) {
+          await pn.fill('#siteBox input[data-p="zones.B1.launch"]', '9'); await pn.dispatchEvent('#siteBox input[data-p="zones.B1.launch"]', 'change'); await rdn();
+          await pn.check('#siteBox input[data-p="zones.B1.stop"]'); await rdn();
+          await pn.fill('#siteBox input[data-p="zones.B1.hold"]', '12'); await pn.dispatchEvent('#siteBox input[data-p="zones.B1.hold"]', 'change'); await rdn();
+          ok(await ed(pn, `(z=>z.launch===9&&z.hold===12&&z.stop===true)(ED.draft().site.zones.B1)`) && await ed(pn, `ED.E('BLAUNCH[0]===9&&BSTOP[0]===true&&BHOLD[0]===12')`), 'lot 1 : frein de bloc B1 (lancement, arrêt obligatoire, temps d\'arrêt) écrit et appliqué');
+          await pn.click('#siteBox [data-rev="zones.B1.hold"]'); await rdn();
+          ok(await ed(pn, `ED.E('BHOLD[0]')`) === 0, 'lot 1 : Origine du temps d\'arrêt');
+        }
+        // valeurs déduites : affichées, corrigeables
+        const dv = JSON.parse(ded); ok(dv.loadSide === 1 || dv.loadSide === -1 || dv.loadSide === null, `lot 1 : valeurs déduites exposées (${ded}, côté ${ls0})`);
+        await pn.selectOption('#siteBox select[data-p="loadSide"]', String(-ls0)); await rdn();
+        ok(await ed(pn, `ED.E('LS')`) === -ls0 && await ed(pn, `ED.draft().site.loadSide`) === -ls0, 'lot 1 : côté du quai corrigé (priorité GAME)');
+        await pn.click('#siteBox [data-rev="loadSide"]'); await rdn();
+        ok(await ed(pn, `ED.E('LS')`) === ls0, 'lot 1 : côté du quai revenu à la valeur d\'origine');
+        // gyrophare : champs de la salle
+        await pn.click('#bSelRoom').catch(() => { }); await sleep(200);
+        if (await pn.$('#selBox input[data-k="bx"]')) {
+          const b0 = await ed(pn, `ED.E('roomPos().beacon')`); await pn.fill('#selBox input[data-k="bx"]', String(b0[0] - .2)); await pn.dispatchEvent('#selBox input[data-k="bx"]', 'change'); await sleep(200);
+          ok(Math.abs((await ed(pn, `ED.E('roomPos().beacon')`))[0] - (b0[0] - .2)) < .02 && Array.isArray(await ed(pn, `ED.draft().controlRooms[0].beacon`)), 'lot 1 : gyrophare déplacé (GAME.controlRooms[0].beacon)');
+        }
+        // refus hors bornes (serveur)
+        const r422 = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{goal:5,zones:{B1:{launch:99,stop:'oui'}},plat:{load:99},lap:1}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=5)`);
+        ok(r422 === true, 'lot 1 : valeurs hors bornes refusées par le serveur');
+        // horaires du lieu : écrits dans lieu.js, lus par le jeu ; borne
+        ok(/Ce réglage vaut pour/.test(await ed(pn, `document.getElementById('lieuBox').textContent`)), 'lot 1 : section Lieu : message « vaut pour tout le lieu »');
+        await pn.fill('#hOpen', '09:00'); await pn.fill('#hClose', '20:30'); await pn.dispatchEvent('#hClose', 'change'); await pn.click('#bLieuSave'); await sleep(600);
+        const lf = path.join(ROOT, 'lieux', 'parc', 'asterix', 'lieu.js');
+        ok(fs.existsSync(lf) && S.parseLieu(fs.readFileSync(lf, 'utf8')).hours.close === '20:30', 'lot 1 : lieu.js écrit (09:00 à 20:30)');
+        const bl = await ed(pn, `fetch('/api/lieu/parc/asterix',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({lieu:{hours:{open:'10:00',close:'11:00'}}})}).then(r=>r.status)`);
+        ok(bl === 422, 'lot 1 : horaires de moins de 2 h refusés');
+        await pn.close(); await stopServer();
+        const jh = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+        jh.on('pageerror', e => errors.push('lot1 jeu: ' + String(e.message || e)));
+        await jh.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
+        await jh.waitForFunction(() => typeof render === 'function', null, { timeout: 30000 });
+        const hh = await jh.evaluate(`(()=>{localStorage.clear();act('speed',0);for(let i=0;i<200;i++)step(.5);return {o:T_OPEN,c:T_CLOSE,t:G.time,goal:SITE.goal};})()`);
+        ok(hh.o === 540 && hh.c === 1230 && hh.t >= 540 && hh.t < 1230, `lot 1 : horaires du lieu dans le jeu (${hh.o} à ${hh.c} min, heure ${Math.round(hh.t)})`);
+        await jh.close(); fs.unlinkSync(lf);
+        const jd = await browser.newPage({ viewport: { width: 1100, height: 760 } });
+        await jd.addInitScript(() => { try { localStorage.clear(); } catch (e) { } }); // pas de partie reprise
+        jd.on('pageerror', e => errors.push('lot1 jeu défaut: ' + String(e.message || e)));
+        jd.on('console', m => { if (m.type() === 'error' && !/(\.game|\/lieu)\.js$/.test((m.location() || {}).url || '')) errors.push('lot1 console: ' + m.text()); });
+        await jd.goto('file://' + ROOT + '/jeu.html?type=parc&lieu=asterix&el=' + id + '&mode=sandbox' + MOT);
+        await jd.waitForFunction(() => typeof render === 'function', null, { timeout: 30000 });
+        ok(await jd.evaluate(`T_OPEN===600&&T_CLOSE===1140&&G.time>=600&&G.time<660`), 'lot 1 : sans lieu.js, horaires par défaut (10:00 à 19:00)');
+        await jd.close();
+      }
       // ── apparence de la file et du quai (issue #45, D11) : GAME.look ──
       //    formulaire : texture et couleur de la file, texture du quai, matériau des garde-corps, couleur des portillons ; appliqué à chaud (cadre non rechargé),
       //    Origine, valeur invalide refusée par le serveur ; sauvegarde, relecture après redémarrage, effet dans jeu.html
@@ -423,6 +488,7 @@ const ed = (page, s) => page.evaluate(s);
     }
   } finally {
     await browser.close(); await stopServer();
+    try { fs.unlinkSync(path.join(ROOT, 'lieux', 'parc', 'asterix', 'lieu.js')); } catch (e) { } // lieu.js du test
     for (const id of SITES) { if (backup[id] != null) fs.writeFileSync(gp(id), backup[id]); else if (fs.existsSync(gp(id))) fs.unlinkSync(gp(id)); }
   }
   console.log(fail ? 'FAIL (' + fail + ')' : 'PASS');

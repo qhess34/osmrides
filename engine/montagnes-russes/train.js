@@ -1,6 +1,6 @@
 'use strict';
 /* ══════════ TRAINS, ZONES DU CIRCUIT (repères OSM de la voie, engine/voies/trace.js) ══════════ */
-const BOB=SITE.kind==='bob',INV=SITE.kind==='inverted',STL=SITE.kind==='steel',LS=SITE.loadSide||1,PH=Object.assign({roll:.098,drag:.0006,vmin:3},SITE.phys);
+const BOB=SITE.kind==='bob',INV=SITE.kind==='inverted',STL=SITE.kind==='steel',PH=Object.assign({roll:.098,drag:.0006,vmin:3},SITE.phys);
 const ST_Y=OSM.cps[0][1],CAR=SITE.car.len,NCARS=SITE.car.n,TLEN=CAR*NCARS,CSEATS=SITE.car.seats||2,SEATS=NCARS*CSEATS;
 // Place r (0…CSEATS-1) d'un wagon : [décalage le long du wagon, décalage latéral]. Côte à côte par rangées de 2, ou l'un derrière l'autre (car.inline).
 // car.abreast : nombre de places côte à côte par rangée (défaut 2 ; ex. 4 pour un wagon de coaster inversé, une seule rangée).
@@ -19,7 +19,15 @@ function stationStop(){const s0=TAG.stp!=null?TAG.stp:TAG.st1-(SITE.stopBack||0)
   const pin=(x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
   const f=mkF();let a=null;for(let q=-8;q<=TAG.st1;q+=.1){frameAt(q,f);if(pin(f.p.x,f.p.z)){a=q;break;}}if(a===null)return s0;
   return a+TLEN-s0>.1?Math.min(TAG.st1,a+.3+TLEN):s0;} // dépassement de plus de 10 cm : on avance (marge 0,3 m)
-const S_ST=stationStop(),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=SITE.holdBack!=null?L-SITE.holdBack:SITE.yard&&SITE.yard.device==='traverser'&&TAG.tr1!=null?TAG.tr1-(SITE.yard.post!=null?SITE.yard.post:.6):TAG.fin!=null?TAG.fin:L-4,S_DROP=S_LIFT1+(SITE.dropAfter||14);
+/* Valeurs déduites (osmrides#53, décision du propriétaire : SITE ne les donne plus, l'éditeur ne sert qu'à corriger un cas particulier ; priorité GAME.site > SITE > déduction) :
+   - dropAfter : distance entre le haut du lift (S_LIFT1) et le point où la voie redescend, déduite du profil des hauteurs : sommet atteint dans les 60 m qui suivent le lift,
+     puis premier point à plus de 1 m sous ce sommet (seuil de 1 m ESTIMÉ ; sert au cri des passagers). Sans lift : 14 m (valeur d'origine du moteur).
+   - holdBack : distance entre l'arrêt au frein final et la fin du circuit (L - S_HOLD) ; sans SITE.holdBack, S_HOLD vient du rail de transfert, sinon de la fin du frein final OSM (repère fin), sinon 4 m.
+   - loadSide : voir quai.js (côté de la file par rapport à la voie de gare).
+   Les valeurs déduites sont exposées dans DEDUIT (éditeur, comparaison avec SITE). */
+const D_DROP=(()=>{if(TAG.lift1==null)return null;const a=TAG.lift1;let top=-1e9,sTop=a;for(let s=a;s<=a+60&&s<L-5;s+=.5){const h=hAt(s);if(h>top){top=h;sTop=s;}}
+  for(let s=sTop;s<=a+150&&s<L-5;s+=.5)if(hAt(s)<top-1)return +(s-a).toFixed(1);return null;})();
+const S_ST=stationStop(),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=SITE.holdBack!=null?L-SITE.holdBack:SITE.yard&&SITE.yard.device==='traverser'&&TAG.tr1!=null?TAG.tr1-(SITE.yard.post!=null?SITE.yard.post:.6):TAG.fin!=null?TAG.fin:L-4,S_DROP=S_LIFT1+(SITE.dropAfter!=null?SITE.dropAfter:D_DROP!=null?D_DROP:14);
 // Repères lus dans OSM par tools/make_site.py (roller_coaster:track) : blkN = arrêt du frein de bloc N, bzN = début de sa zone ; brk/fin = début / fin du frein final ;
 // tr0/tr1 = rail de transfert (pont transbordeur) ; pre0/pre1 = frein avant gare. S_HOLD (arrêt au frein final) : SITE.holdBack s'il est donné, sinon fin du rail de transfert
 // (pont droit), sinon fin du frein final OSM (fin), sinon 4 m avant la gare.

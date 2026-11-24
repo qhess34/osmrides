@@ -4,7 +4,7 @@
      docs/versions.md : l'éditeur et le moteur d'une même version vont ensemble), le reste depuis le dépôt de jeu T2Z_ROOT (jeu.html, lieux/) ;
    - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
    - API : GET /api/couches (parties d'éditeur des couches du moteur), GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site>, <site> = <type>/<lieu>/<el> (docs/hierarchie.md) ;
-   - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant), après validation (editor/schema.js) ; aucune opération Git.
+   - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant) et lieux/<type>/<lieu>/lieu.js (GET/PUT /api/lieu/<type>/<lieu>, horaires du lieu), après validation (editor/schema.js) ; aucune opération Git.
    Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt de jeu, défaut : ce dépôt). */
 const http = require('http'), fs = require('fs'), path = require('path');
 const S = require('./schema.js');
@@ -47,13 +47,21 @@ function body(req) {
 }
 // Proposition : validation, texte normalisé, diff avec le fichier actuel.
 // trainMax : places d'attente des trains calculées par le moteur dans l'éditeur (TRAIN_MAX, issue #32), entier de 1 à 8 ; sinon borne générale du schéma.
-function propose(id, game, trainMax) {
-  const v = S.validate(game, { trainMax: Number.isInteger(trainMax) ? trainMax : undefined }), cur = readGame(id);
+// contexte de validation envoyé par l'éditeur (calculé par le moteur dans la page) : seuls les nombres sont retenus (trainMax, blocs : entiers ; depthMax : m, bornes des travées selon le quai)
+function ctxOf(b) { const c = (b && b.ctx && typeof b.ctx === 'object') ? b.ctx : {}, o = {}, ti = (v, a, z) => Number.isInteger(v) && v >= a && v <= z;
+  const tm = b && b.trainMax != null ? b.trainMax : c.trainMax; if (ti(tm, 1, 8)) o.trainMax = tm; if (ti(c.blocs, 0, 50)) o.blocs = c.blocs; if (typeof c.depthMax === 'number' && isFinite(c.depthMax) && c.depthMax >= 0.5 && c.depthMax <= 6) o.depthMax = c.depthMax;
+  if (Array.isArray(c.jobs) && c.jobs.length <= 20 && c.jobs.every(j => typeof j === 'string' && /^[A-Za-z]{2,24}$/.test(j))) o.jobs = c.jobs; return o; }
+function propose(id, game, ctx) {
+  const v = S.validate(game, ctx || {}), cur = readGame(id);
   if (v.errors.length) return { ok: false, errors: v.errors, warnings: v.warnings };
   const text = S.text(game);
   return { ok: true, warnings: v.warnings, exists: cur.exists, before: cur.text, after: text, same: cur.text === text, diff: S.diff(cur.text, text) };
 }
 
+// Réglages du lieu (osmrides#53) : lieux/<type>/<lieu>/lieu.js, `const LIEU = {…}`, commun à toutes les attractions du lieu (lu par engine/moteur.js, facultatif). Seul autre fichier écrit par l'éditeur.
+const lieuPath = id => path.join(LIEUX, id, 'lieu.js'), checkLieu = id => typeof id === 'string' && /^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(id) && dirs(path.join(LIEUX, id.split('/')[0])).includes(id.split('/')[1]);
+function readLieu(id) { const p = lieuPath(id); if (!fs.existsSync(p)) return { exists: false, lieu: null, text: '' }; const text = fs.readFileSync(p, 'utf8'); try { return { exists: true, lieu: S.parseLieu(text), text }; } catch (e) { return { exists: true, lieu: null, text, error: 'fichier illisible : ' + e.message }; } }
+function proposeLieu(id, lieu) { const v = S.validateLieu(lieu), cur = readLieu(id); if (v.errors.length) return { ok: false, errors: v.errors, warnings: v.warnings }; const text = S.textLieu(lieu); return { ok: true, warnings: v.warnings, exists: cur.exists, before: cur.text, after: text, same: cur.text === text, diff: S.diff(cur.text, text) }; }
 const server = http.createServer(async (req, res) => {
   try {
     // Hôte local seulement (contre le rebinding DNS) ; écritures : même origine et JSON (contre les requêtes d'un autre site).
@@ -72,15 +80,29 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && p === '/api/couches') return send(res, 200, couches());
       const mo = /^\/api\/osm\/send\/([^/]+\/[^/]+\/[^/]+)$/.exec(p);
       if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1].split('/')[2], await body(req)); /* tools/specs/<el>.json */ return send(res, r.code, r.body); }
+      const ml = /^\/api\/lieu\/([^/]+\/[^/]+)$/.exec(p);
+      if (ml) {
+        if (!checkLieu(ml[1])) return send(res, 404, { error: 'lieu inconnu' });
+        if (req.method === 'GET') return send(res, 200, readLieu(ml[1]));
+        if (req.method === 'PUT') {
+          const b = await body(req), r = proposeLieu(ml[1], b.lieu);
+          if (!r.ok) return send(res, 422, r);
+          const tmp = lieuPath(ml[1]) + '.tmp-' + process.pid;
+          fs.writeFileSync(tmp, r.after, { mode: 0o644 }); fs.renameSync(tmp, lieuPath(ml[1]));
+          console.log(new Date().toISOString(), 'écrit', path.relative(ROOT, lieuPath(ml[1])));
+          return send(res, 200, Object.assign(readLieu(ml[1]), { written: 'lieux/' + ml[1] + '/lieu.js', warnings: r.warnings }));
+        }
+        return send(res, 405, { error: 'méthode refusée' });
+      }
       const m = /^\/api\/(sites|game|diff)(?:\/([^/]+\/[^/]+\/[^/]+))?$/.exec(p);
       if (!m) return send(res, 404, { error: 'inconnu' });
       if (m[1] === 'sites' && req.method === 'GET') return send(res, 200, siteIds().map(id => ({ id, game: fs.existsSync(gamePath(id)) })));
       if (!checkSite(m[2])) return send(res, 404, { error: 'attraction inconnue' });
       const id = m[2];
       if (m[1] === 'game' && req.method === 'GET') return send(res, 200, readGame(id));
-      if (m[1] === 'diff' && req.method === 'POST') { const b = await body(req); return send(res, 200, propose(id, b.game, b.trainMax)); }
+      if (m[1] === 'diff' && req.method === 'POST') { const b = await body(req); return send(res, 200, propose(id, b.game, ctxOf(b))); }
       if (m[1] === 'game' && req.method === 'PUT') {
-        const b = await body(req), r = propose(id, b.game, b.trainMax);
+        const b = await body(req), r = propose(id, b.game, ctxOf(b));
         if (!r.ok) return send(res, 422, r);
         const tmp = gamePath(id) + '.tmp-' + process.pid;
         fs.writeFileSync(tmp, r.after, { mode: 0o644 }); fs.renameSync(tmp, gamePath(id)); // écriture atomique, seul fichier écrit par l'éditeur

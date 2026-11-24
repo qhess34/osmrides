@@ -5,14 +5,21 @@
   inscrit(function (S) {
   // GAME.site (lot 3, D9) : surcharges partielles de SITE, liste blanche ; bornes ESTIMÉES (sûres pour le moteur, pas des mesures).
   const SK = { kind: ['wood', 'bob', 'inverted', 'steel'], restraint: ['lapbar', 'otsr', 'belt'] };
-  const SL = { len: [0.5, 6], n: [1, 30], seats: [1, 8], abreast: [1, 8], trainLen: 40, trains: [1, 8], wear: [0, 100], lane: [1, 8], roll: [0, 0.3], drag: [0, 0.01], vmin: [1, 6], name: 40 };
-  const SITE_KEYS = { kind: 'enum', car: ['len', 'n', 'seats', 'abreast', 'restraint'], trains: 'list', track: ['spine', 'rail', 'support'], trough: ['lo', 'hi', 'edge', 'deck', 'rim', 'shine'], phys: ['roll', 'drag', 'vmin'] };
+  const SL = { len: [0.5, 6], n: [1, 30], seats: [1, 8], abreast: [1, 8], trainLen: 40, trains: [1, 8], wear: [0, 100], lane: [1, 8], roll: [0, 0.3], drag: [0, 0.01], vmin: [1, 6], name: 40,
+    w: [0.5, 3], pitch: [0.2, 3], // car.w (largeur du wagon, m), car.pitch (m d'axe à axe, places l'une derrière l'autre)
+    lap: [30, 600], stopBack: [0, 15], maxRun: [1, 8], holdBack: [0, 300], dropAfter: [0, 300], // tour (s), arrêt en gare avant la fin de gare (m), trains en ligne, arrêt au frein final avant la fin du circuit (m), cri après le haut du lift (m)
+    zoneV: [1, 30], zoneHold: [0, 300], // frein de bloc : vitesse limite / de lancement (m/s), temps d'arrêt (s)
+    move: { v: [0.2, 10], vc: [0.1, 5], t: [0.5, 30] }, // manœuvre de l'appareil de voie : vitesse, vitesse de chariot (m/s), durée (s)
+    plat: { load: [1.5, 30], exit: [0, 30], back: [0, 10], front: [0, 10] }, // profondeurs des quais (m) : embarquement, sortie, au-delà de l'arrière du dernier wagon, devant le premier
+    pre: { back: [0, 200], len: [3, 120] }, txt: 40 }; // les bornes ci-dessus sont ESTIMÉES (sûres pour le moteur, pas des mesures)
+  const SITE_KEYS = { kind: 'enum', car: ['len', 'n', 'seats', 'abreast', 'restraint', 'w', 'inline', 'pitch'], trains: 'list', track: ['spine', 'rail', 'support'], trough: ['lo', 'hi', 'edge', 'deck', 'rim', 'shine'], phys: ['roll', 'drag', 'vmin'],
+    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel'], plat: ['load', 'exit', 'back', 'front'] };
+  const ZKEYS = ['trim', 'launch', 'hold', 'stop']; // par frein de bloc B<k> : vitesse limite (trim.v), vitesse de lancement, temps d'arrêt, arrêt obligatoire (engine/montagnes-russes/zones.js)
   const DEPTH = [0.5, 6]; // profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
+  const txt = v => typeof v === 'string' && v.trim() && v.length <= SL.txt && !/[\u0000-\u001f<>"\\]/.test(v);
   function validateSite(T, E, W, ctx) {
-    if (!T || typeof T !== 'object' || Array.isArray(T)) { E.push('site : objet attendu'); return; }
     const isInt = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
-    for (const k of Object.keys(T)) if (!(k in SITE_KEYS)) E.push('site.' + k + ' : clé refusée (autorisées : ' + Object.keys(SITE_KEYS).join(', ') + ')');
     const sub = (key, keys, chk) => { // sous-objet à clés listées
       const v = T[key]; if (!(key in T)) return;
       if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push('site.' + key + ' : objet attendu'); return; }
@@ -23,6 +30,8 @@
     sub('car', SITE_KEYS.car, (f, v, p) => {
       if (f === 'len') { if (!S.num(v, SL.len[0], SL.len[1])) E.push(p + ' : longueur de ' + SL.len[0] + ' à ' + SL.len[1] + ' m'); }
       else if (f === 'restraint') { if (!SK.restraint.includes(v)) E.push(p + ' : ' + SK.restraint.join(' | ') + ' attendu'); }
+      else if (f === 'w' || f === 'pitch') { if (!S.num(v, SL[f][0], SL[f][1])) E.push(p + ' : de ' + SL[f][0] + ' à ' + SL[f][1] + ' m'); }
+      else if (f === 'inline') { if (typeof v !== 'boolean') E.push(p + ' : oui ou non'); }
       else if (!isInt(v, SL[f][0], SL[f][1])) E.push(p + ' : entier de ' + SL[f][0] + ' à ' + SL[f][1]);
     });
     if (T.car && typeof T.car === 'object' && S.num(T.car.len, 0, 1e3) && isInt(T.car.n, 1, 1e3) && T.car.len * T.car.n > SL.trainLen) E.push('site.car : train trop long (len x n = ' + Math.round(T.car.len * T.car.n * 10) / 10 + ' m, ' + SL.trainLen + ' m au plus)');
@@ -47,30 +56,71 @@
       else if (typeof v !== 'string' || !S.HEX.test(v)) E.push(p + ' : couleur #rrggbb');
     });
     sub('phys', SITE_KEYS.phys, (f, v, p) => { if (!S.num(v, SL[f][0], SL[f][1])) E.push(p + ' : de ' + SL[f][0] + ' à ' + SL[f][1]); });
+    for (const k of ['lap', 'stopBack', 'holdBack', 'dropAfter']) if (k in T && !S.num(T[k], SL[k][0], SL[k][1])) E.push('site.' + k + ' : de ' + SL[k][0] + ' à ' + SL[k][1] + (k === 'lap' ? ' s' : ' m'));
+    if ('maxRun' in T && !isInt(T.maxRun, SL.maxRun[0], SL.maxRun[1])) E.push('site.maxRun : entier de ' + SL.maxRun[0] + ' à ' + SL.maxRun[1] + ' trains en ligne');
+    if ('loadSide' in T && T.loadSide !== 1 && T.loadSide !== -1) E.push('site.loadSide : 1 ou -1');
+    sub('preBrake', SITE_KEYS.preBrake, (f, v, p) => { // frein avant gare : seulement celui que SITE déclare (le créer n'est pas possible ici)
+      if (f === 'name') { if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)'); }
+      else if (!S.num(v, SL.pre[f][0], SL.pre[f][1])) E.push(p + ' : de ' + SL.pre[f][0] + ' à ' + SL.pre[f][1] + ' m');
+    });
+    sub('plat', SITE_KEYS.plat, (f, v, p) => { if (!S.num(v, SL.plat[f][0], SL.plat[f][1])) E.push(p + ' : profondeur de ' + SL.plat[f][0] + ' à ' + SL.plat[f][1] + ' m'); });
+    sub('yard', SITE_KEYS.yard, (f, v, p) => { // appareil de voie : seulement vitesses, durée et noms (le reste décrit la voie)
+      if (f === 'move') {
+        if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push(p + ' : objet {v, vc, t} attendu'); return; }
+        for (const m of Object.keys(v)) if (!SL.move[m]) E.push(p + '.' + m + ' : clé refusée'); else if (!S.num(v[m], SL.move[m][0], SL.move[m][1])) E.push(p + '.' + m + ' : de ' + SL.move[m][0] + ' à ' + SL.move[m][1]);
+      } else if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)');
+    });
+    if ('zones' in T) { // freins de bloc B1…Bn : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
+      const Z = T.zones;
+      if (!Z || typeof Z !== 'object' || Array.isArray(Z)) E.push('site.zones : objet {B<k>:{…}} attendu');
+      else for (const id of Object.keys(Z)) {
+        const p = 'site.zones.' + id, z = Z[id], m = /^B([1-9]\d?)$/.exec(id);
+        if (!m) { E.push(p + ' : seuls les freins de bloc B1, B2… sont réglables ici'); continue; }
+        if (Number.isInteger(ctx.blocs) && +m[1] > ctx.blocs) E.push(p + ' : cette attraction n\'a que ' + ctx.blocs + ' frein(s) de bloc');
+        if (!z || typeof z !== 'object' || Array.isArray(z)) { E.push(p + ' : objet attendu'); continue; }
+        for (const f of Object.keys(z)) {
+          if (!ZKEYS.includes(f)) E.push(p + '.' + f + ' : clé refusée (autorisées : ' + ZKEYS.join(', ') + ')');
+          else if (f === 'trim') {
+            if (!z.trim || typeof z.trim !== 'object' || Array.isArray(z.trim) || Object.keys(z.trim).some(q => q !== 'v')) E.push(p + '.trim : objet {v} attendu');
+            else if (!S.num(z.trim.v, SL.zoneV[0], SL.zoneV[1])) E.push(p + '.trim.v : vitesse limite de ' + SL.zoneV[0] + ' à ' + SL.zoneV[1] + ' m/s');
+          } else if (f === 'launch') { if (!S.num(z.launch, SL.zoneV[0], SL.zoneV[1])) E.push(p + '.launch : vitesse de lancement de ' + SL.zoneV[0] + ' à ' + SL.zoneV[1] + ' m/s'); }
+          else if (f === 'hold') { if (!S.num(z.hold, SL.zoneHold[0], SL.zoneHold[1])) E.push(p + '.hold : temps d\'arrêt de ' + SL.zoneHold[0] + ' à ' + SL.zoneHold[1] + ' s'); }
+          else if (typeof z.stop !== 'boolean') E.push(p + '.stop : oui ou non');
+        }
+        if ('hold' in z && z.stop !== true) W.push(p + '.hold : le temps d\'arrêt ne s\'applique qu\'avec l\'arrêt obligatoire (stop)');
+        if (S.num(z.launch, 0, 1e3) && z.trim && S.num(z.trim.v, 0, 1e3) && z.launch > z.trim.v) W.push(p + ' : la vitesse de lancement est ramenée à la vitesse limite');
+      }
+    }
   }
 
-  S.section({ cle: 'site', validate: (T, E, W, ctx) => validateSite(T, E, W, ctx),
-      normalize(t) { const o = { site: {} };
+  S.sitePart({ keys: Object.keys(SITE_KEYS), validate: (T, E, W, ctx) => validateSite(T, E, W, ctx),
+      normalize(t, out) {
+        const o = out;
         for (const key of Object.keys(SITE_KEYS)) {
           if (!(key in t)) continue;
           const v = t[key];
-          if (key === 'kind') o.site.kind = v;
-          else if (key === 'trains') o.site.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
-          else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.site.trough = q; }
-          else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : S.r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.site[key] = q; }
+          if (key === 'kind') o.kind = v;
+          else if (['lap', 'stopBack', 'holdBack', 'dropAfter'].includes(key)) o[key] = S.r2(v);
+          else if (key === 'maxRun' || key === 'loadSide') o[key] = v;
+          else if (key === 'trains') o.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
+          else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }
+          else if (key === 'zones') { const q = {}; for (const id of Object.keys(v).sort((a, b) => +a.slice(1) - +b.slice(1))) { const z = {}; for (const f of ZKEYS) if (f in v[id]) z[f] = f === 'trim' ? { v: S.r2(v[id].trim.v) } : typeof v[id][f] === 'number' ? S.r2(v[id][f]) : v[id][f]; q[id] = z; } o.zones = q; }
+          else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])])) : v[f]; o.yard = q; }
+          else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : S.r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o[key] = q; }
         }
-        return o.site; },
+      },
   });
   S.section({ cle: 'board', // quai d'embarquement (issue #27) : profondeur des travées d'attente derrière les portillons, en m depuis la ligne des portillons
       normalize: b => ({ depth: S.r2(b.depth) }),
-      validate(B, E) { // quai d'embarquement (issue #27) : profondeur des travées d'attente derrière les portillons, en m depuis la ligne des portillons
+      validate(B, E, W, ctx) { // quai d'embarquement (issue #27) : profondeur des travées d'attente derrière les portillons, en m depuis la ligne des portillons
       if (!B || typeof B !== 'object' || Array.isArray(B)) E.push('board : objet {depth} attendu');
       else {
         for (const k of Object.keys(B)) if (k !== 'depth') E.push('board : clé inconnue ' + k);
-        if (!S.num(B.depth, DEPTH[0], DEPTH[1])) E.push('board.depth : profondeur des travées de ' + DEPTH[0] + ' à ' + DEPTH[1] + ' m');
+        const mx = ctx && typeof ctx.depthMax === 'number' ? Math.min(DEPTH[1], ctx.depthMax) : DEPTH[1]; // borne haute selon le quai (moteur : DEPTH_MAX, quai.js)
+        if (!S.num(B.depth, DEPTH[0], mx)) E.push('board.depth : profondeur des travées de ' + DEPTH[0] + ' à ' + mx + ' m' + (mx < DEPTH[1] ? ' (quai court : au-delà, le couloir d\'attente ne recule plus derrière les travées)' : ''));
       }
     }
   });
-  Object.assign(S, { SK, SL, SITE_KEYS }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
+  Object.assign(S, { SK, SL, SITE_KEYS, ZKEYS }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
   });
 })(typeof module !== 'undefined' && module.exports ? f => { module.exports = f; } : f => f(window.T2ZSchema));

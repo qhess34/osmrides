@@ -1,6 +1,11 @@
 'use strict';
 /* ══════════ QUAI : travées, portillons, places d'attente, opérateurs ══════════ */
 // Quai : une travée et un portillon par wagon
+/* Côté du quai d'embarquement (loadSide, osmrides#53) : +1 ou -1 selon que la droite de la voie (R) pointe vers le côté où arrive la file (SITE.board.via : dernier point du trajet des visiteurs
+   avant le quai) ; le débarquement se fait de l'autre côté. Priorité GAME.site > SITE.loadSide > déduction (|écart| de moins de 0,5 m : indécis, +1). */
+const LS_D=(()=>{const V=SITE.board&&SITE.board.via;if(!V||!V.length)return null;const f=frameAt(S_ST-CAR/2,mkF()),q=V[V.length-1],d=f.R.x*(q[0]-f.p.x)+f.R.z*(q[1]-f.p.z);return Math.abs(d)<.5?null:d>0?1:-1;})();
+const LS=SITE.loadSide||LS_D||1;
+const DEDUIT={dropAfter:D_DROP,holdBack:TAG.fin!=null?+(L-TAG.fin).toFixed(1):null,loadSide:LS_D}; // éditeur : déduit (null = non déductible)
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 // Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
 // (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m) ou rebord de la gouttière de gare d'un bob (BOB_RIM), + 8 cm de jeu ; SITE.plat.edge pour forcer.
@@ -40,14 +45,14 @@ const RES_P=(PLT0.slot&&PLT0.slot.res)||1.5*SLOT_P; // pas de la réserve de la 
 const GCOLS=u=>{const n=GPR>1?S_COLS:CSEATS;return n>1&&2*GUNITS[u].h>=1.1?2:1;};
 const GDEPTH_CALC=Math.max(...GUNITS.map((g,u)=>SLOT0+(Math.ceil((GPR>1?S_COLS:CSEATS)/GCOLS(u))-1)*SLOT_P+.4));
 /* Profondeur des travées réglée (propriétaire, issue #27, éditeur : GAME.board={depth}, en m depuis la ligne des portillons ; repli SITE.plat.depth ; priorité GAME > SITE >
-   calcul GDEPTH_CALC). Sans valeur, rien ne change. Bornes ESTIMÉES : un rang au moins (SLOT0 + 0,4 m), DEPTH_MAX = 6 m au plus. Le moteur en déduit :
+   calcul GDEPTH_CALC). Sans valeur, rien ne change. Bornes ESTIMÉES : un rang au moins (SLOT0 + 0,4 m), DEPTH_MAX = 6 m au plus et selon le quai (plat.load - 0,5 m - PGATE : Goudurix, quai de 3,9 m, 1,7 m). Le moteur en déduit :
    - GROWS = nombre de rangs des travées (premier rang à SLOT0, pas SLOT_P, 0,4 m derrière le dernier) et GDEPTH (séparateurs, engine/render.js drawGates) ;
    - les places des portillons ne changent pas (deux par portillon, premier rang collé) ; travée plus courte que ces places : les rangs en trop attendent juste derrière ;
    - travée plus longue : les rangs supplémentaires (jusqu'à GROWS) deviennent des places de réserve de leur portillon (BRES, `t:1`, `u` = portillon), remplies quand
      les places du portillon sont prises, avec ou sans zone d'attente éditée ; le visiteur avance à la place du portillon libérée ;
    - BWALK (couloir d'attente) juste derrière la travée (GDEPTH + 0,6 m), plus loin que SITE.board.walk si besoin mais pas au-delà du quai (plat.load - 0,3 m) ;
    - QGATE_CLR (engine/render.js, au chargement) = GDEPTH + 0,2 m ; réserve de la zone d'attente éditée : premier rang derrière le dernier rang des travées. */
-const DEPTH_MIN=+(SLOT0+.4).toFixed(2),DEPTH_MAX=6;
+const DEPTH_MIN=+(SLOT0+.4).toFixed(2),DEPTH_MAX=Math.max(DEPTH_MIN,Math.min(6,+((PLT0.load!=null?PLT0.load:7.9)-.5-PGATE).toFixed(2))); // borne haute : 6 m, et pas au-delà de ce qui laisse le couloir d'attente derrière les séparateurs, avec 0,2 m de jeu (comme QGATE_CLR), dans le quai (plat.load - 0,3 m) : quai court = travées moins profondes (osmrides#53)
 let GDEPTH=GDEPTH_CALC,GROWS=1,BDEPTH=null,BWALK=Math.min(SITE.board.walk,PGATE+GDEPTH+.6);
 function reDepth(){const B=GM.board&&typeof GM.board==='object'?GM.board:null,v=B&&B.depth!=null?+B.depth:PLT0.depth!=null?+PLT0.depth:NaN;
   BDEPTH=isFinite(v)&&v>0?clamp(v,DEPTH_MIN,DEPTH_MAX):null;GDEPTH=BDEPTH!=null?BDEPTH:GDEPTH_CALC;GROWS=Math.max(1,Math.floor((GDEPTH-SLOT0-.4)/SLOT_P+1e-6)+1);

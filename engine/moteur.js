@@ -20,5 +20,9 @@
     charge(COUCHES[i]+'extension.js',()=>{const d=EXTENSIONS.slice(n).find(e=>e.fichiers);F.push(d?d.fichiers:{});manifeste(i+1);});};
   const etapes=()=>{const L=[];for(const e of ETAPES){for(const f of NOYAU[e]||[])L.push(base+'noyau/'+f+'.js');COUCHES.forEach((c,i)=>{for(const f of F[i][e]||[])L.push(c+f+'.js');});}
     suite(L,0,()=>{});};
-  suite(NOYAU.base.map(f=>base+'noyau/'+f+'.js'),0,()=>manifeste(0));
+  // Réglages du lieu (facultatif, commun à toutes ses attractions) : lieux/<type>/<lieu>/lieu.js, relatif à jeu.html, `const LIEU={hours:{open:'10:00',close:'19:00'}}` (horaires d'ouverture) ; SITE.type et SITE.lieu
+  // sont posés par jeu.html avant le moteur. Absent ou illisible : valeurs par défaut du moteur (noyau/base.js, T_OPEN / T_CLOSE). Écrit par la section « Lieu » de l'éditeur.
+  const lieu=(typeof SITE!=='undefined'&&/^[a-z0-9_-]+$/i.test(SITE.type||'')&&/^[a-z0-9_-]+$/i.test(SITE.lieu||''))?'lieux/'+SITE.type+'/'+SITE.lieu+'/lieu.js':null;
+  const debut=()=>suite(NOYAU.base.map(f=>base+'noyau/'+f+'.js'),0,()=>manifeste(0));
+  if(lieu&&typeof LIEU==='undefined'){const s=document.createElement('script');s.src=lieu;s.onload=s.onerror=debut;document.body.appendChild(s);}else debut();
 })();

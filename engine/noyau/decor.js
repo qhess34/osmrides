@@ -430,7 +430,7 @@ function railDraw(P,PP,mn,sh){const m=LK.rail;
 // Salle de contrôle (poste de conduite, pupitre) : GAME.controlRooms=[{id, x, z, angle (degrés), w, d (m), main}] (éditeur, docs/ARCHITECTURE.md D3) ; une seule salle par
 // attraction pour l'instant (propriétaire, lot 1) : la salle main (sinon la première) porte le pupitre ; liste vide = aucune salle (ni opérateur au pupitre, ni gyrophare,
 // ni étiquette). Sans GAME.controlRooms : repli sur SITE.booth=[x, z, angle (rad), échelle] (pupitre de 3,75 x 1,7 m à l'échelle 1, ESTIMÉ). Gyrophare et étiquette :
-// SITE.beacon / SITE.boothLabel ramenés au repère de la salle (ils la suivent quand elle bouge), sinon posés sur la salle.
+// SITE.beacon / SITE.boothLabel ramenés au repère de la salle (ils la suivent quand elle bouge), sinon posés sur la salle. Réglables dans GAME.controlRooms[i] : beacon et label = [x, z] en m dans le repère de la salle (centre, x le long de w, z le long de d, vitre vers +z), priorité GAME > SITE > défaut.
 const BOOTH_W=3.75,BOOTH_D=1.7;
 const B0=SITE.booth?(()=>{const B=SITE.booth,sc=B[3]||1,c=Math.cos(B[2]),sn=Math.sin(B[2]),loc=q=>q?[(q[0]-B[0])*c+(q[1]-B[1])*sn,-(q[0]-B[0])*sn+(q[1]-B[1])*c]:null;
   return {room:{id:'poste',x:B[0],z:B[1],angle:B[2]*180/Math.PI,w:BOOTH_W*sc,d:BOOTH_D*sc,main:true},bl:loc(SITE.beacon),ll:loc(SITE.boothLabel)};})():null;
@@ -441,8 +441,10 @@ function defRoom(){return OSM_ROOM||(B0?B0.room:null);}
 function ctlRooms(){const D=defRoom(),R=Array.isArray(GM.controlRooms)?GM.controlRooms:D?[D]:[];return R.filter(r=>r&&[r.x,r.z,r.angle,r.w,r.d].every(v=>typeof v==='number'&&isFinite(v)));}
 function mainRoom(){const R=ctlRooms();return R.find(r=>r.main)||R[0]||null;}
 const roomPt=(r,l)=>{const t=r.angle*Math.PI/180;return [r.x+l[0]*Math.cos(t)-l[1]*Math.sin(t),r.z+l[0]*Math.sin(t)+l[1]*Math.cos(t)];};
-function beaconAt(){const r=mainRoom();if(!r)return null;const l=B0&&B0.bl?B0.bl:[r.w/2-.35,-r.d/2+.3];return roomPt(r,[clamp(l[0],-r.w/2-.5,r.w/2+.5),clamp(l[1],-r.d/2-.5,r.d/2+.5)]);}
-function boothLabelAt(){const r=mainRoom();if(!r)return null;if(B0&&B0.ll)return roomPt(r,B0.ll);return [r.x,r.z-Math.max(r.w,r.d)/2-2.2];}
+function beaconAt(){const r=mainRoom();if(!r)return null;const l=Array.isArray(r.beacon)?r.beacon:B0&&B0.bl?B0.bl:[r.w/2-.35,-r.d/2+.3];return roomPt(r,[clamp(l[0],-r.w/2-.5,r.w/2+.5),clamp(l[1],-r.d/2-.5,r.d/2+.5)]);}
+function boothLabelAt(){const r=mainRoom();if(!r)return null;if(Array.isArray(r.label))return roomPt(r,r.label);if(B0&&B0.ll)return roomPt(r,B0.ll);return [r.x,r.z-Math.max(r.w,r.d)/2-2.2];}
+function roomPos(){const r=mainRoom();if(!r)return null;const t=r.angle*Math.PI/180,c=Math.cos(t),sn=Math.sin(t),loc=q=>q?[+((q[0]-r.x)*c+(q[1]-r.z)*sn).toFixed(2),+(-(q[0]-r.x)*sn+(q[1]-r.z)*c).toFixed(2)]:null;
+  return {beacon:loc(beaconAt()),label:loc(boothLabelAt()),game:{beacon:Array.isArray(r.beacon),label:Array.isArray(r.label)}};} // éditeur : positions effectives dans le repère de la salle
 function drawBooth(s){for(const r of ctlRooms()){const sx=r.w/BOOTH_W,sz=r.d/BOOTH_D,t=r.angle*Math.PI/180;ctx.save();ctx.translate(r.x,r.z);ctx.rotate(t);ctx.scale(sx,sz); // vitre (côté +z local) tournée vers la voie
   ctx.fillStyle='#3a434f';ctx.fillRect(-1.875,-.85,3.75,1.7);ctx.fillStyle='#8fd0e8';ctx.fillRect(-1.72,.62,3.45,.2);
   if(r===mainRoom()){ctx.fillStyle='#20262e';ctx.fillRect(-1.37,.15,2.7,.42);

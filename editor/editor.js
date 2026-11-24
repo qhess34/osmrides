@@ -24,7 +24,7 @@
     open(s1 ? s1.id : L[0].id);
   }
   async function open(id) {
-    ready = false; sel = null; wsel = null; adding = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
+    ready = false; sel = null; wsel = null; adding = null; picking = null; site = id; $('site').value = id; setName(''); siteUndo = null; keep = null; sideTop = 0;
     history.replaceState(null, '', '?site=' + id);
     orig = await api('/api/game/' + id);
     $('file').textContent = 'lieux/' + id + '.game.js : ' + (orig.exists ? (orig.error ? 'ILLISIBLE (' + orig.error + ')' : 'présent') : 'absent (créé à la première sauvegarde)');
@@ -129,6 +129,7 @@
     const pos = e => toW(e.clientX, e.clientY);
     W.addEventListener('pointerdown', e => {
       if (e.target !== cv || e.button > 0) return; const p = pos(e);
+      if (picking) { e.stopImmediatePropagation(); e.preventDefault(); const cb = picking; picking = null; cv.style.cursor = ''; cb([R2(p[0]), R2(p[1])]); return; }
       if (adding) { e.stopImmediatePropagation(); e.preventDefault(); addGate(p); return; }
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
@@ -142,7 +143,7 @@
       panel();
     }, true);
     W.addEventListener('pointermove', e => {
-      if (!drag) { if (e.target === cv && adding) { cv.style.cursor = 'crosshair'; e.stopImmediatePropagation(); return; } if (e.target === cv && hit(pos(e))) { cv.style.cursor = 'move'; e.stopImmediatePropagation(); } return; }
+      if (!drag) { if (e.target === cv && picking) { cv.style.cursor = 'crosshair'; e.stopImmediatePropagation(); return; } if (e.target === cv && adding) { cv.style.cursor = 'crosshair'; e.stopImmediatePropagation(); return; } if (e.target === cv && hit(pos(e))) { cv.style.cursor = 'move'; e.stopImmediatePropagation(); } return; }
       e.stopImmediatePropagation(); e.preventDefault(); const p = pos(e), dx = p[0] - drag.p0[0], dz = p[1] - drag.p0[1];
       if (!drag.moved && Math.hypot(dx, dz) * E('cam').s < 3) return; drag.moved = true;
       if (drag.t === 'gate') {
@@ -169,7 +170,7 @@
       panelLite();
     }, true);
     let tap = null; // clic simple sur une allée de file (sans barrière ni zone sous le curseur) : choisit le chemin OSM dont on règle le sol (issue #45)
-    W.addEventListener('pointerdown', e => { tap = e.target === cv && e.button <= 0 && !adding && !hit(pos(e)) ? { x: e.clientX, y: e.clientY } : null; }, true);
+    W.addEventListener('pointerdown', e => { tap = e.target === cv && e.button <= 0 && !adding && !picking && !hit(pos(e)) ? { x: e.clientX, y: e.clientY } : null; }, true);
     W.addEventListener('pointerup', e => { if (!tap || drag) { tap = null; return; } const t = tap; tap = null; if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 4) return; const id = pickWay(pos(e)); if (id) { wsel = id; panel(); $('secLook').scrollIntoView({ block: 'nearest' }); } }, true);
     const up = e => { if (!drag) return; e.stopImmediatePropagation(); e.preventDefault(); const d = drag; drag = null; snapped = null; if (d.t === 'qe' && d.moved) { reSel = { t: 'qe' }; reloadPreview(); return; } panel(); };
     W.addEventListener('pointerup', up, true); W.addEventListener('pointercancel', up, true);
@@ -220,6 +221,7 @@
     for (const rm of rooms()) {
       const on = sel && sel.t === 'room', C = CORNERS.map(c => P(...roomPt(rm, [c[0] * rm.w / 2, c[1] * rm.d / 2])));
       oc.strokeStyle = '#c99cff'; oc.lineWidth = on ? 2.5 : 1.5; oc.setLineDash(migrated() ? [] : [6, 4]); oc.beginPath(); C.forEach((q, i) => i ? oc.lineTo(q[0], q[1]) : oc.moveTo(q[0], q[1])); oc.closePath(); oc.stroke(); oc.setLineDash([]);
+      if (on) { let rp = null; try { rp = E('roomPos()'); } catch (e) { } if (rp && rp.beacon) { const q = P(...roomPt(rm, rp.beacon)); oc.fillStyle = '#ff8a3d'; oc.fillRect(q[0] - 3, q[1] - 3, 6, 6); } if (rp && rp.label) { const q = P(...roomPt(rm, rp.label)); oc.strokeStyle = '#ff8a3d'; oc.lineWidth = 2; oc.beginPath(); oc.moveTo(q[0] - 5, q[1]); oc.lineTo(q[0] + 5, q[1]); oc.moveTo(q[0], q[1] - 5); oc.lineTo(q[0], q[1] + 5); oc.stroke(); oc.strokeStyle = '#c99cff'; oc.lineWidth = 2.5; } }
       if (on) { const f = P(...roomPt(rm, [0, rm.d / 2])), rh = P(...rotH(rm)); oc.beginPath(); oc.moveTo(f[0], f[1]); oc.lineTo(rh[0], rh[1]); oc.stroke();
         oc.fillStyle = '#c99cff'; oc.beginPath(); oc.arc(rh[0], rh[1], 6, 0, 7); oc.fill(); oc.fillStyle = '#fff'; for (const q of C) { oc.fillRect(q[0] - 5, q[1] - 5, 10, 10); oc.strokeStyle = '#0b1120'; oc.strokeRect(q[0] - 5, q[1] - 5, 10, 10); } }
     }
@@ -319,10 +321,11 @@
         ${v != null ? `<div class="grid" style="margin-top:6px"><span>Sommet ${v + 1} x, z (m)</span><span>${inp('vx', R2(Ps[v][0]))} ${inp('vz', R2(Ps[v][1]))}</span></div>` : ''}
         <div class="row">${v != null ? `<button id="bDelVtx" class="bad" ${Ps.length > 3 ? '' : 'disabled'}>Supprimer le sommet</button>` : ''}<button id="bAreaAuto" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
     }
-    const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>';
+    const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>'; const rp = (() => { try { return E('roomPos()'); } catch (e) { return null; } })();
     return `<div><b>Salle de contrôle</b> ${migrated() ? '' : (E('OSM_ROOM') ? '<span class="tag">OSM (bâtiment Salle de contrôle)</span>' : '<span class="tag t-est">SITE.booth (repli)</span>')}</div>
       <div class="grid" style="margin-top:6px"><span>Centre x, z (m)</span><span>${inp('x', r.x)} ${inp('z', r.z)}</span><span>Angle (°)</span><span>${inp('angle', r.angle, 1)}</span>
-      <span>Largeur, profondeur (m)</span><span>${inp('w', r.w)} ${inp('d', r.d)}</span></div><p class="note">La vitre (côté du rond) est tournée vers la voie.</p>`;
+      <span>Largeur, profondeur (m)</span><span>${inp('w', r.w)} ${inp('d', r.d)}</span>${rp && rp.beacon ? `<span>Gyrophare x, z (m)</span><span>${inp('bx', rp.beacon[0])} ${inp('bz', rp.beacon[1])}</span>` : ''}${rp && rp.label ? `<span>Étiquette x, z (m)</span><span>${inp('lx', rp.label[0])} ${inp('lz', rp.label[1])}</span>` : ''}</div>
+      <p class="note">La vitre (côté du rond) est tournée vers la voie. Gyrophare et étiquette : positions dans le repère de la salle (centre, x le long de la largeur, z vers la vitre), carré orange et croix sur la carte ; le gyrophare reste au plus à 0,5 m de la salle (ESTIMÉ, limite du moteur). ${rp && (rp.game.beacon || rp.game.label) ? '<button id="bRoomPos">Origine (gyrophare et étiquette)</button>' : 'Valeurs du jeu (calcul ou SITE).'}</p>`;
   }
   function panelLite() { $('selBox').innerHTML = selHTML(); bindSel(); for (const d of SECS) if (d.panelLite) d.panelLite(X); status(); }
   const fr1 = v => (+v).toFixed(1).replace('.', ','), qeTxt = Q => `Prolongement de ${fr1(Q.len)} m depuis le début du chemin de file OSM, orienté à ${fr1(Q.ang)}° (0 = est, 90 = sud)${Q.game && Q.clamped ? ` ; ${fr1(Q.want)} m demandés, ramenés au bord de la surface praticable (zone piétonne, chemin)` : ''}. Calcul : ${fr1(Q.calc.len)} m à ${fr1(Q.calc.ang)}°.`;
@@ -331,10 +334,12 @@
       const v = +el.value, k = el.dataset.k; if (!isFinite(v)) return;
     if (sel.t === 'area') { const A = areaOvr(); A.pts[sel.v] = k === 'vx' ? [v, A.pts[sel.v][1]] : [A.pts[sel.v][0], v]; areaApplied(); }
       else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); o[k] = k === 'len' ? R2(clamp(v, .2, 20)) : v; applied(); }
+      else if (k === 'bx' || k === 'bz' || k === 'lx' || k === 'lz') { migrate(); const r = GM().controlRooms[0], f = k[0] === 'b' ? 'beacon' : 'label', cur = E('roomPos()')[f] || [0, 0], q = cur.slice(); q[k[1] === 'x' ? 0 : 1] = R2(clamp(v, -60, 60)); r[f] = q; if (!Array.isArray(r[f === 'beacon' ? 'label' : 'beacon'])) { /* l'autre garde sa valeur du jeu */ } panel(); }
       else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
     });
     const go = $('gOpen'); if (go) go.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (go.checked) o.open = true; else delete o.open; applied(); };
     const gs = $('gSw'); if (gs) gs.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (gs.value === '-1') o.sw = -1; else delete o.sw; applied(); };
+    const brp = $('bRoomPos'); if (brp) brp.onclick = () => { const r = GM().controlRooms[0]; delete r.beacon; delete r.label; panel(); };
     const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
     const bv = $('bDelVtx'); if (bv) bv.onclick = () => delVertex(sel.v);
     const ba = $('bAreaAuto'); if (ba) ba.onclick = revertArea;
@@ -412,7 +417,7 @@
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · entrée de la file : ${g && g.queueEntry ? g.queueEntry.len + ' m à ' + g.queueEntry.ang + '°' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {
     if (!ready) return;
-    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, trainMax: vctx().trainMax }) });
+    const g = draft(), r = await api('/api/diff/' + site, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: g, ctx: vctx() }) });
     $('mFile').textContent = 'lieux/' + site + '.game.js'; $('modal').classList.add('on');
     $('mBefore').innerHTML = '<b>Avant</b><br>' + (orig.exists ? esc(summary(orig.game)) : 'fichier absent');
     $('mAfter').innerHTML = '<b>Après</b><br>' + esc(summary(g));
@@ -422,7 +427,7 @@
     $('bSave').disabled = r.same;
   }
   async function save() {
-    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft(), trainMax: vctx().trainMax }) });
+    const r = await api('/api/game/' + site, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ game: draft(), ctx: vctx() }) });
     if (!r.written) { $('mMsg').innerHTML = '<span class="err">Échec : ' + esc((r.errors || [r.error]).join(' ; ')) + '</span>'; return; }
     orig = r; $('mMsg').textContent = 'Enregistré : ' + r.written + '. Rien n\'est envoyé à Git : relire, puis committer soi-même.'; $('bSave').disabled = true;
     $('file').textContent = r.written + ' : présent'; window.ED.saved = (window.ED.saved || 0) + 1; status();
@@ -432,8 +437,15 @@
   $('bMig').onclick = () => { migrate(); sel = { t: 'room' }; panel(); };
   $('site').onchange = () => { if (window.ED.dirty && !confirm('Abandonner les modifications ?')) { $('site').value = site; return; } open($('site').value); };
 
+  // ── GAME.site (D9) : aides communes aux sections des couches (noyau, types). Valeur égale à celle de SITE_BASE (origine) : surcharge retirée ; objets vides retirés ; aperçu rechargé ──
+  const pth = (o, p) => p.reduce((a, k) => a == null ? undefined : a[k], o), same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function prune(o) { for (const k of Object.keys(o)) { const v = o[k]; if (v && typeof v === 'object' && !Array.isArray(v)) { prune(v); if (!Object.keys(v).length) delete o[k]; } } }
+  function siteChange(fn) { siteUndo = JSON.stringify(draft()); const M = GM(); if (!M.site) M.site = {}; fn(M.site); prune(M.site); if (!Object.keys(M.site).length) delete M.site; reloadPreview(); }
+  function delSite(s, p) { let o = s; for (const k of p.slice(0, -1)) { o = o[k]; if (!o) return; } delete o[p[p.length - 1]]; }
+  function setSite(p, v) { siteChange(s => { const base = pth(E('SITE_BASE'), p); if (v === '' || (base !== undefined && same(base, v))) return delSite(s, p); let o = s; for (const k of p.slice(0, -1)) { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[p[p.length - 1]] = v; }); }
+  let picking = null; // pose sur la carte : le prochain clic sur la carte appelle picking([x, z]) (postes de maintenance…)
   // Outils passés aux sections des couches : cadre du jeu, brouillon, panneau, rechargement, sélection
-  const X = { E: s => E(s), GM: () => GM(), S, $, esc, clamp, R2, draft, panel, panelLite, reloadPreview, focus, getSel: () => sel, setSel: v => { sel = v; }, setUndo: v => { siteUndo = v; } };
+  const X = { E: s => E(s), GM: () => GM(), S, $, esc, clamp, R2, api, site: () => site, draft, panel, panelLite, reloadPreview, focus, pth, same, siteChange, setSite, delSite, prune: M => { if (M.site) { prune(M.site); if (!Object.keys(M.site).length) delete M.site; } }, pick: cb => { picking = cb; try { E('cv').style.cursor = 'crosshair'; } catch (e) { } }, getSel: () => sel, setSel: v => { sel = v; }, setUndo: v => { siteUndo = v; } };
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
   window.ED = { ready: false, secs: () => SECS.map(d => d.id), isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, qe: () => qe(), snapped: () => snapped, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel() };
   // couches du moteur servies par editor/server.js (GET /api/couches) : schéma (sections de GAME) puis panneau, avant l'ouverture d'une attraction

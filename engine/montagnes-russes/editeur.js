@@ -17,18 +17,13 @@
   // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/state.js : gare, voies de garage, frein avant gare, frein final, freins de bloc), 8 au plus (editor/schema.js)
   const tMax = () => { let m = S.SL.trains[1]; try { m = Math.min(m, E('TRAIN_MAX')); } catch (e) { } return m; };
   function tPlaces() { let t = ''; try { const g = E('LANES.reduce((n,l)=>n+l.cap,0)'), z = E('TRAIN_SPOTS.map(p=>zName(p.z))'); t = `Au plus ${tMax()} trains : un par place où un train peut attendre (1 en gare, ${g} au garage${z.length ? ', ' + z.length + ' sur les zones de freinage : ' + z.join(', ') : ''}${E('TRAIN_MAX') > S.SL.trains[1] ? ' ; ' + S.SL.trains[1] + ' au plus dans l\'éditeur' : ''}). Les trains au-delà du garage partent arrêtés sur ces zones.`; } catch (e) { } return esc(t); }
-  const pth = (o, p) => p.reduce((a, k) => a == null ? undefined : a[k], o);
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  function siteChange(fn) { X.setUndo(JSON.stringify(draft())); const M = GM(); if (!M.site) M.site = {}; fn(M.site); prune(M); reloadPreview(); }
-  function prune(M) { const s = M.site; if (!s) return; for (const k of Object.keys(s)) if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && !Object.keys(s[k]).length) delete s[k]; if (!Object.keys(s).length) delete M.site; }
-  function setSite(p, v) { // valeur égale à l'origine : surcharge retirée
-    siteChange(s => { const base = pth(SB(), p); if (v === '' || (base !== undefined && same(base, v))) return delSite(s, p); let o = s; for (const k of p.slice(0, -1)) { if (!o[k]) o[k] = {}; o = o[k]; } o[p[p.length - 1]] = v; });
-  }
-  function delSite(s, p) { let o = s; for (const k of p.slice(0, -1)) { o = o[k]; if (!o) return; } delete o[p[p.length - 1]]; }
+  // aides communes de l'éditeur (editor/editor.js) : GAME.site modifié, valeur égale à l'origine = surcharge retirée, objets vides retirés, aperçu rechargé
+  const pth = (o, p) => X.pth(o, p), same = (a, b) => X.same(a, b), siteChange = fn => X.siteChange(fn), setSite = (p, v) => X.setSite(p, v), delSite = (s, p) => X.delSite(s, p), prune = M => X.prune(M);
   const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), rgbHex = a => '#' + a.map(c => ('0' + clamp(Math.round(c), 0, 255).toString(16)).slice(-2)).join('');
   const SF = { // champs : chemin, libellé, type, défaut si SITE n'en donne pas (ESTIMÉ = valeur du moteur)
     car: [{ p: ['car', 'len'], l: 'Longueur d\'un wagon (m)', t: 'num', st: .05, d: null }, { p: ['car', 'n'], l: 'Wagons par train', t: 'int', d: null }, { p: ['car', 'seats'], l: 'Places par wagon', t: 'int', d: 2 }, { p: ['car', 'abreast'], l: 'Places côte à côte', t: 'int', d: 2 },
-      { p: ['car', 'restraint'], l: 'Sécurités', t: 'enum', o: [['lapbar', 'lapbars'], ['otsr', 'harnais'], ['belt', 'ceintures']] }],
+      { p: ['car', 'restraint'], l: 'Sécurités', t: 'enum', o: [['lapbar', 'lapbars'], ['otsr', 'harnais'], ['belt', 'ceintures']] },
+      { p: ['car', 'w'], l: 'Largeur d\'un wagon (m)', t: 'num', st: .01, d: 1.24, lim: S.SL.w }, { p: ['car', 'inline'], l: 'Places l\'une derrière l\'autre', t: 'bool', d: false }, { p: ['car', 'pitch'], l: 'Écart entre deux places en ligne (m)', t: 'num', st: .05, d: null, lim: S.SL.pitch, orig: 'calculé (45 % de la longueur du wagon)' }],
     phys: [{ p: ['phys', 'roll'], l: 'Roulement (frottement)', t: 'num', st: .005, d: .098 }, { p: ['phys', 'drag'], l: 'Traînée (air)', t: 'num', st: .0001, d: .0006 }, { p: ['phys', 'vmin'], l: 'Vitesse minimale (m/s)', t: 'num', st: .5, d: 3 }],
   };
   const lim = p => { const L = S.SL[p[1]]; return L ? { min: L[0], max: L[1] } : {}; };
@@ -36,10 +31,12 @@
   function fieldHTML(f, kind) {
     const p = f.p, key = p.join('.'), ov = pth(GM().site || {}, p), base = pth(SB(), p), mod = ov !== undefined;
     let eff = mod ? ov : base !== undefined ? base : f.d; if (f.p[1] === 'restraint') eff = ov !== undefined ? ov : base !== undefined ? base : effRestraint();
-    const o = base !== undefined ? base : (f.d != null ? f.d + ' (défaut du moteur)' : f.p[1] === 'restraint' ? 'défaut du type' : '');
+    const o = base !== undefined ? base : f.orig != null ? f.orig : (f.d != null ? f.d + ' (défaut du moteur)' : f.p[1] === 'restraint' ? 'défaut du type' : '');
     let ctl;
-    if (f.t === 'enum') ctl = `<select data-p="${key}">${f.o.map(([v, n]) => `<option value="${v}"${v === eff ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
-    else { const L = lim(p); ctl = `<input data-p="${key}" data-t="${f.t}" type="number" step="${f.st || 1}"${L.min != null ? ` min="${L.min}" max="${L.max}"` : ''} value="${eff}">`; }
+    if (f.t === 'enum' || f.t === 'enumn') ctl = `<select data-p="${key}" data-t="${f.t}">${f.o.map(([v, n]) => `<option value="${v}"${String(v) === String(eff) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+    else if (f.t === 'bool') ctl = `<input data-p="${key}" data-t="bool" type="checkbox"${eff ? ' checked' : ''}>`;
+    else if (f.t === 'text') ctl = `<input data-p="${key}" data-t="txt" type="text" maxlength="${S.SL.txt}" value="${esc(eff == null ? '' : eff)}" style="width:100%">`;
+    else { const L = f.lim ? { min: f.lim[0], max: f.lim[1] } : lim(p); ctl = `<input data-p="${key}" data-t="${f.t}" type="number" step="${f.st || 1}"${f.zero ? ' data-zero="1"' : ''}${L.min != null ? ` min="${L.min}" max="${L.max}"` : ''} value="${eff}">`; }
     return `<div class="fld${mod ? ' mod' : ''}"><span>${f.l}</span>${ctl}<span class="orig" title="Valeur d'origine de SITE">origine : ${esc(typeof o === 'object' ? JSON.stringify(o) : o)}</span><button data-rev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
   }
   function colorHTML(p, l, cur, base, mod, rgb) {
@@ -62,13 +59,53 @@
     if (kind === 'bob') { const K = E('TRO'), bt = base.trough || {}; h.push('<h3>Gouttière du bobsleigh</h3>', ...[['lo', 'Fond (bas)', 1], ['hi', 'Fond (haut)', 1], ['edge', 'Bord', 0], ['deck', 'Tablier', 0], ['rim', 'Rebord', 0]].map(([f, l, r]) => colorHTML(['trough', f], l, K[f], bt[f], pth(ov, ['trough', f]) !== undefined, r)));
       const sm = pth(ov, ['trough', 'shine']) !== undefined; h.push(`<div class="fld${sm ? ' mod' : ''}"><span>Reflet</span><input data-p="trough.shine" data-t="txt" value="${esc(K.shine)}"><span class="orig">origine : ${esc(bt.shine || 'défaut du type')}</span><button data-rev="trough.shine" ${sm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`); }
     h.push('<h3>Physique de base</h3>', ...SF.phys.map(f => fieldHTML(f, kind)), '<p class="note">Bornes sûres : roulement 0 à 0,3 ; traînée 0 à 0,01 ; vitesse minimale 1 à 6 m/s (ESTIMÉES). Les valeurs de SITE sont des réglages de jeu, pas des mesures.</p>');
+    h.push(...extraHTML(kind));
     return h.join('');
+  }
+  // ── autres réglages de SITE (osmrides#53) : exploitation, gare et quais, freins de bloc, frein avant gare, appareil de voie, valeurs déduites ──
+  const fx = v => v == null ? '—' : String(Math.round(v * 100) / 100).replace('.', ',');
+  function extraHTML(kind) {
+    const h = [], SL = S.SL, ded = (() => { try { return E('DEDUIT'); } catch (e) { return {}; } })(), ev = k => { try { return E('SITE.' + k); } catch (e) { return undefined; } };
+    h.push('<h3>Exploitation</h3>', ...[
+      { p: ['lap'], l: 'Durée d\'un tour estimée (s)', t: 'num', st: 5, d: 150, lim: SL.lap }, { p: ['maxRun'], l: 'Trains en ligne au plus', t: 'int', d: null, lim: SL.maxRun, orig: 'tous les trains' }].map(f => fieldHTML(f, kind)),
+      '<p class="note">Durée d\'un tour : sert à estimer l\'attente affichée au pupitre. Trains en ligne : les autres restent au garage (garage seulement).</p>');
+    h.push('<h3>Gare et quais</h3>', ...[
+      { p: ['stopBack'], l: 'Arrêt avant la fin de la gare (m)', t: 'num', st: .5, d: 0, lim: SL.stopBack },
+      { p: ['plat', 'load'], l: 'Profondeur du quai d\'embarquement (m)', t: 'num', st: .1, d: 7.9, lim: SL.plat.load }, { p: ['plat', 'exit'], l: 'Profondeur du quai de sortie (m)', t: 'num', st: .1, d: 0, lim: SL.plat.exit },
+      { p: ['plat', 'back'], l: 'Quai derrière le dernier wagon (m)', t: 'num', st: .1, d: .1, lim: SL.plat.back }, { p: ['plat', 'front'], l: 'Quai devant le premier wagon (m)', t: 'num', st: .1, d: 1.6, lim: SL.plat.front }].map(f => fieldHTML(f, kind)),
+      '<p class="note">Un quai plus court réduit aussi la profondeur maximale des travées d\'attente (section « Zone d\'attente du quai »). Valeurs du moteur : ESTIMÉES.</p>');
+    // freins de bloc : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
+    let nb = 0; try { nb = E('BLK.length'); } catch (e) { }
+    if (nb) {
+      h.push('<h3>Freins de bloc</h3>');
+      for (let k = 1; k <= nb; k++) {
+        const id = 'B' + k, Z = E(`ZONES.find(o=>o.id==='${id}')`) || {}, zt = Z.trim && Z.trim.v || 0;
+        h.push(`<div class="note" style="margin-top:6px"><b>${esc(Z.name || id)}</b></div>`, ...[
+          { p: ['zones', id, 'trim', 'v'], l: 'Vitesse limite (m/s)', t: 'num', st: .5, d: zt || null, lim: SL.zoneV, zero: 1, orig: zt ? zt + ' (SITE)' : 'aucune limite' },
+          { p: ['zones', id, 'launch'], l: 'Vitesse de lancement (m/s)', t: 'num', st: .5, d: Z.launch || null, lim: SL.zoneV, zero: 1, orig: Z.launch ? Z.launch + ' (SITE)' : 'vitesse d\'entrée du train' },
+          { p: ['zones', id, 'stop'], l: 'Arrêt obligatoire', t: 'bool', d: false }, { p: ['zones', id, 'hold'], l: 'Temps d\'arrêt (s)', t: 'num', st: 1, d: 0, lim: SL.zoneHold }].map(f => fieldHTML(f, kind)));
+      }
+      h.push('<p class="note">Vitesse limite : le train est ramené à cette vitesse au frein puis continue (zone en AUTO, canton suivant libre). Lancement : vitesse à laquelle le frein relance un train arrêté (sinon : sa vitesse d\'entrée ; plafonnée par la vitesse limite). Arrêt obligatoire : en AUTO le train s\'arrête au frein même si le canton suivant est libre ; le temps d\'arrêt (avec l\'arrêt obligatoire seulement) est la durée minimale avant la relance. 0 = pas de réglage. Bornes 1 à 30 m/s, 0 à 300 s (ESTIMÉES).</p>');
+    }
+    if (ev('preBrake')) h.push('<h3>Frein avant gare</h3>', ...[{ p: ['preBrake', 'back'], l: 'Distance à la gare (m)', t: 'num', st: .5, d: null, lim: SL.pre.back, orig: 'lue dans OSM ou 1 m' }, { p: ['preBrake', 'len'], l: 'Longueur de la zone (m)', t: 'num', st: .5, d: null, lim: SL.pre.len, orig: 'lue dans OSM ou un train + 0,5 m' }, { p: ['preBrake', 'name'], l: 'Nom au pupitre', t: 'text', d: 'Frein avant gare' }].map(f => fieldHTML(f, kind)));
+    if (ev('yard')) h.push('<h3>Appareil de voie et garage</h3>', ...[
+      { p: ['yard', 'move', 'v'], l: 'Vitesse de l\'appareil (m/s)', t: 'num', st: .1, d: 2.4, lim: SL.move.v }, { p: ['yard', 'move', 'vc'], l: 'Vitesse du train sur l\'appareil (m/s)', t: 'num', st: .1, d: .6, lim: SL.move.vc }, { p: ['yard', 'move', 't'], l: 'Durée de la manœuvre (s)', t: 'num', st: .5, d: 3, lim: SL.move.t },
+      { p: ['yard', 'devName'], l: 'Nom de l\'appareil (pupitre)', t: 'text', d: ev('yard').device === 'switch' ? 'Aiguillage' : 'Pont transbordeur' }, { p: ['yard', 'devLabel'], l: 'Nom dans une phrase', t: 'text', d: ev('yard').device === 'switch' ? 'l\'aiguillage' : 'le pont transbordeur' }].map(f => fieldHTML(f, kind)));
+    // valeurs déduites : holdBack, dropAfter, loadSide (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
+    const dl = `${ded.loadSide === 1 ? 'côté +R de la voie' : ded.loadSide === -1 ? 'côté -R de la voie' : 'indécis'}`;
+    h.push('<h3>Valeurs déduites (corriger un cas particulier)</h3>', ...[
+      { p: ['holdBack'], l: 'Arrêt au frein final : distance à la fin du circuit (m)', t: 'num', st: .5, d: (E('L - S_HOLD') != null ? Math.round(E('L - S_HOLD') * 10) / 10 : null), lim: SL.holdBack, orig: `déduit : fin du frein final lue dans OSM (${fx(ded.holdBack)} m)` },
+      { p: ['dropAfter'], l: 'Descente après le haut du lift (m)', t: 'num', st: .5, d: Math.round(E('S_DROP - S_LIFT1') * 10) / 10, lim: SL.dropAfter, orig: `déduit : profil des hauteurs (${fx(ded.dropAfter)} m)` },
+      { p: ['loadSide'], l: 'Côté du quai d\'embarquement', t: 'enumn', o: [['1', 'côté +R de la voie'], ['-1', 'côté -R de la voie']], d: E('LS'), orig: `déduit : côté où arrive la file (${dl})` }].map(f => fieldHTML(f, kind)),
+      '<p class="note">Déduits par le moteur, avec priorité GAME > SITE > déduction. Mettre une valeur ici seulement pour un cas particulier. Cri des passagers : 1 m sous le sommet après le lift (ESTIMÉ).</p>');
+    return h;
   }
   function bindSite() {
     const B = $('siteBox');
     for (const el of B.querySelectorAll('[data-p]')) el.addEventListener('change', () => {
       const p = el.dataset.p.split('.'), t = el.dataset.t; let v = el.value;
-      if (t === 'num' || t === 'int') { if (v === '' || !isFinite(+v)) return; v = +v; } else if (t === 'rgb') v = hexRgb(v);
+      if (t === 'bool') v = el.checked; else if (t === 'enumn') v = +v;
+      else if (t === 'num' || t === 'int') { if (v === '' || !isFinite(+v)) return; v = +v; if (el.dataset.zero && v <= 0) v = ''; } else if (t === 'rgb') v = hexRgb(v);
       setSite(p, v);
     });
     for (const el of B.querySelectorAll('[data-rev]')) el.onclick = () => { const p = el.dataset.rev.split('.'); siteChange(s => delSite(s, p)); };
@@ -92,7 +129,7 @@
       try { $('siteBox').innerHTML = siteHTML(); bindSite(); }
       catch (e) { $('siteBox').innerHTML = '<p class="err">Section « Attraction » illisible : SITE doit garder ses valeurs d\'origine (kind, car, trains, track ou trough, phys) ; GAME.site ne contient que les modifications. Détail : ' + String(e.message).replace(/</g, '&lt;') + '</p>'; console.error(e); }
     },
-    contexte(x) { X = x; return { trainMax: tMax() }; } }); // validation : nombre de trains au plus
+    contexte(x) { X = x; const c = { trainMax: tMax() }; try { c.depthMax = E('boardDepth().max'); c.blocs = E('BLK.length'); } catch (e) { } return c; } }); // validation : nombre de trains au plus, borne des travées (selon le quai), freins de bloc
   T2ZEditeur.section({ id: 'depth', // travées d'attente : poignée (losange orange) et champ ajouté à la section « Zone d'attente du quai »
     hit(p, tol, x) { X = x; const D = dep(), q = depthH(D); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'depth', m: 'depth' }; },
     drag(p, x) { X = x; const D = dep(); setDepth((p[0] - D.u.o[0]) * D.u.r[0] + (p[1] - D.u.o[1]) * D.u.r[1]); }, // profondeur = distance à la ligne des portillons

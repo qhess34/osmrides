@@ -8,9 +8,45 @@
   // Sections de GAME propres à un type d'attraction (docs/ARCHITECTURE.md D14) : déclarées par engine/<couche>/schema.js, section({cle, normalize(v), validate(v, E, W, ctx)}).
   const SECTIONS = {};
   function section(def) { SECTIONS[def.cle] = def; if (!KNOWN.includes(def.cle)) KNOWN.push(def.cle); }
+  // GAME.site (docs/ARCHITECTURE.md D9) : surcharges partielles de SITE, liste blanche stricte. Chaque couche déclare ses clés par sitePart({keys, validate(T, E, W, ctx), normalize(t, o)}) ;
+  // le noyau (engine/noyau/schema.js : objectif, caméras, textes, éclair, postes de maintenance) et les types (engine/montagnes-russes/schema.js). Toute clé hors liste est refusée.
+  // Valeur absente = valeur d'origine de SITE ; GAME.site n'est écrit que par une modification dans l'éditeur.
+  const SITE_PARTS = [];
+  function sitePart(def) { SITE_PARTS.push(def); }
+  section({ cle: 'site',
+    validate(T, E, W, ctx) {
+      if (!T || typeof T !== 'object' || Array.isArray(T)) { E.push('site : objet attendu'); return; }
+      const ok = [].concat(...SITE_PARTS.map(p => p.keys));
+      for (const k of Object.keys(T)) if (!ok.includes(k)) E.push('site.' + k + ' : clé refusée (autorisées : ' + ok.join(', ') + ')');
+      for (const p of SITE_PARTS) p.validate(T, E, W, ctx || {});
+    },
+    normalize(t) { const o = {}; for (const p of SITE_PARTS) p.normalize(t, o); return o; } });
+  // LIEU (osmrides#53) : lieux/<type>/<lieu>/lieu.js, `const LIEU = {hours:{open:'hh:mm', close:'hh:mm'}}` ; commun à toutes les attractions du lieu, facultatif (absent = horaires du moteur, 10:00 à 19:00).
+  const HM = /^([01]?\d|2[0-3]):([0-5]\d)$/, hm = v => { const m = HM.exec(v); return m ? +m[1] * 60 + +m[2] : NaN; };
+  const LIEU_MIN = 120; // ouverture d'au moins 2 h (ESTIMÉ, même borne que le moteur : engine/noyau/base.js)
+  function validateLieu(L) {
+    const E = [], W = [];
+    if (!L || typeof L !== 'object' || Array.isArray(L)) return { errors: ['LIEU doit être un objet'], warnings: W };
+    for (const k of Object.keys(L)) if (k !== 'hours') E.push('lieu.' + k + ' : clé refusée (autorisée : hours)');
+    if ('hours' in L) {
+      const H = L.hours;
+      if (!H || typeof H !== 'object' || Array.isArray(H)) E.push('lieu.hours : objet {open, close} attendu');
+      else {
+        for (const k of Object.keys(H)) if (k !== 'open' && k !== 'close') E.push('lieu.hours.' + k + ' : clé refusée');
+        for (const k of ['open', 'close']) if (typeof H[k] !== 'string' || !HM.test(H[k])) E.push('lieu.hours.' + k + ' : heure hh:mm attendue');
+        if (!E.length && hm(H.close) - hm(H.open) < LIEU_MIN) E.push('lieu.hours : ouverture de ' + (LIEU_MIN / 60) + ' h au moins (ESTIMÉ), fermeture avant minuit');
+        if (!E.length) W.push('lieu.hours : vaut pour TOUTES les attractions du lieu (fichier lieu.js commun)');
+      }
+    }
+    return { errors: E, warnings: W };
+  }
+  const pad2 = n => String(n).padStart(2, '0'), hhmm = v => { const t = hm(v); return pad2(Math.floor(t / 60)) + ':' + pad2(t % 60); };
+  const LIEU_HEAD = '// Réglages du lieu, écrits par l\'éditeur OSMrides (section « Lieu ») : valent pour TOUTES les attractions du lieu. Facultatif ; absent = valeurs par défaut du moteur.\n';
+  const textLieu = L => { const o = {}; if (L && L.hours) o.hours = { open: hhmm(L.hours.open), close: hhmm(L.hours.close) }; return LIEU_HEAD + 'const LIEU = ' + JSON.stringify(o, null, 2) + ';\n'; };
+  function parseLieu(src) { const m = /const\s+LIEU\s*=\s*/.exec(src); if (!m) throw new Error('`const LIEU =` introuvable'); return JSON.parse(src.slice(m.index + m[0].length).replace(/;\s*$/, '')); }
   // GAME.look (issue #45, D11) : apparence de la file et des quais ; textures et matériaux générés par le moteur (engine/render.js mkLook).
   const LOOK = { tex: ['concrete', 'asphalt', 'sand', 'pavers', 'deck'], rail: ['metal', 'wood', 'stone'] };
-  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], qeLen: [0, 30], qeAng: 360 }; // qeLen / qeAng : entrée de file (issue #39), longueur en m (même borne que le moteur, QE_MAX) et orientation en degrés // depth (travées) : engine/montagnes-russes/schema.js
+  const LIM = { xz: 5000, ang: 720, len: [0.2, 20], size: [0.5, 40], rooms: 1, barriers: 500, areas: 1, pts: [3, 64], qeLen: [0, 30], qeAng: 360, local: 60 }; // qeLen / qeAng : entrée de file (issue #39), longueur en m (même borne que le moteur, QE_MAX) et orientation en degrés // depth (travées) : engine/montagnes-russes/schema.js
 
   const HEX = /^#[0-9a-fA-F]{6}$/, RGBA = /^rgba\(\d{1,3},\d{1,3},\d{1,3},(0|1|0?\.\d{1,3})\)$/;
 
@@ -27,7 +63,7 @@
           else o.barriers[key] = b.off === true ? { off: true } : { x: r2(b.x), z: r2(b.z), a: { ang: r1(b.a.ang), len: r2(b.a.len) }, b: { ang: r1(b.b.ang), len: r2(b.b.len) } }; // ancien format (lu, converti par le moteur)
         }
       } else if (k === 'controlRooms') {
-        o.controlRooms = g.controlRooms.map(r => ({ id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }));
+        o.controlRooms = g.controlRooms.map(r => { const q = { id: r.id, x: r2(r.x), z: r2(r.z), angle: r1(r.angle), w: r2(r.w), d: r2(r.d), main: r.main !== false }; for (const f of ['beacon', 'label']) if (Array.isArray(r[f])) q[f] = [r2(r[f][0]), r2(r[f][1])]; return q; });
       } else if (k === 'boardAreas') {
         o.boardAreas = g.boardAreas.map(a => ({ id: a.id, pts: a.pts.map(p => [r2(p[0]), r2(p[1])]) }));
       } else if (k === 'queueEntry') {
@@ -100,13 +136,14 @@
         R.forEach((r, i) => {
           const p = 'controlRooms[' + i + ']';
           if (!r || typeof r !== 'object') { E.push(p + ' : objet attendu'); return; }
-          for (const k of Object.keys(r)) if (!['id', 'x', 'z', 'angle', 'w', 'd', 'main'].includes(k)) E.push(p + ' : clé inconnue ' + k);
+          for (const k of Object.keys(r)) if (!['id', 'x', 'z', 'angle', 'w', 'd', 'main', 'beacon', 'label'].includes(k)) E.push(p + ' : clé inconnue ' + k);
           if (typeof r.id !== 'string' || !/^[A-Za-z0-9_-]{1,40}$/.test(r.id)) E.push(p + '.id : lettres, chiffres, - ou _');
           else if (ids.has(r.id)) E.push(p + '.id : en double'); else ids.add(r.id);
           if (!num(r.x, -LIM.xz, LIM.xz) || !num(r.z, -LIM.xz, LIM.xz)) E.push(p + ' : x, z (m) hors bornes');
           if (!num(r.angle, -LIM.ang, LIM.ang)) E.push(p + '.angle : degrés, de -720 à 720');
           if (!num(r.w, LIM.size[0], LIM.size[1]) || !num(r.d, LIM.size[0], LIM.size[1])) E.push(p + ' : w, d de ' + LIM.size[0] + ' à ' + LIM.size[1] + ' m');
           if ('main' in r && typeof r.main !== 'boolean') E.push(p + '.main : booléen');
+          for (const f of ['beacon', 'label']) if (f in r && !(Array.isArray(r[f]) && r[f].length === 2 && r[f].every(v => num(v, -LIM.local, LIM.local)))) E.push(p + '.' + f + ' : [x, z] en m dans le repère de la salle (de -' + LIM.local + ' à ' + LIM.local + ')'); // gyrophare (borné à la salle +/- 0,5 m par le moteur) et étiquette du pupitre
         });
       }
     }
@@ -232,7 +269,7 @@
     });
     return out;
   }
-  const api = { osmDiff, OSM_TAGS, SURF_OUT, SURF_IN, MAT_IN, HEAD, KNOWN, LOOK, LIM, HEX, RGBA, num, r1, r2, section, SECTIONS, normalize, validate, text, parse, diff, selfCross };
+  const api = { sitePart, validateLieu, textLieu, parseLieu, LIEU_MIN, osmDiff, OSM_TAGS, SURF_OUT, SURF_IN, MAT_IN, HEAD, KNOWN, LOOK, LIM, HEX, RGBA, num, r1, r2, section, SECTIONS, normalize, validate, text, parse, diff, selfCross };
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
     // Node (serveur, tests) : sections de chaque couche du moteur de cette version (engine/<couche>/schema.js) ; navigateur : chargées par editor/editor.js

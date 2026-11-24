@@ -39,7 +39,7 @@
     if(noSave)return;
     try{
       if(G.over){del();return;}
-      if(!G.played&&G.time===600&&!G.open&&G.stats.riders===0&&!G.queue.length&&!rd())return; // partie intacte : rien à garder
+      if(!G.played&&G.time===T_OPEN&&!G.open&&G.stats.riders===0&&!G.queue.length&&!rd())return; // partie intacte : rien à garder
       localStorage.setItem(KEY,JSON.stringify(capture()));
     }catch(e){}
   }

@@ -12,7 +12,7 @@ function mkTrain(i,name,col,col2,wear,st){
    (l'éditeur refuse au-delà, editor/schema.js validate(g, {trainMax})). Les tronçons OSM waiting / brake_run / moving / block_brake donnent ces zones. */
 /* Retour d'un train sur le circuit, arrêté au point d'arrêt d'une zone d'attente (sortie de garage, places de départ TRAIN_SPOTS) : état de la zone (frein final :
    déjà passé ses freins ; frein de bloc : arrêté au frein, roues de propulsion) ; la zone le relâche ensuite selon ses règles (cantonnement, appareil). */
-function placeAt(t,z){t.st='run';t.s=zStop(z);t.v=0;t.entering=false;t.toPre=false;t.fdrive=0;t.bgo=0;t.brs=0;t.bst=0;t.blk=false;
+function placeAt(t,z){t.st='run';t.s=zStop(z);t.v=0;t.entering=false;t.toPre=false;t.fdrive=0;t.bgo=0;t.brs=0;t.bdn=0;t.bhT=0;t.bst=0;t.blk=false;
   if(z==='Fin'){t.inBrake=true;t.hold=1;}else if(z==='Pre'){t.hold=0;}else{const i=+z.slice(1)-1;t.blk=true;if(BDRV[i])t.bst=i+1;}}
 const TRAIN_SPOTS=[].concat(PSB?[{s:S_PSB,z:'Pre'}]:[],[{s:S_HOLD,z:'Fin'}],BLK.map((b,i)=>({s:b,z:'B'+(i+1),i})).reverse());
 const TRAIN_MAX=1+LANES.reduce((n,l)=>n+(l.cap||1),0)+TRAIN_SPOTS.length;

@@ -16,6 +16,12 @@ const ZONES=[{id:'St',name:'Gare',sec:'st'},{id:'Lift',name:'Lift',sec:'lift'}]
 /* Frein de ralentissement (SITE.zones.B1.trim:{v}) : en passage normal (zone en AUTO, canton suivant libre), le train y est ramené à la vitesse v (m/s) puis continue ; il s'arrête
    seulement si le canton suivant est occupé ou si les freins sont serrés au pupitre. Par zone de frein de bloc : BTRIM[i] (m/s, 0 = pas de ralentissement). */
 const BTRIM=BLK.map((_,i)=>{const Z=ZONES.find(o=>o.id==='B'+(i+1));return Z&&Z.trim&&Z.trim.v||0;});
+/* Freins de bloc réglés par zone (osmrides#53, éditeur : GAME.site.zones.B<k>, bornes ESTIMÉES dans engine/montagnes-russes/schema.js) :
+   - trim.v : vitesse limite (m/s), voir ci-dessus ; - launch : vitesse de lancement (m/s) à la relance d'un train arrêté, à la place de sa vitesse d'entrée (au moins VPROP, au plus trim.v) ;
+   - stop : arrêt obligatoire en AUTO (le train s'arrête au frein même si le canton suivant est libre) ; - hold : temps d'arrêt (s) avant la relance, seulement avec stop.
+   Sans ces clés rien ne change. BLAUNCH, BSTOP, BHOLD : par frein de bloc. */
+const BZONE=i=>ZONES.find(o=>o.id==='B'+(i+1))||{};
+const BLAUNCH=BLK.map((_,i)=>+BZONE(i).launch||0),BSTOP=BLK.map((_,i)=>!!BZONE(i).stop),BHOLD=BLK.map((_,i)=>Math.max(0,+BZONE(i).hold||0));
 /* Roues de propulsion des freins de bloc (BDRV[i]) : en MANU, un train arrêté au frein n'en repart qu'au bouton AV (#zB<k>_f, freins relâchés, canton suivant libre),
    poussé jusqu'à VPROP puis rendu à la gravité quand sa queue a passé le frein ; sans roues (drive:false), le relâchement suffit. En AUTO : inchangé. VPROP = PH.vmin, ESTIMÉ. */
 // Aiguillage en amont (issue #38) : hors gare, la zone de raccordement doit avoir des moteurs en marche arrière (bouton AR, SITE.zones.<zone>.drive:true) ; a > un train : le train arrêté dans la zone est hors de l'appareil

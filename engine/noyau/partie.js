@@ -40,7 +40,7 @@ function evacTick(dt){const on=evacOn();
   for(const [key,c] of n){const b=BARS.find(b=>b.key===key),r=EVW.bars.get(key);b.evHi=true;
     if(!r){EVW.bars.set(key,{t:EVAC_REM});log('Évacuation bloquée : '+c+' évacué'+(c>1?'s attendent':' attend')+' devant la '+barName(b)+', fermée. Ouvrez-la d\'un clic sur la carte (barrière mise en évidence).','bad');}
     else if((r.t-=dt)<=0){r.t=EVAC_REM;log('Rappel : la '+barName(b)+' est fermée, '+c+' évacué'+(c>1?'s':'')+' bloqué'+(c>1?'s':'')+'. Personne n\'entre dans la file tant que l\'évacuation n\'est pas finie.','warn');}}}
-const T_OPEN=600,T_CLOSE=1140,WAGE=350,OVER=-2000;
+const WAGE=350,OVER=-2000; // T_OPEN, T_CLOSE : horaires du lieu (engine/noyau/base.js)
 function step(dt){
   const m=dt*.5;G.time+=m;if(G.time>=T_CLOSE)G.time-=T_CLOSE-T_OPEN;G.played=(G.played||0)+m;
   if(!G.sandbox){G.wage=(G.wage||0)+m*WAGE/(T_CLOSE-T_OPEN);if(G.wage>=1){const n=Math.floor(G.wage);G.wage-=n;pay(n);}}

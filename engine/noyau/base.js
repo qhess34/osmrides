@@ -27,6 +27,7 @@ const SITE_BASE={}; // valeurs d'origine de SITE (affichées par l'éditeur)
 function fusionSite(cles){cles.forEach(k=>{if(typeof SITE!=='undefined'&&SITE[k]!==undefined)SITE_BASE[k]=JSON.parse(JSON.stringify(SITE[k]));});
   if(GM.site&&typeof GM.site==='object'&&typeof SITE!=='undefined'){const mg=(a,b)=>{for(const k of Object.keys(b)){const v=b[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))mg(a[k],v);else a[k]=JSON.parse(JSON.stringify(v));}};
     cles.forEach(k=>{if(k in GM.site){const v=GM.site[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&SITE[k]&&typeof SITE[k]==='object'&&!Array.isArray(SITE[k]))mg(SITE[k],v);else SITE[k]=JSON.parse(JSON.stringify(v));}});}}
+fusionSite(['goal','cams','text','strike','jobsites']); // réglages communs à tous les types (editor : engine/noyau/schema.js) : objectif, caméras, textes d'orage et de bilan, éclair, postes de maintenance
 class V3{
   constructor(x=0,y=0,z=0){this.x=x;this.y=y;this.z=z;}
   set(x,y,z){this.x=x;this.y=y;this.z=z;return this;}
@@ -43,9 +44,12 @@ const rnd=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.max(a,Math.min(b,v))
 /* ══════════ ÉTAT DU JEU ══════════ */
 const PAL=['#8a3d3d','#b59a62','#5c7f68','#4a6790','#75658e','#a8848a','#d6d3cc','#a8733f','#4c7f7c','#8990ad','#5a5780','#3c4250'];
 const C_GREY=PAL.length,C_TECH=PAL.length+1; PAL.push('#6f6f6f','#d9772b');
+/* Horaires d'ouverture du lieu (LIEU.hours {open, close}, 'hh:mm', lieux/<type>/<lieu>/lieu.js chargé par engine/moteur.js ; propriétaire, osmrides#53) : l'horloge du jeu tourne de T_OPEN à T_CLOSE (minutes),
+   puis repart à T_OPEN. Défaut 10:00 à 19:00 ; ouverture d'au moins 2 h (ESTIMÉ), sinon défaut. */
+const [T_OPEN,T_CLOSE]=(()=>{const h=typeof LIEU!=='undefined'&&LIEU&&LIEU.hours||{},p=v=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(v));return m&&+m[1]<24&&+m[2]<60?+m[1]*60+ +m[2]:NaN;},o=p(h.open),c=p(h.close);return o>=0&&c<=1439&&c-o>=120?[o,c]:[600,1140];})();
 /* Mode de jeu : carrière (budget, météo, pannes) ou bac à sable (?mode=sandbox, ou choix mémorisé t2z.mode) : ni budget, ni météo, ni pannes. */
 const MODE=(()=>{const m=/[?&]mode=([a-z]+)/.exec(location.search);if(m)return m[1]==='sandbox'?'sandbox':'career';try{return localStorage.getItem('t2z.mode')==='sandbox'?'sandbox':'career';}catch(e){return 'career';}})();
-const G={sandbox:MODE==='sandbox',time:600,played:0,wage:0,speed:1,money:3000,sat:75,open:false,
+const G={sandbox:MODE==='sandbox',time:T_OPEN,played:0,wage:0,speed:1,money:3000,sat:75,open:false,
   queue:[],walkers:[],crowd:1,patL:1,wx:{type:'clear',t:0,next:rnd(260,420)},flash:0,job:null,
   stats:null,over:false}; // jeu continu : stats cumulées, aucune journée (engine/noyau/partie.js step) ; chaque couche y ajoute son propre état (Object.assign(G, …))
 const newStats=()=>({riders:0,quits:0,income:0,costs:0,disp:0,fines:0,turned:0});

@@ -384,7 +384,7 @@ function updateVisitors(dt){
   for(const b of BARS){b.t=clamp(b.t+(b.open?-dt:dt)/.9,0,1);if(b.wq)b.wq=b.wq.filter(m=>m.bwb===b);} // file devant la barrière : partis retirés
   const ev=evacOn(); // évacuation en cours (propriétaire, 20/11) : plus personne n'entre ni n'avance vers la gare
   if(G.open&&!ev){
-    const hourF=.6+.8*Math.sin(Math.PI*clamp((G.time-600)/480,0,1)),wxF=w==='storm'?.25:w==='rain'?.6:1;
+    const hourF=.6+.8*Math.sin(Math.PI*clamp((G.time-T_OPEN)/(T_CLOSE-T_OPEN-60),0,1)),wxF=w==='storm'?.25:w==='rain'?.6:1;
     // fréquentation réglable : au-delà de 100 %, les visiteurs viennent même si la file est déjà longue, jusqu'à la remplir
     const rate=.42*G.crowd*hourF*wxF*(.5+G.sat/100)*Math.max(.1,1-Q.length*SP/QLEN/Math.max(1,G.crowd*G.crowd))*dt;
     for(let n=Math.floor(rate)+(Math.random()<rate%1?1:0);n>0;n--)joinQueue();
