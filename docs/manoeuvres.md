@@ -221,6 +221,7 @@ Elles sont estimées ; le dire en commentaire dans `lieux/parc/asterix/<el>.js` 
 - `yard.back:true` (aiguillage en amont de la zone de raccordement : gare, ou zone à marche arrière, issue #38, « Modèle » ci-dessus) : le train entre au garage en marche arrière depuis la zone (Dispatch de la voie ou AR de la zone, aiguillage sur la voie), en sort en marche avant (Dispatch). `a` / `b` : distances en remontant le circuit depuis l'arrêt de la tête du train.
 - `yard.rotary:true` : l'aiguillage est un tronçon qui tourne autour de l'axe du tube (vu du dessus : largeur ∝ cos θ). `yard.s:true` : face droite = circuit, face en S (courbe de Bézier) = voie de garage ; `lanes[0].pts[0]` est le bout du S, `b − a` doit égaler sa longueur (avertissement console sinon).
 - Frein de ralentissement : `SITE.zones.B<n>.trim:{v}` (m/s) : un frein de bloc en AUTO ramène le train à `v` puis le laisse continuer ; arrêt seulement si le canton suivant est occupé ou freins serrés (MANU).
+- Freins de bloc réglés par zone (osmrides#53, éditeur `GAME.site.zones.B<n>`, bornes ESTIMÉES) : vitesse limite `trim.v` (ci-dessus), vitesse de lancement `launch` (m/s : relance d'un train arrêté à cette vitesse au lieu de sa vitesse d'entrée, plafonnée par `trim.v`, au moins `VPROP`), arrêt obligatoire `stop` (zone en AUTO : le train s'arrête au frein même si le canton suivant est libre, puis repart selon les règles ordinaires), temps d'arrêt `hold` (s : durée minimale à l'arrêt avant la relance, avec `stop` seulement). Zone en MANU : commandes du pupitre, `stop` et `hold` sans effet. Sans ces clés rien ne change.
 
 ## Frein de bloc en haut du lift (Trace du Hourra, propriétaire 2026-11-16)
 
@@ -242,7 +243,7 @@ Train à quai (issue #26) : si les sécurités sont **ouvertes** (`G.resOpen`, t
 
 ## Exploitation continue (propriétaire, 2026-11-17)
 
-Pas de journée ni de remise à zéro : l'horloge boucle sur la plage d'ouverture (10:00–19:00, puis 10:00), les trains, la file, le quai, les zones et la météo gardent leur état. L'entrée de la file ne ferme qu'au bouton `#bOpen` du joueur (aucune fermeture à 18:00). Salaires prélevés en continu ; bilan cumulé au bouton `#bBil` ; budget sous −2 000 € en carrière : fin de partie (Recommencer).
+Pas de journée ni de remise à zéro : l'horloge boucle sur la plage d'ouverture (10:00–19:00 par défaut, puis 10:00 ; horaires réglables par lieu : `lieux/<type>/<lieu>/lieu.js` `LIEU.hours`, osmrides#53), les trains, la file, le quai, les zones et la météo gardent leur état. L'entrée de la file ne ferme qu'au bouton `#bOpen` du joueur (aucune fermeture à 18:00). Salaires prélevés en continu ; bilan cumulé au bouton `#bBil` ; budget sous −2 000 € en carrière : fin de partie (Recommencer).
 
 ## Hors périmètre
 
