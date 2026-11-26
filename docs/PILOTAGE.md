@@ -48,16 +48,20 @@ la session de pilotage :
 
 ## État courant
 
-_Mis à jour le 2026-11-24 (après-midi) par le Chef moteur, session n° 1 (consigne de démarrage en tête de ce fichier)._
+_Mis à jour le 2026-11-26 par le Chef moteur, session n° 2 (consigne de démarrage en tête de ce fichier)._
 
-**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations). Accès en écriture à `osmrides_parks` pour les issues `inter-equipe` (pas de commit sur leur code).
+**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations). Accès en écriture à `osmrides_parks` (ajouter le dépôt à la session, cloner dans `../osmrides_parks`) pour les issues `inter-equipe` ; pas de commit sur leur code.
 
-**Versions** (étiquettes posées par le propriétaire seulement) : posées `0.0.1`, `0.2.0`, **`0.5.0`** (ed57e53 ; contient 0.3.0 = lot 1 de #53, 0.4.0 = #55, 0.5.0 = lot 2 de #53). `0.1.0`, `0.3.0`, `0.4.0` non posées (inutile). Chef parcs prévenu (osmrides_parks#7 + message) : monter directement en 0.5.0.
+**Versions** (étiquettes posées par le propriétaire seulement) : posées jusqu'à **`0.6.0`** (5a6a748, ponts transbordeurs : lot 3 de #53). **`0.7.0`** poussée sur `main` (cd45bf2, #57 point 2 : `lap` mesuré en jeu, `maxRun` dans la section des trains, textes / éclairs / `dropAfter` retirés de l'éditeur) : **étiquette à poser par le propriétaire**, puis prévenir le Chef parcs (issue `inter-equipe` ; osmrides_parks#8 couvre 0.6.0).
 
-**Décisions du propriétaire (24/11)** : hauteurs = profil du circuit dans l'éditeur seulement, **pas** d'altitude du sol ni d'envoi `ele` pour le moment ; couleurs de voie dans l'éditeur, sans OSM ; nouveaux réglages = 0.x.0, corrections = 0.x.1 ; horaires par lieu `lieux/<type>/<lieu>/lieu.js` ; `layer` du tunnel d'OzIris corrigé dans OSM (réimport côté parcs).
+**Décisions du propriétaire** : voir les commentaires de #53 et #56. Mode « un élément » conservé, plusieurs éléments par page à prévoir ; éléments non commandés dans l'état laissé par le joueur, passables en auto (#56). Nouveaux réglages = 0.x.0, corrections = 0.x.1.
 
-**#53** : lots 1 et 2 faits. Reste **lot 3 : ponts transbordeurs** (point 5 : voie qui bouge, positions successives, aimantation ; remplace `yard.move`, `laneGap`, `post`, course 3,2 m ESTIMÉE, `d` d'OzIris). Plus tard : altitude du sol + `ele` si le propriétaire le demande. Limites connues : `preBrake` seulement s'il existe dans `SITE` ; seuls les freins de bloc par zone ; faisabilité du profil sans freins de bloc ; dessin du tunnel d'OzIris avec profil négatif non regardé en image. Puis **#54**.
+**À faire, dans l'ordre proposé** :
+1. **#58** (bugs de jeu, reçu 26/11) : bugs 1 à 3 d'abord (reprise de partie Zeus, barrière B3 fermée, fin d'orage), chacun avec son test ; puis audit du pupitre (tableau avant / après dans la note de version) et voies de garage de Zeus en WYSIWYG (aiguillage en S, mouvement synchronisé) : tâche difficile, agent Opus conseillé. **Question ouverte au propriétaire : usure (bug 4), maintenance explicite sans remise à zéro automatique ?**
+2. **#57** : reste le point 3 (quais WYSIWYG lus dans OSM et renvoyables), puis 4 (fenêtres au clic, fin du « frein final » à part), 1 (page du lieu), 5 (hauteurs au clic), 6 (caméras), 7 (réimport sélectif : à rattacher à #54).
+3. **#56** (plusieurs éléments par page) : note de conception, après #58 et #57.
+4. #54 (import depuis OSM).
 
-**Tests** : depuis `../osmrides_parks` (à jour, avec `lieu.js`), `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`) ; ici `JEU=../osmrides_parks node tools/editor-test.js` (rend désormais le `lieu.js` du jeu intact) et `tools/osm-sync-test.js` : PASS au 24/11. `check.js zeus` : échec isolé `overlapQ=1` vu une fois (non reproduit). Mesures : agent Sonnet lot 1 ≈ 307 k tokens, #55 ≈ 112 k, lot 2 ≈ 211 k.
+**Tests** : depuis `../osmrides_parks`, `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`), une attraction après l'autre ; ici `JEU=../osmrides_parks node tools/editor-test.js` et `tools/osm-sync-test.js`. PASS au 26/11. `mobile.js oziris` : un échec isolé relancé en PASS (probable charge). Mesures : lot 3 ≈ 164 k tokens, point 2 de #57 ≈ 142 k.
 
-**Points de vigilance** : Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; ne pas lire les transcriptions des agents ; **session à renouveler** (3 demandes traitées : 0.3.0, #55, lot 2).
+**Points de vigilance** : push sur `main` refusé par le classificateur sans « pousse » explicite du propriétaire dans le chat (un hook le réclame à chaque commit) ; ne pas committer avec `git add -A` ; limite hebdomadaire d'usage atteinte le 24/11 (remise à zéro le 26/11) ; Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; dessin du pont avec valeurs réglées et dessin du tunnel d'OzIris non regardés en image ; ne pas lire les transcriptions des agents ; **session à renouveler** (cinq demandes traitées).
