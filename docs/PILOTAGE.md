@@ -51,7 +51,7 @@ la session de pilotage :
 
 _Mis à jour le 2026-11-26 (fin de journée) par le Chef moteur, session n° 2, avant passage à la session n° 3 (consigne de démarrage en tête de ce fichier)._
 
-**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations, dépôt pas ajouté à la session). Accès en écriture à `osmrides_parks` : l'ajouter à la session (`add_repo`, accès push), cloner dans `../osmrides_parks`, puis `register_repo_root` ; pas de commit sur leur code.
+**Rôle** : Chef moteur d'`osmrides` = moteur + éditeur en librairie versionnée (D13, `docs/versions.md`). Jeux : `osmrides_parks` (Chef parcs, session `session_01UxooiVFPvJEwhWCYLay6Ap`), `osmrides_skiresort` (Chef stations, dépôt pas ajouté à la session). **À chaque nouvelle session, ajouter `osmrides_parks` d'emblée** (consigne du propriétaire 26/11 : `add_repo` accès push, `git clone --depth 1` dans `../osmrides_parks`, `register_repo_root`), sans attendre un test. Accès en écriture à `osmrides_parks` : l'ajouter à la session (`add_repo`, accès push), cloner dans `../osmrides_parks`, puis `register_repo_root` ; pas de commit sur leur code.
 
 **Versions** (étiquettes posées par le propriétaire seulement) : posées jusqu'à **`0.8.0`** (5d1fb1b, rails mobiles en WYSIWYG, #64). Chef parcs prévenu de chaque version par une issue `inter-equipe` (osmrides_parks#8 à #14) et un message de session d'une ligne. **À son adoption** : `tools/check.js` zeus (l. 351, `dep: refuseNoBrake`) attend l'ancien refus du départ vers le garage ; l'échec est voulu (0.7.4), à adapter chez lui.
 
