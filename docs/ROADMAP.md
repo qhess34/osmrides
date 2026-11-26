@@ -19,14 +19,28 @@ Architecture, séparation des données et décisions : `docs/ARCHITECTURE.md`. H
 - **Barrières OSM ignorées** (propriétaire, 26/11) : seules existent pour le moteur les barrières posées dans l'éditeur.
 - Modèles : **Haiku 5.5** (recherches, tests, tâches répétitives), **Sonnet 5.5** (l'essentiel du développement), **Opus 5.5** (arbitrages d'architecture, moteur), **Fable 5.2** seulement sur demande.
 
-## Lots
+## Lots de maturité (depuis le 26/11/2026)
+
+Décision du propriétaire (26/11) : les lots marquent la **maturité de l'application dans son ensemble**, pas une grosse fonctionnalité chacun. Un lot est franchi quand son critère de sortie est vérifié sur toute l'application (tests et jeu). Chaque issue est rattachée à un lot ; les issues en cours sont sur le lot en cours.
+
+| Lot | Maturité visée | Critère de sortie | Issues | Statut |
+|---|---|---|---|---|
+| 1 | **Jeu fiable sur le parc existant** | les 4 attractions du Parc Astérix se jouent sans bug connu ; pupitre cohérent (boutons sans doublon ni effet nul) ; tests `check`, `save`, `mobile` PASS | fin de #58 (audit du pupitre), #61, #60 ; livrés : #44, #59, #62, bugs 1 à 3 de #58 | **presque atteint** |
+| 2 | **Éditeur complet d'une attraction existante, en WYSIWYG** | plus aucune valeur à saisir ni à écrire dans `SITE` pour régler une attraction ; tout se règle sur la carte | #64, #57 (points 3 à 6), #63 ; livrés : barrières, salles de contrôle, profil, couleurs, exploitation, #45, #46 | **lot en cours** |
+| 3 | **Créer une attraction depuis OSM, sans fichier écrit à la main** | une nouvelle attraction se fait de bout en bout dans l'éditeur (import, désignation, test en jeu, ajout au menu) | #54, #57 (point 7, réimport sélectif) ; anciens lots 4, 6, 7, 8 | à faire |
+| 4 | **Le lieu complet** | un parc entier se joue dans une page ; page du lieu ; rôle par lieu avec des types d'objectifs différents | #56, #57 (page du lieu) | à faire (note de conception) |
+| 5 | **Nouveaux types de lieux** | un deuxième type de lieu jouable (domaine skiable : Vars Les Claux), puis parcours aquatique, flat rides, transport | #48, #49 ; anciens lots 9 et 10 | à faire |
+
+## Historique : anciens lots 0 à 10 (jusqu'au 26/11/2026)
+
+Conservés pour mémoire : découpe par grosse fonctionnalité, remplacée le 26/11 par les lots de maturité ci-dessus. Statuts à jour au 26/11.
 
 | Lot | Objet | Dépend de | Complexité | Modèle |
 |---|---|---|---|---|
 | 0 | Nettoyage, audit, roadmap | — | faible | Opus (pilotage) — **fait 2026-11-17** |
 | 1 | Éditeur v1 (Docker) : barrières et salles de contrôle | 0 | moyenne | Opus (modèle de surcharge + moteur), Sonnet (interface) — **fait 2026-11-17** |
 | 2 | Traçabilité OSM à l'import | 0 | faible | Sonnet |
-| 3 | Paramètres d'instance éditables (trains, couleurs, sous-type) | 1 | moyenne | Sonnet — **fait 19/11, prolongé : lot en cours** (versions 0.3.0 à 0.8.0, voir « Versions publiées »)|
+| 3 | Paramètres d'instance éditables (trains, couleurs, sous-type) | 1 | moyenne | Sonnet — **fait 19/11** ; prolongé dans le lot de maturité 2 (versions 0.3.0 à 0.8.0) |
 | 4 | Édition des objets OSM importés (corrections locales) | 1, 2 | élevée | Opus (modèle) + Sonnet |
 | 5 | Files d'attente complètes (tronçons, fourches, raccords) | 1 | moyenne | Sonnet — **fait en partie** |
 | 6 | Contribution OSM (diff, sélection, envoi authentifié) | 4 | élevée | Opus |
@@ -110,21 +124,21 @@ Le moteur est publié par version (`docs/versions.md`, D13) ; une issue `inter-e
 
 | Versions | Contenu | Issues | Lot |
 |---|---|---|---|
-| 0.3.0 à 0.5.0 | réglages d'exploitation et freins par zone, horaires par lieu, hauteurs du circuit (`GAME.profile`), couleurs de voie | #53 (lots 1 et 2 de l'issue), #55 | 3 |
-| 0.6.0 | pont transbordeur par champs numériques : **à remplacer** par #64 (WYSIWYG) | #53 (lot 3 de l'issue) | 3 |
-| 0.7.0 | `lap` mesuré en jeu ; `text`, `strike`, `dropAfter` retirés de l'éditeur | #57 (point 2) | 3 |
-| 0.7.1 à 0.7.4 | reprise de partie, barrière de fourche, fin d'orage, barrière fermée en évacuation, « Départ » vers le garage | #58 (bugs 1 à 3), #59, #62 | 3 (en cours) ; #59 : 5 |
+| 0.3.0 à 0.5.0 | réglages d'exploitation et freins par zone, horaires par lieu, hauteurs du circuit (`GAME.profile`), couleurs de voie | #53 (lots 1 et 2 de l'issue), #55 | 2 |
+| 0.6.0 | pont transbordeur par champs numériques : **à remplacer** par #64 (WYSIWYG) | #53 (lot 3 de l'issue) | 2 |
+| 0.7.0 | `lap` mesuré en jeu ; `text`, `strike`, `dropAfter` retirés de l'éditeur | #57 (point 2) | 2 |
+| 0.7.1 à 0.7.4 | reprise de partie, barrière de fourche, fin d'orage, barrière fermée en évacuation, « Départ » vers le garage | #58 (bugs 1 à 3), #59, #62 | 1 |
 
-Les issues en cours sont rattachées au **lot en cours (lot 3)** (décision du propriétaire, 26/11) ; les lots 4 (corrections locales d'objets OSM), 6 (contribution vers OSM) et 10 (flat rides) n'ont pas d'issue pour l'instant. Le lot 5 (files) a reçu #59.
+Rattachement aux lots de maturité ci-dessus (le lot 2 est le lot en cours) :
 
 **À faire, dans l'ordre**
-1. **#64** (0.8.0, **lot 3**) : rails `moving` en WYSIWYG : positions enregistrées en déplaçant le rail et nommées, magnétisme, chariot généré, verrouillage de deux rails (Zeus), tag « non connecté » (Hourra). Remplace les champs de 0.6.0 et le point 5 de #58.
-2. **#61** (**lot 3**, en cours) : garages sans freins manuels, un seul bouton « Envoyer le train » ; avec l'audit du pupitre de **#58** (points 6 à 9 : boutons en double, AR du lift, bouton F).
-3. **#60** (**lot 3**, en cours) : lift animé, AUTO (démarre un peu avant l'arrivée du train, rampes) ou MANU (marche / arrêt).
-4. **#57** (points 3 à 6 : **lot 3** ; point 7, réimport sélectif : **lot 7**) : quais en WYSIWYG lus dans OSM et renvoyables ; fenêtres au clic ; page du lieu ; hauteurs choisies sur le circuit ; caméras en WYSIWYG ; réimport sélectif (= lot 7, à suivre avec #54).
-5. **#63** (**lot 3**, en cours ; renvoi vers OSM : prépare le **lot 6**) : matière des tunnels lue dans OSM (tag `material`), réglable dans l'éditeur et renvoyée vers OSM.
-6. **#56** (**lot 9** : types et sous-types, hiérarchie de #48) : plusieurs éléments par page (mode « un élément » conservé ; éléments non commandés dans l'état laissé par le joueur, passables en auto ; rôle par lieu avec des types d'objectifs différents) : note de conception.
-7. **#54** (**lots 7 et 8**) : création d'une attraction depuis OSM dans l'éditeur (lots 7 et 8).
+1. **#64** (0.8.0, **lot 2**) : rails `moving` en WYSIWYG : positions enregistrées en déplaçant le rail et nommées, magnétisme, chariot généré, verrouillage de deux rails (Zeus), tag « non connecté » (Hourra). Remplace les champs de 0.6.0 et le point 5 de #58.
+2. **#61** (**lot 1**) : garages sans freins manuels, un seul bouton « Envoyer le train » ; avec l'audit du pupitre de **#58** (points 6 à 9 : boutons en double, AR du lift, bouton F).
+3. **#60** (**lot 1**) : lift animé, AUTO (démarre un peu avant l'arrivée du train, rampes) ou MANU (marche / arrêt).
+4. **#57** (points 3 à 6 : **lot 2** ; page du lieu : **lot 4** ; point 7, réimport sélectif : **lot 3**) : quais en WYSIWYG lus dans OSM et renvoyables ; fenêtres au clic ; page du lieu ; hauteurs choisies sur le circuit ; caméras en WYSIWYG ; réimport sélectif (= lot 7, à suivre avec #54).
+5. **#63** (**lot 2**) : matière des tunnels lue dans OSM (tag `material`), réglable dans l'éditeur et renvoyée vers OSM.
+6. **#56** (**lot 4**) : plusieurs éléments par page (mode « un élément » conservé ; éléments non commandés dans l'état laissé par le joueur, passables en auto ; rôle par lieu avec des types d'objectifs différents) : note de conception.
+7. **#54** (**lot 3**) : création d'une attraction depuis OSM dans l'éditeur (lots 7 et 8).
 
 ## Décisions du propriétaire
 
