@@ -54,8 +54,9 @@ yard: {
   at: 'brake', device: 'traverser',
   side: 1,                 // côté du garage (1 = droite du sens de marche) ; le rail mobile du parcours sort du circuit du côté opposé
   gap: 3.2,                // écart entre les axes des rails A (circuit) et B (garage) sur le chariot
-  pre: .6, post: .6,       // (post, retract.d, lanes[].d : réglables dans l'éditeur) rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
-  laneGap: .8,             // jeu entre le bout du rail du chariot et le début des voies (réglable dans l'éditeur, docs/ref/editeur.md)
+  pre: .6, post: .6,       // rail au-delà du train arrêté au point de raccordement (arrière, avant) : rail = un train + pre + post
+  laneGap: .8,             // jeu entre le bout du rail du chariot et le début des voies
+  rails: {…},              // facultatif : positions des rails mobiles réglées sur la carte de l'éditeur (ci-dessous)
   lanes: [ {name, d, len, cap}, … ],  // voies droites parallèles aux rails ; d = distance de l'axe du circuit à l'axe de la voie
   move: { v: 1.8, vc: .6, t: 4 },     // vitesse des trains, vitesse du chariot (m/s), durée minimale d'un déplacement (s)
   retract: { d: 3.2, name: 'Rail mobile du parcours', short: 'Rail parcours', rest: 1 }  // facultatif : rail mobile du parcours escamotable, indépendant du chariot (ci-dessous)
@@ -87,6 +88,14 @@ yard: {
 - Chaque voie est un canton ; le rail du chariot en est un aussi.
 - Dessin (issue #16) : les voies fixes sont dessinées jusqu'au bout du rail du chariot (jeu visuel 4 cm, le tablier passe dessous, comme pour le circuit) ; le jeu simulé `laneGap` ne change pas. Toutes les voies de garage (tous appareils) portent freins et pneus comme le circuit. Coaster inversé : le train garé ou porté est dessiné sous la poutre.
 Au départ, tous les trains sauf le premier sont au garage (`SITE.trains[i].lane`, sinon première voie libre) ; voie demandée pleine ou absente : première voie libre ; garage plein : les trains suivants partent arrêtés sur les zones de freinage du circuit, dans l'ordre frein avant gare (`Pre`), frein final (`Fin`), freins de bloc du dernier au premier (`TRAIN_SPOTS`, `engine/state.js`, issue #32). Nombre de trains au plus = `TRAIN_MAX` = 1 (gare) + places des voies de garage + ces zones ; au-delà, `SITE.trains` est tronqué (avertissement console) et l'éditeur refuse l'ajout (message des places, `editor/schema.js` `validate(g, {trainMax})`, 8 au plus).
+
+### Positions des rails mobiles (`yard.rails`, osmrides#64)
+
+Réglées sur la carte de l'éditeur (format : `docs/ref/editeur.md` « Rails mobiles ») ; absentes, les positions d'origine ci-dessus valent (P, G, voies 1…n, `retract`).
+- Chaque position enregistrée d'un rail porté par le chariot donne un décalage du chariot ; elle est **en face du circuit** (P : rail du circuit en ligne ; G : rail du chariot en ligne), **en face de la voie k** (pont : axe du rail sur l'axe de la voie ; aiguillage : tronçon en S en place, course `slide` ou `lanes[].off`), à 0,3 m près (ESTIMÉ, l'éditeur aimante exactement), sinon **non connectée** (pupitre `#yX1`, `#yX2`… : le chariot y va, aucun train ne peut entrer ni sortir, retenue comme hors de P). Les boutons du pupitre suivent l'ordre enregistré ; une voie sans position n'est plus desservie ; la position qui raccorde le circuit (P, ou G pour un pont à deux rails) est ajoutée si elle manque (avertissement).
+- Pont à deux rails : verrouillés (`lock`) = un seul chariot porte les deux rails ; déverrouillés = rail du circuit escamotable (`retract`), deux positions : celle en face du circuit et la première hors circuit (course `RET`). Aiguillage : rail du circuit et tronçon en S toujours ensemble, sans position intermédiaire.
+- Chariot généré : la fosse et le tablier couvrent toutes les positions (`PIT_VA`, `PIT_VB`, `engine/voies/appareil.js`) ; plus de réglage de longueur, `post`, `laneGap` ni course dans l'éditeur.
+- Verrouillages, retenue, cantonnement : inchangés.
 
 ## Principe de commande (décision du propriétaire, 2026-11-14)
 

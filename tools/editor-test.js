@@ -37,6 +37,45 @@ async function drag(page, from, to) {
   await page.mouse.up(); await sleep(60);
 }
 const ed = (page, s) => page.evaluate(s);
+// Rails mobiles sur la carte (osmrides#64) : choix du rail au clic, glisser aimanté, ajout / nom / enregistrement / suppression de position, tag « non connecté »,
+// verrouillage (pont à deux rails), Origine ; positions reprises du moteur à la première modification (même comportement)
+async function RAILS_UI(id, pn, rdn, ok, R) {
+  const st = () => ed(pn, `JSON.stringify(ED.E('({OFF,PO:POS_ORDER,RA,RET,X:POSX.length})'))`), s0 = await st();
+  const m = R.rails.find(r => r.id === R.master), mid = m.pts[Math.floor(m.pts.length / 2)], F = R.frame, d0 = m.d;
+  const W = (u, v) => [F.x + F.tx * u + F.vx * v, F.z + F.tz * u + F.vz * v];
+  await pn.click(`#railsBox [data-rsel="${R.master}"]`); await sleep(300); // bouton du rail : carte centrée dessus
+  const c0 = R.rails[0], cm = c0.pts[Math.floor(c0.pts.length / 2)], ac = await ed(pn, `ED.toScr(${W(cm[0], cm[1] - c0.d).join(',')})`);
+  await pn.mouse.click(ac[0], ac[1]); await sleep(200);
+  ok((await ed(pn, `ED.sel()&&ED.E&&document.querySelector('#railsBox [data-rsel].go').dataset.rsel`)) === c0.id && /Positions/.test(await ed(pn, `document.getElementById('railsBox').textContent`)), `rails ${id} : clic sur la carte = ${c0.name} choisi, positions listées`);
+  await pn.click(`#railsBox [data-rsel="${R.master}"]`); await sleep(300);
+  const a = await ed(pn, `ED.toScr(${W(mid[0], mid[1] - d0).join(',')})`);
+  // glisser vers l'axe de la position suivante (voie ou circuit), lâché à 0,4 m près : aimanté exactement
+  const tgt = m.axes.find(x => Math.abs(x.d - d0) > 1) || m.axes[0], b = await ed(pn, `ED.toScr(${W(mid[0], mid[1] - tgt.d - .4).join(',')})`);
+  await drag(pn, a, b); await sleep(200);
+  const gh = await ed(pn, `ED.rails.ghost()`), cn = await ed(pn, `ED.rails.conn()`);
+  ok(gh && cn === tgt.label, `rails ${id} : rail glissé et aimanté en face de « ${tgt.label} » (${cn})`);
+  ok(!(await ed(pn, `!!ED.draft().site`)), 'rails : glisser seul n\'écrit rien');
+  // position sans voie en face : ajoutée, nommée, tag « non connecté »
+  { const dX = Math.max(...m.axes.map(x => x.d)) + 4; await ed(pn, `ED.rails.setGhost(${m.car ? -dX - m.vo : dX})`); }
+  ok((await ed(pn, `ED.rails.conn()`)) === null, 'rails : placement hors des voies = non connecté');
+  await ed(pn, `ED.rails.add()`); await rdn();
+  const s1 = JSON.parse(await st()), D = await ed(pn, `ED.draft().site.yard.rails`);
+  ok(s1.X === 1 && D[R.master].pos.length === R.car.length + 1 && (await ed(pn, `ED.sel()&&ED.sel().id`)) === R.master, `rails ${id} : position ajoutée (${D[R.master].pos.length}), sans voie en face pour le moteur (X1), rail toujours choisi`);
+  const n = D[R.master].pos.length - 1;
+  await ed(pn, `ED.rails.name(${n},'Hors service')`); await rdn();
+  ok((await ed(pn, `ED.E('railsEd().car.find(q=>q.id==="X1").name')`)) === 'Hors service' && /non connecté/.test(await ed(pn, `document.getElementById('railsBox').textContent`)), 'rails : position nommée « Hors service », marquée non connectée');
+  await ed(pn, `ED.rails.del(${n})`); await rdn();
+  ok(await st() === s0, 'rails : position retirée = comportement d\'origine (positions reprises du moteur à l\'identique)');
+  if (R.lockable) { // pont à deux rails : verrouiller / déverrouiller
+    const ra0 = await ed(pn, `ED.E('RA')`);
+    await ed(pn, `ED.rails.lock(${!R.locked})`); await rdn();
+    ok((await ed(pn, `ED.E('RA')`)) === !ra0, `rails ${id} : ${R.locked ? 'déverrouillés (rail du circuit escamotable)' : 'verrouillés (un seul chariot)'}`);
+    await ed(pn, `ED.rails.lock(${R.locked})`); await rdn();
+    ok((await ed(pn, `ED.E('RA')`)) === ra0, `rails ${id} : verrouillage rendu`);
+  }
+  await ed(pn, `ED.rails.revert()`); await rdn();
+  ok(await st() === s0 && !(await ed(pn, `!!(ED.draft().site&&ED.draft().site.yard)`)), 'rails : Origine = GAME.site.yard retiré, comportement d\'origine');
+}
 
 (async () => {
   const backup = {}; for (const id of SITES) if (fs.existsSync(gp(id))) backup[id] = fs.readFileSync(gp(id), 'utf8');
