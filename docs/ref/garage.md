@@ -24,4 +24,4 @@ Zones toutes équivalentes (issue #36, `docs/manoeuvres.md` « Modèle ») : la 
 
 Règle de retenue : appareil hors de P (ou manœuvre de garage), la dernière zone d'attente avant l'appareil (`HOLD_Z`, `engine/voies/garage.js`) retient le train
 
-- si c'est la gare, départ refusé avec la raison (`docs/manoeuvres.md`).
+- si c'est la gare, départ vers le circuit refusé avec la raison (`docs/manoeuvres.md`) ; gare de raccordement à aiguillage en aval : Départ envoie le train vide au garage (`versGarage`, `departGarage`, `engine/montagnes-russes/exploitation.js`, issue #62).

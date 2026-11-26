@@ -46,7 +46,7 @@ function occupied(a,b,self){
 function blockReason(t){
   if(G.estop)return "arrêt d'urgence";
   if(G.liftOff)return 'lift à l\'arrêt';
-  if(HOLD_Z==='St'&&devOff())return DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de retenue : la gare est la dernière zone d'attente avant l'appareil (HOLD_Z, engine/garage.js)
+  if(HOLD_Z==='St'&&devOff())return versGarage()?DEVN.toLowerCase()+' hors de P : seul un train vide quitte la gare, vers le garage (bouton Départ)':DEVN.toLowerCase()+' hors de P, aucune zone de freinage entre la gare et '+DEVL+' pour retenir le train'; // règle de retenue : la gare est la dernière zone d'attente avant l'appareil (HOLD_Z, engine/garage.js)
   if(HOLD_Z==='St'&&trains.some(yardBusy))return 'manœuvre au garage';
   if(G.liftBroken)return 'lift en panne';
   if(G.job&&G.job.lock)return 'maintenance en cours';

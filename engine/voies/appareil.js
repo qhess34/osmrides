@@ -34,7 +34,7 @@ function yardPos(p){
       log(r.name+' est emporté par le chariot.');}
   }
   G.dev.to=p;G.dev.k=0;G.dev.d=TRAV?Math.max(MV.t,Math.abs(OFF[p]-OFF[G.dev.pos])/MV.vc):MV.t;
-  log(DEVN+' commandé vers '+posName(p)+(RA?(G.dev.pos===PG?' : plus aucun rail en ligne, VEHICULES retenus avant le pont.':'.'):TRAV?(p===PG||!p?'.':' : rail du circuit hors ligne, VEHICULES retenus avant le pont.'):p?(YZ==='St'||HOLD_Z==='St'?' : départs bloqués.':ATT[YZ].horsP&&!LBK?ATT[YZ].horsP:' : VEHICULES retenus '+zSur(HOLD_Z)+'.'):'.'));
+  log(DEVN+' commandé vers '+posName(p)+(RA?(G.dev.pos===PG?' : plus aucun rail en ligne, VEHICULES retenus avant le pont.':'.'):TRAV?(p===PG||!p?'.':' : rail du circuit hors ligne, VEHICULES retenus avant le pont.'):p?(YZ==='St'&&!LBK?' : un véhicule vide part de '+ANCH_NAME+' vers le garage.':YZ==='St'||HOLD_Z==='St'?' : départs bloqués.':ATT[YZ].horsP&&!LBK?ATT[YZ].horsP:' : VEHICULES retenus '+zSur(HOLD_Z)+'.'):'.'));
   return true;
 }
 function raPos(p){ // rail A escamotable : 0 = sur le circuit, 1 = retiré
