@@ -449,8 +449,11 @@ const ed = (page, s) => page.evaluate(s);
           ok(Math.abs((await ed(pn, `ED.E('roomPos().beacon')`))[0] - (b0[0] - .2)) < .02 && Array.isArray(await ed(pn, `ED.draft().controlRooms[0].beacon`)), 'lot 1 : gyrophare déplacé (GAME.controlRooms[0].beacon)');
         }
         // refus hors bornes (serveur)
-        const r422 = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{goal:5,zones:{B1:{launch:99,stop:'oui'}},plat:{load:99},lap:1}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=5)`);
+        const r422 = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{goal:5,zones:{B1:{launch:99,stop:'oui'}},plat:{load:99},stopBack:99}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=5)`);
         ok(r422 === true, 'lot 1 : valeurs hors bornes refusées par le serveur');
+        // 0.7.0 : lap, dropAfter, text, strike (anciens GAME.site) tolérés en lecture, ignorés, non réécrits
+        const rOld = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{goal:200,lap:1,dropAfter:9999,text:{storm:'x'},strike:{area:[3,1,3,1]}}}})}).then(r=>r.json()).then(j=>j.ok===true&&!/lap|dropAfter|strike|storm/.test(j.after)&&/"goal": 200/.test(j.after))`);
+        ok(rOld === true, '0.7.0 : lap, dropAfter, text, strike anciens tolérés puis non réécrits');
         // horaires du lieu : écrits dans lieu.js, lus par le jeu ; borne
         ok(/Ce réglage vaut pour/.test(await ed(pn, `document.getElementById('lieuBox').textContent`)), 'lot 1 : section Lieu : message « vaut pour tout le lieu »');
         await pn.fill('#hOpen', '09:00'); await pn.fill('#hClose', '20:30'); await pn.dispatchEvent('#hClose', 'change'); await pn.click('#bLieuSave'); await sleep(600);

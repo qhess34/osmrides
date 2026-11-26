@@ -52,7 +52,7 @@ const inSynXY=(x,y)=>{const b=SYN.box;if(!synOn||!b)return false;return x>=b[0]&
 extension({nom:'montagnes-russes',
   ui(){ // pupitre, voyants, trains (engine/noyau/interface.js ui)
   const active=trains.filter(t=>t.st!=='garage').length;
-  $('hWait').textContent=active?Math.round((G.queue.length+(G.platR||[]).filter(r=>r).length)/(SEATS/(SITE.lap||150)*active)*.5)+' min':'—';
+  $('hWait').textContent=active?Math.round((G.queue.length+(G.platR||[]).filter(r=>r).length)/(SEATS/lapDur()*active)*.5)+' min':'—';
   $('bAuto').classList.toggle('manu',!G.auto);
   {const can=trains.some(o=>o.st==='station'&&['board','check','ready'].includes(o.phase)&&!o.hs);$('bGate').classList.toggle('lit',G.gatesOpen);$('bGate').disabled=!G.gatesOpen&&!can;$('hPlat').textContent=G.plat.filter(r=>r).length+'/'+SEATS;}
   {const s=trains.find(o=>o.st==='station'),op=G.resOpen||!!(s&&s.rcT),mv=!!s&&s.rc.some((v,k)=>v>.02&&v<.98); // sécurités : bouton allumé = ouvertes ; voyant vert = verrouillées et fermées, ambre = ouvertes, clignotant = en mouvement

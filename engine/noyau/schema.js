@@ -1,12 +1,11 @@
 'use strict';
-/* Clés de GAME.site communes à tous les types d'attraction (éditeur ; docs/ARCHITECTURE.md D9, D14, osmrides#53) : objectif de l'attraction (goal), caméras (cams), textes d'orage et de bilan (text),
-   zone et point des éclairs (strike), postes de maintenance (jobsites). Liste blanche stricte avec bornes ESTIMÉES (sûres pour le moteur, pas des mesures) ; clé absente = valeur d'origine de SITE.
-   Chargé par editor/schema.js (Node : serveur, tests) ou par editor/editor.js (navigateur) ; S = editor/schema.js. Lecture dans le moteur : engine/noyau/partie.js (goal, text), carte.js (cams),
-   decor.js (strike, jobsites). */
+/* Clés de GAME.site communes à tous les types d'attraction (éditeur ; docs/ARCHITECTURE.md D9, D14, osmrides#53) : objectif de l'attraction (goal), caméras (cams), postes de maintenance (jobsites). Liste blanche stricte avec bornes ESTIMÉES (sûres pour le moteur, pas des mesures) ; clé absente = valeur d'origine de SITE.
+   Chargé par editor/schema.js (Node : serveur, tests) ou par editor/editor.js (navigateur) ; S = editor/schema.js. Lecture dans le moteur : engine/noyau/partie.js (goal), carte.js (cams),
+   decor.js (jobsites). */
 (function (inscrit) {
   inscrit(function (S) {
   const NL = { goal: [10, 20000], cams: 16, camS: [2, 60], xz: 5000, text: 160, label: 40, jobs: 16 };
-  const KEYS = ['goal', 'cams', 'text', 'strike', 'jobsites'], TEXTS = ['storm', 'great'];
+  const KEYS = ['goal', 'cams', 'text', 'strike', 'jobsites'];
   const txt = (v, n) => typeof v === 'string' && v.trim() && v.length <= n && !/[\u0000-\u001f<>"\\]/.test(v);
   const pt = v => Array.isArray(v) && v.length === 2 && v.every(c => S.num(c, -NL.xz, NL.xz));
   const obj = v => v && typeof v === 'object' && !Array.isArray(v);
@@ -29,20 +28,7 @@
           }
         }
       }
-      if ('text' in T) {
-        if (!obj(T.text)) E.push('site.text : objet {storm, great} attendu');
-        else for (const f of Object.keys(T.text)) if (!TEXTS.includes(f)) E.push('site.text.' + f + ' : clé refusée (autorisées : ' + TEXTS.join(', ') + ')');
-          else if (!txt(T.text[f], NL.text)) E.push('site.text.' + f + ' : texte de 1 à ' + NL.text + ' caractères (sans < > " \\)');
-      }
-      if ('strike' in T) {
-        const K = T.strike;
-        if (!obj(K)) E.push('site.strike : objet {area, spot} attendu');
-        else {
-          for (const f of Object.keys(K)) if (f !== 'area' && f !== 'spot') E.push('site.strike.' + f + ' : clé refusée');
-          if ('area' in K && !(Array.isArray(K.area) && K.area.length === 4 && K.area.every(c => S.num(c, -NL.xz, NL.xz)) && K.area[0] < K.area[1] && K.area[2] < K.area[3])) E.push('site.strike.area : [x min, x max, z min, z max] en m, min < max');
-          if ('spot' in K && !pt(K.spot)) E.push('site.strike.spot : [x, z] en m');
-        }
-      }
+      // text et strike : tolérés en lecture (anciens GAME.site, le moteur lit encore SITE.text / SITE.strike), ignorés ici, plus écrits ni réglables
       if ('jobsites' in T) {
         const J = T.jobsites, ok = Array.isArray(ctx.jobs) ? ctx.jobs : null;
         if (!obj(J)) E.push('site.jobsites : objet {<travail>:[x, z]} attendu');
@@ -58,8 +44,6 @@
     normalize(t, o) {
       if ('goal' in t) o.goal = t.goal;
       if ('cams' in t) { const q = {}; for (const id of Object.keys(t.cams)) { const c = t.cams[id], r = {}; if ('label' in c) r.label = c.label; for (const f of ['x', 'z']) if (f in c) r[f] = S.r2(c[f]); if ('s' in c) r.s = S.r2(c.s); q[id] = r; } o.cams = q; }
-      if ('text' in t) { const q = {}; for (const f of TEXTS) if (f in t.text) q[f] = t.text[f]; o.text = q; }
-      if ('strike' in t) { const q = {}; if ('area' in t.strike) q.area = t.strike.area.map(S.r2); if ('spot' in t.strike) q.spot = t.strike.spot.map(S.r2); o.strike = q; }
       if ('jobsites' in t) { const q = {}; for (const id of Object.keys(t.jobsites).sort()) q[id] = t.jobsites[id].map(S.r2); o.jobsites = q; }
     } });
   S.NL = NL;

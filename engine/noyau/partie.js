@@ -1,4 +1,8 @@
 'use strict';
+/* Textes par défaut du moteur (orage, bilan), écrits dans le code avec le nom de l'attraction (SITE.title) ; plus réglables dans l'éditeur. SITE.text.<clé> (ancien réglage,
+   tolérée en lecture) garde la priorité. */
+const MSG_DEF={storm:()=>'Orage sur '+SITE.title+' ! Aucun train ne doit partir.',great:()=>'Excellente exploitation de '+SITE.title+' !'};
+const msgSite=k=>(SITE.text&&SITE.text[k])||MSG_DEF[k]();
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
 function updateWeather(dt){
   const w=G.wx;if(G.sandbox){w.type='clear';w.next=1e6;G.flash=0;return;}
@@ -9,7 +13,7 @@ function updateWeather(dt){
     }
   }else{w.t-=dt;
     if(w.t<=0){
-      if(w.type==='warn'){w.type='storm';w.t=rnd(60,90);log((SITE.text&&SITE.text.storm)||'Orage sur l\'attraction ! Aucun train ne doit partir.','bad');}
+      if(w.type==='warn'){w.type='storm';w.t=rnd(60,90);log(msgSite('storm'),'bad');}
       else{if(w.type==='storm')log('☀️ L\'orage est passé, l\'exploitation peut reprendre.','good');w.type='clear';w.next=rnd(280,520);}
     }
   }
@@ -59,7 +63,7 @@ function bilan(){
     .map(r=>'<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>').join('');
   $('bMsg').textContent=G.over?'Le budget est dans le rouge : la direction vous retire les clés de l\'attraction…'
     :(G.played||0)<60?'Moins d\'une heure d\'exploitation : bilan encore partiel.'
-    :rph>=goal?((SITE.text&&SITE.text.great)||'Excellente exploitation !'):rph>=goal/2?texte('bilanCorrect','Exploitation correcte.')
+    :rph>=goal?msgSite('great'):rph>=goal/2?texte('bilanCorrect','Exploitation correcte.')
     :texte('bilanDifficile','Exploitation difficile. Ouvrez l\'entrée.');
   $('bBtn').textContent=G.over?'Recommencer':'Reprendre';
   $('mBil').classList.remove('hidden');

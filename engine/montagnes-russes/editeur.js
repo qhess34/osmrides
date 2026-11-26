@@ -55,6 +55,7 @@
     const T = E('SITE.trains'), tm = ov.trains !== undefined, tmax = tMax(), full = T.length >= tmax;
     h.push(`<h3>Trains (${T.length})</h3><div class="fld${tm ? ' mod' : ''}" style="display:block">` + T.map((t, i) => `<div class="trow" data-i="${i}"><input data-tf="name" value="${esc(t.name)}" title="Nom" style="width:96px"><input data-tf="col" type="color" value="${t.col}" title="Couleur"><input data-tf="col2" type="color" value="${t.col2}" title="Seconde couleur"><input data-tf="wear" type="number" min="0" max="100" step="1" value="${t.wear}" title="Usure (0 à 100)" style="width:48px"><input data-tf="lane" type="number" min="1" max="${Math.max(1, E('LANES.length'))}" step="1" value="${t.lane || ''}" placeholder="voie" title="Voie de garage au départ (vide : automatique ; le premier train est à quai)" style="width:48px"><button data-tdel="${i}" ${T.length > 1 ? '' : 'disabled'} title="Retirer ce train">x</button></div>`).join('')
       + `<div class="row"><button id="bTAdd" ${full ? 'disabled' : ''}>Ajouter un train</button><button data-rev="trains" ${tm ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div><span class="orig">origine : ${base.trains.length} train(s) ; couleur 1, couleur 2, usure, voie de garage. Le premier train est à quai ; chaque train garé a besoin d'une place au garage.</span><p class="note${full ? ' warn' : ''}">${tPlaces()}</p></div>`);
+    h.push(fieldHTML({ p: ['maxRun'], l: 'Trains en circulation en même temps (les autres restent au garage)', t: 'int', d: null, lim: S.SL.maxRun, orig: 'tous les trains' }, kind), '<p class="note">Sans effet sans garage. La durée d\'un tour n\'est plus un réglage : le moteur la mesure en jeu (attente affichée au pupitre).</p>');
     // couleurs de voie
     if (kind === 'inverted' || kind === 'steel') { const K = E('TKC'), bt = base.track || {}; h.push('<h3>Couleurs de la voie</h3>', ...[['spine', 'Poutre'], ['rail', 'Rails'], ['support', 'Supports']].map(([f, l]) => colorHTML(['track', f], l, K[f], bt[f], pth(ov, ['track', f]) !== undefined))); }
     if (kind === 'bob') { const K = E('TRO'), bt = base.trough || {}; h.push('<h3>Gouttière du bobsleigh</h3>', ...[['lo', 'Fond (bas)', 1], ['hi', 'Fond (haut)', 1], ['edge', 'Bord', 0], ['deck', 'Tablier', 0], ['rim', 'Rebord', 0]].map(([f, l, r]) => colorHTML(['trough', f], l, K[f], bt[f], pth(ov, ['trough', f]) !== undefined, r)));
@@ -85,9 +86,6 @@
   }
   function extraHTML(kind) {
     const h = [], SL = S.SL, ded = (() => { try { return E('DEDUIT'); } catch (e) { return {}; } })(), ev = k => { try { return E('SITE.' + k); } catch (e) { return undefined; } };
-    h.push('<h3>Exploitation</h3>', ...[
-      { p: ['lap'], l: 'Durée d\'un tour estimée (s)', t: 'num', st: 5, d: 150, lim: SL.lap }, { p: ['maxRun'], l: 'Trains en ligne au plus', t: 'int', d: null, lim: SL.maxRun, orig: 'tous les trains' }].map(f => fieldHTML(f, kind)),
-      '<p class="note">Durée d\'un tour : sert à estimer l\'attente affichée au pupitre. Trains en ligne : les autres restent au garage (garage seulement).</p>');
     h.push('<h3>Gare et quais</h3>', ...[
       { p: ['stopBack'], l: 'Arrêt avant la fin de la gare (m)', t: 'num', st: .5, d: 0, lim: SL.stopBack },
       { p: ['plat', 'load'], l: 'Profondeur du quai d\'embarquement (m)', t: 'num', st: .1, d: 7.9, lim: SL.plat.load }, { p: ['plat', 'exit'], l: 'Profondeur du quai de sortie (m)', t: 'num', st: .1, d: 0, lim: SL.plat.exit },
@@ -111,13 +109,12 @@
       { p: ['yard', 'move', 'v'], l: 'Vitesse de l\'appareil (m/s)', t: 'num', st: .1, d: 2.4, lim: SL.move.v }, { p: ['yard', 'move', 'vc'], l: 'Vitesse du train sur l\'appareil (m/s)', t: 'num', st: .1, d: .6, lim: SL.move.vc }, { p: ['yard', 'move', 't'], l: 'Durée de la manœuvre (s)', t: 'num', st: .5, d: 3, lim: SL.move.t },
       { p: ['yard', 'devName'], l: 'Nom de l\'appareil (pupitre)', t: 'text', d: ev('yard').device === 'switch' ? 'Aiguillage' : 'Pont transbordeur' }, { p: ['yard', 'devLabel'], l: 'Nom dans une phrase', t: 'text', d: ev('yard').device === 'switch' ? 'l\'aiguillage' : 'le pont transbordeur' }].map(f => fieldHTML(f, kind)));
     if (ev('yard') && ev('yard').device === 'traverser') h.push(...bridgeHTML(kind, ev('yard')));
-    // valeurs déduites : holdBack, dropAfter, loadSide (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
+    // valeurs déduites réglables : holdBack, loadSide (dropAfter : déduit du profil, plus de champ) (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
     const dl = `${ded.loadSide === 1 ? 'côté +R de la voie' : ded.loadSide === -1 ? 'côté -R de la voie' : 'indécis'}`;
     h.push('<h3>Valeurs déduites (corriger un cas particulier)</h3>', ...[
       { p: ['holdBack'], l: 'Arrêt au frein final : distance à la fin du circuit (m)', t: 'num', st: .5, d: (E('L - S_HOLD') != null ? Math.round(E('L - S_HOLD') * 10) / 10 : null), lim: SL.holdBack, orig: `déduit : fin du frein final lue dans OSM (${fx(ded.holdBack)} m)` },
-      { p: ['dropAfter'], l: 'Descente après le haut du lift (m)', t: 'num', st: .5, d: Math.round(E('S_DROP - S_LIFT1') * 10) / 10, lim: SL.dropAfter, orig: `déduit : profil des hauteurs (${fx(ded.dropAfter)} m)` },
       { p: ['loadSide'], l: 'Côté du quai d\'embarquement', t: 'enumn', o: [['1', 'côté +R de la voie'], ['-1', 'côté -R de la voie']], d: E('LS'), orig: `déduit : côté où arrive la file (${dl})` }].map(f => fieldHTML(f, kind)),
-      '<p class="note">Déduits par le moteur, avec priorité GAME > SITE > déduction. Mettre une valeur ici seulement pour un cas particulier. Cri des passagers : 1 m sous le sommet après le lift (ESTIMÉ).</p>');
+      '<p class="note">Déduits par le moteur, avec priorité GAME > SITE > déduction. Mettre une valeur ici seulement pour un cas particulier. </p>');
     return h;
   }
   function bindSite() {

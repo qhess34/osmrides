@@ -57,7 +57,7 @@
       else if (typeof v !== 'string' || !S.HEX.test(v)) E.push(p + ' : couleur #rrggbb');
     });
     sub('phys', SITE_KEYS.phys, (f, v, p) => { if (!S.num(v, SL[f][0], SL[f][1])) E.push(p + ' : de ' + SL[f][0] + ' à ' + SL[f][1]); });
-    for (const k of ['lap', 'stopBack', 'holdBack', 'dropAfter']) if (k in T && !S.num(T[k], SL[k][0], SL[k][1])) E.push('site.' + k + ' : de ' + SL[k][0] + ' à ' + SL[k][1] + (k === 'lap' ? ' s' : ' m'));
+    for (const k of ['stopBack', 'holdBack']) if (k in T && !S.num(T[k], SL[k][0], SL[k][1])) E.push('site.' + k + ' : de ' + SL[k][0] + ' à ' + SL[k][1] + ' m'); // lap et dropAfter : tolérés en lecture (anciens GAME.site), ignorés, plus écrits
     if ('maxRun' in T && !isInt(T.maxRun, SL.maxRun[0], SL.maxRun[1])) E.push('site.maxRun : entier de ' + SL.maxRun[0] + ' à ' + SL.maxRun[1] + ' trains en ligne');
     if ('loadSide' in T && T.loadSide !== 1 && T.loadSide !== -1) E.push('site.loadSide : 1 ou -1');
     sub('preBrake', SITE_KEYS.preBrake, (f, v, p) => { // frein avant gare : seulement celui que SITE déclare (le créer n'est pas possible ici)
@@ -111,7 +111,8 @@
           if (!(key in t)) continue;
           const v = t[key];
           if (key === 'kind') o.kind = v;
-          else if (['lap', 'stopBack', 'holdBack', 'dropAfter'].includes(key)) o[key] = S.r2(v);
+          else if (key === 'lap' || key === 'dropAfter') continue; // tolérés en lecture seulement
+          else if (['stopBack', 'holdBack'].includes(key)) o[key] = S.r2(v);
           else if (key === 'maxRun' || key === 'loadSide') o[key] = v;
           else if (key === 'trains') o.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }

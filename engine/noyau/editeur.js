@@ -1,5 +1,5 @@
 'use strict';
-/* Sections de l'éditeur communes à tous les types (docs/ARCHITECTURE.md D9, D14, osmrides#53) : « Exploitation » (GAME.site : objectif, textes, éclairs, postes de maintenance, caméras ; chaque
+/* Sections de l'éditeur communes à tous les types (docs/ARCHITECTURE.md D9, D14, osmrides#53) : « Exploitation » (GAME.site : objectif, postes de maintenance, caméras ; chaque
    réglage garde la valeur de SITE tant qu'on n'y touche pas, bouton « Origine ») et « Lieu » (horaires d'ouverture : lieux/<type>/<lieu>/lieu.js, commun à toutes les attractions du lieu).
    Chargé par editor/editor.js (GET /api/couches) ; X = outils de l'éditeur. */
 (function () {
@@ -8,19 +8,11 @@
   const SB = () => E('SITE_BASE'), cur = p => X.pth(X.GM().site || {}, p), base = p => X.pth(SB(), p), eff = (p, d) => { const v = cur(p); return v !== undefined ? v : base(p) !== undefined ? base(p) : d; };
   const fld = (p, label, ctl, orig, extra) => { const mod = cur(p) !== undefined; return `<div class="fld${mod ? ' mod' : ''}"><span>${label}</span>${ctl}<span class="orig">origine : ${esc(orig)}</span><button data-rev="${p.join('.')}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button>${extra || ''}</div>`; };
   const num = (p, v, st, min, max) => `<input data-n="${p.join('.')}" type="number" step="${st}" ${min != null ? `min="${min}" max="${max}" ` : ''}value="${v}">`;
-  // objets de SITE modifiés par morceaux : area, spot, jobsites (paire x, z), caméra {label, x, z, s} ; chaque pas écrit la valeur entière (tableau) ou le champ
+  // objets de SITE modifiés par morceaux : jobsites (paire x, z), caméra {label, x, z, s} ; chaque pas écrit la valeur entière (tableau) ou le champ
   function exploitationHTML() {
     const h = [], goal = eff(['goal'], 400), T = E('({open:T_OPEN,close:T_CLOSE})');
     h.push('<h3>Objectif</h3>', fld(['goal'], 'Passagers par plage d\'ouverture', num(['goal'], goal, 10, NL().goal[0], NL().goal[1]), base(['goal']) !== undefined ? base(['goal']) : '400 (défaut du moteur)'),
       `<p class="note">Sert au bilan (« excellente exploitation » au-delà de l'objectif par heure sur la plage ${Math.floor(T.open / 60)} h à ${Math.floor(T.close / 60)} h ; les horaires se règlent dans la section « Lieu »). Bornes ${NL().goal[0]} à ${NL().goal[1]} (ESTIMÉES).</p>`);
-    h.push('<h3>Textes</h3>');
-    for (const [f, l, d] of [['storm', 'Orage (message au journal)', 'Orage sur l\'attraction ! Aucun train ne doit partir.'], ['great', 'Bilan excellent', 'Excellente exploitation !']])
-      h.push(fld(['text', f], l, `<input data-t="text.${f}" type="text" maxlength="${NL().text}" value="${esc(eff(['text', f], d))}" style="width:100%">`, base(['text', f]) !== undefined ? base(['text', f]) : d + ' (défaut du moteur)'));
-    h.push('<h3>Éclairs</h3>');
-    const A = E('({a:[VIEW.x-VIEW.w/2,VIEW.x+VIEW.w/2,VIEW.z-VIEW.h/2,VIEW.z+VIEW.h/2]})').a, ar = eff(['strike', 'area'], A.map(fr).map(Number)), sp = eff(['strike', 'spot'], null);
-    h.push(fld(['strike', 'area'], 'Zone (x min, x max, z min, z max, m)', ['0', '1', '2', '3'].map(i => `<input data-arr="strike.area" data-i="${i}" type="number" step="1" value="${Math.round(ar[i] * 100) / 100}" style="width:62px">`).join(' '), base(['strike', 'area']) ? base(['strike', 'area']).join(', ') : 'toute la carte (défaut du moteur)'));
-    h.push(fld(['strike', 'spot'], 'Point favori (m)', ['0', '1'].map(i => `<input data-arr="strike.spot" data-i="${i}" type="number" step="0.5" value="${sp ? sp[i] : ''}" style="width:70px">`).join(' ') + ` <button data-pick="strike.spot">Poser au clic</button>`, base(['strike', 'spot']) ? base(['strike', 'spot']).join(', ') : 'aucun (éclairs au hasard)'));
-    h.push('<p class="note">Un éclair sur trois frappe le point favori s\'il est donné ; sinon la zone.</p>');
     h.push('<h3>Postes de maintenance</h3>');
     let jobs = []; try { jobs = E('Object.keys(JOBS)'); } catch (e) { }
     if (!jobs.length) h.push('<p class="note">Aucun travail de maintenance déclaré par ce type d\'attraction.</p>');
@@ -41,10 +33,9 @@
   function bindExploitation() {
     const B = $('explBox');
     for (const el of B.querySelectorAll('[data-n]')) el.addEventListener('change', () => { const v = Math.round(+el.value); if (!isFinite(v)) return; X.setSite(el.dataset.n.split('.'), v); });
-    for (const el of B.querySelectorAll('[data-t]')) el.addEventListener('change', () => X.setSite(el.dataset.t.split('.'), el.value.trim()));
-    for (const el of B.querySelectorAll('[data-arr]')) el.addEventListener('change', () => { // tableau de nombres (zone d'éclairs, point, poste) : écrit en entier
-      const p = el.dataset.arr.split('.'), n = p[0] === 'strike' && p[1] === 'area' ? 4 : 2, ins = [...B.querySelectorAll(`[data-arr="${el.dataset.arr}"]`)], v = ins.map(i => i.value === '' ? NaN : +i.value);
-      if (v.some(x => !isFinite(x))) return; if (n === 4 && !(v[0] < v[1] && v[2] < v[3])) return; X.setSite(p, v.map(X.R2)); });
+    for (const el of B.querySelectorAll('[data-arr]')) el.addEventListener('change', () => { // tableau de nombres (poste de maintenance) : écrit en entier
+      const p = el.dataset.arr.split('.'), n = 2, ins = [...B.querySelectorAll(`[data-arr="${el.dataset.arr}"]`)], v = ins.map(i => i.value === '' ? NaN : +i.value);
+      if (v.some(x => !isFinite(x))) return; X.setSite(p, v.map(X.R2)); });
     for (const el of B.querySelectorAll('[data-pick]')) el.onclick = () => { el.textContent = 'Cliquer la carte…'; X.pick(q => X.setSite(el.dataset.pick.split('.'), q)); };
     for (const el of B.querySelectorAll('[data-rev]')) el.onclick = () => X.siteChange(s => X.delSite(s, el.dataset.rev.split('.')));
     const camSet = (k, patch) => X.siteChange(s => { if (!s.cams) s.cams = {}; const c = Object.assign({}, E('CAMS.' + k), s.cams[k], patch); s.cams[k] = { label: c.label || k, x: X.R2(c.x), z: X.R2(c.z), s: X.R2(c.s) }; const o = (base(['cams']) || {})[k]; if (o && X.same(o, s.cams[k])) delete s.cams[k]; });
