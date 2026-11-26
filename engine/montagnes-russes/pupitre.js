@@ -16,7 +16,7 @@ function trainStatus(t){
   const z=zoneOf(t.s);
   if(z==='prelift')return 'Vers le lift';
   if(z==='lift')return t.wait?'En attente en haut du lift (canton occupé)':t.v===0?'Bloqué sur le lift ('+n+' passagers)':'Montée du lift';
-  if(z==='course')return t.blk?'Arrêté au frein de bloc (canton occupé)':'Sur le parcours — '+Math.round(t.v*3.6)+' km/h';
+  if(z==='course')return t.blk?'Arrêté au frein (section suivante occupée)':'Sur le parcours — '+Math.round(t.v*3.6)+' km/h';
   if(z==='brake')return t.v===0?(G.brakeFault?'Retenu aux freins (défaut)':'En attente aux freins'):'Freinage';
   return 'Entrée en gare';
 }
@@ -70,14 +70,14 @@ extension({nom:'montagnes-russes',
   lamp('lCourse',G.wear.track>=100?2:inZ('course')?1:0);
   lamp('lBrake',G.brakeFault?2:inZ('brake')?1:0);
   $('opNote').textContent=G.wx.type==='storm'?(G.estop?'ORAGE : arrêt d\'urgence enclenché ; désenclenchez-le une fois l\'orage terminé.':'ORAGE : aucun départ autorisé.'):G.wx.over>0?(G.estop?'Orage terminé : désenclenchez l\'arrêt d\'urgence pour reprendre.':'Orage terminé : exploitation normale.'):G.wx.type==='warn'?'Orage imminent : passez en manuel ou enclenchez l\'arrêt d\'urgence.'
-    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.resOpen&&trains.some(o=>o.st==='station')?'Sécurités ouvertes : fermez les portillons puis verrouillez-les pour le départ.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':zK('Fin')?'Frein final serré (MANU) : trains retenus avant la gare.':G.liftOff?'Lift à l\'arrêt (commande du pupitre).':G.auto&&G.gatesOpen&&trains.some(o=>o.st==='station'&&o.depReq)?'Train prêt : fermez les portillons.':devOff()&&!(TRAV&&inLine())?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(TRAV?'rail du circuit hors ligne, trains retenus avant le pont.':YZ==='St'?(versGarage()?'Départ vers le garage (train vide).':'départs bloqués.'):YZ==='Fin'?'entrée en gare bloquée.':'trains retenus '+(HOLD_Z[0]==='B'?'au ':'sur ')+zArt(HOLD_Z).replace(/^le /,'')+'.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
+    :active===0?'Aucun train en service : sortez un train du garage.':G.estop?'ARRÊT D\'URGENCE enclenché.':trains.some(o=>o.st==='station'&&o.phase==='check')?'Vérification des lapbars par les opérateurs : '+OPS.filter(o=>o.ok).length+'/2 validé.':G.resOpen&&trains.some(o=>o.st==='station')?'Sécurités ouvertes : fermez les portillons puis verrouillez-les pour le départ.':G.bypass?'BY-PASS lapbars actif : départ sans vérification.':ZONES.some(Z=>Z.auto&&zK(Z.id))?(q=>q.join(', ')+' serré'+(q.length>1?'s':'')+' (MANU) : trains retenus.')(ZONES.filter(Z=>Z.auto&&zK(Z.id)).map(Z=>Z.name)):G.liftOff?'Lift à l\'arrêt (commande du pupitre).':G.auto&&G.gatesOpen&&trains.some(o=>o.st==='station'&&o.depReq)?'Train prêt : fermez les portillons.':devOff()&&!(TRAV&&inLine())?(devMoving()?DEVN+' en mouvement vers '+posName(G.dev.to)+'.':DEVN+' sur '+posName(G.dev.pos)+' : '+(TRAV?'rail du circuit hors ligne, trains retenus avant le pont.':YZ==='St'?(versGarage()?'Départ vers le garage (train vide).':'départs bloqués.'):'trains retenus '+zSur(HOLD_Z)+'.')):!G.open?(G.queue.length||G.plat.some(r=>r)?'Entrée fermée — '+(G.queue.filter(v=>v.mode==='q').length+G.plat.filter(r=>r).length)+' visiteurs restent à embarquer.':'Entrée fermée — file vide.'):(G.auto?'Mode auto':'Mode manuel')+' — exploitation normale.';
   for(const t of trains){
     $('tSt'+t.i).textContent=trainStatus(t)+(tZone(t)?' · zone '+zName(tZone(t)):'');
     bar('tW'+t.i,t.wear);
     $('tR'+t.i).disabled=!!G.job||t.st!=='garage';
     $('tA'+t.i).disabled=!!G.job||t.fault!=='lapbars';
   }
-  for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z==='Fin'||z==='Pre')&&G.brakeFault);
+  for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z===ZF||z===ZP)&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
     if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : allumé pendant un mouvement
     if(z==='Lift'){const m=$('zLift_m'),b=$('zLift_t');m.classList.toggle('lit',!!G.liftM);m.textContent=G.liftM?'MANU':'AUTO';b.disabled=!G.liftM;b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftM&&G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt

@@ -3,7 +3,7 @@
 // « Départ » = envoyer le train hors de la gare ; destination selon l'appareil (propriétaire, #62). Train VIDE à quai, appareil sur une voie de garage :
 //  - gare de raccordement, aiguillage en aval (Zeus) : Départ envoie le train dans la voie (la gare n'a plus de bouton Avancer, #58) ; avec passagers : refus clair, train à quai ;
 //    appareil sur P : départ sur le circuit (inchangé) ; sauvegarde / reprise avec le train entré au garage par Départ.
-//  - autres garages (pont transbordeur au frein final, aiguillage en amont `back`) : Départ part sur le circuit, comme avant (le train est retenu avant l'appareil).
+//  - autres garages (pont transbordeur à la zone de freinage qui le précède, aiguillage en amont `back`) : Départ part sur le circuit, comme avant (le train est retenu avant l'appareil).
 // Chaque cas sur une page neuve ; le message affiché est relevé (journal).
 const { chromium } = require('playwright');
 const path = require('path');
@@ -19,7 +19,7 @@ const scenario = (page, cmd, o) => page.evaluate(`(()=>{const o=${JSON.stringify
   act('speed',0);G.wx.next=1e6;G.wx.type='clear';
   const run=n=>{for(let i=0;i<n;i++)step(.025);};
   const A=trains.find(t=>t.st==='station');if(!A)return {err:'aucun train à quai'};
-  const gare=YZ==='St'&&!TRAV&&!LBK;if(gare){G.zm.Fin=1;G.zk.Fin=1;} // gare à aiguillage aval : les autres trains attendent au frein final serré (MANU), garage vide
+  const gare=YZ==='St'&&!TRAV&&!LBK;if(gare){G.zm[ZF]=1;G.zk[ZF]=1;} // gare à aiguillage aval : les autres trains attendent à la dernière zone de freinage serrée (MANU), garage vide
   for(const t of trains)if(t!==A){t.mv=0;if(gare){t.st='run';t.s=S_HOLD;t.v=0;}else if(t.st!=='garage'){t.st='garage';t.lane=LANES.length-1;t.g=LANES[t.lane].stop;}} // sinon : au garage, voie la plus éloignée
   A.seats.fill(null);if(o.pax)for(let i=0;i<o.pax;i++)A.seats[i]={ci:0,w:0,on:true};
   G.gatesOpen=!!o.gates;G.gate=o.gates?1:0;G.resOpen=false;A.rcT=0;A.rc=A.rc.map(()=>0);A.phase=o.pax?'ready':'board';A.depReq=false;A.pt=0;G.auto=false;for(const op of OPS)op.ok=!!o.pax;

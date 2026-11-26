@@ -7,17 +7,17 @@
   const SK = { kind: ['wood', 'bob', 'inverted', 'steel'], restraint: ['lapbar', 'otsr', 'belt'] };
   const SL = { len: [0.5, 6], n: [1, 30], seats: [1, 8], abreast: [1, 8], trainLen: 40, trains: [1, 8], wear: [0, 100], lane: [1, 8], roll: [0, 0.3], drag: [0, 0.01], vmin: [1, 6], name: 40,
     w: [0.5, 3], pitch: [0.2, 3], // car.w (largeur du wagon, m), car.pitch (m d'axe à axe, places l'une derrière l'autre)
-    lap: [30, 600], stopBack: [0, 15], maxRun: [1, 8], holdBack: [0, 300], dropAfter: [0, 300], // tour (s), arrêt en gare avant la fin de gare (m), trains en ligne, arrêt au frein final avant la fin du circuit (m), cri après le haut du lift (m)
-    zoneV: [1, 30], zoneHold: [0, 300], // frein de bloc : vitesse limite / de lancement (m/s), temps d'arrêt (s)
+    lap: [30, 600], stopBack: [0, 15], maxRun: [1, 8], dropAfter: [0, 300], // tour (s), arrêt en gare avant la fin de gare (m), trains en ligne, cri après le haut du lift (m)
+    zoneV: [1, 30], zoneHold: [0, 300], // zone de freinage : vitesse limite / de lancement (m/s), temps d'arrêt (s)
     move: { v: [0.2, 10], vc: [0.1, 5], t: [0.5, 30] }, // manœuvre de l'appareil de voie : vitesse, vitesse de chariot (m/s), durée (s)
     rails: { d: [-40, 40], n: [1, 12] }, // positions des rails mobiles (osmrides#64) : distance du rail à l'axe du circuit (m), nombre de positions par rail (ESTIMÉES)
     plat: { load: [1.5, 30], exit: [0, 30], back: [0, 10], front: [0, 10] }, // profondeurs des quais (m) : embarquement, sortie, au-delà de l'arrière du dernier wagon, devant le premier
-    pre: { back: [0, 200], len: [3, 120] }, txt: 40 }; // les bornes ci-dessus sont ESTIMÉES (sûres pour le moteur, pas des mesures)
+    txt: 40 }; // les bornes ci-dessus sont ESTIMÉES (sûres pour le moteur, pas des mesures)
   const SITE_KEYS = { kind: 'enum', car: ['len', 'n', 'seats', 'abreast', 'restraint', 'w', 'inline', 'pitch'], trains: 'list', track: ['spine', 'rail', 'support'], trough: ['lo', 'hi', 'edge', 'deck', 'rim', 'shine'], phys: ['roll', 'drag', 'vmin'],
-    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel', 'rails'], plat: ['load', 'exit', 'back', 'front'] };
+    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: 'old', zones: 'zones', yard: ['move', 'devName', 'devLabel', 'rails'], plat: ['load', 'exit', 'back', 'front'] };
   const YARD_OLD = ['post', 'laneGap', 'retract', 'laneD']; // réglages chiffrés du pont de 0.6.0 : tolérés en lecture (ignorés par le moteur), plus écrits (osmrides#64)
   const RAIL_IDS = ['circuit', 'garage']; // rails mobiles : rail du circuit, rail du chariot ou tronçon en S (engine/voies/garage.js)
-  const ZKEYS = ['trim', 'launch', 'hold', 'stop']; // par frein de bloc B<k> : vitesse limite (trim.v), vitesse de lancement, temps d'arrêt, arrêt obligatoire (engine/montagnes-russes/zones.js)
+  const ZKEYS = ['trim', 'launch', 'hold', 'stop']; // par zone de freinage B<k> suivie d'un canton : vitesse limite (trim.v), vitesse de lancement, temps d'arrêt, arrêt obligatoire (engine/montagnes-russes/zones.js)
   const DEPTH = [0.5, 6]; // profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
   const txt = v => typeof v === 'string' && v.trim() && v.length <= SL.txt && !/[\u0000-\u001f<>"\\]/.test(v);
@@ -80,13 +80,9 @@
       else if (typeof v !== 'string' || !S.HEX.test(v)) E.push(p + ' : couleur #rrggbb');
     });
     sub('phys', SITE_KEYS.phys, (f, v, p) => { if (!S.num(v, SL[f][0], SL[f][1])) E.push(p + ' : de ' + SL[f][0] + ' à ' + SL[f][1]); });
-    for (const k of ['stopBack', 'holdBack']) if (k in T && !S.num(T[k], SL[k][0], SL[k][1])) E.push('site.' + k + ' : de ' + SL[k][0] + ' à ' + SL[k][1] + ' m'); // lap et dropAfter : tolérés en lecture (anciens GAME.site), ignorés, plus écrits
+    if ('stopBack' in T && !S.num(T.stopBack, SL.stopBack[0], SL.stopBack[1])) E.push('site.stopBack : de ' + SL.stopBack[0] + ' à ' + SL.stopBack[1] + ' m'); // lap, dropAfter, holdBack, preBrake : tolérés en lecture (anciens GAME.site), ignorés, plus écrits
     if ('maxRun' in T && !isInt(T.maxRun, SL.maxRun[0], SL.maxRun[1])) E.push('site.maxRun : entier de ' + SL.maxRun[0] + ' à ' + SL.maxRun[1] + ' trains en ligne');
     if ('loadSide' in T && T.loadSide !== 1 && T.loadSide !== -1) E.push('site.loadSide : 1 ou -1');
-    sub('preBrake', SITE_KEYS.preBrake, (f, v, p) => { // frein avant gare : seulement celui que SITE déclare (le créer n'est pas possible ici)
-      if (f === 'name') { if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)'); }
-      else if (!S.num(v, SL.pre[f][0], SL.pre[f][1])) E.push(p + ' : de ' + SL.pre[f][0] + ' à ' + SL.pre[f][1] + ' m');
-    });
     sub('plat', SITE_KEYS.plat, (f, v, p) => { if (!S.num(v, SL.plat[f][0], SL.plat[f][1])) E.push(p + ' : profondeur de ' + SL.plat[f][0] + ' à ' + SL.plat[f][1] + ' m'); });
     if (T.yard && typeof T.yard === 'object' && !Array.isArray(T.yard) && YARD_OLD.some(f => f in T.yard)) W.push('site.yard : ' + YARD_OLD.filter(f => f in T.yard).join(', ') + ' (réglages chiffrés de 0.6.0) ignorés : les positions des rails se règlent sur la carte (rails)');
     sub('yard', SITE_KEYS.yard.concat(YARD_OLD), (f, v, p) => { // appareil de voie : vitesses, durée, noms, positions des rails mobiles (le reste décrit la voie)
@@ -97,13 +93,13 @@
       } else if (f === 'rails') validateRails(v, p, E);
       else if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)');
     });
-    if ('zones' in T) { // freins de bloc B1…Bn : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
+    if ('zones' in T) { // zones de freinage suivies d'un canton B1…Bn : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
       const Z = T.zones;
       if (!Z || typeof Z !== 'object' || Array.isArray(Z)) E.push('site.zones : objet {B<k>:{…}} attendu');
       else for (const id of Object.keys(Z)) {
         const p = 'site.zones.' + id, z = Z[id], m = /^B([1-9]\d?)$/.exec(id);
-        if (!m) { E.push(p + ' : seuls les freins de bloc B1, B2… sont réglables ici'); continue; }
-        if (Number.isInteger(ctx.blocs) && +m[1] > ctx.blocs) E.push(p + ' : cette attraction n\'a que ' + ctx.blocs + ' frein(s) de bloc');
+        if (!m) { E.push(p + ' : seules les zones de freinage B1, B2… sont réglables ici'); continue; }
+        if (Number.isInteger(ctx.blocs) && +m[1] > ctx.blocs) E.push(p + ' : seules les zones de freinage B1 à B' + ctx.blocs + ' (suivies d\'un canton) sont réglables ici');
         if (!z || typeof z !== 'object' || Array.isArray(z)) { E.push(p + ' : objet attendu'); continue; }
         for (const f of Object.keys(z)) {
           if (!ZKEYS.includes(f)) E.push(p + '.' + f + ' : clé refusée (autorisées : ' + ZKEYS.join(', ') + ')');
@@ -127,8 +123,8 @@
           if (!(key in t)) continue;
           const v = t[key];
           if (key === 'kind') o.kind = v;
-          else if (key === 'lap' || key === 'dropAfter') continue; // tolérés en lecture seulement
-          else if (['stopBack', 'holdBack'].includes(key)) o[key] = S.r2(v);
+          else if (['lap', 'dropAfter', 'holdBack', 'preBrake'].includes(key)) continue; // tolérés en lecture seulement
+          else if (key === 'stopBack') o[key] = S.r2(v);
           else if (key === 'maxRun' || key === 'loadSide') o[key] = v;
           else if (key === 'trains') o.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }

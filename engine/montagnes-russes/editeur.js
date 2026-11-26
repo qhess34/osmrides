@@ -14,7 +14,7 @@
   const depthTxt = D => `${D.rows} rang(s) par travée ; ${D.game ? 'réglée' : 'calcul auto'} (calcul : ${D.calc.toFixed(2).replace('.', ',')} m ; de ${D.min.toFixed(2).replace('.', ',')} à ${D.max} m).`;
   // ── paramètres de l'attraction (lot 3, D9) : GAME.site = surcharges partielles de SITE (liste blanche, engine/montagnes-russes/schema.js) ──
   const SB = () => E('SITE_BASE'), SKIND = () => E('SITE.kind');
-  // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/state.js : gare, voies de garage, frein avant gare, frein final, freins de bloc), 8 au plus (editor/schema.js)
+  // nombre de trains au plus (issue #32) : places d'attente du moteur (TRAIN_MAX, engine/montagnes-russes/etat.js : gare, voies de garage, zones de freinage), 8 au plus (editor/schema.js)
   const tMax = () => { let m = S.SL.trains[1]; try { m = Math.min(m, E('TRAIN_MAX')); } catch (e) { } return m; };
   function tPlaces() { let t = ''; try { const g = E('LANES.reduce((n,l)=>n+l.cap,0)'), z = E('TRAIN_SPOTS.map(p=>zName(p.z))'); t = `Au plus ${tMax()} trains : un par place où un train peut attendre (1 en gare, ${g} au garage${z.length ? ', ' + z.length + ' sur les zones de freinage : ' + z.join(', ') : ''}${E('TRAIN_MAX') > S.SL.trains[1] ? ' ; ' + S.SL.trains[1] + ' au plus dans l\'éditeur' : ''}). Les trains au-delà du garage partent arrêtés sur ces zones.`; } catch (e) { } return esc(t); }
   // aides communes de l'éditeur (editor/editor.js) : GAME.site modifié, valeur égale à l'origine = surcharge retirée, objets vides retirés, aperçu rechargé
@@ -63,7 +63,7 @@
     h.push(...extraHTML(kind));
     return h.join('');
   }
-  // ── autres réglages de SITE (osmrides#53) : exploitation, gare et quais, freins de bloc, frein avant gare, appareil de voie, valeurs déduites ──
+  // ── autres réglages de SITE (osmrides#53) : exploitation, gare et quais, zones de freinage, appareil de voie, valeurs déduites ──
   const fx = v => v == null ? '—' : String(Math.round(v * 100) / 100).replace('.', ',');
   function extraHTML(kind) {
     const h = [], SL = S.SL, ded = (() => { try { return E('DEDUIT'); } catch (e) { return {}; } })(), ev = k => { try { return E('SITE.' + k); } catch (e) { return undefined; } };
@@ -72,10 +72,10 @@
       { p: ['plat', 'load'], l: 'Profondeur du quai d\'embarquement (m)', t: 'num', st: .1, d: 7.9, lim: SL.plat.load }, { p: ['plat', 'exit'], l: 'Profondeur du quai de sortie (m)', t: 'num', st: .1, d: 0, lim: SL.plat.exit },
       { p: ['plat', 'back'], l: 'Quai derrière le dernier wagon (m)', t: 'num', st: .1, d: .1, lim: SL.plat.back }, { p: ['plat', 'front'], l: 'Quai devant le premier wagon (m)', t: 'num', st: .1, d: 1.6, lim: SL.plat.front }].map(f => fieldHTML(f, kind)),
       '<p class="note">Un quai plus court réduit aussi la profondeur maximale des travées d\'attente (section « Zone d\'attente du quai »). Valeurs du moteur : ESTIMÉES.</p>');
-    // freins de bloc : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
+    // zones de freinage suivies d'un canton (B1…Bn) : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
     let nb = 0; try { nb = E('BLK.length'); } catch (e) { }
     if (nb) {
-      h.push('<h3>Freins de bloc</h3>');
+      h.push('<h3>Zones de freinage</h3>');
       for (let k = 1; k <= nb; k++) {
         const id = 'B' + k, Z = E(`ZONES.find(o=>o.id==='${id}')`) || {}, zt = Z.trim && Z.trim.v || 0;
         h.push(`<div class="note" style="margin-top:6px"><b>${esc(Z.name || id)}</b></div>`, ...[
@@ -85,14 +85,12 @@
       }
       h.push('<p class="note">Vitesse limite : le train est ramené à cette vitesse au frein puis continue (zone en AUTO, canton suivant libre). Lancement : vitesse à laquelle le frein relance un train arrêté (sinon : sa vitesse d\'entrée ; plafonnée par la vitesse limite). Arrêt obligatoire : en AUTO le train s\'arrête au frein même si le canton suivant est libre ; le temps d\'arrêt (avec l\'arrêt obligatoire seulement) est la durée minimale avant la relance. 0 = pas de réglage. Bornes 1 à 30 m/s, 0 à 300 s (ESTIMÉES).</p>');
     }
-    if (ev('preBrake')) h.push('<h3>Frein avant gare</h3>', ...[{ p: ['preBrake', 'back'], l: 'Distance à la gare (m)', t: 'num', st: .5, d: null, lim: SL.pre.back, orig: 'lue dans OSM ou 1 m' }, { p: ['preBrake', 'len'], l: 'Longueur de la zone (m)', t: 'num', st: .5, d: null, lim: SL.pre.len, orig: 'lue dans OSM ou un train + 0,5 m' }, { p: ['preBrake', 'name'], l: 'Nom au pupitre', t: 'text', d: 'Frein avant gare' }].map(f => fieldHTML(f, kind)));
     if (ev('yard')) h.push('<h3>Appareil de voie et garage</h3>', ...[
       { p: ['yard', 'move', 'v'], l: 'Vitesse de l\'appareil (m/s)', t: 'num', st: .1, d: 2.4, lim: SL.move.v }, { p: ['yard', 'move', 'vc'], l: 'Vitesse du train sur l\'appareil (m/s)', t: 'num', st: .1, d: .6, lim: SL.move.vc }, { p: ['yard', 'move', 't'], l: 'Durée de la manœuvre (s)', t: 'num', st: .5, d: 3, lim: SL.move.t },
       { p: ['yard', 'devName'], l: 'Nom de l\'appareil (pupitre)', t: 'text', d: ev('yard').device === 'switch' ? 'Aiguillage' : 'Pont transbordeur' }, { p: ['yard', 'devLabel'], l: 'Nom dans une phrase', t: 'text', d: ev('yard').device === 'switch' ? 'l\'aiguillage' : 'le pont transbordeur' }].map(f => fieldHTML(f, kind)));
-    // valeurs déduites réglables : holdBack, loadSide (dropAfter : déduit du profil, plus de champ) (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
+    // valeurs déduites réglables : loadSide (dropAfter : déduit du profil, holdBack : fin de la zone lue dans OSM ; plus de champ) (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
     const dl = `${ded.loadSide === 1 ? 'côté +R de la voie' : ded.loadSide === -1 ? 'côté -R de la voie' : 'indécis'}`;
     h.push('<h3>Valeurs déduites (corriger un cas particulier)</h3>', ...[
-      { p: ['holdBack'], l: 'Arrêt au frein final : distance à la fin du circuit (m)', t: 'num', st: .5, d: (E('L - S_HOLD') != null ? Math.round(E('L - S_HOLD') * 10) / 10 : null), lim: SL.holdBack, orig: `déduit : fin du frein final lue dans OSM (${fx(ded.holdBack)} m)` },
       { p: ['loadSide'], l: 'Côté du quai d\'embarquement', t: 'enumn', o: [['1', 'côté +R de la voie'], ['-1', 'côté -R de la voie']], d: E('LS'), orig: `déduit : côté où arrive la file (${dl})` }].map(f => fieldHTML(f, kind)),
       '<p class="note">Déduits par le moteur, avec priorité GAME > SITE > déduction. Mettre une valeur ici seulement pour un cas particulier. </p>');
     return h;

@@ -45,13 +45,13 @@ function drawTunnel(t){
 const _cf=mkF();
 const CW=SITE.car.w||1.24,INL=!!SITE.car.inline;
 /* ══ Passerelles de service et escaliers d'évacuation (propriétaire, issue #7, générique) ══
-   Le long du lift (S_LIFT0 → S_LIFT1) et de chaque zone de freinage SURÉLEVÉE (freins de bloc, frein final, frein avant gare) : caillebotis + garde-corps extérieur,
+   Le long du lift (S_LIFT0 → S_LIFT1) et de chaque zone de freinage SURÉLEVÉE (toutes, B1…Bm) : caillebotis + garde-corps extérieur,
    à la hauteur de la voie, dessinés juste sous leur tronçon (même ordre de profondeur). Rien là où la voie est au sol (moins de EL m au-dessus de la gare) ni en tunnel.
    Lift : la passerelle est elle-même l'escalier (marches tous les 20 cm de montée), prolongée en descendant depuis lift0 jusqu'au sol (pied, 20 m au plus ; sinon tour
    d'escalier au pied), paliers de repos tous les 6 m de montée (intermédiaires), palier au sommet. Frein surélevé : tour d'escalier (volées alternées de 2 m de montée,
    vue du dessus : les deux dernières) à une extrémité ; frein collé au sommet du lift : même passerelle que le lift, pas de tour.
    Côté : SITE.catwalks.side[<zone>] (1 = droite du sens de marche, −1 = gauche), sinon le plus dégagé (ni quai / gare, ni autre voie, ni file).
-   Zone de freinage AU SOL (hors gare : frein final, frein avant gare…) : passerelle au niveau de la voie, sans tour, sur le plus long tronçon libre (ni quai, ni gare,
+   Zone de freinage AU SOL (hors gare) : passerelle au niveau de la voie, sans tour, sur le plus long tronçon libre (ni quai, ni gare,
    ni file, ni autre voie), 3 m au moins (issue #7, complément) ; SITE.catwalks.ground:false pour s'en passer.
    SITE.catwalks=false : aucune passerelle (Zeus). Largeur W = 0,8 m, écart à la voie, paliers, tours : ESTIMÉS (aucun relevé). Ouvrages OSM (passerelle, escalier)
    déjà le long d'une zone : utilisés à la place (la zone n'est pas doublée). Itinéraire : décor seulement (pas encore suivi par les techniciens ni par une évacuation de train). */
@@ -77,9 +77,9 @@ const CATW=(function(){
   const DA=SW_A-.6,DB=SW_B+.6,onDev=s=>(((s-DA)%L)+L)%L<=DB-DA; // espace balayé : SWP / inSweep (plus haut, partagés avec les poteaux)
   const at=(f,sd,d)=>[f.x+f.nx*sd*d,f.z+f.nz*sd*d],md=s=>FL?0:half(s)+W/2,ed=s=>FL?FW/2:half(s)+W; // axe et bord extérieur du plancher / de la passerelle
   const zones=[{id:'Lift',a:S_LIFT0,b:S_LIFT1,lift:1}].concat(BLK.map((b,i)=>({id:'B'+(i+1),a:Math.min(BZ0[i],b-TLEN),b:b+.5})),
-    TAG.brk!=null?[{id:'Fin',a:S_BRK,b:S_HOLD+.5}]:[],PSB?[{id:'Pre',a:Math.min(PSB_A,S_PSB-TLEN),b:S_PSB+.5}]:[]);
+    TAG.brk!=null?[{id:ZF,a:S_BRK,b:S_HOLD+.5}]:[],PSB?[{id:ZP,a:Math.min(PSB_A,S_PSB-TLEN),b:S_PSB+.5}]:[]);
   const lift=zones[0];
-  for(const zn of zones){if(cf.skip&&cf.skip.includes(zn.id))continue;
+  for(const zn of zones){if(cf.skip&&(cf.skip.includes(zn.id)||cf.skip.includes(Z_ANC[zn.id])))continue;
     let i0=ii(zn.a),i1=ii(zn.b);
     if(zn.lift){let k=0;while(k<40&&el(fr(i0))>.2&&!inTunS((i0-1)*DS)){i0--;k++;}zn.foot=el(fr(i0))>.2;} // pied du lift : la passerelle-escalier descend jusqu'au sol
     else if(zn.a<=lift.b+4&&zn.a>=lift.b-2&&lift.w){lift.w.i1=Math.max(lift.w.i1,i1);continue;} // frein collé au sommet du lift : même passerelle
@@ -89,7 +89,7 @@ const CATW=(function(){
     if(!F.length)continue;const low=!zn.lift&&Math.max(...F.map(el))<EL; // zone de freinage au niveau du sol (hors gare) : passerelle au sol, sans tour (issue #7, complément)
     if(low&&cf.ground===false||zn.lift&&Math.max(...F.map(el))<EL)continue;
     if(OSMW.some(P=>F.filter((f,k)=>k%4===0).filter(f=>dPl(f.x,f.z,P)<ed(f.s)+1).length>=F.length/8))continue; // ouvrage OSM le long de la zone : utilisé tel quel
-    let sd=FS[zn.id];
+    let sd=FS[zn.id]!=null?FS[zn.id]:FS[Z_ANC[zn.id]];
     if(sd!==1&&sd!==-1){let best=1e9;for(const e of [1,-1]){let p=0;for(let k=0;k<F.length;k+=2){const f=F[k],c=at(f,e,FL?FW/2+W/2:half(f.s)+W/2);p+=pen(c[0],c[1],f.y,f.s,W/2+.2);}if(p<best-1e-6){best=p;sd=e;}}}
     if(low){ // au sol : seulement le plus long tronçon libre (ni quai ni gare, ni file, ni autre voie), 3 m au moins
       let run=null,cur=null;for(const f of F){const c=at(f,sd,half(f.s)+W/2),ok=FL?!pen(f.x,f.z,f.y,f.s,FW/2,1):!pen(c[0],c[1],f.y,f.s,W/2+.2)&&!pen(...at(f,sd,half(f.s)+W+.1),f.y,f.s,.1);
@@ -229,7 +229,7 @@ const zTrains=z=>trains.filter(t=>z.car?tZone(t)==='RB':(t.st==='run'&&t.s>z.r0-
 const _bf=mkF();
 function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu ou ralenti dans la zone ; zone vide : serrée si la section suivante est occupée (la gare, toujours)
   for(const z of BZ){const b=BZS[z.id]||(BZS[z.id]={c:1,a:0}),ts=zTrains(z);
-    let cl=zK(z.id)||(z.id==='Fin'&&G.brakeFault)||ts.some(t=>tSp(t)<.05||(t.st==='run'&&PV.has(t)&&t.v<PV.get(t)-.01));
+    let cl=zK(z.id)||(z.id===ZF&&G.brakeFault)||ts.some(t=>tSp(t)<.05||(t.st==='run'&&PV.has(t)&&t.v<PV.get(t)-.01));
     if(!ts.length&&!cl)cl=z.id==='St'||z.lane!=null||!!nextBusy(z.id,null); // voie vide : freins serrés
     if(dt>0&&b.cl!==undefined&&b.cl!==!!cl&&z.id!=='St'&&z.lane==null){const q=z.r0!=null?frameAt((z.r0+z.r1)/2,_bf).p:null;cl?sfx.brakeOn(q&&q.x,q&&q.z):sfx.brakeOff(q&&q.x,q&&q.z);} // son : serrage (claquement) / desserrage (air)
     b.cl=!!cl;
@@ -254,7 +254,7 @@ function drawBU(o){
     for(const e of sides){const cx=e*c0;
       ctx.fillStyle='rgba(52,54,58,.85)';quad(-.3,.3,cx-.33,cx+.33); // traverse de fixation
       ctx.fillStyle='#6b6258';quad(-.24,.24,cx+g,cx+g+.05);quad(-.24,.24,cx-g-.05,cx-g); // garnitures
-      ctx.fillStyle=u.id==='Fin'&&flt?'#7a2e28':'#2c2e33';quad(-.2,.2,cx+g+.05,cx+g+.16);quad(-.2,.2,cx-g-.16,cx-g-.05);} // carters des mâchoires
+      ctx.fillStyle=u.id===ZF&&flt?'#7a2e28':'#2c2e33';quad(-.2,.2,cx+g+.05,cx+g+.16);quad(-.2,.2,cx-g-.16,cx-g-.05);} // carters des mâchoires
   }
 }
 function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
@@ -407,14 +407,14 @@ function drawSyn(){
   let p=at((TAG.st0+TAG.st1)/2);lab('Gare',p[0],p[1],'#8db4dc');
   p=at((S_LIFT0+S_LIFT1)/2);lab('Lift',p[0],p[1],'#d9bd82');
   BLK.forEach((b,i)=>{const held=trains.some(t=>t.st==='run'&&t.blk&&t.v===0&&Math.abs(t.s-b)<.5),closed=zK('B'+(i+1))||held;
-    ctx.lineWidth=4.5;ctx.strokeStyle=closed?'#c0584a':'#6fa585';seg(b,b+Math.max(8,TLEN*.5),X,Z);p=at(b);lab('B'+(i+1)+(BTRIM[i]?' ralentit':''),p[0],p[1],closed?'#e08a7c':'#8fc4a4');});
-  if(RA||PSB||SG){ // zones de stockage : frein final, rail mobile du parcours, frein avant gare (rouge = serrée, ambre = train retenu, vert = libre)
+    ctx.lineWidth=4.5;ctx.strokeStyle=closed?'#c0584a':'#6fa585';seg(b,b+Math.max(8,TLEN*.5),X,Z);p=at(b);lab(zName('B'+(i+1))+(BTRIM[i]?' ralentit':''),p[0],p[1],closed?'#e08a7c':'#8fc4a4');});
+  if(RA||PSB||SG){ // zones de freinage après le dernier canton : ZF, rail mobile du parcours, ZP (rouge = serrée, ambre = train retenu, vert = libre)
     const hold=id=>trains.some(t=>t.st==='run'&&t.v===0&&tZone(t)===id);
-    const zs=[['Fin',S_BRK,RA||SG?R0:PSB_A,'Frein final']].concat(RA?[['RA',R0,PSB?R1:L-1,'Rail parcours']]:SG&&circIn()?[['RB',R0,PSB?R1:L-1,'Rail du pont']]:[],PSB?[['Pre',PSB_A,L-.5,'Avant gare']]:[]);
+    const zs=[[ZF,S_BRK,RA||SG?R0:PSB_A,zName(ZF)]].concat(RA?[['RA',R0,PSB?R1:L-1,'Rail parcours']]:SG&&circIn()?[['RB',R0,PSB?R1:L-1,'Rail du pont']]:[],PSB?[[ZP,PSB_A,L-.5,zName(ZP)]]:[]);
     for(const [id,a,b,nm] of zs){const k=zK(id),h=hold(id);
       ctx.lineWidth=4.5;ctx.strokeStyle=k?'#c0584a':h?'#d9a441':'#6fa585';seg(a,b,X,Z);p=at((a+b)/2);lab(nm,p[0],p[1],k?'#e08a7c':h?'#ecc275':'#8fc4a4');}
   }else{
-    ctx.lineWidth=4.5;ctx.strokeStyle=zK('Fin')?'#c0584a':'#6fa585';seg(S_BRK,L-1,X,Z);p=at((S_BRK+L)/2);lab('Frein final',p[0],p[1],zK('Fin')?'#e08a7c':'#8fc4a4');
+    ctx.lineWidth=4.5;ctx.strokeStyle=zK(ZF)?'#c0584a':'#6fa585';seg(S_BRK,L-1,X,Z);p=at((S_BRK+L)/2);lab(zName(ZF),p[0],p[1],zK(ZF)?'#e08a7c':'#8fc4a4');
   }
   // repère du garage sur le plan
   ctx.strokeStyle='rgba(217,189,130,.7)';ctx.lineWidth=1;ctx.setLineDash([2,2]);ctx.strokeRect(X(gb.x0),Z(gb.z0),(gb.x1-gb.x0)*sc,(gb.z1-gb.z0)*sc);ctx.setLineDash([]);

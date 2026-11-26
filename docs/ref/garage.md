@@ -13,14 +13,14 @@ Fiche de référence (extraite d'`AGENTS.md`, 21/11). Une règle n'est écrite q
 
 ## Zones et cantonnement
 
-Zones : gare, avant-lift, lift, parcours, frein final. Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
+Zones : gare, avant-lift, lift, parcours, zones de freinage. Cantonnement : un train ne franchit un frein de bloc que si le canton suivant est libre
 
 - pont droit : un train porté par le chariot ne compte dans le dernier canton que chariot en ligne avec le circuit (`yardBlocks`)
-- retour du chariot en ligne refusé seulement si un train ROULE dans le dernier canton ou est sur l'appareil, un train arrêté au frein final y reste retenu (`anchorFree`, `docs/manoeuvres.md`).
+- retour du chariot en ligne refusé seulement si un train ROULE dans le dernier canton ou est sur l'appareil, un train arrêté à la dernière zone de freinage (`ZF`) y reste retenu (`anchorFree`, `docs/manoeuvres.md`).
 
-Zones toutes équivalentes (issue #36, `docs/manoeuvres.md` « Modèle ») : la gare est une zone d'attente comme les autres (`St`, `B1…Bn`, `Fin`, `Pre`, point d'arrêt `zStop`), un canton ordinaire entre deux zones consécutives, « Frein final » n'est qu'un nom affiché (ids `Fin`, `#zFin_…` inchangés)
+Zones toutes équivalentes (issue #36, `docs/manoeuvres.md` « Modèle ») : la gare est une zone d'attente comme les autres (`St`, `B1…Bm`, point d'arrêt `zStop`), un canton ordinaire entre deux zones consécutives ; zones de freinage toutes ordinaires « Frein 1…m » (#57 point 4 : ids `Fin` / `Pre` devenus `B<n+1>` / `B<n+2>`, boutons `#zB<k>_…`)
 
-- garage branché sur une zone quelconque (`SITE.yard.at` = `'St'|'B<k>'|'Fin'|'Pre'`, alias `'station'`, `'brake'` ; `YZ`, `ANCH`, `CARR`, `yardBlocks(self,b)`, `anchorFree`, `placeAt` ; pont droit : frein final seulement ; aiguillage en amont `back` : gare ou zone à marche arrière, issue #38 ; essai `node tools/yard-zone.js <site> <zone> [back]`).
+- garage branché sur une zone quelconque (`SITE.yard.at` = `'St'|'B<k>'`, alias `'station'`, `'brake'`, `'Fin'`, `'Pre'` ; `YZ`, `ANCH`, `CARR`, `yardBlocks(self,b)`, `anchorFree`, `placeAt` ; pont droit : `ZF` seulement ; aiguillage en amont `back` : gare ou zone à marche arrière, issue #38 ; essai `node tools/yard-zone.js <site> <zone> [back]`).
 
 Règle de retenue : appareil hors de P (ou manœuvre de garage), la dernière zone d'attente avant l'appareil (`HOLD_Z`, `engine/voies/garage.js`) retient le train
 

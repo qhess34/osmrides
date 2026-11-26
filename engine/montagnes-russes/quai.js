@@ -5,7 +5,7 @@
    avant le quai) ; le débarquement se fait de l'autre côté. Priorité GAME.site > SITE.loadSide > déduction (|écart| de moins de 0,5 m : indécis, +1). */
 const LS_D=(()=>{const V=SITE.board&&SITE.board.via;if(!V||!V.length)return null;const f=frameAt(S_ST-CAR/2,mkF()),q=V[V.length-1],d=f.R.x*(q[0]-f.p.x)+f.R.z*(q[1]-f.p.z);return Math.abs(d)<.5?null:d>0?1:-1;})();
 const LS=SITE.loadSide||LS_D||1;
-const DEDUIT={dropAfter:D_DROP,holdBack:TAG.fin!=null?+(L-TAG.fin).toFixed(1):null,loadSide:LS_D}; // éditeur : déduit (null = non déductible)
+const DEDUIT={dropAfter:D_DROP,loadSide:LS_D}; // éditeur : déduit (null = non déductible)
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
 // Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
 // (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m) ou rebord de la gouttière de gare d'un bob (BOB_RIM), + 8 cm de jeu ; SITE.plat.edge pour forcer.

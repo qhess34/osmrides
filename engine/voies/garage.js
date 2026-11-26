@@ -1,6 +1,6 @@
 'use strict';
 /* Gare de triage générique (SITE.yard) — règles communes : docs/manoeuvres.md.
-   Point de raccordement sur le circuit (zone d'attente quelconque : gare, frein de bloc, frein final, frein avant gare ; issue #36), appareil de voie (aiguillage à 2 positions ou pont transbordeur
+   Point de raccordement sur le circuit (zone d'attente quelconque : gare ou zone de freinage ; issue #36), appareil de voie (aiguillage à 2 positions ou pont transbordeur
    à N positions), voies de garage. Chaque voie k a son propre chemin : circuit jusqu'à SW_A, tronçon de transfert (courbe
    en S de SW_A jusqu'au début de la voie), puis la voie. Un train hors circuit (st==='garage') a une voie t.lane et une
    abscisse t.g (avant du train, 0 = point de raccordement), t.mv = +1 avance, -1 recule, 0 arrêté.
@@ -125,7 +125,7 @@ function trFrame(t,k,o){ // pont droit : voiture k d'un train sur le chariot ou 
    en attente avant » ; issue #36 : règle uniforme, quelle que soit la zone) : appareil hors de P, ou manœuvre de garage en cours, la DERNIÈRE zone d'attente avant
    l'appareil (HOLD_Z) retient le train. Candidates : la zone de raccordement YZ, puis chaque zone d'attente (WZ, ordre du circuit) dont le point d'arrêt est après celui
    de YZ (gare : après que le train l'a quittée, ANCH + VL) et à plus de 0,5 m avant l'appareil (SW_A). Si HOLD_Z est la gare, « retenir » = refuser le départ
-   (blockReason) ; sinon la zone garde le train freiné (frein de bloc : cantonnement, frein final / frein avant gare : leur attente). Pont transbordeur droit : le
+   (blockReason) ; sinon la zone garde le train freiné (zone suivie d'un canton : cantonnement ; dernières zones : attente de la section suivante). Pont transbordeur droit : le
    train est retenu avant le chariot quand aucun rail n'est en ligne (S_PRE, circIn), HOLD_Z = null. DEV_HOLD : indice du frein de bloc HOLD_Z, sinon -1 (compatibilité). */
 // distances mesurées vers l'aval depuis ANCH (dnS) : aiguillage en amont (yard.back), l'appareil est un tour de circuit plus loin, la zone de raccordement ne retient donc pas (issue #38)
 const HOLD_Z0=TRAV?null:WZ.reduce((h,z)=>{const d=dnS(ANCH,zStop(z));return z!==YZ&&d>(YZ==='St'?VL:0)&&d<dnS(ANCH,SW_A)-.5&&(h===YZ||d>dnS(ANCH,zStop(h)))?z:h;},YZ);const HOLD_Z=HOLD_Z0===YZ&&LBK&&YZ!=='St'?'St':HOLD_Z0,HOLD_S=HOLD_Z?zStop(HOLD_Z):null;
@@ -134,9 +134,9 @@ const nearDev=o=>TRAV?onCar(o):o.st==='garage'&&o.g-VL<LANES[o.lane].dev+.5;   /
 const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // train qui occupe ou va occuper le point de raccordement
 /* Cantonnement et garage (propriétaire, 2026-11-17 : « la présence d'un train sur le chariot doit bloquer les sections précédentes uniquement si le chariot est sur le parcours ») :
    pont droit, le train porté (ou qui entre / sort d'une voie) ne compte dans le dernier canton que si le rail porteur est en place sur le circuit (PC : G, ou P pour un rail unique).
-   Chariot face à une voie ou en mouvement : il ne bloque pas ; le train qui arrive est alors retenu au frein final avant le pont (aucun rail en ligne, circIn), jamais dans le vide. */
+   Chariot face à une voie ou en mouvement : il ne bloque pas ; le train qui arrive est alors retenu à la zone de freinage avant le pont (aucun rail en ligne, circIn), jamais dans le vide. */
 // Canton qui mène à la zone de raccordement (issue #36) : se termine à son point d'arrêt (frein de bloc k : canton du frein k-1 ou du lift), ou à la fin du circuit
-// (frein final, frein avant gare : dernier canton, blkEnd = L). Un train de garage qui occupe ou va occuper le raccordement (yardBusy) occupe CE canton (b = fin du canton testé, absent : ce canton) ; gare : stationBusy.
+// (dernières zones de freinage : dernier canton, blkEnd = L). Un train de garage qui occupe ou va occuper le raccordement (yardBusy) occupe CE canton (b = fin du canton testé, absent : ce canton) ; gare : stationBusy.
 const Y_CEND=YZ==='St'?null:ATT[YZ].bloc?ANCH:L;
 const yardBlocks=(self,b)=>Y_CEND!=null&&(b==null||(Y_CEND>=L?b>=L:Math.abs(b-Y_CEND)<.01))&&(!TRAV||(!devMoving()&&G.dev.pos===PC))&&VEHICULES.some(o=>o!==self&&yardBusy(o));
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-VL<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
@@ -213,8 +213,8 @@ function updateYard(t,dt){
     else if(t.g<=m+1e-6){t.mv=0;log(t.name+' arrêté avant '+DEVL+(devOn(t.lane)?' : '+ANCH_NAME+' n\'est pas libre.':' : il n\'est pas en place.'),'warn');}}
 }
 /* « Envoyer le train » d'une voie de garage (propriétaire, issues #11 et #61) : un seul bouton par voie, le moteur choisit le sens d'après la position de l'appareil.
-   Appareil en place sur la voie j : train arrêté en cours d'entrée → il reprend l'entrée ; train prêt sur la zone porteuse (train vide à quai / sur le frein final,
-   ou train sur le chariot d'un pont droit) et place dans la voie → il entre ; sinon le train de tête de la voie sort vers l'appareil (rail du pont, gare, frein final).
+   Appareil en place sur la voie j : train arrêté en cours d'entrée → il reprend l'entrée ; train prêt sur la zone porteuse (train vide à quai / sur la zone de freinage,
+   ou train sur le chariot d'un pont droit) et place dans la voie → il entre ; sinon le train de tête de la voie sort vers l'appareil (rail du pont, gare, zone de freinage).
    Freins des voies automatiques (aucun bouton de frein, issue #61), arrêt automatique en fin de mouvement ; verrouillages de yardFwd / yardBack inchangés. */
 function laneDispatch(j){
   const N=zName('L'+(j+1));

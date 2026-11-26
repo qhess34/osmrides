@@ -42,7 +42,7 @@ const ROOFB=(()=>{ // BLD_H : engine/noyau/carte.js
       for(const e of [-hw,0,hw])if(pipXZ(b.p,q.x+f.R.x*e,q.z+f.R.z*e)){if(q.y<b.h+clr)return false;hit=1;}}
     return hit;});})(),roofH=(x,z)=>{for(const b of ROOFB)if(x>b.bb[0]&&x<b.bb[1]&&z>b.bb[2]&&z<b.bb[3]&&pipXZ(b.p,x,z))return b.h;return 0;};
 // Gouttière étroite d'un bob (propriétaire, issue #6, générique kind:'bob') : là où la voie n'est pas inclinée — gare (st0 → st1 et toute la longueur des quais), lift (lift0 → lift1),
-// zones de freinage (freins de bloc : patins BZ0 → point d'arrêt et train arrêté derrière ; frein final S_BRK → S_HOLD ; frein avant gare ; rail du pont droit R0 → R1)
+// zones de freinage (freins de bloc : patins BZ0 → point d'arrêt et train arrêté derrière ; ZF S_BRK → S_HOLD ; ZP ; rail du pont droit R0 → R1)
 // et voies de garage — la gouttière est rétrécie au gabarit du wagon (demi-largeur SITE.car.w/2 + BOB_RIM, engine/garage.js, ESTIMÉ) : le train touche le quai.
 // Raccord progressif (courbe en S) sur TRN m à chaque extrémité. TRF(s) = facteur de largeur (1 = gouttière inclinée du parcours, demi-largeur 1,15 m). TRN = 3 m, ESTIMÉ.
 const TRN=3,TRGAP=2*TRN+4,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DECKW/2)):1,TRF=(()=>{if(!BOB)return ()=>1;const Q=Object.assign({back:1.5,front:1.6},SITE.plat),fn=TRFN,
@@ -65,7 +65,7 @@ const inSweep=(x,z,r,pit)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*
   const lim=SW_D+1.5+r;return SWP.some(q=>Math.hypot(q[0]-x,q[1]-z)<lim);};
 /* Poteaux de la voie (issue #20, propriétaire : « il manque les supports sur la dernière partie avec les zones de freinage ») : une voie inversée ou acier (INV, STL)
    reçoit ses supports dès qu'elle est à plus de 1,5 m au-dessus du sol ou du toit survolé (yg), et non plus seulement 1,5 m au-dessus de la GARE : sur OzIris
-   la gare est à 4 m (train suspendu), donc frein final, rail du pont et attente avant gare (4 m) n'en avaient aucun. Exclus : l'emprise de la gare (voie tenue par
+   la gare est à 4 m (train suspendu), donc les dernières zones de freinage et le rail du pont (4 m) n'en avaient aucun. Exclus : l'emprise de la gare (voie tenue par
    le bâtiment), le tronçon porté par l'appareil de voie (sm.dev) et l'espace qu'il balaie (inSweep). Coaster inversé : poteau du côté libre (l'autre si le premier
    tombe dans l'espace balayé, une voie de garage ou sur une voie plus basse), aucun si les deux côtés sont pris. Bois et bob : inchangés. */
 const STPL=STATION_GROW||SITE.stationPoly||[],poleFree=(x,z,y,s,low)=>{if(STPL.length>2&&pipXZ(STPL,x,z)||inSweep(x,z,.3))return false;if(!low)return true;
@@ -147,9 +147,9 @@ const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[
   const lc0=Math.round(S_LIFT0/DS),lc1=Math.round((S_LIFT1+3)/DS);
   for(let c=0;c<cl.length-1;c++){const a=Math.max(cl[c],lc0),b=Math.min(cl[c+1],lc1);if(a>=b)continue;const P=new Path2D;for(let i=a;i<=b;i++){const p=TR[i%N].p;i>a?P.lineTo(p.x,p.z):P.moveTo(p.x,p.z);}chunks[c].ch=P;}
   const zc=id=>ZONES.find(z=>z.id===id)||{};
-  // zones de freinage dessinées (gare, freins de bloc ≈ 9 m de patins avant le point d'arrêt (estimé), frein final, rail du circuit du pont droit, frein avant gare) ; moteurs : SITE.zones … drive
+  // zones de freinage dessinées (gare, freins de bloc ≈ 9 m de patins avant le point d'arrêt (estimé), ZF, rail du circuit du pont droit, ZP) ; moteurs : SITE.zones … drive
   BZ.push({id:'St',r0:S_ST-TLEN+.4,r1:S_ST-.2});BLK.forEach((b,i)=>BZ.push({id:'B'+(i+1),r0:BZ0[i],r1:b}));
-  BZ.push({id:'Fin',r0:S_BRK+3,r1:TRAV?S_PRE+.4:S_HOLD});if(TRAV)BZ.push({id:ZR,r0:R0+.3,r1:R1-.3});if(PSB)BZ.push({id:'Pre',r0:PSB_A+1,r1:S_PSB});
+  BZ.push({id:ZF,r0:S_BRK+3,r1:TRAV?S_PRE+.4:S_HOLD});if(TRAV)BZ.push({id:ZR,r0:R0+.3,r1:R1-.3});if(PSB)BZ.push({id:ZP,r0:PSB_A+1,r1:S_PSB});
   if(TRAV&&!SG)BZ.push({id:'RB',r0:0,r1:0,car:1});
   for(const z of BZ)z.drive=!!zc(z.id).drive;
   LANES.forEach((_,j)=>BZ.push({id:'L'+(j+1),lane:j,drive:true})); // voies de garage : freins et pneus (Dispatch) sur toute la voie, comme le circuit (issue #16 ; disposition ESTIMÉE)
