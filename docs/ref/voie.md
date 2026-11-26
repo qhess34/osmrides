@@ -38,10 +38,12 @@ Voies décoratives (issue #33, propriétaire 20/11) : tout tronçon `roller_coas
 
 ## Rendu de la voie
 
-Rendu : chaîne du lift (taquets qui défilent à la vitesse `CHAINE.v` de la chaîne entraînée, immobiles à l'arrêt : AUTO / MANU, `docs/manoeuvres.md`, issue #60) et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
+Rendu : chaîne du lift (taquets clairs qui défilent quand la chaîne est entraînée, immobiles à l'arrêt : AUTO / MANU, `docs/manoeuvres.md`, issue #60) et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
 
 - un wagon est dessiné après le plus haut tronçon qu'il couvre (`osmrides_parks/docs/NOUVELLE-ATTRACTION.md` §3).
 
 ## Gare droite
 
 Gare droite (issue #43) : voie entre `st0` et `st1` redressée en plan sur sa corde si elle s'en écarte de moins de 0,6 m (ESTIMÉ, `engine/core.js`). Garage : tronçon `OSM.others` qui suit une voie de garage non redessiné (`onYard`), remise au-dessus d'une voie de garage à toit opaque effacé comme celui de la gare (zoom, « Toits », « Masquer la gare » ; `b.yd`, `engine/render.js`).
+
+**Lisibilité sur téléphone (issue #67, `dessin.js`, animation seulement, physique inchangée)** : tout ce que le pupitre commande se voit sur la carte, quelle que soit l'échelle. Dimensions de ces dessins fixées **en pixels** (au moins) et non en mètres : mâchoires (écartement, garnitures, carters) ; roues (disque, deux rayons clairs) ; chaîne (largeur, maillons) et taquets (pas ≥ 26 px, largeur ≥ 4 px). De loin (`cam.s` < 3,2) un trait par unité dont la couleur donne l'état : brique = freins serrés, gris = relâchés ; roues vert sourd = entraînées, gris = arrêtées. Les mâchoires passent du gris au brique avec `BZS[z].c` (serrage lissé, `brakeState`) ; les roues tournent (`BZS[z].a`, 6 rad/s au plus) tant qu'un train roule dans la zone ou y est poussé (`bgo`, `fdrive`) et s'arrêtent freins serrés ; les taquets avancent à la phase visuelle `CHAINE.pv` (la vitesse de la chaîne, au moins 34 px/s à l'écran). Essai : `tools/pupitre-visible-test.js`.

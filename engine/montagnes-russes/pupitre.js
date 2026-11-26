@@ -32,7 +32,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
 /* Pupitre par zones (docs/manoeuvres.md, « Commandes au pupitre par zones ») : Gare, Lift, Zones de freinage, Garage. Audit #58 / #61 : un bouton = un effet visible ;
    colonnes Mode | Freins | Moteurs ; plus de STOP en double des freins, plus d'AR, plus de freins de voie ; libellés en toutes lettres, cibles tactiles ≥ 36 px (téléphone). */
 {const zb=(z,c,cls,txt,ti)=>`<button class="pb sq sm ${cls}" id="z${z}_${c}" data-act="zone" data-arg="${z}:${c}" title="${ti}">${txt}</button>`,E='<span></span>';
-  document.head.insertAdjacentHTML('beforeend','<style>#deskZones .zrow{grid-template-columns:1.6fr repeat(3,minmax(0,1fr))}#deskZones .zrow button.pb.sm{width:100%;max-width:84px;height:36px;padding:0 3px;font-size:9.5px;letter-spacing:.4px;border-width:2px}#deskZones .zrow .wide,#deskZones .zrow button.pb.sm.wide{grid-column:2/-1;max-width:none;justify-self:stretch}</style>');
+  document.head.insertAdjacentHTML('beforeend','<style>#deskZones .zrow{grid-template-columns:1.6fr repeat(3,minmax(0,1fr))}#deskZones .zrow button.pb.sm{width:100%;max-width:84px;height:36px;padding:0 3px;font-size:9.5px;letter-spacing:.4px;border-width:2px}#deskZones button.pb:disabled{opacity:.42;filter:grayscale(.85) brightness(.85);box-shadow:none;cursor:not-allowed}#deskZones .zrow .wide,#deskZones .zrow button.pb.sm.wide{grid-column:2/-1;max-width:none;justify-self:stretch}</style>');
   const nm=Z=>`<div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>`;
   const head=`<div class="zrow"><span></span><span class="plate">Mode</span><span class="plate">Freins</span><span class="plate">Moteurs</span></div>`;
   const row=Z=>{const z=Z.id;
@@ -80,7 +80,7 @@ extension({nom:'montagnes-russes',
   for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z===ZF||z===ZP)&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
     if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : allumé pendant un mouvement
-    if(z==='Lift'){const m=$('zLift_m'),b=$('zLift_t');m.classList.toggle('lit',!!G.liftM);m.textContent=G.liftM?'MANU':'AUTO';b.disabled=!G.liftM;b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftM&&G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt
+    if(z==='Lift'){const m=$('zLift_m'),b=$('zLift_t');m.classList.toggle('lit',!!G.liftM);m.textContent=G.liftM?'MANU':'AUTO';b.disabled=!G.liftM;b.title=G.liftM?'Moteurs du lift (MANU) : mettre la chaîne à l\'arrêt ou en marche (le train sur le lift y reste)':'Grisé en AUTO : la chaîne suit les trains ; passez en MANU pour la commander';b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftM&&G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt
     if(z==='St'){$('zSt_fr').textContent=stHeld()?'Freins serrés':'Freins libres';continue;}
     const man=!Z.auto||!!G.zm[z];
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}

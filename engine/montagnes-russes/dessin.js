@@ -233,28 +233,30 @@ function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu o
     if(!ts.length&&!cl)cl=z.id==='St'||z.lane!=null||!!nextBusy(z.id,null); // voie vide : freins serrés
     if(dt>0&&b.cl!==undefined&&b.cl!==!!cl&&z.id!=='St'&&z.lane==null){const q=z.r0!=null?frameAt((z.r0+z.r1)/2,_bf).p:null;cl?sfx.brakeOn(q&&q.x,q&&q.z):sfx.brakeOff(q&&q.x,q&&q.z);} // son : serrage (claquement) / desserrage (air)
     b.cl=!!cl;
-    if(dt>0){b.c=lerp(b.c,cl?1:0,Math.min(1,dt*6));if(z.drive)b.a+=Math.min(8,Math.max(0,...ts.map(tSp)))/.2*dt;}}
-  if(dt>0)for(const t of trains)PV.set(t,t.v);
+    if(dt>0){b.c=lerp(b.c,cl?1:0,Math.min(1,dt*6));if(z.drive){const sp=Math.max(0,...ts.map(tSp)),dr=ts.some(t=>t.bgo||t.fdrive||t.entering||t.toPre);b.dr=sp>.05||dr;if(b.dr)b.a+=Math.min(6,Math.max(sp/.2,dr?3:0))*dt;}}} // roues : rotation visible (6 rad/s au plus, 3 au moins si poussé), animation seulement
+  if(dt>0){CHAINE.pv+=CHAINE.v*Math.max(1,34/Math.max(.5,cam.s*LIFT_V))*dt;for(const t of trains)PV.set(t,t.v);} // phase visuelle de la chaîne : au moins ~34 px/s à l'écran (téléphone), la physique ne change pas
 }
 function drawBU(o){
-  const s=cam.s;if(!o.bu.length||s<1.1)return;
-  const far=s<3.2,flt=G.brakeFault&&Math.sin(clock*9)>0;
-  for(const u of o.bu){const b=BZS[u.id]||{c:1,a:0},X=(a,v)=>u.x+u.tx*a+u.nx*v,Z=(a,v)=>u.z+u.tz*a+u.nz*v;
+  const s=cam.s;if(!o.bu.length||s<.5)return;
+  const far=s<3.2,flt=G.brakeFault&&Math.sin(clock*9)>0,mx=(a,b,k)=>{const h=c=>[1,3,5].map(i=>parseInt(c.slice(i,i+2),16)),A=h(a),B=h(b);return 'rgb('+A.map((v,i)=>Math.round(v+(B[i]-v)*k))+')';};
+  for(const u of o.bu){const b=BZS[u.id]||{c:1,a:0},c=clamp(b.c,0,1),X=(a,v)=>u.x+u.tx*a+u.nx*v,Z=(a,v)=>u.z+u.tz*a+u.nz*v;
     const quad=(a0,a1,v0,v1)=>{ctx.beginPath();ctx.moveTo(X(a0,v0),Z(a0,v0));ctx.lineTo(X(a1,v0),Z(a1,v0));ctx.lineTo(X(a1,v1),Z(a1,v1));ctx.lineTo(X(a0,v1),Z(a0,v1));ctx.closePath();ctx.fill();};
     const disc=(a,v,r)=>{ctx.beginPath();ctx.arc(X(a,v),Z(a,v),r,0,7);ctx.fill();};
-    const c0=INV?.62:0,sides=INV?[-1,1]:[0]; // inversé : de part et d'autre de la poutre
-    if(far){ctx.fillStyle='rgba(44,46,50,.8)';for(const e of sides)quad(-.22,.22,e*c0-.16,e*c0+.16);continue;}
+    const c0=INV?.62:0,sides=INV?[-1,1]:[0],px=1/s;
+    if(far){ // de loin : un trait dont la couleur dit l'état (patins : sourd gris = relâchés, brique = serrés ; pneus : gris = arrêtés, vert sourd = entraînés)
+      ctx.fillStyle=u.ty?(b.dr?'#5d8467':'#3d4046'):mx('#4a4d53','#a2574b',c);const w=Math.max(.2,2.2*px),l=Math.max(.3,3*px);for(const e of sides)quad(-l,l,e*c0-w,e*c0+w);continue;}
     if(u.ty){ // roues de propulsion
-      if(BOB){ctx.fillStyle='#151618';quad(-.26,.26,-.11,.11);ctx.fillStyle='#3a3c40';const ph=(b.a*.2)%.13;for(let a=-.26+ph;a<.26;a+=.13)quad(a,a+.035,-.11,.11);continue;} // pneu à axe horizontal, rainures qui défilent
-      for(const e of sides){const cx=e*c0;ctx.fillStyle='#3b3f45';quad(-.12,.12,cx-.62,cx-.46);quad(-.12,.12,cx+.46,cx+.62); // moto-réducteurs
-        for(const w of [-1,1]){const v=cx+w*.24,an=b.a*w;ctx.fillStyle='#151618';disc(0,v,.2);ctx.fillStyle='#5f6368';disc(0,v,.085);
-          ctx.fillStyle='#2a2c30';for(let j=0;j<3;j++){const q=an+j*2.094;disc(Math.cos(q)*.055,v+Math.sin(q)*.055,.018);}}}
+      if(BOB){ctx.fillStyle='#151618';quad(-.26,.26,-.11,.11);ctx.fillStyle=b.dr?'#8c8f86':'#4a4c50';const g=Math.max(.13,1.6*px),ph=(b.a*.2)%g;for(let a=-.26+ph;a<.26;a+=g)quad(a,a+g*.4,-.11,.11);continue;} // pneu à axe horizontal, rainures qui défilent
+      const r=clamp(2.8*px,.2,.27),sp=Math.max(.24,r+.03);
+      for(const e of sides){const cx=e*c0;ctx.fillStyle='#3b3f45';quad(-.12,.12,cx-.66,cx-.46);quad(-.12,.12,cx+.46,cx+.66); // moto-réducteurs
+        for(const w of [-1,1]){const v=cx+w*sp,an=b.a*w;ctx.fillStyle='#151618';disc(0,v,r);ctx.fillStyle='#5f6368';disc(0,v,r*.42);
+          ctx.strokeStyle=b.dr?'#b3b09f':'#7a7c80';ctx.lineWidth=Math.max(.045,1.3*px);ctx.beginPath();for(let j=0;j<2;j++){const q=an+j*Math.PI;ctx.moveTo(X(Math.cos(q)*r*.2,v+Math.sin(q)*r*.2),Z(Math.cos(q)*r*.2,v+Math.sin(q)*r*.2));ctx.lineTo(X(Math.cos(q)*r*.92,v+Math.sin(q)*r*.92),Z(Math.cos(q)*r*.92,v+Math.sin(q)*r*.92));}ctx.stroke();}} // deux rayons clairs qui tournent
       continue;}
-    const g=lerp(.19,.035,clamp(b.c,0,1)); // demi-écartement des patins : écartés (freins relâchés) ou serrés contre l'ailette
+    const g=lerp(Math.min(.6,Math.max(.22,6*px)),.035,c),th=Math.max(.05,1.4*px),ca=Math.max(.11,2.4*px); // demi-écartement des patins : écartés (freins relâchés) ou serrés contre l'ailette (valeurs relevées en pixels : lisible à l'échelle d'un téléphone)
     for(const e of sides){const cx=e*c0;
-      ctx.fillStyle='rgba(52,54,58,.85)';quad(-.3,.3,cx-.33,cx+.33); // traverse de fixation
-      ctx.fillStyle='#6b6258';quad(-.24,.24,cx+g,cx+g+.05);quad(-.24,.24,cx-g-.05,cx-g); // garnitures
-      ctx.fillStyle=u.id===ZF&&flt?'#7a2e28':'#2c2e33';quad(-.2,.2,cx+g+.05,cx+g+.16);quad(-.2,.2,cx-g-.16,cx-g-.05);} // carters des mâchoires
+      ctx.fillStyle='rgba(52,54,58,.85)';quad(-.3,.3,cx-g-ca-.2,cx+g+ca+.2); // traverse de fixation
+      ctx.fillStyle=mx('#6b6258','#b0624f',c);quad(-.26,.26,cx+g,cx+g+th);quad(-.26,.26,cx-g-th,cx-g); // garnitures : brique quand serrées
+      ctx.fillStyle=u.id===ZF&&flt?'#7a2e28':mx('#2c2e33','#5a2f2a',c);quad(-.2,.2,cx+g+th,cx+g+th+ca);quad(-.2,.2,cx-g-th-ca,cx-g-th);} // carters des mâchoires
   }
 }
 function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
@@ -498,7 +500,7 @@ extension({nom:'montagnes-russes',
       ctx.strokeStyle='#2b2b30';lw(.17,.9);ctx.stroke(o.rail);
     }
     if(!INV)drawBU(o);
-    if(o.ch){ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(o.ch);ctx.setLineDash([]);
-      if(CHAINE.v>.01){ctx.strokeStyle='#8a8d92';lw(.3,1);ctx.setLineDash([.28,1.72]);ctx.lineDashOffset=-(CHAINE.ph%2);ctx.stroke(o.ch);ctx.setLineDash([]);ctx.lineDashOffset=0;}} // chaîne du lift ; taquets qui défilent (seulement entraînée)
+    if(o.ch){const px=1/s,pit=Math.max(3,26*px),dl=Math.max(.45,4*px);ctx.lineCap='butt';ctx.strokeStyle='#17181b';ctx.lineWidth=Math.max(.34,3*px);ctx.setLineDash([Math.max(.5,3.5*px),Math.max(.3,2*px)]);ctx.stroke(o.ch); // chaîne : maillons sombres
+      ctx.strokeStyle=CHAINE.v>.01?'#cbc5b0':'#9c9889';ctx.lineWidth=Math.max(.5,4.4*px);ctx.setLineDash([dl,pit-dl]);ctx.lineDashOffset=-(CHAINE.pv%pit);ctx.stroke(o.ch);ctx.setLineDash([]);ctx.lineDashOffset=0;} // taquets (chiens) clairs, plus larges que la chaîne : ils défilent avec elle, immobiles si elle est arrêtée
     if(k)ctx.restore();return true;},
   surQuai:k=>onPlat(k)}); // marcheur dessiné avec les personnes du quai
