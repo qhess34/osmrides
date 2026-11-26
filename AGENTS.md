@@ -12,7 +12,8 @@
 - **Commande par zones, jamais par train** ; portillons et sécurités au bouton seulement ; barrières de file posées à la main.
 - **Visiteurs** : seulement sur les chemins, seulement par les barrières ouvertes, jamais l'un sur l'autre, face à leur marche.
 - **Générique, KISS, lisible** : aucune coordonnée ni texte propre à un lieu dans `engine/` ou `editor/` ; ce qui est propre aux parcs ou au ski est codé dans leur dépôt (#51).
-- Vocabulaire : lapbars, portillons, pupitre, frein final, canton, aiguillage, pont transbordeur.
+- **Pas de « frein final » ni de « frein avant gare »** (propriétaire, 26/11) : ces notions n'existent pas ; il n'y a que des zones de freinage ordinaires (freins de bloc), toutes identiques au pupitre et dans l'éditeur. Aucun nouveau texte, bouton ou réglage ne les distingue ; l'existant (`Fin`, `Pre`, `holdBack`) se supprime avec #57 point 4.
+- Vocabulaire : lapbars, portillons, pupitre, zone de freinage, canton, aiguillage, pont transbordeur.
 
 ## Organisation du code
 
