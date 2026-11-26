@@ -15,6 +15,8 @@ Architecture, séparation des données et décisions : `docs/ARCHITECTURE.md`. H
 - Aucune donnée perdue : une attraction existante s'ouvre, se corrige, se sauvegarde et se rejoue ; ce que l'éditeur ne sait pas encore éditer reste intact.
 - Données OSM, corrections locales d'OSM, données du jeu et données calculées restent séparées (`ARCHITECTURE.md` §2).
 - Aucun envoi à OSM, aucun commit ou push sans action explicite de l'utilisateur.
+- **Réglages de l'éditeur : uniquement du WYSIWYG** (propriétaire, 26/11) : sélection et déplacement sur la carte, pas de valeur numérique à saisir ; une fenêtre au clic ne contient que des actions.
+- **Barrières OSM ignorées** (propriétaire, 26/11) : seules existent pour le moteur les barrières posées dans l'éditeur.
 - Modèles : **Haiku 5.5** (recherches, tests, tâches répétitives), **Sonnet 5.5** (l'essentiel du développement), **Opus 5.5** (arbitrages d'architecture, moteur), **Fable 5.2** seulement sur demande.
 
 ## Lots
@@ -102,7 +104,28 @@ Chemin critique vers l'autonomie : 1 → 2 → 4 → 7 → 8. Les lots 3, 5, 9 p
 
 - Nouveau module de simulation sans voie (cycles, nacelles). Opus, élevée.
 
+## Versions publiées du moteur et suite (26/11/2026)
+
+Le moteur est publié par version (`docs/versions.md`, D13) ; une issue `inter-equipe` prévient chaque chef de jeu.
+
+| Versions | Contenu | Issues |
+|---|---|---|
+| 0.3.0 à 0.5.0 | réglages d'exploitation et freins par zone, horaires par lieu, hauteurs du circuit (`GAME.profile`), couleurs de voie | #53 (lots 1 et 2), #55 |
+| 0.6.0 | pont transbordeur par champs numériques : **à remplacer** par #64 (WYSIWYG) | #53 (lot 3) |
+| 0.7.0 | `lap` mesuré en jeu ; `text`, `strike`, `dropAfter` retirés de l'éditeur | #57 (point 2) |
+| 0.7.1 à 0.7.4 | reprise de partie, barrière de fourche, fin d'orage, barrière fermée en évacuation, « Départ » vers le garage | #58 (bugs 1 à 3), #59, #62 |
+
+**À faire, dans l'ordre**
+1. **#64** (0.8.0) : rails `moving` en WYSIWYG : positions enregistrées en déplaçant le rail et nommées, magnétisme, chariot généré, verrouillage de deux rails (Zeus), tag « non connecté » (Hourra). Remplace les champs de 0.6.0 et le point 5 de #58.
+2. **#61** : garages sans freins manuels, un seul bouton « Envoyer le train » ; avec l'audit du pupitre de **#58** (points 6 à 9 : boutons en double, AR du lift, bouton F).
+3. **#60** : lift animé, AUTO (démarre un peu avant l'arrivée du train, rampes) ou MANU (marche / arrêt).
+4. **#57** (points 3 à 7) : quais en WYSIWYG lus dans OSM et renvoyables ; fenêtres au clic ; page du lieu ; hauteurs choisies sur le circuit ; caméras en WYSIWYG ; réimport sélectif (= lot 7, à suivre avec #54).
+5. **#63** : matière des tunnels lue dans OSM (tag `material`), réglable dans l'éditeur et renvoyée vers OSM.
+6. **#56** : plusieurs éléments par page (mode « un élément » conservé ; éléments non commandés dans l'état laissé par le joueur, passables en auto ; rôle par lieu avec des types d'objectifs différents) : note de conception.
+7. **#54** : création d'une attraction depuis OSM dans l'éditeur (lots 7 et 8).
+
 ## Décisions du propriétaire
 
 - 2026-11-17 — **Barrières** : relèvent du jeu ; le nœud OSM `barrier=*` ne donne que la position initiale, la position finale est celle de l'éditeur.
 - 2026-11-17 — **Salle de contrôle** : une seule par attraction, celle du pupitre (poste de conduite). Postes d'aiguillage et autres locaux : plus tard.
+- 2026-11-26 — **Éditeur** : uniquement du WYSIWYG, pas de valeur à saisir (rails `moving` : positions enregistrées en déplaçant le rail). **Barrières OSM** ignorées. **Usure** : pas de changement (retour à 0 % au garage voulu). **« Départ »** envoie le train hors de la gare, vers le garage ou le circuit selon l'aiguillage. **Lift** : AUTO ou marche / arrêt en MANU, démarrage et arrêt progressifs. **Questions au propriétaire** : dans le chat, pas dans des issues.

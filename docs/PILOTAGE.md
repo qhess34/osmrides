@@ -15,7 +15,8 @@ Il remplace l'historique des conversations : une nouvelle session doit pouvoir r
 ## Fonctionnement par issues
 
 - Dépôt `qhess34/osmrides`. Chaque demande ou bug = **une issue** (titre court, besoin, attraction, critères de fin, étiquette : `attraction`, `moteur`, `osm`, `bug`, `question`, `docs`, `test-reel`). Les captures envoyées par le propriétaire sont décrites dans l'issue (ou copiées dans `docs/sources/` et référencées).
-- Les questions au propriétaire sont posées dans une issue `question` ; il peut y répondre depuis GitHub.
+- Les questions au propriétaire sont posées **dans le chat** (décision du 26/11), plus dans des issues `question` ; ses réponses sont recopiées dans l'issue concernée.
+- À chaque issue `inter-equipe` ouverte chez un autre chef, le prévenir par un message de session d'une ligne (numéro seulement). Fermer les issues livrées (commentaire de clôture) ; demander le même ménage aux autres chefs.
 - Réalisation : **une session neuve par issue** (ou petit lot d'issues liées), créée avec `create_session` sur la branche de travail, ou un sous-agent du dépôt (`.claude/agents/`) si la tâche est petite. La session lit l'issue, `AGENTS.md` et les fichiers concernés, rien d'autre.
 - Choix du modèle : `testeur`/`explorateur` = Haiku ; `attraction` (corrections dans `lieux/parc/asterix/*.js`, specs, docs) = Sonnet ; `moteur` (`engine/*.js`, générique, revérifie les 4 attractions) = **Sonnet par défaut** (propriétaire 21/11, économie de tokens) ; Opus (`model: 'opus'` à l'appel) seulement pour une tâche difficile (garage, manœuvres, cantonnement) ou à la demande du propriétaire. Fable seulement si le propriétaire le demande.
 - Consignes aux agents : donner fichiers, fonctions et sections à lire (repérés par `grep -n` du pilote), pour qu'ils ne cherchent pas eux-mêmes. Pas de testeurs en parallèle : l'agent teste lui-même, une attraction après l'autre. Mesure : #45 (éditeur, Opus) ≈ 180 000 tokens.
