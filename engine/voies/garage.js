@@ -140,7 +140,7 @@ const yardBusy=o=>o.st==='garage'&&(nearDev(o)||(o.mv<0&&devOn(o.lane))); // tra
 const Y_CEND=YZ==='St'?null:ATT[YZ].bloc?ANCH:L;
 const yardBlocks=(self,b)=>Y_CEND!=null&&(b==null||(Y_CEND>=L?b>=L:Math.abs(b-Y_CEND)<.01))&&(!TRAV||(!devMoving()&&G.dev.pos===PC))&&VEHICULES.some(o=>o!==self&&yardBusy(o));
 const onRail=o=>o.st==='run'&&o.s>R0-2.5&&o.s-VL<R1&&!(o.v===0&&o.s<R0); // pont droit : train du circuit sur le chariot ou qui y roule
-/* ══════════ MANŒUVRES DE GARAGE (docs/manoeuvres.md) : Avancer, Reculer, Dispatch d'une voie ══════════ */
+/* ══════════ MANŒUVRES DE GARAGE (docs/manoeuvres.md) : entrée, sortie, « Envoyer le train » d'une voie ══════════ */
 const refuse=msg=>{log(msg,'warn');return false;};
 // véhicule à l'arrêt au point de raccordement (zone YZ, issue #36) : à l'arrêt (gare), selon le type (aQuai) ; sinon arrêté au point d'arrêt ANCH de la zone
 const atAnchor=t=>YZ!=='St'?(t.st==='run'&&t.v===0&&Math.abs(t.s-ANCH)<.4):fournit('aQuai',false,t);
@@ -202,7 +202,7 @@ function yardBack(t){
 }
 function updateYard(t,dt){
   if(!t.mv||G.estop)return;
-  {const z=zoneDe(t),l=t.lane>=0?'L'+(t.lane+1):'';const k=zK(z)?z:l&&zK(l)?l:'';if(k){t.mv=0;log(t.name+' arrêté : freins de '+zName(k)+' serrés.','warn');return;}} // freins forcés de la voie : ils arrêtent aussi le train qui y entre depuis la zone porteuse ou en sort
+  {const z=zoneDe(t);if(zK(z)){t.mv=0;log(t.name+' arrêté : freins de '+zName(z)+' serrés.','warn');return;}} // freins de la zone porteuse serrés au pupitre (les voies n'ont que des freins automatiques, issue #61)
   if(t.mv>0){const m=fwdLim(t);t.g=Math.min(m,t.g+MV.v*dt);
     if(t.g>=m-1e-6){t.mv=0;t.ld=0;log(t.g>=LANES[t.lane].stop-.05?t.name+' est garé en bout de '+posName(t.lane+1)+'.':t.name+' arrêté derrière le train garé devant lui.');}}
   else if(TRAV){const m=backLim(t);t.g=Math.max(m,t.g-MV.v*dt);
@@ -212,24 +212,23 @@ function updateYard(t,dt){
     if(t.g<=1e-6){t.g=0;t.mv=0;t.ld=0;t.seats.fill(null);appel('retourRaccord',t);} // revenu au raccordement : le type le remet dans sa zone
     else if(t.g<=m+1e-6){t.mv=0;log(t.name+' arrêté avant '+DEVL+(devOn(t.lane)?' : '+ANCH_NAME+' n\'est pas libre.':' : il n\'est pas en place.'),'warn');}}
 }
-/* Dispatch d'une voie de garage (propriétaire, issue #11) : un seul bouton par voie, le moteur choisit le sens d'après la position de l'appareil.
+/* « Envoyer le train » d'une voie de garage (propriétaire, issues #11 et #61) : un seul bouton par voie, le moteur choisit le sens d'après la position de l'appareil.
    Appareil en place sur la voie j : train arrêté en cours d'entrée → il reprend l'entrée ; train prêt sur la zone porteuse (train vide à quai / sur le frein final,
    ou train sur le chariot d'un pont droit) et place dans la voie → il entre ; sinon le train de tête de la voie sort vers l'appareil (rail du pont, gare, frein final).
-   Freins des voies automatiques (pas de bouton), arrêt automatique en fin de mouvement ; verrouillages de yardFwd / yardBack inchangés. */
+   Freins des voies automatiques (aucun bouton de frein, issue #61), arrêt automatique en fin de mouvement ; verrouillages de yardFwd / yardBack inchangés. */
 function laneDispatch(j){
   const N=zName('L'+(j+1));
-  if(G.estop)return refuse(N+' : Dispatch refusé, arrêt d\'urgence enclenché.');
-  if(zK('L'+(j+1)))return refuse(N+' : freins forcés serrés, relâchez-les (bouton F de la voie) avant le Dispatch.');
+  if(G.estop)return refuse(N+' : envoi refusé, arrêt d\'urgence enclenché.');
   if(devMoving())return refuse(N+' : '+DEVN+' en mouvement, attendez qu\'il soit en place.');
   if(!devOn(j))return refuse(N+' : '+DEVN+' n\'est pas en place sur cette voie : positionnez-le d\'abord sur '+posId(j+1)+'.');
   const inL=VEHICULES.filter(o=>o.st==='garage'&&o.lane===j);
   if(inL.some(o=>o.mv))return refuse(N+' : manœuvre déjà en cours.');
   const r=inL.find(o=>o.ld>0&&fwdLim(o)-o.g>.05);if(r)return yardFwd(r); // entrée interrompue : elle reprend
-  {const x=inL.find(o=>o.ld<0);if(x)return yardBack(x);} // sortie interrompue (freins forcés) : elle reprend
+  {const x=inL.find(o=>o.ld<0);if(x)return yardBack(x);} // sortie interrompue (arrêt d'urgence, freins de la zone porteuse) : elle reprend
   const e=VEHICULES.find(o=>!o.mv&&(TRAV?o.st==='garage'&&o.lane<0:atAnchor(o))),room=TRAV?!inL.length:inL.length<LANES[j].cap;
   if(e&&room){const z=zoneDe(e);if(zK(z))return refuse('Freins de '+zName(z)+' serrés : relâchez-les pour que '+e.name+' entre dans '+N+'.');return yardFwd(e);}
   // zone porteuse à un seul train (propriétaire, issue #11 : « sur la voie chariot il n'y a la place que pour un train ») : si elle porte déjà un train,
-  // le Dispatch ne fait jamais sortir le train garé ; il ne peut que faire entrer le train porté, et refuse si la voie est pleine
+  // « Envoyer le train » ne fait jamais sortir le train garé ; il ne peut que faire entrer le train porté, et refuse si la voie est pleine
   const carried=e||(TRAV&&VEHICULES.find(o=>o.st==='garage'&&!inL.includes(o)&&(o.lane<0||onCar(o))));
   if(carried)return refuse(N+' : '+zName(CARR).toLowerCase()+' porte déjà un train ('+carried.name+')'+(e===carried?', voie pleine : il n\'y entre pas':'')+(inL.length?', aucun train ne sort de la voie.':'.'));
   if(inL.length){const t=inL.slice().sort((a,b)=>a.g-b.g)[0];

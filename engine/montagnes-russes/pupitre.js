@@ -29,24 +29,28 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     <button id="tR${t.i}" data-act="revise" data-arg="${t.i}">Réviser (600 €)</button>
     <button id="tA${t.i}" data-act="rearm" data-arg="${t.i}">Réarmer lapbars</button>
   </div></div>`).join('');
-/* Pupitre par zones : sections Gare, Lift, Zones de freinage, Garage (ids : AGENTS.md) */
+/* Pupitre par zones (docs/manoeuvres.md, « Commandes au pupitre par zones ») : Gare, Lift, Zones de freinage, Garage. Audit #58 / #61 : un bouton = un effet visible ;
+   colonnes Mode | Freins | Moteurs ; plus de STOP en double des freins, plus d'AR, plus de freins de voie ; libellés en toutes lettres, cibles tactiles ≥ 36 px (téléphone). */
 {const zb=(z,c,cls,txt,ti)=>`<button class="pb sq sm ${cls}" id="z${z}_${c}" data-act="zone" data-arg="${z}:${c}" title="${ti}">${txt}</button>`,E='<span></span>';
-  const head=`<div class="zrow"><span></span><span class="plate">Mode</span><span class="plate">Freins</span><span class="plate">Avant</span><span class="plate">Arrière</span><span class="plate">Arrêt</span></div>`;
-  const row=Z=>{const z=Z.id,nm=`<div class="plate zn"><span class="zl" id="lz${z}"></span>${Z.name}</div>`;
-    if(z==='Lift')return `<div class="zrow">${nm}${E}${zb(z,'on','green','MAR','Lift : marche')}${zb(z,'off','amber','ARR','Lift : arrêt (la chaîne s\'arrête, le train sur le lift y reste)')}${E}${E}</div>`;
-    return `<div class="zrow">${nm}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
-      +(Z.brake?zb(z,'k','amber','F','Freins de la zone : serrer / relâcher (relâchement refusé si la section suivante est occupée)'):z==='St'?'<span class="plate" id="zSt_fr" title="Freins de gare : serrés automatiquement tant qu\'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)">AUTO</span>':E)
-      +(Z.drive?zb(z,'f','green','AV','Moteurs de la zone : avancer le train qui s\'y trouve')+(Z.drive==='fwd'?E:zb(z,'b','green','AR','Moteurs de la zone : reculer le train qui s\'y trouve'))+zb(z,'x','amber','STOP','Moteurs de la zone : arrêt'):E+E+E)+'</div>';};
-  const lrow=Z=>`<div class="zrow"><div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>${E}`+zb(Z.id,'k','amber','F','Freins forcés de la voie : serrer (arrêt immédiat du train qui entre ou sort, Dispatch refusé) / relâcher (reprise au Dispatch)')+zb(Z.id,'d','green disp','DISPATCH','Dispatch : '+DEVN.toLowerCase()+' en place sur cette voie, fait entrer le train prêt (zone porteuse) ou sortir le train de tête vers '+DEVL+' ; le sens est choisi selon la position de l\'appareil')+'</div>';
-  const sec=(t,k,x,h=1)=>`<div class="dsec"><span>${t}</span>${x||''}</div>`+(h?head:'')+ZONES.filter(Z=>Z.sec===k).map(row).join('');
-  $('deskZones').innerHTML=sec('Gare','st')+sec('Lift','lift','',0)
-    +sec('Zones de freinage','brk','<button class="pb sq sm blue" id="zAuto" data-act="zauto" title="Toutes les zones de freinage en AUTO">TOUT AUTO</button>')
+  document.head.insertAdjacentHTML('beforeend','<style>#deskZones .zrow{grid-template-columns:1.6fr repeat(3,minmax(0,1fr))}#deskZones .zrow button.pb.sm{width:100%;max-width:84px;height:36px;padding:0 3px;font-size:9.5px;letter-spacing:.4px;border-width:2px}#deskZones .zrow .wide,#deskZones .zrow button.pb.sm.wide{grid-column:2/-1;max-width:none;justify-self:stretch}</style>');
+  const nm=Z=>`<div class="plate zn"><span class="zl" id="lz${Z.id}"></span>${Z.name}</div>`;
+  const head=`<div class="zrow"><span></span><span class="plate">Mode</span><span class="plate">Freins</span><span class="plate">Moteurs</span></div>`;
+  const row=Z=>{const z=Z.id;
+    if(z==='St')return `<div class="zrow">${nm(Z)}<span class="plate wide" id="zSt_fr" title="Freins de gare : serrés tant qu'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)"></span></div>`;
+    if(z==='Lift')return `<div class="zrow">${nm(Z)}${zb(z,'t','green wide','EN MARCHE','Chaîne du lift : appuyer pour l\'arrêter ou la remettre en marche (le train sur le lift y reste)')}</div>`;
+    return `<div class="zrow">${nm(Z)}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
+      +(Z.brake?zb(z,'k','amber','FREIN','Freins de la zone : serrer (arrête le train qui s\'y trouve) / relâcher (refusé si la section suivante est occupée)'):Z.drive?zb(z,'x','amber','ARRÊT','Moteurs de la zone : arrêt'):E)
+      +(Z.drive?zb(z,'f','green','AVANCER','Moteurs de la zone : faire avancer le train arrêté (freins relâchés)'):E)+'</div>';};
+  const lrow=Z=>`<div class="zrow">${nm(Z)}`+zb(Z.id,'d','green wide','ENVOYER LE TRAIN','Envoyer le train : '+DEVN.toLowerCase()+' en place sur cette voie, fait entrer le train prêt ou sortir le train de tête vers '+DEVL+' ; le sens est déduit de la position de l\'appareil')+'</div>';
+  const sec=(t,k,x,h)=>`<div class="dsec"><span>${t}</span>${x||''}</div>`+(h?head:'')+ZONES.filter(Z=>Z.sec===k).map(row).join('');
+  $('deskZones').innerHTML=sec('Gare','st')+sec('Lift','lift')
+    +sec('Zones de freinage','brk','<button class="pb sq sm blue" id="zAuto" data-act="zauto" title="Toutes les zones de freinage en AUTO">TOUT AUTO</button>',1)
     +`<div class="dsec"><span>Garage</span></div><div class="deskrow"><div class="ctl" style="flex:2"><div class="pair" id="yPos"></div><div class="plate"><span id="yName"></span><br><span id="yState"></span></div></div></div>`
-    +(LANES.length?'<div class="zrow"><span></span><span></span><span class="plate">Freins</span><span class="plate" style="grid-column:4/-1">Voie</span></div>':'')+ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
+    +ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
 $('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${(POSN[p]&&POSN[p]!==posId(p)?'« '+POSN[p]+' », ':'')+(p===PG?'position G, rail de garage sur le circuit':p>=PX0?'position sans voie en face':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit')}">${posId(p)}</button>`).join('');
 $('yName').textContent=DEVN;
 if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${RAP?'« '+RA_NM[p]+' »'+(p?', aucune voie en face':', sur le circuit'):p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');
-$('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=(SITE.helpGarage||'')+(SITE.helpGarage&&LANES.length?' Le bouton F de chaque voie force ses freins : serrés, ils arrêtent aussitôt le train qui entre ou sort et Dispatch est refusé ; relâchés, la reprise se fait au Dispatch.':''); // phrase commune (issue #11)
+$('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=(SITE.helpGarage||'')+(SITE.helpGarage&&LANES.length?' Chaque voie n\'a qu\'un bouton, « Envoyer le train » : le sens est déduit de la position de l\'appareil, les freins des voies sont automatiques.':''); // phrase commune (issues #11 et #61)
 
 const inSynXY=(x,y)=>{const b=SYN.box;if(!synOn||!b)return false;return x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3];}; // point de l'écran sur le synoptique
 extension({nom:'montagnes-russes',
@@ -75,14 +79,14 @@ extension({nom:'montagnes-russes',
   }
   for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z==='Fin'||z==='Pre')&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
-    if(Z.sec==='gar'){const b=$('z'+z+'_d'),k=zK(z);b.classList.toggle('lit',!k&&ts.some(t=>t.mv));b.disabled=!!G.estop;$('z'+z+'_k').classList.toggle('lit',k);if(k)$('lz'+z).className='zl'+(ts.length||trains.some(t=>t.st==='garage'&&t.lane===+z.slice(1)-1)?' occ':'');continue;} // voie : Dispatch allumé pendant un mouvement ; F allumé = freins forcés serrés (voyant orange si un train est retenu)
-    if(z==='Lift'){$('zLift_on').classList.toggle('lit',!G.liftOff);$('zLift_off').classList.toggle('lit',G.liftOff);continue;}
+    if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : allumé pendant un mouvement
+    if(z==='Lift'){const b=$('zLift_t');b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt
+    if(z==='St'){$('zSt_fr').textContent=stHeld()?'Freins serrés':'Freins libres';continue;}
     const man=!Z.auto||!!G.zm[z];
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}
-    if(z==='St'){const h=stHeld();$('zSt_fr').textContent=h?'SERRÉS':'LIBRES';$('zSt_fr').classList.toggle('lit',h);}
     if(Z.brake){const b=$('z'+z+'_k');b.classList.toggle('lit',zK(z)||(!man&&ts.some(t=>t.st==='run'&&t.v===0)));b.disabled=!man;} // allumé = freins serrés (en AUTO : train retenu par le cantonnement)
-    if(Z.drive){$('z'+z+'_f').classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||t.bgo||(t.st==='station'&&t.depReq))||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));const bb=$('z'+z+'_b');if(bb)bb.classList.toggle('lit',ts.some(t=>t.mv<0)); // drive:'fwd' (freins de bloc) : pas de bouton AR
-      for(const c of 'fbx'){const e=$('z'+z+'_'+c);if(e)e.disabled=!man;}}}
+    else if(Z.drive)$('z'+z+'_x').disabled=!man;
+    if(Z.drive){const f=$('z'+z+'_f');f.classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||t.bgo)||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));f.disabled=!man;}}
   $('zAuto').disabled=!ZONES.some(Z=>Z.auto&&G.zm[Z.id]);
   POS_ORDER.forEach(p=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
   if(RA){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});

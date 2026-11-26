@@ -1,7 +1,7 @@
 // Test de l'issue #62 (moteur 0.7.4) : node tools/bugs62-test.js [zeus hourra oziris goudurix]
 // (NODE_PATH=$(npm root -g) pour Playwright ; JEU=… dépôt de jeu, défaut ../osmrides_parks ; moteur = celui de ce dépôt). Une attraction après l'autre.
 // « Départ » = envoyer le train hors de la gare ; destination selon l'appareil (propriétaire, #62). Train VIDE à quai, appareil sur une voie de garage :
-//  - gare de raccordement, aiguillage en aval (Zeus) : Départ et Avancer de la gare envoient le train dans la voie ; avec passagers : refus clair, train à quai ;
+//  - gare de raccordement, aiguillage en aval (Zeus) : Départ envoie le train dans la voie (la gare n'a plus de bouton Avancer, #58) ; avec passagers : refus clair, train à quai ;
 //    appareil sur P : départ sur le circuit (inchangé) ; sauvegarde / reprise avec le train entré au garage par Départ.
 //  - autres garages (pont transbordeur au frein final, aiguillage en amont `back`) : Départ part sur le circuit, comme avant (le train est retenu avant l'appareil).
 // Chaque cas sur une page neuve ; le message affiché est relevé (journal).
@@ -40,7 +40,7 @@ async function site(browser, id, errors) {
   let page = await fresh();
   const kind = await page.evaluate(() => YZ === 'St' && !TRAV && !LBK ? 'gare' : 'autre');
   await page.close();
-  const cases = [['Départ', "act('depart')"], ['Avancer de la gare', "act('zone','St:f')"], ['Dispatch de la voie', "act('zone','L'+p+':d')"]];
+  const cases = [['Départ', "act('depart')"], ['Dispatch de la voie', "act('zone','L'+p+':d')"]];
   for (const [nm, cmd] of cases) {
     page = await fresh(); const r = await scenario(page, cmd); await page.close();
     if (kind === 'gare') ok(`${id} ${nm}, train vide, aiguillage sur une voie : le train entre au garage`, r.st === 'garage' && r.lane === r.p - 1 && r.g > 4, r);
@@ -48,7 +48,9 @@ async function site(browser, id, errors) {
     else out.push(`info ${id} ${nm} : ${r.st} « ${r.msg.join(' | ')} »`);
   }
   if (kind === 'gare') {
-    page = await fresh(); let r = await scenario(page, "act('depart')", { pax: 4 }); await page.close();
+    page = await fresh(); let r = await scenario(page, "act('zone','St:f')"); const nb = await page.evaluate(() => !document.getElementById('zSt_f') && !document.getElementById('zSt_x')); await page.close();
+    ok(`${id} gare sans bouton moteur (#58) : Avancer refusé, renvoi au bouton Départ, train à quai`, nb && r.st === 'station' && r.msg.some(m => /bouton Départ/.test(m)), r);
+    page = await fresh(); r = await scenario(page, "act('depart')", { pax: 4 }); await page.close();
     ok(`${id} Départ avec passagers, aiguillage sur une voie : refus clair, train à quai`, r.st === 'station' && r.pax === 4 && r.msg.some(m => /passagers/.test(m) && /garage/.test(m)), r);
     page = await fresh(); r = await scenario(page, "act('depart')", { gates: 1 }); await page.close();
     ok(`${id} Départ portillons ouverts, aiguillage sur une voie : refus, train à quai`, r.st === 'station' && r.msg.some(m => /Portillons ouverts/.test(m)), r);
