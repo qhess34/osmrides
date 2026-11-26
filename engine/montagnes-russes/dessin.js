@@ -498,6 +498,7 @@ extension({nom:'montagnes-russes',
       ctx.strokeStyle='#2b2b30';lw(.17,.9);ctx.stroke(o.rail);
     }
     if(!INV)drawBU(o);
-    if(o.ch){ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(o.ch);ctx.setLineDash([]);} // chaîne du lift
+    if(o.ch){ctx.strokeStyle='#15161a';lw(.2,.8);ctx.setLineDash([.5,.3]);ctx.stroke(o.ch);ctx.setLineDash([]);
+      if(CHAINE.v>.01){ctx.strokeStyle='#8a8d92';lw(.3,1);ctx.setLineDash([.28,1.72]);ctx.lineDashOffset=-(CHAINE.ph%2);ctx.stroke(o.ch);ctx.setLineDash([]);ctx.lineDashOffset=0;}} // chaîne du lift ; taquets qui défilent (seulement entraînée)
     if(k)ctx.restore();return true;},
   surQuai:k=>onPlat(k)}); // marcheur dessiné avec les personnes du quai

@@ -1,7 +1,7 @@
 'use strict';
 /* ══════════ ÉTAT DU JEU PROPRE AUX MONTAGNES RUSSES ══════════ */
 // état propre au type, ajouté à G (engine/noyau/base.js) : sauvegardé avec lui
-Object.assign(G,{auto:true,estop:false,plat:new Array(SEATS).fill(null),platT:0,platR:[],platRT:0,gatesOpen:false,gate:0,resOpen:false,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,
+Object.assign(G,{auto:true,estop:false,plat:new Array(SEATS).fill(null),platT:0,platR:[],platRT:0,gatesOpen:false,gate:0,resOpen:false,bypass:false,dev:{pos:DEV0,to:DEV0,k:1},ra:{pos:0,to:0,k:1},zm:{},zk:{},liftOff:false,liftM:false,
   wear:{chain:45,track:35,brake:40},liftBroken:false,brakeFault:false});
 function mkTrain(i,name,col,col2,wear,st){
   return {i,name,col,col2,wear,st,s:S_ST,v:0,g:0,lane:0,mv:0,blk:false,told:false,seats:new Array(SEATS).fill(null),phase:'board',pt:0,idle:0,

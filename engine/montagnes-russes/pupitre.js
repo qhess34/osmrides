@@ -37,7 +37,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
   const head=`<div class="zrow"><span></span><span class="plate">Mode</span><span class="plate">Freins</span><span class="plate">Moteurs</span></div>`;
   const row=Z=>{const z=Z.id;
     if(z==='St')return `<div class="zrow">${nm(Z)}<span class="plate wide" id="zSt_fr" title="Freins de gare : serrés tant qu'un train est à quai, relâchés par la seule séquence Départ (portillons fermés, lapbars validés)"></span></div>`;
-    if(z==='Lift')return `<div class="zrow">${nm(Z)}${zb(z,'t','green wide','EN MARCHE','Chaîne du lift : appuyer pour l\'arrêter ou la remettre en marche (le train sur le lift y reste)')}</div>`;
+    if(z==='Lift')return `<div class="zrow">${nm(Z)}${zb(z,'m','blue','AUTO','Mode du lift : AUTO (la chaîne démarre avant l\'arrivée du train et s\'arrête après son départ) ou MANU (marche / arrêt au pupitre)')}${E}${zb(z,'t','green','EN MARCHE','Moteurs du lift (MANU) : mettre la chaîne à l\'arrêt ou en marche (le train sur le lift y reste)')}</div>`;
     return `<div class="zrow">${nm(Z)}`+(Z.auto?zb(z,'m','blue','AUTO','Mode de la zone : AUTO (cantonnement automatique) ou MANU (freins et moteurs au pupitre)'):E)
       +(Z.brake?zb(z,'k','amber','FREIN','Freins de la zone : serrer (arrête le train qui s\'y trouve) / relâcher (refusé si la section suivante est occupée)'):Z.drive?zb(z,'x','amber','ARRÊT','Moteurs de la zone : arrêt'):E)
       +(Z.drive?zb(z,'f','green','AVANCER','Moteurs de la zone : faire avancer le train arrêté (freins relâchés)'):E)+'</div>';};
@@ -80,7 +80,7 @@ extension({nom:'montagnes-russes',
   for(const Z of ZONES){const z=Z.id,ts=zT(z),mv=ts.some(t=>t.st==='garage'?t.mv:t.v>0),err=(z==='Lift'&&(G.liftBroken||G.estop))||((z==='Fin'||z==='Pre')&&G.brakeFault);
     $('lz'+z).className='zl'+(err?' err':mv?' mv':ts.length?' occ':''); // voyant de zone : vert = train en mouvement, orange = occupée, rouge = défaut
     if(Z.sec==='gar'){const b=$('z'+z+'_d');b.classList.toggle('lit',ts.some(t=>t.mv));b.disabled=!!G.estop;continue;} // voie : allumé pendant un mouvement
-    if(z==='Lift'){const b=$('zLift_t');b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt
+    if(z==='Lift'){const m=$('zLift_m'),b=$('zLift_t');m.classList.toggle('lit',!!G.liftM);m.textContent=G.liftM?'MANU':'AUTO';b.disabled=!G.liftM;b.textContent=G.liftOff?'À L\'ARRÊT':'EN MARCHE';b.classList.toggle('green',!G.liftOff);b.classList.toggle('amber',G.liftOff);b.classList.toggle('lit',G.liftM&&G.liftOff);continue;} // couleur = état de la chaîne, allumé (ambre) seulement à l'arrêt
     if(z==='St'){$('zSt_fr').textContent=stHeld()?'Freins serrés':'Freins libres';continue;}
     const man=!Z.auto||!!G.zm[z];
     if(Z.auto){const b=$('z'+z+'_m');b.classList.toggle('lit',man);b.textContent=man?'MANU':'AUTO';}

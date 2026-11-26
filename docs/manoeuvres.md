@@ -106,7 +106,7 @@ Code (0.1.0, `docs/ARCHITECTURE.md` D14) : tout ce document est propre aux monta
 | Zone | Actionneurs au pupitre |
 |---|---|
 | Gare | freins liés au départ (pas de bouton) ; moteurs (pneus) commandés par le seul bouton Départ |
-| Lift | marche / arrêt |
+| Lift | AUTO / MANU puis, en MANU, marche / arrêt de la chaîne |
 | Zones de freinage (freins de bloc, frein final, rail du chariot) | freins serrés / relâchés (serrer arrête aussi les moteurs) ; moteurs : Avancer là où il y en a |
 | Chariot / aiguillage | position (P ou voie k) |
 | Voies de garage | un seul bouton, **« Envoyer le train »** (issues #11 et #61) : entrée ou sortie, sens déduit de la position de l'appareil ; freins automatiques, sans bouton |
@@ -122,7 +122,7 @@ Le moteur découpe la voie en zones (`ZONES`, `tZone(t)` dans `engine/montagnes-
 | Zone | Id | Commandes | Mode |
 |---|---|---|---|
 | Gare | `St` | **aucun bouton** : plaque « Freins serrés / libres » (serrés tant qu'un train est à quai, relâchés par la seule séquence Départ) ; le train part au bouton **Départ** (vers le circuit, ou vers le garage aiguillage sur une voie) ; `St:f` est refusé avec renvoi au Départ | manuel |
-| Lift | `Lift` | un bouton Marche / Arrêt de la chaîne `t` (`#zLift_t`, libellé = état : « EN MARCHE », « À L'ARRÊT » allumé ambre ; `on` / `off` restent acceptés) ; arrêt : le train sur le lift y reste, départs bloqués | — |
+| Lift | `Lift` | **AUTO / MANU** `m` (`#zLift_m`) puis, en MANU seulement, **marche / arrêt** `t` (`#zLift_t`, libellé = état : « EN MARCHE », « À L'ARRÊT » allumé ambre ; `on` / `off` acceptés) ; en AUTO `t` est refusé. AUTO : la chaîne démarre quand un train approche du pied du lift et s'arrête peu après son départ du sommet, vitesse lissée par rampes ; MANU : elle suit le bouton. Chaîne arrêtée : le train sur le lift y reste, départs bloqués. Constantes ESTIMÉES (`LIFT_AVANCE` 25 m, `LIFT_RAMPE_ACC` 3 s, `LIFT_RAMPE_FREIN` 2 s, `LIFT_APRES` 4 s) en tête de `exploitation.js` ; état `G.liftM` (MANU), `G.liftOff` (chaîne arrêtée en MANU) ; ancienne sauvegarde avec `liftOff` seul = MANU. Panne ou arrêt d'urgence : chaîne bloquée. | — |
 | Freins de bloc | `B1…Bn` | freins `k` (FREIN), roues de propulsion **marche avant seule** (`drive:'fwd'`, propriétaire 2026-11-17) : Avancer `f` (`#zB<k>_f`, AVANCER) | AUTO / MANU `m` |
 | Frein final | `Fin` | freins `k`, Avancer `f` | AUTO / MANU `m` |
 | Rail mobile du parcours du pont droit (rail A, plaque « Rail parcours ») | `RA` | freins `k`, Avancer `f` | AUTO / MANU `m` |
