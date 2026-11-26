@@ -42,7 +42,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
 <p class="lead">Une librairie sans dépendance pour simuler l'exploitation d'installations réelles, vues du dessus, sur le tracé d'OpenStreetMap. Le joueur tient le pupitre : trains, quai, file d'attente, garage, maintenance, météo. Le moteur et l'éditeur sont publiés par version ; chaque jeu choisit la sienne.</p>
 
 <div class="grid">
-  <div class="card"><h3>Version courante</h3><p><b>0.7.1</b> (26/11/2026, à étiqueter). Notes de version : <a href="https://github.com/qhess34/osmrides/blob/main/docs/versions.md">docs/versions.md</a>.</p></div>
+  <div class="card"><h3>Version courante</h3><p><b>0.7.2</b> (26/11/2026, à étiqueter). Notes de version : <a href="https://github.com/qhess34/osmrides/blob/main/docs/versions.md">docs/versions.md</a>.</p></div>
   <div class="card"><h3>Jeux qui l'utilisent</h3><p><a href="https://qhess34.github.io/osmrides_parks/">Parcs d'attractions</a> : quatre montagnes russes du Parc Astérix. <a href="https://github.com/qhess34/osmrides_skiresort">Stations de ski</a> : en préparation.</p></div>
   <div class="card"><h3>Code source</h3><p><a href="https://github.com/qhess34/osmrides">qhess34/osmrides</a> : <code>engine/</code> (moteur), <code>editor/</code> (éditeur). Jeu de fan, non officiel.</p></div>
 </div>
@@ -147,6 +147,7 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);color:v
 <h2>Versions</h2>
 <table>
   <tr><th>Version</th><th>Date</th><th>Contenu</th></tr>
+  <tr><td><b>0.7.2</b></td><td>26/11/2026</td><td>Orage : message et note du pupitre « Orage terminé » en fin d'orage, avec rappel de désenclencher l'arrêt d'urgence s'il est enclenché (jamais levé automatiquement) ; l'amende de 400 € est conservée.</td></tr>
   <tr><td><b>0.7.1</b></td><td>26/11/2026</td><td>Corrections : après une reprise de partie, le train à quai accepte de nouveau l'embarquement et part normalement ; une barrière de file fermée dans une branche de fourche fait repartir les visiteurs déjà derrière elle par l'autre branche.</td></tr>
   <tr><td><b>0.7.0</b></td><td>24/11/2026</td><td>Éditeur : plus de réglage de la durée d'un tour (mesurée en jeu), des textes d'orage et de bilan, des éclairs ni de <code>dropAfter</code> (déduit du profil) ; « Trains en circulation en même temps » placé avec les trains. Les anciens <code>GAME.site</code> restent valides.</td></tr>
   <tr><td><b>0.6.0</b></td><td>24/11/2026</td><td>Éditeur : pont transbordeur réglable dans « Attraction » (rail au-delà du train, jeu rail/voies, course du rail mobile, décalage de chaque voie ; positions du chariot affichées, aimantation sur les rails et les autres voies), dans <code>GAME.site.yard</code>. Sans réglage, rien ne change.</td></tr>

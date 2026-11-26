@@ -4,7 +4,8 @@
 //     exactement à S_ST, part, reste sur le circuit (il ne « arrive » pas aussitôt en débarquement avec ses passagers), puis l'embarquement suivant se fait normalement.
 //  2. barrière de file fermée dans une branche de fourche, visiteurs déjà entrés en amont d'elle : ils repartent à rebours et reprennent l'autre branche (qRoute) ;
 //     jamais de saut, jamais l'un sur l'autre (QPW), jamais au travers d'une barrière fermée, aucun immobile devant la barrière à la fin.
-//  Bug 3 (orage / arrêt d'urgence) : pas de test, décision du propriétaire requise (voir le rapport de 0.7.1).
+//  3. orage : note du pupitre pendant l'orage (avec et sans arrêt d'urgence), fin d'orage = message au journal + note « orage terminé » ; l'arrêt d'urgence enclenché
+//     par le joueur reste enclenché (jamais levé tout seul) ; 0.7.2.
 const { chromium } = require('playwright');
 const path = require('path');
 const LIB = path.resolve(__dirname, '..'), ROOT = path.resolve(process.env.JEU || path.join(LIB, '..', 'osmrides_parks'));
@@ -93,12 +94,40 @@ async function barrieres(browser, id, errors) {
   await ctx.close();
 }
 
+async function orage(browser, id, errors) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await load(ctx, URL(id), errors); await page.evaluate(() => act('closeHelp'));
+  const r = await page.evaluate(() => {
+    const o = {}, note = () => { ui(); return $('opNote').textContent; };
+    act('speed', 0); if (!G.open) act('open');
+    if (G.estop) act('estop'); G.wx.type = 'storm'; G.wx.t = 3; G.wx.next = 1e6; step(.025); o.storm = note();
+    if (!G.estop) act('estop'); step(.025); o.stormStop = note();
+    const n0 = G.log ? G.log.length : -1;
+    for (let i = 0; i < 400 && G.wx.type === 'storm'; i++) step(.025);
+    o.type = G.wx.type; o.over = G.wx.over; o.estop = G.estop; o.endStop = note();
+    o.msg = ($('log').innerText.match(/Orage termin[^\n]*/g) || []).pop() || null;
+    for (let i = 0; i < 400; i++) step(.025); // arrêt d'urgence toujours enclenché après le délai
+    o.estopLater = G.estop;
+    act('estop'); G.wx.type = 'storm'; G.wx.t = 1; step(.025); for (let i = 0; i < 100 && G.wx.type === 'storm'; i++) step(.025);
+    o.endFree = note(); o.estopFree = G.estop;
+    return o;
+  });
+  ok(id + ' orage : note pendant l\'orage', /^ORAGE : aucun départ/.test(r.storm), r.storm);
+  ok(id + ' orage : arrêt d\'urgence pendant l\'orage, à désenclencher une fois l\'orage terminé', /ORAGE.*désenclenchez.*orage terminé/.test(r.stormStop), r.stormStop);
+  ok(id + ' orage : fin d\'orage, note « Orage terminé » et arrêt d\'urgence à désenclencher', r.type === 'clear' && /^Orage terminé : désenclenchez/.test(r.endStop) && r.estop, r);
+  ok(id + ' orage : message de fin d\'orage au journal', !!r.msg && /Orage termin/.test(r.msg) && /arrêt d'urgence reste enclenché/.test(r.msg), r.msg);
+  ok(id + ' orage : l\'arrêt d\'urgence reste enclenché (jamais levé tout seul)', r.estopLater === true, r.estopLater);
+  ok(id + ' orage : sans arrêt d\'urgence, « exploitation normale »', /^Orage terminé : exploitation normale/.test(r.endFree) && !r.estopFree, r);
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch(), errors = [];
   for (const id of sites) {
     out.push('--- ' + id);
     await reprise(browser, id, errors);
     await barrieres(browser, id, errors);
+    await orage(browser, id, errors);
   }
   ok('aucune erreur de page', !errors.length, errors.slice(0, 3));
   await browser.close();

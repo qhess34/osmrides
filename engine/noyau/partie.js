@@ -1,7 +1,7 @@
 'use strict';
 /* Textes par défaut du moteur (orage, bilan), écrits dans le code avec le nom de l'attraction (SITE.title) ; plus réglables dans l'éditeur. SITE.text.<clé> (ancien réglage,
    tolérée en lecture) garde la priorité. */
-const MSG_DEF={storm:()=>'Orage sur '+SITE.title+' ! Aucun train ne doit partir.',great:()=>'Excellente exploitation de '+SITE.title+' !'};
+const MSG_DEF={storm:()=>'Orage sur '+SITE.title+' ! Aucun train ne doit partir.',stormEnd:()=>'Orage terminé sur '+SITE.title+', l\'exploitation peut reprendre.',great:()=>'Excellente exploitation de '+SITE.title+' !'};
 const msgSite=k=>(SITE.text&&SITE.text[k])||MSG_DEF[k]();
 /* ══════════ MÉTÉO ET JOURNÉE ══════════ */
 function updateWeather(dt){
@@ -14,9 +14,10 @@ function updateWeather(dt){
   }else{w.t-=dt;
     if(w.t<=0){
       if(w.type==='warn'){w.type='storm';w.t=rnd(60,90);log(msgSite('storm'),'bad');}
-      else{if(w.type==='storm')log('☀️ L\'orage est passé, l\'exploitation peut reprendre.','good');w.type='clear';w.next=rnd(280,520);}
+      else{if(w.type==='storm'){w.over=60;log('☀️ '+msgSite('stormEnd')+(G.estop?' L\'arrêt d\'urgence reste enclenché : désenclenchez-le pour redémarrer.':''),'good');}w.type='clear';w.next=rnd(280,520);}
     }
   }
+  if(w.over>0)w.over=w.type==='clear'?w.over-dt:0; // « orage terminé » : indication du pupitre (transitoire, jamais d'arrêt d'urgence levé tout seul)
   G.flash=Math.max(0,G.flash-dt*3);
   if(w.type==='storm'&&Math.random()<dt*.3){G.flash=1;sfx.thunder();if(typeof strike==='function')strike();}
 }
