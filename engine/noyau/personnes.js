@@ -230,7 +230,7 @@ function qRoute(){BARV++;let dO=0,dA=0; // distance jusqu'à la gare : par des b
 function toggleBar(i){const b=BARS[i];if(!b)return;b.open=!b.open;if(b.open&&b.wq){b.wq.forEach((k,j)=>{k.hold=j*SP/(k.sp||3);k.bwb=null;});b.wq=null;}qRoute();log('Barrière '+b.key+(b.open?' ouverte':' fermée')+' — file : '+Math.floor(QLEN/SP)+' places.');}
 // premier vantail fermé franchi par le déplacement (x0, z0) → (x1, z1) d'un marcheur (arrivant, évacué) : vantail sans ses 0,3 premiers mètres (le poteau est sur la
 // bordure commune de deux allées à une fourche : un marcheur de l'autre allée, écarté de l'axe, ne s'y accroche pas)
-const barHit=(x0,z0,x1,z1)=>{for(const b of BARS)if(!b.open){const u=segX([x0,z0],[x1,z1],b.H2,b.A);if(u!=null&&u>1e-6)return b;}return null;};
+const barHit=(x0,z0,x1,z1,full)=>{for(const b of BARS)if(!b.open){const u=segX([x0,z0],[x1,z1],full?b.H:b.H2,b.A);if(u!=null&&u>1e-6)return b;}return null;};
 // File devant une barrière fermée (propriétaire, issue #40, générique) : arrivants et évacués que la barrière arrête attendent EN FILE derrière elle, sur leur propre
 // trajet (donc sur le chemin), jamais à moins de QD (0,4 m > QPW) l'un de l'autre. Seuls ceux dont le reste du trajet franchit cette barrière fermée (barAhead, en
 // cache jusqu'au prochain changement de barrière, BARV) s'y alignent : arrêt avant le vantail ou avant de s'approcher à moins de QD d'un visiteur déjà arrêté
@@ -241,8 +241,8 @@ const barHit=(x0,z0,x1,z1)=>{for(const b of BARS)if(!b.open){const u=segX([x0,z0
 // qui l'approchent sauf s'il les attend lui-même (bkTo : pas d'interblocage) et un arrivant arrêté à moins de QD d'un autre recule (qWalk). Les visiteurs de la file
 // elle-même (mode 'q') s'arrêtent déjà en file (qBehind). Mesure : overlapQ de la ligne « bars: » de tools/check.js.
 var BARV=0;
-function barAhead(k){if(k.bv===BARV)return k.ba;k.bv=BARV;k.ba=null;let x=k.x,z=k.z;
-  for(let i=k.i;i<k.pts.length;i++){const q=k.pts[i],b=barHit(x,z,q[0],q[2]);if(b){const u=segX([x,z],[q[0],q[2]],b.H2,b.A)||0;k.ba=b;k.bj=i;k.bX=[x+(q[0]-x)*u,z+(q[2]-z)*u];break;}x=q[0];z=q[2];}return k.ba;}
+function barAhead(k){if(k.bv===BARV)return k.ba;k.bv=BARV;k.ba=null;let x=k.x,z=k.z;const fu=k.kind==='evac';
+  for(let i=k.i;i<k.pts.length;i++){const q=k.pts[i],b=barHit(x,z,q[0],q[2],fu);if(b){const u=segX([x,z],[q[0],q[2]],fu?b.H:b.H2,b.A)||0;k.ba=b;k.bj=i;k.bX=[x+(q[0]-x)*u,z+(q[2]-z)*u];break;}x=q[0];z=q[2];}return k.ba;}
 // reste à parcourir par k jusqu'au vantail de sa barrière (barAhead) : ordre de la file devant elle
 function barDist(k){const P=k.pts,j=k.bj,X=k.bX;if(k.i>=j)return Math.hypot(X[0]-k.x,X[1]-k.z);if(!P.cum){P.cum=[0];for(let i=1;i<P.length;i++)P.cum.push(P.cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][2]-P[i-1][2]));}
   return Math.hypot(P[k.i][0]-k.x,P[k.i][2]-k.z)+P.cum[j-1]-P.cum[k.i]+Math.hypot(X[0]-P[j-1][0],X[1]-P[j-1][2]);}
@@ -253,7 +253,8 @@ function evacAhead(k){let bl=null;if(eNear(k.ox,k.oz,o=>o!==k&&Math.hypot(o.x-k.
   eNear(k.x,k.z,o=>{if(o!==k&&o.ba===k.ba&&o.bdd<k.bdd){const dn=Math.hypot(o.x-k.x,o.z-k.z);if(dn<QD&&dn<Math.hypot(o.x-k.ox,o.z-k.oz)-1e-6)bl=o;}return bl;});return bl;}
 // place (x, z) libre : à QD au moins des autres arrivants arrêtés (QGRID) ou des autres évacués arrêtés (EGRID), file devant la barrière comprise ;
 // all : de tous, même en marche (place où l'on recule : on n'y retombe pas sur un autre)
-const barFree=(W,x,z,k,all)=>k.mode==='app'?!qStill(k,x,z,all):k.kind==='evac'?!eNear(x,z,o=>o!==k&&(all||o.bk)&&Math.hypot(o.x-x,o.z-z)<QD):W.every(m=>Math.hypot(m.x-x,m.z-z)>=QD);
+const onBar=(x,z)=>BARS.some(b=>!b.open&&dPl(x,z,[b.H,b.A])<.2); // sur le vantail fermé, poteau compris : pas une place
+const barFree=(W,x,z,k,all)=>k.kind==='evac'&&onBar(x,z)?false:k.mode==='app'?!qStill(k,x,z,all):k.kind==='evac'?!eNear(x,z,o=>o!==k&&(all||o.bk)&&Math.hypot(o.x-x,o.z-z)<QD):W.every(m=>Math.hypot(m.x-x,m.z-z)>=QD);
 function qStill(v,x,z,all){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);if(c)for(const o of c)if(o!==v&&(o.mode==='q'&&!(o.lv|0)||o.mode==='app'&&(all||!o.mv))&&Math.hypot(o.x-x,o.z-z)<QD)return true;}return false;}
 const gridAdd=k=>{const G2=k.mode==='app'?QGRID:EGRID,c=qk(k.x,k.z);let L=G2.get(c);if(!L)G2.set(c,L=[]);L.push(k);}; // reculé : case de la grille à jour
 // évacué (sur la file) : première place libre sur l'axe de la file en reculant vers la gare depuis sa position, deux de front si l'allée le permet (segSpots) ;
@@ -271,7 +272,7 @@ function barStepBack(k,W){if(k.kind==='evac'&&evacBack(k,W))return true;let ex=k
 // devant elle ; renvoie 0 (libre), 1 (arrêté en file), 2 (aucune place derrière : l'arrivant renonce)
 function barWait(k,o){let b=k.bwb;if(b&&(b.open||!BARS.includes(b)))b=k.bwb=null;
   if(b){[k.x,k.y,k.z,k.i]=o;return 1;}
-  b=barAhead(k);const hit=barHit(o[0],o[2],k.x,k.z);if(!b&&!hit)return 0;b=b||hit;const W=b.wq||(b.wq=[]);
+  b=barAhead(k);const hit=barHit(o[0],o[2],k.x,k.z,k.kind==='evac');if(!b&&!hit)return 0;b=b||hit;const W=b.wq||(b.wq=[]);
   if(!hit&&W.every(m=>{const d=Math.hypot(m.x-k.x,m.z-k.z);return d>=QD||d>=Math.hypot(m.x-o[0],m.z-o[2])-1e-6;}))return 0;
   [k.x,k.y,k.z,k.i]=o;if(!barFree(W,k.x,k.z,k)&&!barStepBack(k,W))return 2;W.push(k);k.bwb=b;return 1;}
 // évacuation en cours : un évacué est encore dans la file (avant le début du raccord d'entrée et de l'accès, pts.qn = points de la file, backPath / platEvac)
