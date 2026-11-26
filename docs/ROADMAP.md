@@ -31,6 +31,64 @@ Décision du propriétaire (26/11) : les lots marquent la **maturité de l'appli
 | 4 | **Le lieu complet** | un parc entier se joue dans une page ; page du lieu ; rôle par lieu avec des types d'objectifs différents | #56, #57 (page du lieu) | à faire (note de conception) |
 | 5 | **Nouveaux types de lieux** | un deuxième type de lieu jouable (domaine skiable : Vars Les Claux), puis parcours aquatique, flat rides, transport | #48, #49 ; anciens lots 9 et 10 | à faire |
 
+### Sous-tâches et modèles par lot
+
+Règle de modèle (`docs/PILOTAGE.md`) : **Sonnet** par défaut ; **Opus** pour les tâches difficiles (garage, manœuvres, cantonnement, format de données, conception du noyau) ; **Haiku** pour les recherches (`explorateur`) et les tests (`testeur`). Les chefs (Moteur, Parcs, Stations) sont des sessions Sonnet ; le Webmestre est Haiku. « À créer » : sous-issue pas encore ouverte.
+
+**Lot 1 : jeu fiable sur le parc existant**
+
+| Sous-tâche | Issue | Modèle |
+|---|---|---|
+| Garages sans freins manuels, un seul bouton « Envoyer le train » (Zeus : envoi depuis la gare déjà livré) | #61 | Opus (manœuvres) |
+| Audit du pupitre zone par zone, AUTO et MANU : doublons Frein / Stop, AR du lift, bouton F, libellés ; tableau avant / après | #58 (points 6 à 9) | Sonnet (audit), Opus si un changement touche les manœuvres |
+| Lift animé : AUTO (démarre un peu avant le train, rampes), MANU (marche / arrêt) | #60 | Sonnet |
+| Adaptation de `check.js` (Zeus) et de `tutos.html` côté parcs | issue `inter-equipe` (osmrides_parks#13) | Chef parcs, `ouvrier` Sonnet |
+| Passage de la batterie de tests et note de version | — | `testeur` Haiku (une seule batterie, sans doublon chez les parcs) |
+
+**Lot 2 : éditeur complet d'une attraction existante, en WYSIWYG**
+
+| Sous-tâche | Issue | Modèle |
+|---|---|---|
+| Rails `moving` : format des positions, chariot généré, verrouillage, magnétisme (étape A) | #64 | Opus |
+| Rails `moving` : édition sur la carte, tag « non connecté » (étape B) | #64 | Opus (en cours) ou Sonnet si découpée |
+| Quais en WYSIWYG, lus dans OSM, renvoyables | #57 (point 3) | Sonnet ; importeur côté parcs : `ouvrier` Sonnet |
+| Fenêtres au clic (freins, gare, voies `moving`) | #57 (point 4) | Sonnet |
+| Suppression du « frein final » à part (règle commune de retenue, `holdBack`, `Fin`) | #57 (point 4) | Opus (cantonnement) |
+| Hauteurs choisies sur le circuit, sur la carte | #57 (point 5) | Sonnet |
+| Caméras en WYSIWYG | #57 (point 6) | Sonnet |
+| Matière des tunnels (lue, réglée, renvoyée vers OSM) | #63 | Sonnet ; liste des valeurs OSM : `explorateur` Haiku |
+| Retrait de `SITE` des valeurs devenues réglables | issues `inter-equipe` | Chef parcs, `ouvrier` Sonnet |
+
+**Lot 3 : créer une attraction depuis OSM, sans fichier écrit à la main**
+
+| Sous-tâche | Issue | Modèle |
+|---|---|---|
+| Import depuis l'éditeur, fiche d'import déduite, figures, vérification | #54 | Opus (format et déduction), Sonnet (interface) |
+| Réimport sélectif par catégorie, sans perdre la relation 8427077 d'OzIris | #57 (point 7), #54 | Opus |
+| Corrections locales d'objets OSM (avant / après, identifiant) | à créer (ancien lot 4) | Opus (format), Sonnet (outils) |
+| Contribution vers OSM (diff, sélection, envoi authentifié) | à créer (ancien lot 6) | Opus |
+| Essai de bout en bout sur une attraction nouvelle | à créer | Sonnet + `testeur` Haiku |
+
+**Lot 4 : le lieu complet**
+
+| Sous-tâche | Issue | Modèle |
+|---|---|---|
+| Note de conception : état de jeu à plusieurs éléments, niveaux de détail, simulation à deux régimes, chargement | #56 | Opus |
+| Noyau : plusieurs éléments dans un état de jeu, simulation agrégée | à créer (sous #56) | Opus |
+| Niveaux de détail du dessin (zoom du lieu, plein détail sur un élément) | à créer (sous #56) | Sonnet |
+| Page du lieu : horaires, postes de maintenance, objectifs communs | #57 (point 1) | Sonnet |
+| Rôle par lieu, types d'objectifs différents | à créer (sous #56) | Sonnet après la conception |
+| Essai à 40 éléments fictifs, cadence ≥ 30 images/s | à créer (sous #56) | `testeur` Haiku |
+
+**Lot 5 : nouveaux types de lieux**
+
+| Sous-tâche | Issue | Modèle |
+|---|---|---|
+| Vision : hiérarchie type / lieu / éléments | #48 | Opus (conception) |
+| Domaine skiable : Vars Les Claux, Escondus, remontées | #49, issues à créer chez osmrides_skiresort | Chef stations (Sonnet) ; extension de type dans `osmrides` : Opus |
+| Parcours aquatique (bateaux, chute, pas de lapbars) | à créer (ancien lot 9) | Opus |
+| Flat rides | à créer (ancien lot 10) | Opus |
+
 ## Historique : anciens lots 0 à 10 (jusqu'au 26/11/2026)
 
 Conservés pour mémoire : découpe par grosse fonctionnalité, remplacée le 26/11 par les lots de maturité ci-dessus. Statuts à jour au 26/11.
