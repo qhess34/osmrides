@@ -8,6 +8,7 @@
 
 - **Réalisme avant tout** : rendu aérien crédible, couleurs sourdes, aucun pictogramme ni emoji, rien d'enfantin.
 - **Fidélité** : ce qui vient d'OSM est lu dans OSM ; ce qui est estimé est signalé dans le code et dit au propriétaire.
+- **Pas de toit ni de couverture inventés** (propriétaire, 26/11) : un toit, un abri ou une halle n'est dessiné que s'il correspond à un bâtiment ou à un abri d'OSM ; sinon la voie n'est pas recouverte. Aucun toit estimé au-dessus d'un frein, d'un pont transbordeur ou d'un garage.
 - **Synchronisation vers OSM** (issue #46, `docs/ARCHITECTURE.md` D12) : tout réglage de l'éditeur qui a un équivalent OSM est lu dans OSM et peut y être renvoyé à la demande.
 - **Commande par zones, jamais par train** ; portillons et sécurités au bouton seulement ; barrières de file posées à la main.
 - **Visiteurs** : seulement sur les chemins, seulement par les barrières ouvertes, jamais l'un sur l'autre, face à leur marche.
