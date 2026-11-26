@@ -27,7 +27,7 @@ function stationStop(){const s0=TAG.stp!=null?TAG.stp:TAG.st1-(SITE.stopBack||0)
    Les valeurs déduites sont exposées dans DEDUIT (éditeur, comparaison avec SITE). */
 const D_DROP=(()=>{if(TAG.lift1==null)return null;const a=TAG.lift1;let top=-1e9,sTop=a;for(let s=a;s<=a+60&&s<L-5;s+=.5){const h=hAt(s);if(h>top){top=h;sTop=s;}}
   for(let s=sTop;s<=a+150&&s<L-5;s+=.5)if(hAt(s)<top-1)return +(s-a).toFixed(1);return null;})();
-const S_ST=stationStop(),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=SITE.holdBack!=null?L-SITE.holdBack:SITE.yard&&SITE.yard.device==='traverser'&&TAG.tr1!=null?TAG.tr1-(SITE.yard.post!=null?SITE.yard.post:.6):TAG.fin!=null?TAG.fin:L-4,S_DROP=S_LIFT1+(SITE.dropAfter!=null?SITE.dropAfter:D_DROP!=null?D_DROP:14);
+const S_ST=stationStop(),S_LIFT0=TAG.lift0,S_LIFT1=TAG.lift1,S_REL=S_LIFT1+TLEN*.75,S_BRK=TAG.brk,S_HOLD=SITE.holdBack!=null?L-SITE.holdBack:SITE.yard&&SITE.yard.device==='traverser'&&TAG.tr1!=null?TAG.tr1-((SITE_BASE.yard||SITE.yard).post!=null?(SITE_BASE.yard||SITE.yard).post:.6):TAG.fin!=null?TAG.fin:L-4,S_DROP=S_LIFT1+(SITE.dropAfter!=null?SITE.dropAfter:D_DROP!=null?D_DROP:14);
 
 /* Faisabilité du profil (osmrides#53 lot 2, éditeur) : le train part du haut du lift (S_REL, 5,5 m/s) et suit la gravité jusqu'au début du premier frein de bloc (sinon le frein final),
    avec l'accélération de exploitation.js (pente, roulement, traînée ; usure 30, ESTIMÉE), sans le plancher de vitesse PH.vmin. Rend la vitesse la plus basse et son abscisse ;

@@ -13,6 +13,9 @@ const VL=VOIES.long,Y_GAR=VOIES.hauteur;
 const YD=SITE.yard,TRAV=YD.device==='traverser',BUF=YD.buffer!=null?YD.buffer:2,GSTEP=VL+BUF,MV=Object.assign({v:2.4,t:3,vc:.6},YD.move),
   DEVN=YD.devName||(YD.device==='switch'?'Aiguillage':'Pont transbordeur'),
   DEVL=YD.devLabel||(YD.device==='switch'?'l\'aiguillage':'le pont transbordeur'); // nom au pupitre, nom dans une phrase
+/* Réglages chiffrés du pont de 0.6.0 (GAME.site.yard.post, laneGap, retract.d, laneD) : remplacés par les positions des rails mobiles réglées sur la carte
+   (osmrides#64, SITE.yard.rails ci-dessous) ; tolérés dans un GAME.site existant mais IGNORÉS : seules les valeurs d'origine de SITE comptent (SITE_BASE.yard). */
+const YB=typeof SITE_BASE!=='undefined'&&SITE_BASE.yard||YD;
 /* Pont transbordeur droit (device:'traverser') : chariot à deux rails droits parallèles, longs d'un train, posés sur la ligne
    droite du point de raccordement. Rail A = rail du circuit (zone de freinage), rail B = rail de garage (freins et pneus),
    écartés de YD.gap. Repère du chariot : origine au début du rail A au repos (abscisse R0), u le long du rail (corde R0→R1),
@@ -25,8 +28,8 @@ const YD=SITE.yard,TRAV=YD.device==='traverser',BUF=YD.buffer!=null?YD.buffer:2,
    distinct ni de position G : GAP = 0, le train arrêté à vide sur le rail en P est emporté par le chariot vers une voie. */
 const SG=TRAV&&!!YD.single;
 // Rail du pont : de R0 à R1 ; R0 = début du rail de transfert OSM (repère tr0) si yard.pre n'est pas donné et que le rail est assez long, sinon un train + pre.
-const R0=TRAV?(YD.pre==null&&TAG.tr0!=null&&TAG.tr0<ANCH-VL?TAG.tr0:ANCH-VL-(YD.pre!=null?YD.pre:.6)):0,R1=TRAV?ANCH+(YD.post!=null?YD.post:.6):0,G_B=ANCH-R0,
-  GAP=SG?0:YD.gap||3.2,U_LANE=R1-R0+(YD.laneGap!=null?YD.laneGap:.8);
+const R0=TRAV?(YD.pre==null&&TAG.tr0!=null&&TAG.tr0<ANCH-VL?TAG.tr0:ANCH-VL-(YD.pre!=null?YD.pre:.6)):0,R1=TRAV?ANCH+(YB.post!=null?YB.post:.6):0,G_B=ANCH-R0,
+  GAP=SG?0:YD.gap||3.2,U_LANE=R1-R0+(YB.laneGap!=null?YB.laneGap:.8);
 /* yard.s : le tronçon mobile (rotatif) a deux faces, l'une porte le tronçon droit du circuit, l'autre un S vers la voie de garage (courbe de Bézier, première partie de la voie). Aiguillage EN AMONT de la zone de raccordement (yard.back, appareil à aiguillage seulement ; gare, ou toute zone de freinage dont les moteurs ont la marche arrière,
    SITE.zones.<zone>.drive:true, issue #38) : le train entre dans la voie de garage en MARCHE ARRIÈRE depuis cette zone, la voie se détache du circuit en amont.
    yard.a / yard.b = distances (m), mesurées en remontant le circuit depuis le point d'arrêt de l'avant du train dans la zone (ANCH), du bord de l'appareil
@@ -44,10 +47,8 @@ const SW0=(()=>{const f=frameAt(SW_A,mkF()),l=Math.hypot(f.R.x,f.R.z)||1;let tx=
    voie) ; seule la géométrie est retournée : l'avant du train est en u = 2·G_B − g (repère du chariot), son orientation ne change pas.
    laneU(g) : abscisse u (repère du chariot) d'un point de voie d'abscisse g, pour le dessin des voies fixes. */
 const LREV=TRAV&&!!YD.rev,laneU=g=>LREV?2*G_B-VL-g:g;
-/* Décalage d'une voie du pont (GAME.site.yard.laneD, réglé dans l'éditeur : {"<n° de voie>": d}) : prime sur yard.lanes[j].d de SITE ; absent = valeur de SITE. */
-const laneD=(ln,j)=>YD.laneD&&YD.laneD[j+1]!=null?YD.laneD[j+1]:ln.d;
-const LANES=TRAV?YD.lanes.map((ln0,j)=>{
-  const ln=Object.assign({},ln0,{d:laneD(ln0,j)}),end=U_LANE+(ln.len||VL+BUF+.2),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
+const LANES=TRAV?YD.lanes.map((ln,j)=>{
+  const end=U_LANE+(ln.len||VL+BUF+.2),path=[];for(let g=0;g<=end+.01;g+=.5){const u=laneU(g);path.push({x:SW0.x+SW0.tx*u-SW0.vx*ln.d,z:SW0.z+SW0.tz*u-SW0.vz*ln.d,d:g});}
   return {name:ln.name||'Voie '+(j+1),path,d:ln.d,dev:U_LANE,end,off:GAP-ln.d,cap:ln.cap||Math.max(1,Math.floor((end-U_LANE-VL)/GSTEP)+1)};
 }):LBK?YD.lanes.map((ln,j)=>{
   const path=[],P=ln.pts;let acc=0,prev=null,link=YD.b-YD.a;
@@ -84,7 +85,32 @@ const PG=TRAV&&!SG?LANES.length+1:-1,PC=SG?0:PG; // position G du pont droit : r
    (G.ra.pos 0, v=0) ou retiré (1, v=RET, du côté opposé au garage). Le chariot ne porte que le rail B : positions G et voies 1…n
    (pas de P). Verrouillages : le rail A ne revient que si le rail B n'est pas en ligne ; le rail B ne vient en ligne que si le
    rail A est retiré. */
-const RA=TRAV&&!!YD.retract,RET=RA?(YD.retract.d||GAP):0,RAN=RA&&YD.retract.name||'Rail mobile du parcours',RAS=RA&&YD.retract.short||'Rail parcours'; // nom complet (phrases), forme courte (plaques)
+/* Positions des rails mobiles réglées sur la carte de l'éditeur (osmrides#64, docs/manoeuvres.md « Positions des rails mobiles ») : SITE.yard.rails
+   (écrit par l'éditeur dans GAME.site.yard.rails) = {circuit: {pos:[{name, d}, …]} | {lock:'garage'}, garage: {…}} ; d = distance (m) de l'axe du rail à l'axe
+   du circuit, comptée vers le garage (comme yard.lanes[].d). Rails : 'circuit' = rail du circuit (rail A du pont, rail unique, tronçon droit de l'aiguillage),
+   'garage' = rail du chariot (rail B) ou tronçon en S de l'aiguillage. lock = le rail bouge avec l'autre (chariot commun) ; aiguillage : toujours ensemble.
+   Une position est en face du circuit ou d'une voie à RTOL près (sinon : « non connectée », le train ne peut ni entrer ni sortir) ; l'aiguillage relie la voie k à la
+   position où son tronçon en S est en place (course yard.slide ou lanes[].off). Absent : positions d'origine (P, G, voies 1…n, yard.retract) inchangées. */
+const RTOL=.3; // ESTIMÉ (m) ; l'éditeur aimante exactement
+const RLS=YD.rails&&typeof YD.rails==='object'&&(TRAV||(YD.device==='switch'&&!LBK&&!ROT))?YD.rails:null;
+const rPos=id=>RLS&&RLS[id]&&Array.isArray(RLS[id].pos)&&RLS[id].pos.length?RLS[id].pos.filter(q=>q&&isFinite(q.d)):null;
+const RLOCK=!!RLS&&(!!(RLS.circuit&&RLS.circuit.lock==='garage')||!!(RLS.garage&&RLS.garage.lock==='circuit'));
+const RA=TRAV&&!SG&&(RLS&&rPos('circuit')&&!RLOCK?true:RLS&&RLOCK?false:!!YB.retract); // rail du circuit indépendant du chariot (escamotable)
+const RAP=RA&&rPos('circuit'),RAX=RAP&&RAP.find(q=>Math.abs(q.d)>=RTOL)||null,RAI=RAP&&RAP.find(q=>Math.abs(q.d)<RTOL)||null;
+const RET=RA?(RAX?-RAX.d:YB.retract&&YB.retract.d||GAP):0,RAN=RA&&YB.retract&&YB.retract.name||'Rail mobile du parcours',RAS=RA&&YB.retract&&YB.retract.short||'Rail parcours'; // nom complet (phrases), forme courte (plaques)
+const RA_NM=[RAI?RAI.name:'sur le circuit',RAX?RAX.name:'retiré']; // noms des deux positions du rail du circuit escamotable
+// Chariot (G.dev) : rail qui porte les positions enregistrées (CM) et décalage c du chariot pour chacune (rail A en v=c, rail B en v=c-GAP, rail unique ou aiguillage : v=c ; v=-d)
+const CM=!RLS?null:SG||!TRAV?'circuit':RA?'garage':RLOCK&&!rPos('garage')?'circuit':'garage';
+const CPOS=CM&&rPos(CM)?rPos(CM).map(q=>({name:String(q.name||''),c:-q.d+(TRAV&&!SG&&CM==='garage'?GAP:0)})):null;
+const PX0=LANES.length+1+(TRAV&&!SG?1:0),POSX=[],POSN={}; // positions sans voie en face : indices PX0, PX0+1… (décalages POSX) ; POSN : noms enregistrés
+const POS_REC=CPOS?(()=>{const R=[];
+  for(const q of CPOS){let p=-1;
+    if(TRAV){if(!RA&&Math.abs(q.c)<RTOL)p=0;else if(!SG&&Math.abs(q.c-GAP)<RTOL)p=PG;else{const j=LANES.findIndex(l=>Math.abs(q.c-(GAP-l.d))<RTOL);if(j>=0)p=j+1;}}
+    else if(Math.abs(q.c)<RTOL)p=0;else{const j=LANES.findIndex(l=>Math.abs(q.c-l.off)<RTOL);if(j>=0)p=j+1;} // aiguillage : tronçon en S en place sur la voie j
+    if(p<0){p=PX0+POSX.length;POSX.push(q.c);}
+    if(!R.includes(p)){R.push(p);POSN[p]=q.name;}}
+  const need=TRAV&&!SG?PG:0;if(!R.includes(need)){R.unshift(need);console.warn('SITE.yard.rails : aucune position ne raccorde le circuit ; position '+(need?'G':'P')+' ajoutée.');}
+  return R;})():null;
 function gFrame(j,u,o){
   const GP=LANES[j].path;u=clamp(u,0,GP[GP.length-1].d);let i=1;while(i<GP.length-1&&GP[i].d<u)i++;
   const a=GP[i-1],b=GP[i],k=(u-a.d)/((b.d-a.d)||1),l=Math.hypot(b.x-a.x,b.z-a.z)||1;
@@ -133,7 +159,7 @@ function yardFwd(t){
   if(G.estop)return refuse(t.name+' : manœuvre refusée, arrêt d\'urgence enclenché.');
   if(TRAV&&t.st==='garage'&&t.lane<0){ // pont droit : du rail B vers la voie en face
     if(t.mv)return false;
-    if(devMoving()||!G.dev.pos||G.dev.pos===PG)return refuse(t.name+' : '+DEVL+' n\'est pas en place face à une voie de garage.');
+    if(devMoving()||!posLane(G.dev.pos))return refuse(t.name+' : '+DEVL+' n\'est pas en place face à une voie de garage.');
     const j=G.dev.pos-1;if(VEHICULES.some(o=>o.st==='garage'&&o!==t&&o.lane===j))return refuse('Voie '+(j+1)+' ('+LANES[j].name+') occupée.');
     t.lane=j;t.mv=1;t.ld=1;log(t.name+' entre'+(LREV?' en marche arrière':'')+' sur '+posName(j+1)+'.');return true;
   }
@@ -150,6 +176,7 @@ function yardFwd(t){
   {const r=fournit('refusQuitter','',t);if(r)return refuse(r);} // motif propre au type (portillons, sécurités)
   if(devMoving())return refuse(DEVN+' en mouvement : '+t.name+' ne peut pas le franchir.');
   if(!G.dev.pos)return refuse(DEVN+' sur P : positionnez-le d\'abord sur une voie de garage.');
+  if(!posLane(G.dev.pos))return refuse(DEVN+' sur '+posName(G.dev.pos)+' : positionnez-le d\'abord sur une voie de garage.');
   const j=G.dev.pos-1,n=VEHICULES.filter(o=>o.st==='garage'&&o.lane===j).length;
   if(n>=LANES[j].cap)return refuse('Voie '+(j+1)+' ('+LANES[j].name+') pleine ('+LANES[j].cap+' train'+(LANES[j].cap>1?'s':'')+').');
   if(VEHICULES.some(o=>o!==t&&nearDev(o)))return refuse('Manœuvre déjà en cours près de '+DEVL+'.');

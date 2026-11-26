@@ -2,16 +2,20 @@
 /* ══════════ APPAREIL DE VOIE (docs/manoeuvres.md, docs/ref/garage.md) ══════════
    Aiguillage (2 positions, en S, rotatif : géométrie dans engine/voies/garage.js) ou pont transbordeur (voie qui bouge : positions successives P, G, voies 1…n),
    rail escamotable du pont ; état G.dev / G.ra, verrouillages, commande de position, avancement. Aucun dessin (montagnes-russes/dessin.js, voie-dessin.js). */
-const OFF=[0].concat(LANES.map(l=>l.off),TRAV&&!SG?[GAP]:[]),CMAX=Math.max(...OFF.map(Math.abs),RET);
-const POS_ORDER=TRAV?(RA?[]:[0]).concat(SG?[]:[PG],LANES.map((_,j)=>j+1)):OFF.map((_,p)=>p),posId=p=>p===PG?'G':p||'P';
-const DEV0=RA?(YD.retract.rest||1):0; // position du chariot au départ (rail A escamotable : face à une voie)
+// Décalages du chariot : P, voies 1…n, G (pont à deux rails), puis positions enregistrées sans voie en face (POSX, osmrides#64 : X1, X2…)
+const OFF=[0].concat(LANES.map(l=>l.off),TRAV&&!SG?[GAP]:[],POSX),CMAX=Math.max(...OFF.map(Math.abs),RET);
+const POS_ORDER=POS_REC||(TRAV?(RA?[]:[0]).concat(SG?[]:[PG],LANES.map((_,j)=>j+1)):OFF.map((_,p)=>p)),posId=p=>p===PG?'G':p>=PX0?'X'+(p-PX0+1):p||'P';
+const posLane=p=>p>=1&&p<=LANES.length; // position en face d'une voie de garage
+const DEV0=(()=>{if(!RA)return 0;const r=YB.retract&&YB.retract.rest||1;return POS_ORDER.includes(r)?r:POS_ORDER.find(p=>p!==PG)||r;})(); // position du chariot au départ (rail A escamotable : face à une voie)
+// Chariot généré (osmrides#64) : la fosse et le tablier couvrent toutes les positions (rail du circuit retiré, voies, positions sans voie en face)
+const PIT_VA=Math.max(RA?RET:GAP,...POSX)+1.5,PIT_VB=Math.min(...LANES.map(l=>-l.d),...POSX.map(c=>c-GAP))-1.6;
 // État de l'appareil : G.dev={pos, to, k, d} (position quittée, position visée, avancement 0…1, durée du déplacement)
 const devMoving=()=>G.dev.pos!==G.dev.to, devOff=()=>devMoving()||G.dev.pos!==0, devOn=j=>!devMoving()&&G.dev.pos===j+1;
 const devC=()=>lerp(OFF[G.dev.pos],OFF[G.dev.to],G.dev.k), devShown=()=>G.dev.to||G.dev.pos||1;
 const raMoving=()=>RA&&G.ra.pos!==G.ra.to, raIn=()=>!RA||(!raMoving()&&G.ra.pos===0), raOut=()=>RA&&!raMoving()&&G.ra.pos===1;
 const raC=()=>RA?lerp(G.ra.pos*RET,G.ra.to*RET,G.ra.k):devC(); // décalage du rail A le long de (SW0.vx, SW0.vz)
 const inLine=()=>RA?raIn()||(raOut()&&!devMoving()&&G.dev.pos===PG):!devMoving()&&(G.dev.pos===0||G.dev.pos===PG); // pont droit : un rail (A ou B) raccorde le circuit
-const posName=p=>p===PG?'G (rail de garage sur le circuit)':p?'voie '+p+' ('+LANES[p-1].name+')':'P (circuit)';
+const posName=p=>p===PG?'G (rail de garage sur le circuit)':p>=PX0?'la position « '+(POSN[p]||posId(p))+' » (aucune voie en face)':p?'voie '+p+' ('+LANES[p-1].name+')':'P (circuit)';
 const bIn=()=>TRAV&&!SG&&!devMoving()&&G.dev.pos===PG&&(!RA||raOut()); // pont droit : rail B (garage) en ligne avec le circuit
 const circIn=()=>TRAV&&(RA?raIn():!devMoving()&&G.dev.pos===0); // pont droit : rail A (circuit) en ligne
 const raLock=()=>VEHICULES.find(onRail); // rail A : immobile tant qu'un train y est, y roule ou s'en approche
@@ -28,7 +32,7 @@ function yardPos(p){
     if(c&&p===PC){const MR=SITE.maxRun||VEHICULES.length,run=VEHICULES.filter(o=>o.st!=='garage').length;
       if(run>=MR)return refuse('Déjà '+run+' VEHICULES sur le circuit (au plus '+MR+') : '+c.name+' reste sur le chariot.');
       if(!raccordLibre(c))return refuse('Dernier canton occupé : '+c.name+' ne peut pas être remis sur le circuit (fermez au besoin un frein de bloc).');}
-    if(c&&p&&p!==PG&&VEHICULES.some(o=>o.st==='garage'&&o!==c&&o.lane===p-1))return refuse('Voie '+p+' ('+LANES[p-1].name+') occupée : '+c.name+' ne peut pas y être porté.');
+    if(c&&posLane(p)&&VEHICULES.some(o=>o.st==='garage'&&o!==c&&o.lane===p-1))return refuse('Voie '+p+' ('+LANES[p-1].name+') occupée : '+c.name+' ne peut pas y être porté.');
     const r=VEHICULES.find(o=>o.st==='run'&&atAnchor(o)&&G.dev.pos===PC);
     if(r&&p!==PC){r.st='garage';r.lane=-1;r.g=G_B;r.mv=0;r.v=0;appel('quitteCircuit',r,true);
       log(r.name+' est emporté par le chariot.');}
@@ -53,3 +57,24 @@ function avanceAppareils(dt){
   if(raMoving()&&!G.estop){G.ra.k+=dt/(G.ra.d||MV.t);if(G.ra.k>=1){G.ra.k=1;G.ra.pos=G.ra.to;log(RAN+(G.ra.pos?' retiré.':' en place sur le circuit.'));}}
   if(devMoving()&&!G.estop){G.dev.k+=dt/(G.dev.d||MV.t);if(G.dev.k>=1){G.dev.k=1;G.dev.pos=G.dev.to;log(DEVN+' en place sur '+posName(G.dev.pos)+'.');return true;}}
   return false;}
+/* Éditeur (osmrides#64) : rails mobiles, positions et repères d'aimantation, sans rien changer. Repère : origine SW0, u = (tx, tz), v = (vx, vz) ; un rail placé
+   à la distance d du circuit (vers le garage) est en v = -d. pts = tracé du rail en d = 0 ; rail porté par le chariot (car) : d = -(c + vo), c = décalage du
+   chariot ; axes = distances d où ce rail est en face du circuit ou d'une voie (l'aimant de l'éditeur s'y colle). */
+function railsEd(){
+  if(!(TRAV||(YD.device==='switch'&&!LBK&&!ROT))||!LANES.length)return null;
+  const loc=(x,z)=>{const dx=x-SW0.x,dz=z-SW0.z;return [dx*SW0.tx+dz*SW0.tz,dx*SW0.vx+dz*SW0.vz];},r2=v=>Math.round(v*100)/100;
+  const conn=p=>p===PG||(p===0&&!RA)?'circuit':posLane(p)?'voie '+p:null,lanes=LANES.map((l,j)=>({d:TRAV?l.d:-l.off,label:'voie '+(j+1)}));
+  const rails=[];
+  if(TRAV){const st=[[0,0],[R1-R0,0]];
+    rails.push({id:'circuit',name:SG?zName('RB'):RA?RAN:'Rail du parcours',pts:st,car:!RA,vo:0,axes:[{d:0,label:'circuit'}].concat(SG?lanes:[])});
+    if(!SG)rails.push({id:'garage',name:'Rail du chariot',pts:st,car:true,vo:-GAP,axes:[{d:0,label:'circuit'}].concat(lanes)});}
+  else{const a=[];for(let s=SW_A;s<=SW_B+.01;s+=.5){const f=frameAt(s,mkF());a.push(loc(f.p.x,f.p.z));}
+    rails.push({id:'circuit',name:'Rail du circuit',pts:a,car:true,vo:0,axes:[{d:0,label:'circuit'}]});
+    const P=LANES[0].path.filter(q=>q.d<=LANES[0].link+.01).map(q=>loc(q.x,q.z));
+    rails.push({id:'garage',name:'Tronçon en S',pts:P,car:true,vo:-LANES[0].off,axes:[{d:0,label:'voie 1'}]});}
+  for(const r of rails)r.d=r2(r.car?-(devC()+r.vo):-raC());
+  return {device:TRAV?(SG?'single':'traverser'):'switch',rec:!!RLS,rails,master:CM||(SG||!TRAV?'circuit':'garage'),locked:!TRAV||(!SG&&!RA),lockable:TRAV&&!SG,tol:RTOL,
+    frame:{x:SW0.x,z:SW0.z,tx:SW0.tx,tz:SW0.tz,vx:SW0.vx,vz:SW0.vz},c:devC(),
+    car:POS_ORDER.map(p=>({p,id:posId(p),name:String(POSN[p]||posId(p)),c:r2(OFF[p]),conn:conn(p)})),
+    ra:RA?[{name:RA_NM[0],d:0,conn:'circuit'},{name:RA_NM[1],d:r2(-RET),conn:null}]:null};
+}

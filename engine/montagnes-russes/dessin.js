@@ -258,7 +258,7 @@ function drawBU(o){
   }
 }
 function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
-  const Lr=R1-R0,dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,c=devC();
+  const Lr=R1-R0,dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=PIT_VA,vB=PIT_VB,c=devC();
   ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
   const gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;
   ctx.fillStyle='#a9aaa6';ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.35;ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.globalAlpha=1; // dalle du garage

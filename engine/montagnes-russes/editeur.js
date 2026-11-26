@@ -29,15 +29,14 @@
   const lim = p => { const L = S.SL[p[1]]; return L ? { min: L[0], max: L[1] } : {}; };
   function effRestraint() { return E('RES_KIND'); }
   function fieldHTML(f, kind) {
-    const p = f.p, key = p.join('.'), ov = pth(GM().site || {}, p), base = f.base !== undefined ? f.base : pth(SB(), p), mod = ov !== undefined; // f.base : origine qui n'est pas au même chemin dans SITE (décalage d'une voie)
+    const p = f.p, key = p.join('.'), ov = pth(GM().site || {}, p), base = pth(SB(), p), mod = ov !== undefined;
     let eff = mod ? ov : base !== undefined ? base : f.d; if (f.p[1] === 'restraint') eff = ov !== undefined ? ov : base !== undefined ? base : effRestraint();
     const o = base !== undefined ? base : f.orig != null ? f.orig : (f.d != null ? f.d + ' (défaut du moteur)' : f.p[1] === 'restraint' ? 'défaut du type' : '');
     let ctl;
     if (f.t === 'enum' || f.t === 'enumn') ctl = `<select data-p="${key}" data-t="${f.t}">${f.o.map(([v, n]) => `<option value="${v}"${String(v) === String(eff) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
     else if (f.t === 'bool') ctl = `<input data-p="${key}" data-t="bool" type="checkbox"${eff ? ' checked' : ''}>`;
     else if (f.t === 'text') ctl = `<input data-p="${key}" data-t="txt" type="text" maxlength="${S.SL.txt}" value="${esc(eff == null ? '' : eff)}" style="width:100%">`;
-    else { const L = f.lim ? { min: f.lim[0], max: f.lim[1] } : lim(p); ctl = `<input data-p="${key}" data-t="${f.t}" type="number" step="${f.st || 1}"${f.zero ? ' data-zero="1"' : ''}${f.base !== undefined ? ` data-base="${f.base}"` : ''}${L.min != null ? ` min="${L.min}" max="${L.max}"` : ''} value="${eff}">`;
-      if (f.snap) ctl += `<select data-snap="${key}" title="Aimanter sur la position d'un autre élément"><option value="">Aimanter sur…</option>${f.snap.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('')}</select>`; }
+    else { const L = f.lim ? { min: f.lim[0], max: f.lim[1] } : lim(p); ctl = `<input data-p="${key}" data-t="${f.t}" type="number" step="${f.st || 1}"${f.zero ? ' data-zero="1"' : ''}${L.min != null ? ` min="${L.min}" max="${L.max}"` : ''} value="${eff}">`; }
     return `<div class="fld${mod ? ' mod' : ''}"><span>${f.l}</span>${ctl}<span class="orig" title="Valeur d'origine de SITE">origine : ${esc(typeof o === 'object' ? JSON.stringify(o) : o)}</span><button data-rev="${key}" ${mod ? '' : 'disabled'} title="Revenir à la valeur d'origine">Origine</button></div>`;
   }
   function colorHTML(p, l, cur, base, mod, rgb) {
@@ -66,24 +65,6 @@
   }
   // ── autres réglages de SITE (osmrides#53) : exploitation, gare et quais, freins de bloc, frein avant gare, appareil de voie, valeurs déduites ──
   const fx = v => v == null ? '—' : String(Math.round(v * 100) / 100).replace('.', ',');
-  // pont transbordeur droit : la voie qui bouge (rail mobile, chariot) et ses positions successives P, G, voie 1…n (osmrides#53 lot 3) ; GAME.site.yard.post / laneGap / retract.d / laneD.<n>
-  // Aimantation : pas de 0,1 m et liste « Aimanter sur… » (rail A ou B au repos, autres voies). Pas d'équivalent OSM : aucun envoi. Bornes ESTIMÉES (schema.js).
-  function bridgeHTML(kind, Y) {
-    const h = ['<h3>Pont transbordeur : voie qui bouge et positions</h3>'], SL = S.SL, gap = E('GAP'), nl = E('LANES.length'), dEff = E('LANES.map(l=>l.d)');
-    const f = [{ p: ['yard', 'post'], l: 'Rail du chariot au-delà du train (m)', t: 'num', st: .1, d: .6, lim: SL.yard.post }, { p: ['yard', 'laneGap'], l: 'Jeu entre le rail et le début des voies (m)', t: 'num', st: .1, d: .8, lim: SL.yard.laneGap }];
-    if (Y.retract) f.push({ p: ['yard', 'retract', 'd'], l: 'Course du rail mobile (m)', t: 'num', st: .1, d: gap, lim: SL.yard.ret, snap: [[gap, 'écart des deux rails (' + fx(gap) + ' m)']], orig: Y.retract.d != null ? Y.retract.d + ' (SITE, ESTIMÉE)' : fx(gap) + ' (écart des rails)' });
-    for (let j = 0; j < nl; j++) {
-      const sn = [[0, 'rail du circuit au repos (0 m)']]; if (!E('SG')) sn.push([gap, 'rail de garage au repos (' + fx(gap) + ' m)']);
-      for (let k = 0; k < nl; k++) if (k !== j) sn.push([dEff[k], 'voie ' + (k + 1) + ' (' + fx(dEff[k]) + ' m)']);
-      f.push({ p: ['yard', 'laneD', String(j + 1)], l: 'Voie ' + (j + 1) + ' (' + esc(E('LANES[' + j + '].name')) + ') : décalage (m)', t: 'num', st: .1, d: Y.lanes[j].d, base: Y.lanes[j].d, lim: SL.yard.d, snap: sn });
-    }
-    h.push(...f.map(x => fieldHTML(x, kind)));
-    const pos = E('POS_ORDER.map(p=>posId(p)+" : "+OFF[p])').map(t => t.replace(/ : (-?[\d.]+)$/, (m, v) => ' : ' + fx(+v) + ' m')).join(' ; ');
-    const sorted = dEff.slice().sort((a, b) => a - b), close = sorted.some((d, i) => i && d - sorted[i - 1] < 1.5);
-    h.push(`<p class="note">Positions du chariot (décalage le long de la voie qui bouge) : ${esc(pos)}. Un décalage de voie est la position de son axe par rapport au rail du circuit au repos ; le chariot s'y arrête face à la voie. Pas de 0,1 m ; « Aimanter sur… » colle la valeur à un rail ou à une autre voie. Pas d'équivalent OSM : ces réglages ne sont pas envoyés. Bornes : rail et jeu 0 à 5 m, course 0,5 à 10 m, décalage ±40 m (ESTIMÉES).</p>`);
-    if (close) h.push('<p class="note warn">Deux voies à moins de 1,5 m l\'une de l\'autre (ESTIMÉ) : les trains garés se chevauchent à l\'écran.</p>');
-    return h;
-  }
   function extraHTML(kind) {
     const h = [], SL = S.SL, ded = (() => { try { return E('DEDUIT'); } catch (e) { return {}; } })(), ev = k => { try { return E('SITE.' + k); } catch (e) { return undefined; } };
     h.push('<h3>Gare et quais</h3>', ...[
@@ -108,7 +89,6 @@
     if (ev('yard')) h.push('<h3>Appareil de voie et garage</h3>', ...[
       { p: ['yard', 'move', 'v'], l: 'Vitesse de l\'appareil (m/s)', t: 'num', st: .1, d: 2.4, lim: SL.move.v }, { p: ['yard', 'move', 'vc'], l: 'Vitesse du train sur l\'appareil (m/s)', t: 'num', st: .1, d: .6, lim: SL.move.vc }, { p: ['yard', 'move', 't'], l: 'Durée de la manœuvre (s)', t: 'num', st: .5, d: 3, lim: SL.move.t },
       { p: ['yard', 'devName'], l: 'Nom de l\'appareil (pupitre)', t: 'text', d: ev('yard').device === 'switch' ? 'Aiguillage' : 'Pont transbordeur' }, { p: ['yard', 'devLabel'], l: 'Nom dans une phrase', t: 'text', d: ev('yard').device === 'switch' ? 'l\'aiguillage' : 'le pont transbordeur' }].map(f => fieldHTML(f, kind)));
-    if (ev('yard') && ev('yard').device === 'traverser') h.push(...bridgeHTML(kind, ev('yard')));
     // valeurs déduites réglables : holdBack, loadSide (dropAfter : déduit du profil, plus de champ) (SITE ne les donne plus ; l'éditeur ne sert qu'à corriger un cas particulier)
     const dl = `${ded.loadSide === 1 ? 'côté +R de la voie' : ded.loadSide === -1 ? 'côté -R de la voie' : 'indécis'}`;
     h.push('<h3>Valeurs déduites (corriger un cas particulier)</h3>', ...[
@@ -123,12 +103,8 @@
       const p = el.dataset.p.split('.'), t = el.dataset.t; let v = el.value;
       if (t === 'bool') v = el.checked; else if (t === 'enumn') v = +v;
       else if (t === 'num' || t === 'int') { if (v === '' || !isFinite(+v)) return; v = +v; if (el.dataset.zero && v <= 0) v = ''; } else if (t === 'rgb') v = hexRgb(v);
-      if (el.dataset.base !== undefined && v === +el.dataset.base) return siteChange(s => delSite(s, p)); // origine propre au champ (décalage d'une voie)
       setSite(p, v);
     });
-    for (const el of B.querySelectorAll('[data-snap]')) el.addEventListener('change', () => { // aimantation : recopie la valeur choisie dans le champ
-      if (el.value === '') return; const inp = B.querySelector('input[data-p="' + el.dataset.snap + '"]'); if (!inp) return;
-      inp.value = String(Math.round(+el.value * 100) / 100); inp.dispatchEvent(new Event('change')); });
     for (const el of B.querySelectorAll('[data-rev]')) el.onclick = () => { const p = el.dataset.rev.split('.'); siteChange(s => delSite(s, p)); };
     const trains = () => JSON.parse(JSON.stringify(E('SITE.trains')));
     const putTrains = A => { // couleurs, noms, usure : appliqués à chaud au jeu en cadre ; nombre de trains ou voie de garage : jeu en cadre rechargé (vue gardée)

@@ -10,15 +10,38 @@
     lap: [30, 600], stopBack: [0, 15], maxRun: [1, 8], holdBack: [0, 300], dropAfter: [0, 300], // tour (s), arrêt en gare avant la fin de gare (m), trains en ligne, arrêt au frein final avant la fin du circuit (m), cri après le haut du lift (m)
     zoneV: [1, 30], zoneHold: [0, 300], // frein de bloc : vitesse limite / de lancement (m/s), temps d'arrêt (s)
     move: { v: [0.2, 10], vc: [0.1, 5], t: [0.5, 30] }, // manœuvre de l'appareil de voie : vitesse, vitesse de chariot (m/s), durée (s)
-    yard: { post: [0, 5], laneGap: [0, 5], ret: [0.5, 10], d: [-40, 40] }, // pont transbordeur (m) : rail au-delà du train, jeu rail/voies, course du rail mobile, décalage d'une voie (ESTIMÉES)
+    rails: { d: [-40, 40], n: [1, 12] }, // positions des rails mobiles (osmrides#64) : distance du rail à l'axe du circuit (m), nombre de positions par rail (ESTIMÉES)
     plat: { load: [1.5, 30], exit: [0, 30], back: [0, 10], front: [0, 10] }, // profondeurs des quais (m) : embarquement, sortie, au-delà de l'arrière du dernier wagon, devant le premier
     pre: { back: [0, 200], len: [3, 120] }, txt: 40 }; // les bornes ci-dessus sont ESTIMÉES (sûres pour le moteur, pas des mesures)
   const SITE_KEYS = { kind: 'enum', car: ['len', 'n', 'seats', 'abreast', 'restraint', 'w', 'inline', 'pitch'], trains: 'list', track: ['spine', 'rail', 'support'], trough: ['lo', 'hi', 'edge', 'deck', 'rim', 'shine'], phys: ['roll', 'drag', 'vmin'],
-    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel', 'post', 'laneGap', 'retract', 'laneD'], plat: ['load', 'exit', 'back', 'front'] };
+    lap: 'num', stopBack: 'num', maxRun: 'int', holdBack: 'num', dropAfter: 'num', loadSide: 'enum2', preBrake: ['back', 'len', 'name'], zones: 'zones', yard: ['move', 'devName', 'devLabel', 'rails'], plat: ['load', 'exit', 'back', 'front'] };
+  const YARD_OLD = ['post', 'laneGap', 'retract', 'laneD']; // réglages chiffrés du pont de 0.6.0 : tolérés en lecture (ignorés par le moteur), plus écrits (osmrides#64)
+  const RAIL_IDS = ['circuit', 'garage']; // rails mobiles : rail du circuit, rail du chariot ou tronçon en S (engine/voies/garage.js)
   const ZKEYS = ['trim', 'launch', 'hold', 'stop']; // par frein de bloc B<k> : vitesse limite (trim.v), vitesse de lancement, temps d'arrêt, arrêt obligatoire (engine/montagnes-russes/zones.js)
   const DEPTH = [0.5, 6]; // profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
   const txt = v => typeof v === 'string' && v.trim() && v.length <= SL.txt && !/[\u0000-\u001f<>"\\]/.test(v);
+  // GAME.site.yard.rails (osmrides#64) : {circuit|garage: {pos: [{name, d}, …]} | {lock: 'garage'|'circuit'}} ; d = distance (m) du rail à l'axe du circuit, vers le garage
+  function validateRails(R, p, E) {
+    if (!R || typeof R !== 'object' || Array.isArray(R)) { E.push(p + ' : objet {circuit, garage} attendu'); return; }
+    for (const id of Object.keys(R)) {
+      const q = p + '.' + id, r = R[id];
+      if (!RAIL_IDS.includes(id)) { E.push(q + ' : rail inconnu (' + RAIL_IDS.join(' | ') + ')'); continue; }
+      if (!r || typeof r !== 'object' || Array.isArray(r)) { E.push(q + ' : objet {pos} ou {lock} attendu'); continue; }
+      for (const f of Object.keys(r)) if (f !== 'pos' && f !== 'lock') E.push(q + '.' + f + ' : clé refusée (pos, lock)');
+      if (('pos' in r) === ('lock' in r)) { E.push(q + ' : soit pos (positions), soit lock (verrouillé avec l\'autre rail)'); continue; }
+      if ('lock' in r) { if (!RAIL_IDS.includes(r.lock) || r.lock === id) E.push(q + '.lock : ' + RAIL_IDS.filter(x => x !== id).join(' | ') + ' attendu');
+        else if (R[r.lock] && R[r.lock].lock) E.push(q + '.lock : les deux rails ne peuvent pas être verrouillés l\'un sur l\'autre'); continue; }
+      const P = r.pos;
+      if (!Array.isArray(P) || P.length < SL.rails.n[0] || P.length > SL.rails.n[1]) { E.push(q + '.pos : de ' + SL.rails.n[0] + ' à ' + SL.rails.n[1] + ' positions'); continue; }
+      const seen = new Set();
+      P.forEach((o, i) => { const w = q + '.pos[' + i + ']';
+        if (!o || typeof o !== 'object' || Array.isArray(o)) { E.push(w + ' : objet {name, d} attendu'); return; }
+        for (const f of Object.keys(o)) if (f !== 'name' && f !== 'd') E.push(w + '.' + f + ' : clé refusée (name, d)');
+        if (!txt(o.name)) E.push(w + '.name : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)'); else if (seen.has(o.name)) E.push(w + '.name : nom déjà pris'); else seen.add(o.name);
+        if (!S.num(o.d, SL.rails.d[0], SL.rails.d[1])) E.push(w + '.d : distance de ' + SL.rails.d[0] + ' à ' + SL.rails.d[1] + ' m'); });
+    }
+  }
   function validateSite(T, E, W, ctx) {
     const isInt = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
     const sub = (key, keys, chk) => { // sous-objet à clés listées
@@ -65,21 +88,14 @@
       else if (!S.num(v, SL.pre[f][0], SL.pre[f][1])) E.push(p + ' : de ' + SL.pre[f][0] + ' à ' + SL.pre[f][1] + ' m');
     });
     sub('plat', SITE_KEYS.plat, (f, v, p) => { if (!S.num(v, SL.plat[f][0], SL.plat[f][1])) E.push(p + ' : profondeur de ' + SL.plat[f][0] + ' à ' + SL.plat[f][1] + ' m'); });
-    sub('yard', SITE_KEYS.yard, (f, v, p) => { // appareil de voie : vitesses, durée, noms ; pont transbordeur : rail au-delà du train, jeu rail/voies, course du rail mobile, décalage des voies (le reste décrit la voie)
+    if (T.yard && typeof T.yard === 'object' && !Array.isArray(T.yard) && YARD_OLD.some(f => f in T.yard)) W.push('site.yard : ' + YARD_OLD.filter(f => f in T.yard).join(', ') + ' (réglages chiffrés de 0.6.0) ignorés : les positions des rails se règlent sur la carte (rails)');
+    sub('yard', SITE_KEYS.yard.concat(YARD_OLD), (f, v, p) => { // appareil de voie : vitesses, durée, noms, positions des rails mobiles (le reste décrit la voie)
+      if (YARD_OLD.includes(f)) return; // toléré, ignoré
       if (f === 'move') {
         if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push(p + ' : objet {v, vc, t} attendu'); return; }
         for (const m of Object.keys(v)) if (!SL.move[m]) E.push(p + '.' + m + ' : clé refusée'); else if (!S.num(v[m], SL.move[m][0], SL.move[m][1])) E.push(p + '.' + m + ' : de ' + SL.move[m][0] + ' à ' + SL.move[m][1]);
-      } else if (f === 'post' || f === 'laneGap') { if (!S.num(v, SL.yard[f][0], SL.yard[f][1])) E.push(p + ' : de ' + SL.yard[f][0] + ' à ' + SL.yard[f][1] + ' m'); }
-      else if (f === 'retract') { // course du rail mobile (seulement d ; le rail doit exister dans SITE)
-        if (!v || typeof v !== 'object' || Array.isArray(v) || Object.keys(v).some(m => m !== 'd')) E.push(p + ' : objet {d} attendu');
-        else if (!S.num(v.d, SL.yard.ret[0], SL.yard.ret[1])) E.push(p + '.d : course de ' + SL.yard.ret[0] + ' à ' + SL.yard.ret[1] + ' m');
-      } else if (f === 'laneD') { // décalage de chaque voie du pont, par numéro de voie : {"1": d, "2": d}
-        if (!v || typeof v !== 'object' || Array.isArray(v)) { E.push(p + ' : objet {"<n° de voie>": décalage} attendu'); return; }
-        for (const k of Object.keys(v)) {
-          if (!/^[1-9]\d?$/.test(k) || (Number.isInteger(ctx.lanes) && +k > ctx.lanes)) E.push(p + '.' + k + ' : numéro de voie' + (Number.isInteger(ctx.lanes) ? ' de 1 à ' + ctx.lanes : ' attendu'));
-          else if (!S.num(v[k], SL.yard.d[0], SL.yard.d[1])) E.push(p + '.' + k + ' : décalage de ' + SL.yard.d[0] + ' à ' + SL.yard.d[1] + ' m');
-        }
-      } else if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)');
+      } else if (f === 'rails') validateRails(v, p, E);
+      else if (!txt(v)) E.push(p + ' : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)');
     });
     if ('zones' in T) { // freins de bloc B1…Bn : vitesse limite, vitesse de lancement, temps d'arrêt, arrêt obligatoire
       const Z = T.zones;
@@ -117,7 +133,9 @@
           else if (key === 'trains') o.trains = v.map(c => { const q = { name: c.name, col: String(c.col).toLowerCase(), col2: String(c.col2).toLowerCase(), wear: S.r2(c.wear) }; if (c.lane != null) q.lane = c.lane; return q; });
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }
           else if (key === 'zones') { const q = {}; for (const id of Object.keys(v).sort((a, b) => +a.slice(1) - +b.slice(1))) { const z = {}; for (const f of ZKEYS) if (f in v[id]) z[f] = f === 'trim' ? { v: S.r2(v[id].trim.v) } : typeof v[id][f] === 'number' ? S.r2(v[id][f]) : v[id][f]; q[id] = z; } o.zones = q; }
-          else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])])) : f === 'retract' ? { d: S.r2(v.retract.d) } : f === 'laneD' ? Object.fromEntries(Object.keys(v.laneD).sort((a, b) => a - b).map(k => [k, S.r2(v.laneD[k])])) : typeof v[f] === 'number' ? S.r2(v[f]) : v[f]; o.yard = q; }
+          else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])]))
+              : f === 'rails' ? Object.fromEntries(RAIL_IDS.filter(id => id in v.rails).map(id => [id, 'lock' in v.rails[id] ? { lock: v.rails[id].lock } : { pos: v.rails[id].pos.map(o => ({ name: o.name, d: S.r2(o.d) })) }])) : v[f];
+            if (Object.keys(q).length) o.yard = q; } // post, laneGap, retract, laneD (0.6.0) : plus écrits
           else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : S.r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o[key] = q; }
         }
       },
@@ -152,6 +170,6 @@
         if (g > PROF.slope) W.push('profile : pente de ' + Math.round(g * 100) + ' % entre s = ' + a[0] + ' et ' + q[0] + ' m (au-delà de ' + PROF.slope * 100 + ' %, ESTIMÉ : à vérifier dans le jeu)'); });
       if (ctx && ctx.faisa && ctx.faisa.bloque) W.push('profile : le train s\'arrêterait vers s = ' + ctx.faisa.sOrig + ' m (vitesse estimée ' + ctx.faisa.vMin + ' m/s, minimum du moteur ' + ctx.faisa.vmin + ' m/s) : circuit infaisable');
     } });
-  Object.assign(S, { SK, SL, SITE_KEYS, ZKEYS, PROF }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
+  Object.assign(S, { SK, SL, SITE_KEYS, ZKEYS, PROF, RAIL_IDS }); S.LIM.depth = DEPTH; // panneaux de l'éditeur (engine/montagnes-russes/editeur.js)
   });
 })(typeof module !== 'undefined' && module.exports ? f => { module.exports = f; } : f => f(window.T2ZSchema));

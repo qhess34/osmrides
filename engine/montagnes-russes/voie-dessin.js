@@ -58,7 +58,7 @@ const TRN=3,TRGAP=2*TRN+4,TRFN=BOB?Math.min(1,((SITE.car.w||.95)/2+BOB_RIM)/(DEC
   return s=>{let d=1e9;for(const m of M){const e=Math.abs(((s-m[0])%L+L*1.5)%L-L/2)-m[1];if(e<d)d=e;}if(d<=0)return fn;if(d>=TRN)return 1;const k=d/TRN;return fn+(1-fn)*k*k*(3-2*k);};})();
 /* Espace balayé par l'appareil de voie (issue lot 14 ; issue #20 : partagé par les passerelles CATW et les poteaux de la voie) : pont droit = fosse du chariot
    (SWP[0]) et emprise des voies de garage (SWP[1]) ; aiguillage / table / rotatif = couloir autour du tronçon mobile SW_A → SW_B. inSweep(x, z, r, pit) : pit = fosse seule. */
-const SWP=TRAV?(()=>{const dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=(RA?RET:GAP)+1.5,vB=-dM-1.6,Lr=R1-R0,
+const SWP=TRAV?(()=>{const dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=PIT_VA,vB=PIT_VB,Lr=R1-R0,
     gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;return [[-.7,Lr+.7,vB,vA],[gu0,gu0+gw,vB,-dm+1.6]];})()
   :(()=>{const P=[];for(let s=SW_A;s<=SW_B+1e-6;s+=.5){const f=TR[((Math.round(s/DS)%N)+N)%N].p;P.push([f.x,f.z]);}return P;})();
 const inSweep=(x,z,r,pit)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*SW0.tz,v=dx*SW0.vx+dz*SW0.vz;return (pit?SWP.slice(0,1):SWP).some(b=>u>b[0]-r&&u<b[1]+r&&v>b[2]-r&&v<b[3]+r);}
