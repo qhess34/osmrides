@@ -193,7 +193,7 @@ if(QS.gateAtMouth&&QS.link&&QS.link.length){const P=QS.parts[0].pts,L=QS.link;QS
 const STAGES=[],LOOPS=[],SEGS=[];
 QS.parts.forEach((p,si)=>{
   if(p.pts){const s=mkSeg(p.pts);s.si=si;STAGES.push({seg:s});SEGS.push(s);}
-  else{const l={name:p.name,on:true,t:1,r:null,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
+  else{const l={name:p.name,on:true,t:1,r:null,loop:mkSeg(p.loop),short:mkSeg(p.short)};l.loop.si=l.short.si=si;l.loop.fk=l.short.fk=l;LOOPS.push(l);STAGES.push({fork:l});SEGS.push(l.loop,l.short);}
 });
 // liste des barrières (éditeur, check) : clé, barrière, ancienne clé convertie (from)
 const BARS=[],okNum=v=>typeof v==='number'&&isFinite(v);
@@ -325,7 +325,7 @@ function qBehind(e,rp){segSpots(e);const dl=e.len-rp,R=e.reach;let k=Math.floor(
 const _qo={x:0,y:0,z:0,a:0};
 function qSpot(v,e,r){const S=segSpots(e),d=clamp(e.len-r,0,e.len),k=Math.min(S.length-2,Math.floor(d/QSTEP)),f=S.length<2?0:clamp(d/QSTEP-k,0,1),A=S[Math.max(0,k)],B=S[Math.min(S.length-1,k+1)],sd=v.side||0;
   _qo.x=A[0]+(B[0]-A[0])*f+(A[2]+(B[2]-A[2])*f)*sd;_qo.z=A[1]+(B[1]-A[1])*f+(A[3]+(B[3]-A[3])*f)*sd;_qo.a=f<.5?A[4]:B[4];_qo.lv=f<.5?A[5]:B[5];return _qo;}
-function qPlace(v){qSpot(v,v.e,v.r);v.x=_qo.x;v.z=_qo.z;v.lv=_qo.lv;v.hd=_qo.a+Math.PI/2+(v.jt||0);} // v.hd : épaules en travers de la marche (engine/render.js)
+function qPlace(v){qSpot(v,v.e,v.r);v.x=_qo.x;v.z=_qo.z;v.lv=_qo.lv;v.hd=_qo.a+Math.PI/2+(v.jt||0)+(v.rv?Math.PI:0);} // v.hd : épaules en travers de la marche (engine/render.js)
 // reste à parcourir sur son trajet (arrivant : jusqu'à la barrière d'entrée) : rang des arrivants, cohérent là où les accès se rejoignent ou tournent (issue #40)
 function ptsLeft(k){const P=k.pts;if(k.i>=P.length)return 0;if(!P.cum){P.cum=[0];for(let i=1;i<P.length;i++)P.cum.push(P.cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][2]-P[i-1][2]));}
   return Math.hypot(P[k.i][0]-k.x,P[k.i][2]-k.z)+P.cum[P.length-1]-P.cum[k.i];}
@@ -379,6 +379,26 @@ function qWalk(v,dt){if(v.i>=v.pts.length){v.mv=false;v.bk=null;return true;}if(
   const bw=BARS.length?barWait(v,[ox,oy,oz,oi]):0;if(bw){v.mv=false;v.bk=null;if(bw===2)turnAway(v);return false;} // en file devant une barrière fermée (issue #40)
   v.x=ox;v.z=oz;const de=Math.hypot(nx-ENTRY0[0],nz-ENTRY0[1]);let dO;const bk=qBlocked(v,nx,nz);v.bk=bk;if(bk||de<1&&de<(dO=Math.hypot(ox-ENTRY0[0],oz-ENTRY0[1]))&&QENT.some(o=>o!==v&&(o.mode==='q'||Math.hypot(o.x-ENTRY0[0],o.z-ENTRY0[1])<dO))){v.y=oy;v.i=oi;v.mv=false;if(qStill(v,v.x,v.z)&&!barStepBack(v,[]))turnAway(v);return false;} // arrêté sur un autre arrivant arrêté (arrivés ensemble, flux qui se rejoignent) : recule sur son trajet, sinon renonce (issue #40)
   if(nx!==ox||nz!==oz){v.hd=Math.atan2(nz-oz,nx-ox)+Math.PI/2+(v.jt||0);v.rk-=Math.hypot(nx-ox,nz-oz);}v.x=nx;v.z=nz;v.mv=true;return end;}
+/* Barrière fermée dans une branche de fourche (issue #58, règle « fourche bloquée : autre chemin », qRoute) : les visiteurs déjà entrés dans cette branche, EN AMONT de sa première
+   barrière fermée (aucune barrière fermée entre eux et le début de la branche), repartent À REBOURS le long de la branche (QRET m/s, ESTIMÉ : marche d'attente) jusqu'à la fourche
+   et reprennent l'autre branche, si celle-ci n'a aucune barrière fermée (la branche suivie par qRoute). Ceux qui l'ont déjà dépassée, ou dont l'autre branche est fermée aussi,
+   restent devant la barrière. Chacun garde l'écart de la file (qBehind) avec celui qui est derrière lui, jamais de saut : v.r croît de QRET·dt au plus ; à la fourche il passe
+   en queue de l'autre branche (room), sinon attend au début de la sienne. v.rv = recule (tête retournée, qPlace). Le reste suit : avance normale (updateVisitors). */
+const QRET=3;
+function qNear(v,e,x,z){const cx=Math.floor(x/QC),cz=Math.floor(z/QC);for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const c=QGRID.get((cx+i+4096)*8192+cz+j+4096);
+  if(c)for(const o of c)if(o!==v&&o.mode==='q'&&o.e!==e&&(o.lv|0)===(v.lv|0)&&Math.hypot(o.x-x,o.z-z)<QD)return true;}return false;}
+function qRetreat(e,dt){const f=e.fk,l=e.list;
+  const go=f&&l.length&&f.r!==e&&firstShut(e)<1e9&&firstShut(f.r)>=1e9;
+  if(!go){for(const v of l)if(v.rv){v.rv=false;qPlace(v);}return;}
+  const dm=firstShut(e),o=f.r;
+  for(let j=l.length-1;j>=0;j--){const v=l[j];
+    if(e.len-v.r>dm+1e-6){if(v.rv){v.rv=false;qPlace(v);}continue;} // au-delà de la première barrière fermée : il n'y retourne pas
+    v.rv=true;const nx=l[j+1];let nr=Math.min(e.len,v.r+QRET*dt);
+    if(nx&&qBehind(e,nr)>nx.r+1e-9)nr=v.r; // celui de derrière n'a pas encore reculé
+    if(nr>v.r){qSpot(v,e,nr);if(qNear(v,e,_qo.x,_qo.z))nr=v.r;} // près du début de la branche : ni sur celui de l'autre branche ni sur celui du tronçon précédent
+    v.mv=nr>v.r+1e-6;v.rk+=nr-v.r;v.r=nr;
+    if(v.r>=e.len-1e-6&&room(o)){l.splice(j,1);v.e=o;v.r=o.len;v.rv=false;o.list.push(v);}
+    qPlace(v);}}
 function updateVisitors(dt){
   const w=G.wx.type,Q=G.queue;
   for(const b of BARS){b.t=clamp(b.t+(b.open?-dt:dt)/.9,0,1);if(b.wq)b.wq=b.wq.filter(m=>m.bwb===b);} // file devant la barrière : partis retirés
@@ -403,8 +423,10 @@ function updateVisitors(dt){
   }
   // avance dans la file : chacun reste derrière celui qui le précède et ne franchit une fourche que par la barrière ouverte
   if(!ev)for(const e of SEGS){
+    qRetreat(e,dt);
     const l=e.list,sh=e.bx.length?e.bx.filter(x=>!x.b.open):null,n0=l.length?nextSeg(e):null,t0=n0&&n0.list[n0.list.length-1],h0=t0?Math.max(0,SP-(n0.len-t0.r)):0; // premier du tronçon : écart SP avec le dernier du tronçon suivant
-    for(let j=0;j<l.length;j++){const v=l[j];let nr=Math.max(j?qBehind(e,l[j-1].r):h0,v.r-4.5*dt*stepK(v.x,v.z));
+    for(let j=0;j<l.length;j++){const v=l[j];if(v.rv)continue; // recule (qRetreat)
+      let nr=Math.max(j?qBehind(e,l[j-1].r):h0,v.r-4.5*dt*stepK(v.x,v.z));
       if(sh)for(const x of sh)if(v.r>e.len-x.d-1e-6)nr=Math.max(nr,Math.min(v.r,e.len-Math.max(0,x.d-.3))); // barrière fermée devant : arrêt à 0,3 m
       v.mv=v.r-nr>1e-4;
       if(v.mv){qSpot(v,e,nr);if(qBlocked(v,_qo.x,_qo.z)){v.mv=false;qPlace(v);continue;}v.rk-=v.r-nr;}
