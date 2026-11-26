@@ -64,4 +64,8 @@ _Mis à jour le 2026-11-26 par le Chef moteur, session n° 2 (consigne de démar
 
 **Tests** : depuis `../osmrides_parks`, `MOTEUR=../osmrides/engine/ NODE_PATH=$(npm root -g) node tools/check.js <el>` (idem `save.js`, `mobile.js`), une attraction après l'autre ; ici `JEU=../osmrides_parks node tools/editor-test.js` et `tools/osm-sync-test.js`. PASS au 26/11. `mobile.js oziris` : un échec isolé relancé en PASS (probable charge). Mesures : lot 3 ≈ 164 k tokens, point 2 de #57 ≈ 142 k.
 
+**Règle du propriétaire (26/11, répétée plusieurs fois)** : **ne plus tenir compte des barrières OSM** ; seules existent pour le moteur les barrières posées à la main dans l'éditeur (`game.js`).
+
+**Issues ouvertes du 26/11** : #58 (reste : voies de garage de Zeus, audit du pupitre ; usure = pas un bug, rien à changer), #59 (visiteurs par-dessus une barrière fermée en évacuation, Zeus), #60 (lift : AUTO = démarre un peu avant l'arrivée du train, rampes ; MANU = marche / arrêt), #61 (garages : plus de freins manuels, un bouton « Envoyer le train »). Versions : 0.7.1 posée, 0.7.2 poussée (étiquette à poser).
+
 **Points de vigilance** : push sur `main` refusé par le classificateur sans « pousse » explicite du propriétaire dans le chat (un hook le réclame à chaque commit) ; ne pas committer avec `git add -A` ; limite hebdomadaire d'usage atteinte le 24/11 (remise à zéro le 26/11) ; Docker du propriétaire sans DNS ; `apropos.html` non repris ; fiches `docs/ref/` citent parfois les anciens fichiers ; dessin du pont avec valeurs réglées et dessin du tunnel d'OzIris non regardés en image ; ne pas lire les transcriptions des agents ; **session à renouveler** (cinq demandes traitées).
