@@ -49,7 +49,7 @@ $('trains').innerHTML=trains.map(t=>`<div class="card">
     +ZONES.filter(Z=>Z.sec==='gar').map(lrow).join('');}
 $('yPos').innerHTML=POS_ORDER.map(p=>`<button class="pb sq sm blue" id="y${posId(p)}" data-act="pos" data-arg="${p}" title="${DEVN} : ${(POSN[p]&&POSN[p]!==posId(p)?'« '+POSN[p]+' », ':'')+(p===PG?'position G, rail de garage sur le circuit':p>=PX0?'position sans voie en face':p?'position voie '+p+' ('+LANES[p-1].name+')':'position P, circuit')}">${posId(p)}</button>`).join('');
 $('yName').textContent=DEVN;
-if(RA)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${RAP?'« '+RA_NM[p]+' »'+(p?', aucune voie en face':', sur le circuit'):p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');
+if(RM)$('yPos').parentElement.insertAdjacentHTML('beforebegin','<div class="ctl"><div class="pair">'+[0,1].map(p=>`<button class="pb sq sm blue" id="yA${p}" data-act="ra" data-arg="${p}" title="${RAN} (rail du circuit) : ${RAP?'« '+RA_NM[p]+' »'+(p?', aucune voie en face':', sur le circuit'):p?'retiré vers l\'extérieur':'sur le circuit'}">${p?'E':'C'}</button>`).join('')+'</div><div class="plate">'+RAS+'<br><span id="yAState"></span></div></div>');
 $('trackName').textContent=SITE.trackName||'Voie';$('helpGarage').innerHTML=(SITE.helpGarage||'')+(SITE.helpGarage&&LANES.length?' Chaque voie n\'a qu\'un bouton, « Envoyer le train » : le sens est déduit de la position de l\'appareil, les freins des voies sont automatiques.':''); // phrase commune (issues #11 et #61)
 
 const inSynXY=(x,y)=>{const b=SYN.box;if(!synOn||!b)return false;return x>=b[0]&&x<=b[0]+b[2]&&y>=b[1]&&y<=b[1]+b[3];}; // point de l'écran sur le synoptique
@@ -89,7 +89,7 @@ extension({nom:'montagnes-russes',
     if(Z.drive){const f=$('z'+z+'_f');f.classList.toggle('lit',ts.some(t=>t.st==='garage'?t.mv>0:t.entering||t.toPre||t.fdrive||t.bgo)||(z===CARR&&trains.some(t=>t.st==='garage'&&t.mv>0)));f.disabled=!man;}}
   $('zAuto').disabled=!ZONES.some(Z=>Z.auto&&G.zm[Z.id]);
   POS_ORDER.forEach(p=>{const b=$('y'+posId(p));b.classList.toggle('lit',!devMoving()&&G.dev.pos===p);b.classList.toggle('mv',devMoving()&&G.dev.to===p);});
-  if(RA){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});
+  if(RM){[0,1].forEach(p=>{const b=$('yA'+p);b.classList.toggle('lit',!raMoving()&&G.ra.pos===p);b.classList.toggle('mv',raMoving()&&G.ra.to===p);});
     $('yAState').textContent=raMoving()?'En mouvement':(G.ra.pos?'Retiré':'Sur le circuit')+(raLock()?' — verrouillé':'');}
   {const o=devLock();$('yState').textContent=devMoving()?'En mouvement vers '+posId(G.dev.to):'En place sur '+posId(G.dev.pos)+(o?' — verrouillé':'');}
   bar('wChain',G.wear.chain);bar('wTrack',G.wear.track);bar('wBrake',G.wear.brake);

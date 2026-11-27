@@ -81,8 +81,8 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
   await ed(pn, `ED.rails.sel('${R.master}')`); await ed(pn, `ED.openSel()`); await pn.click(`#mSel [data-rpos="${n}"]`); await sleep(150);
   await pn.click('#mSel #bRDel'); await rdn();
   ok(await st() === s0, 'rails : position supprimée (fenêtre) = comportement d\'origine (positions reprises du moteur à l\'identique)');
-  if (R.lockable) { // pont à deux rails : deux rails choisis sur la carte puis verrouillés ensemble (un bloc), puis déverrouillés
-    const ra0 = await ed(pn, `ED.E('RA')`), R2 = await ed(pn, `ED.E('railsEd()')`), A = R2.rails[0], B = R2.rails[1];
+  if (R.lockable) { // pont à deux rails ou aiguillage coulissant : deux rails choisis sur la carte puis verrouillés ensemble (un bloc), puis déverrouillés
+    const ra0 = await ed(pn, `ED.E('RM')`), R2 = await ed(pn, `ED.E('railsEd()')`), A = R2.rails[0], B = R2.rails[1];
     if (ra0) {
       const Gi = await ed(pn, `ED.rails.groups()`);
       ok(Gi.length === 2 && Gi.every(g => g.rails.length === 1 && g.pos.length >= 2), `rails ${id} : rails indépendants = deux groupes d'un rail, chacun ses positions (${Gi.map(g => g.rails[0] + ' : ' + g.pos.map(q => q.name).join('/')).join(' ; ')})`);
@@ -92,12 +92,12 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       ok(JSON.stringify(await ed(pn, `ED.sel().ids`)) === JSON.stringify([A.id, B.id]) && await pn.isVisible('#mSel #bRLockOn'), 'rails : deux rails choisis sur la carte (sélection multiple), « Verrouiller ces rails ensemble »');
       await pn.click('#mSel #bRLockOn'); await rdn();
       const D = await ed(pn, `ED.draft().site.yard.rails`);
-      ok(!(await ed(pn, `ED.E('RA')`)) && D.groups.length === 1 && D.groups[0].rails.length === 2 && D.groups[0].pos.every(q => typeof q.d.circuit === 'number' && typeof q.d.garage === 'number'), `rails ${id} : verrouillés (un seul chariot), positions liées aux deux rails (${D.groups[0].pos.map(q => q.name).join(', ')})`);
+      ok(!(await ed(pn, `ED.E('RM')`)) && D.groups.length === 1 && D.groups[0].rails.length === 2 && D.groups[0].pos.every(q => typeof q.d.circuit === 'number' && typeof q.d.garage === 'number'), `rails ${id} : verrouillés (un seul chariot), positions liées aux deux rails (${D.groups[0].pos.map(q => q.name).join(', ')})`);
       await ed(pn, `ED.rails.sel('${A.id}')`); await ed(pn, `ED.openSel()`); await pn.click('#mSel #bRLockOff'); await rdn();
-      ok(!!(await ed(pn, `ED.E('RA')`)) && (await ed(pn, `ED.draft().site.yard.rails`)).groups.length === 2 && JSON.stringify(JSON.parse(await st()).OFF) === JSON.stringify(JSON.parse(s0).OFF), `rails ${id} : groupe défait (rails indépendants, rail du circuit escamotable, mêmes positions du chariot)`);
+      ok(!!(await ed(pn, `ED.E('RM')`)) && (await ed(pn, `ED.draft().site.yard.rails`)).groups.length === 2 && JSON.stringify(JSON.parse(await st()).OFF) === JSON.stringify(JSON.parse(s0).OFF), `rails ${id} : groupe défait (rails indépendants, rail du circuit escamotable, mêmes positions du chariot)`);
     } else {
-      await ed(pn, `ED.rails.lock(false)`); await rdn(); ok(!!(await ed(pn, `ED.E('RA')`)), `rails ${id} : déverrouillés`);
-      await ed(pn, `ED.rails.lock(true)`); await rdn(); ok(!(await ed(pn, `ED.E('RA')`)), `rails ${id} : verrouillés de nouveau`);
+      await ed(pn, `ED.rails.lock(false)`); await rdn(); ok(!!(await ed(pn, `ED.E('RM')`)), `rails ${id} : déverrouillés`);
+      await ed(pn, `ED.rails.lock(true)`); await rdn(); ok(!(await ed(pn, `ED.E('RM')`)), `rails ${id} : verrouillés de nouveau`);
     }
   } else ok(R.rails.length === 1 || g0.rails.length === R.rails.length, `rails ${id} : ${R.rails.length > 1 ? 'rails toujours verrouillés ensemble (appareil)' : 'rail unique'}`);
   { // groupe de 3 rails (aucun appareil du moteur n'en a : logique de l'éditeur et format) : former le groupe, positions communes, défaire

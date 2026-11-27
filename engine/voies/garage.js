@@ -88,7 +88,7 @@ const PG=TRAV&&!SG?LANES.length+1:-1,PC=SG?0:PG; // position G du pont droit : r
 /* Positions des rails mobiles réglées sur la carte de l'éditeur (osmrides#64, docs/manoeuvres.md « Positions des rails mobiles ») : SITE.yard.rails
    (écrit par l'éditeur dans GAME.site.yard.rails) = {circuit: {pos:[{name, d}, …]} | {lock:'garage'}, garage: {…}} ; d = distance (m) de l'axe du rail à l'axe
    du circuit, comptée vers le garage (comme yard.lanes[].d). Rails : 'circuit' = rail du circuit (rail A du pont, rail unique, tronçon droit de l'aiguillage),
-   'garage' = rail du chariot (rail B) ou tronçon en S de l'aiguillage. lock = le rail bouge avec l'autre (chariot commun) ; aiguillage : toujours ensemble.
+   'garage' = rail du chariot (rail B) ou tronçon en S de l'aiguillage. lock = le rail bouge avec l'autre (chariot commun) ; aiguillage : ensemble, ou chacun ses positions (SWI).
    Une position est en face du circuit ou d'une voie à RTOL près (sinon : « non connectée », le train ne peut ni entrer ni sortir) ; l'aiguillage relie la voie k à la
    position où son tronçon en S est en place (course yard.slide ou lanes[].off). Absent : positions d'origine (P, G, voies 1…n, yard.retract) inchangées. */
 const RTOL=.3; // ESTIMÉ (m) ; l'éditeur aimante exactement
@@ -103,12 +103,19 @@ const RLS=YD.rails&&typeof YD.rails==='object'&&(TRAV||(YD.device==='switch'&&!L
 const rPos=id=>RLS&&RLS[id]&&Array.isArray(RLS[id].pos)&&RLS[id].pos.length?RLS[id].pos.filter(q=>q&&isFinite(q.d)):null;
 const RLOCK=!!RLS&&(!!(RLS.circuit&&RLS.circuit.lock==='garage')||!!(RLS.garage&&RLS.garage.lock==='circuit'));
 const RA=TRAV&&!SG&&(RLS&&rPos('circuit')&&!RLOCK?true:RLS&&RLOCK?false:!!YB.retract); // rail du circuit indépendant du chariot (escamotable)
-const RAP=RA&&rPos('circuit'),RAX=RAP&&RAP.find(q=>Math.abs(q.d)>=RTOL)||null,RAI=RAP&&RAP.find(q=>Math.abs(q.d)<RTOL)||null;
-const RET=RA?(RAX?-RAX.d:YB.retract&&YB.retract.d||GAP):0,RAN=RA&&YB.retract&&YB.retract.name||'Rail mobile du parcours',RAS=RA&&YB.retract&&YB.retract.short||'Rail parcours'; // nom complet (phrases), forme courte (plaques)
+/* Aiguillage coulissant à deux groupes (osmrides#72) : tronçon droit du circuit et tronçon en S ont chacun leurs positions (yard.rails, aucun verrou). Même mécanique que RA :
+   le tronçon droit (G.ra) est en ligne (0) ou retiré (1, course RET) ; le chariot (G.dev) ne porte que le tronçon en S (P = hors ligne, voies 1…n, positions X).
+   Circuit passant = tronçon droit en ligne ; verrouillages : le tronçon droit ne revient que si le S n'est pas en ligne (ni en mouvement), le S ne vient sur une voie
+   que si le tronçon droit est retiré ; aucun des deux en ligne : retenue comme hors de P. Sans ces données (groupe unique ou ancien format) : chariot commun, inchangé. */
+const SWI=!TRAV&&!!RLS&&!RLOCK&&!!rPos('circuit')&&!!rPos('garage')&&LANES.length>0;
+const RM=RA||SWI; // rail du circuit mobile seul (pont : RA, aiguillage : SWI) : état G.ra, commande « ra »
+const RAP=RM&&rPos('circuit'),RAX=RAP&&RAP.find(q=>Math.abs(q.d)>=RTOL)||null,RAI=RAP&&RAP.find(q=>Math.abs(q.d)<RTOL)||null;
+const RET=RM?(RAX?-RAX.d:YB.retract&&YB.retract.d||(SWI?LANES[0].off||GAP:GAP)):0,RAN=RM&&YB.retract&&YB.retract.name||(SWI?'Tronçon droit du circuit':'Rail mobile du parcours'),RAS=RM&&YB.retract&&YB.retract.short||(SWI?'Tronçon droit':'Rail parcours'); // nom complet (phrases), forme courte (plaques)
 const RA_NM=[RAI?RAI.name:'sur le circuit',RAX?RAX.name:'retiré']; // noms des deux positions du rail du circuit escamotable
-// Chariot (G.dev) : rail qui porte les positions enregistrées (CM) et décalage c du chariot pour chacune (rail A en v=c, rail B en v=c-GAP, rail unique ou aiguillage : v=c ; v=-d)
-const CM=!RLS?null:SG||!TRAV?'circuit':RA?'garage':RLOCK&&!rPos('garage')?'circuit':'garage';
-const CPOS=CM&&rPos(CM)?rPos(CM).map(q=>({name:String(q.name||''),c:-q.d+(TRAV&&!SG&&CM==='garage'?GAP:0)})):null;
+// Chariot (G.dev) : rail qui porte les positions enregistrées (CM) et décalage c du chariot pour chacune (rail A en v=c, rail B en v=c-GAP, rail unique ou aiguillage : v=c ;
+// v=-d ; tronçon en S seul (SWI) : en place sur la voie 1 en c=off de la voie 1, d'où c=off-d)
+const CM=!RLS?null:SWI?'garage':SG||!TRAV?'circuit':RA?'garage':RLOCK&&!rPos('garage')?'circuit':'garage';
+const CPOS=CM&&rPos(CM)?rPos(CM).map(q=>({name:String(q.name||''),c:-q.d+(TRAV&&!SG&&CM==='garage'?GAP:SWI?LANES[0].off:0)})):null;
 const PX0=LANES.length+1+(TRAV&&!SG?1:0),POSX=[],POSN={}; // positions sans voie en face : indices PX0, PX0+1… (décalages POSX) ; POSN : noms enregistrés
 const POS_REC=CPOS?(()=>{const R=[];
   for(const q of CPOS){let p=-1;
@@ -116,6 +123,7 @@ const POS_REC=CPOS?(()=>{const R=[];
     else if(Math.abs(q.c)<RTOL)p=0;else{const j=LANES.findIndex(l=>Math.abs(q.c-l.off)<RTOL);if(j>=0)p=j+1;} // aiguillage : tronçon en S en place sur la voie j
     if(p<0){p=PX0+POSX.length;POSX.push(q.c);}
     if(!R.includes(p)){R.push(p);POSN[p]=q.name;}}
+  if(SWI){if(R.every(p=>p>=1&&p<=LANES.length)){R.push(0);console.warn('SITE.yard.rails : aucune position du tronçon en S hors des voies ; position P ajoutée.');}return R;} // le tronçon droit raccorde le circuit
   const need=TRAV&&!SG?PG:0;if(!R.includes(need)){R.unshift(need);console.warn('SITE.yard.rails : aucune position ne raccorde le circuit ; position '+(need?'G':'P')+' ajoutée.');}
   return R;})():null;
 function gFrame(j,u,o){

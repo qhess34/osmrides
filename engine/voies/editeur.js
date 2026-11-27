@@ -88,7 +88,7 @@
       out.push({ rails: [rid], pos: K.map(o => ({ name: o.name, d: o.d })) }); }
     return out;
   }
-  // regrouper les rails choisis / défaire le groupe d'un rail, si l'appareil le permet (R.lockable : pont à deux rails ; aiguillage coulissant : toujours un bloc)
+  // regrouper les rails choisis / défaire le groupe d'un rail, si l'appareil le permet (R.lockable : pont à deux rails, aiguillage coulissant ; sinon R.lockWhy, bouton grisé)
   function lockIds(R, ids) { if (!R.lockable) return false; const N = mergeG(R, groups(R), ids); if (!N) return false; write(N, { t: 'rails', id: ids[0] }); return true; }
   function unlock(R, id) { if (!R.lockable) return false; const N = splitG(R, groups(R), id); if (!N) return false; write(N, { t: 'rails', id }); return true; }
   // ── carte ──
@@ -121,10 +121,10 @@
         <div class="row"><button id="bRMove" class="go">Redéplacer sur la carte</button><button id="bRDel" class="bad" ${P.length > 1 ? '' : 'disabled'}>Supprimer la position</button><button id="bRBack">Retour aux rails</button></div>`; }
     const c = connOf(R, k, curPlace(R, r)), lk = G.rails.length > 1;
     return `<div><b>${nm(G.rails)}</b> ${R.rec ? '<span class="tag t-ovr">positions réglées</span>' : '<span class="tag t-est">positions d\'origine</span>'}</div>
-      <p class="note">${lk ? 'Verrouillés ensemble : ils se déplacent d\'un bloc ; chaque position vaut pour ' + (G.rails.length === 2 ? 'les deux rails' : 'les ' + G.rails.length + ' rails') + (R.lockable ? '.' : ' (toujours, sur cet appareil).') : 'Bouge seul.'} Glisser le rail sur la carte (aimant sur le circuit et les voies). Placement actuel : ${c ? 'en face de ' + esc(c) : 'non connecté'}.</p>
+      <p class="note">${lk ? 'Verrouillés ensemble : ils se déplacent d\'un bloc ; chaque position vaut pour ' + (G.rails.length === 2 ? 'les deux rails' : 'les ' + G.rails.length + ' rails') + '.' : 'Bouge seul.'} Glisser le rail sur la carte (aimant sur le circuit et les voies). Placement actuel : ${c ? 'en face de ' + esc(c) : 'non connecté'}.</p>
       <div class="row"><button id="bRAdd" class="go">Ajouter une position ici</button></div>
       <div class="note"><b>Positions</b> (cliquer pour modifier, ou cliquer la position sur la carte)</div><div class="row">${P.map((q, j) => `<button data-rpos="${j}">${esc(q.name)} <span class="note">${q.conn ? esc(q.conn) : 'non connectée'}</span></button>`).join('')}</div>
-      <div class="row">${R.lockable && lk ? '<button id="bRLockOff">Défaire le groupe (rails indépendants)</button>' : ''}${R.lockable && out(G.rails) ? '<button id="bRPick">Ajouter un rail au groupe (sur la carte)</button>' : ''}<button id="bRRev" ${R.rec ? '' : 'disabled'} title="Revenir aux positions d'origine">Origine</button></div>`;
+      <div class="row">${lk ? '<button id="bRLockOff"' + (R.lockable ? '' : ' disabled title="' + esc(R.lockWhy || 'impossible sur cet appareil') + '"') + '>Défaire le groupe (rails indépendants)</button>' : ''}${R.lockable && out(G.rails) ? '<button id="bRPick">Ajouter un rail au groupe (sur la carte)</button>' : ''}<button id="bRRev" ${R.rec ? '' : 'disabled'} title="Revenir aux positions d'origine">Origine</button></div>`;
   }
   function modalBind(R) {
     const s = S0(), r = s && railOf(R, s.id); if (!r) return; const on = (id, f) => { const el = $(id); if (el) el.onclick = f; };

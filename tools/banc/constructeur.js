@@ -12,6 +12,7 @@
      tranchee     tranchée man_made=excavation (level -2, béton) et voie en niveau -1 (OSM.levels)
      structure    structure man_made=structure (acier, niveaux -1 et 1) sous le rail mobile
      (garage)     toujours déclaré (le moteur exige SITE.yard) : aiguillage coulissant et une voie
+     railsS       aiguillage à deux groupes de rails (yard.rails, osmrides#72) : tronçon droit du circuit seul (en ligne / retiré) et tronçon en S seul (retiré, attente, voie 1)
      pont         pont transbordeur à la place de l'aiguillage : rail mobile sur la zone finale (SITE.yard device 'traverser', deux voies)
      freins       une zone de freinage de bloc en parcours (B1, repères bz1/blk1 sur le retour) en plus de la zone finale brk/fin
      montee       la zone de bloc B1 est en montée (bosse de 3 m : ralentissement libre du train sous les mâchoires) ; implique freins
@@ -83,6 +84,8 @@ function construire(opt) {
   if (o.passerelle) site.catwalks = { side: { Lift: 1 } }; else site.catwalks = false;
   // garage : toujours déclaré (le moteur exige SITE.yard) ; aiguillage coulissant en aval de la gare, une voie à l'est
   site.yard = { at: 'station', device: 'switch', a: .8, b: 6.4, slide: 3.4, side: -1, len: 8.6, lanes: [{ name: 'Garage', pts: [[5, 8], [5, 24]] }], move: { v: 2.4, t: 3 } };
+  if (o.railsS) site.yard.rails = { groups: [{ rails: ['circuit'], pos: [{ name: 'En ligne', d: { circuit: 0 } }, { name: 'Retiré', d: { circuit: -3.4 } }] },
+    { rails: ['garage'], pos: [{ name: 'Retiré', d: { garage: 3.4 } }, { name: 'Attente', d: { garage: 1.7 } }, { name: 'Voie 1', d: { garage: 0 } }] }] };
   // pont transbordeur (rail mobile qui emporte le train) sur la zone finale, deux voies droites parallèles (d = distance à l'axe du circuit)
   if (o.pont) site.yard = { at: 'brake', device: 'traverser', single: true, railName: 'Rail du pont', side: 1, post: .6, laneGap: .8, move: { v: 1.5, vc: .5, t: 4 }, lanes: [{ name: 'Voie 1', d: 3, len: 9, cap: 1 }, { name: 'Voie 2', d: 7, len: 9, cap: 1 }] };
   return { OSM, site };
