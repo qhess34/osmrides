@@ -12,19 +12,24 @@ const TKC=Object.assign(STL?{spine:'#a88a2e',rail:'#c9a83c',support:'#8c3a2b'}:{
 // Une voie sans aucun tunnel dans un rocher passe PAR-DESSUS (supports posés sur le rocher) : cas gardé pour un rocher OSM traversé sans tag tunnel.
 const rockExt=t=>{const at=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return ROCKP.find(P=>pipXZ(P,q.x,q.z));},R=at((t[0]+t[1])/2)||at(t[0])||at(t[1]);if(!R)return [t[0],t[1]];
   const inR=s=>{const q=TR[((Math.round(s/DS)%N)+N)%N].p;return pipXZ(R,q.x,q.z);};let a=t[0],b=t[1];while(a>t[0]-40&&inR(a-DS))a-=DS;while(b<t[1]+40&&inR(b+DS))b+=DS;return [a,b];};
-// Polygones OSM man_made=tunnel (issue #42, propriétaire 20/11 : à Zeus, w1353118256 dessiné en tache brune qui débordait sur les voies voisines) : ils ne servent
-// plus qu'à SITUER le tunnel. Tronçons du circuit dont le tracé est dans le polygone, regroupés en passages continus ; seul le passage le plus bas est couvert, avec ceux
-// à moins de TPOLY_DH = 3 m (ESTIMÉ) au-dessus (une voie plus haute passe par-dessus le tunnel) ; passages de moins de 2 m ignorés. Un passage qui recoupe un tunnel
-// OSM.tunnels ou SITE.tunnels {s} l'étend (réunion), sinon il devient un tunnel de plus, couvert le long de la voie comme les autres (drawTunnel ; eau ou rocher détectés comme pour OSM.tunnels, sinon galerie 'roof' ;
-// SITE.tunnels:[{poly:'w123', under, w}] pour le régler).
+// Polygones OSM man_made=tunnel (issue #42 ; propriétaire 27/11, issue #68 : le polygone PRIME sur les attributs tunnel de la voie). Tronçons du circuit dont le tracé
+// est dans le polygone, regroupés en passages continus ; seul le passage le plus bas est couvert, avec ceux à moins de TPOLY_DH = 3 m (ESTIMÉ) au-dessus (une voie plus
+// haute passe par-dessus le tunnel) ; passages de moins de 2 m ignorés. Le polygone donne l'emprise et la couverture du tunnel (drawTunnel : couverture = le polygone ;
+// eau ou rocher détectés comme pour OSM.tunnels, sinon galerie 'roof' ; SITE.tunnels:[{poly:'w123', under, w}] pour le régler, sinon le réglage du tunnel de voie recoupé).
 const TPOLY_DH=3,TPOLY=OSM.feats.filter(f=>f.k==='man_made=tunnel'&&f.c&&f.p.length>3).flatMap(f=>{const runs=[];let r=null;
   for(let i=0;i<N;i++){const q=TR[i].p;if(pipXZ(f.p,q.x,q.z)){if(!r)runs.push(r={i0:i,i1:i,y:q.y});r.i1=i;r.y=Math.min(r.y,q.y);}else r=null;}
   if(runs.length>1&&runs[0].i0===0&&runs[runs.length-1].i1===N-1){const a=runs.shift(),b=runs[runs.length-1];b.i1=a.i1+N;b.y=Math.min(a.y,b.y);} // passage à cheval sur s = 0
-  const lo=Math.min(...runs.map(r=>r.y));return runs.filter(r=>r.y<=lo+TPOLY_DH&&(r.i1-r.i0)*DS>=2).map(r=>({s:[r.i0*DS,r.i1*DS],id:f.id}));});
-// liste commune des tunnels : [s0, s1, 'roof'?] et réglage SITE.tunnels (cf) ; polygones fondus dans le tunnel qu'ils recoupent
-const TLIST=(function(){const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s&&!c.poly),L=(OSM.tunnels||[]).map((r,ti)=>({r:rockExt(r).concat(r.slice(2)),cf:cfO[ti]||{}})).concat(CF.filter(c=>c.s).map(c=>({r:rockExt(c.s),cf:c})));
-  for(const p of TPOLY){const o=L.find(t=>p.s[0]<=t.r[1]&&p.s[1]>=t.r[0]);if(o){o.r[0]=Math.min(o.r[0],p.s[0]);o.r[1]=Math.max(o.r[1],p.s[1]);}
-    else L.push({r:rockExt(p.s),cf:Object.assign({dflt:'roof'},CF.find(c=>c.poly===p.id))});}
+  const lo=Math.min(...runs.map(r=>r.y));return runs.filter(r=>r.y<=lo+TPOLY_DH&&(r.i1-r.i0)*DS>=2).map(r=>({s:[r.i0*DS,r.i1*DS],id:f.id,p:f.p}));});
+// liste commune des tunnels : {r:[s0, s1, 'roof'?], cf (réglage SITE.tunnels), poly (emprise OSM), nm:[sans portail au début, à la fin]}. Tunnels de voie (OSM.tunnels, SITE.tunnels {s})
+// gardés seulement HORS des polygones : la partie recouverte est retirée (morceaux restants de moins de 2 m oubliés), sans portail du côté du polygone.
+const TLIST=(function(){const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s&&!c.poly),L=[];
+  const T=(OSM.tunnels||[]).map((r,ti)=>({r:rockExt(r).concat(r.slice(2)),cf:cfO[ti]||{}})).concat(CF.filter(c=>c.s).map(c=>({r:rockExt(c.s),cf:c})));
+  const P=TPOLY.map(p=>({r:p.s.slice(),poly:p.p,id:p.id,cf:null,dflt:null}));
+  for(const t of T){let pc=[[t.r[0],t.r[1],0,0]];
+    for(const p of P){if(p.r[0]>t.r[1]||p.r[1]<t.r[0])continue;if(!p.cf){p.cf=t.cf;p.dflt=t.r[2]||'ground';} // polygone sur un tunnel de voie : son réglage et sa couverture par défaut (remblai, galerie si 'roof')
+      pc=pc.flatMap(([a,b,m0,m1])=>{if(p.r[1]<a||p.r[0]>b)return [[a,b,m0,m1]];const o=[];if(p.r[0]>a)o.push([a,p.r[0],m0,1]);if(p.r[1]<b)o.push([p.r[1],b,1,m1]);return o;});}
+    for(const [a,b,m0,m1] of pc)if(!(m0||m1)||b-a>=2)L.push({r:[a,b].concat(t.r.slice(2)),cf:t.cf,nm:[m0,m1]});}
+  for(const p of P)L.push({r:rockExt(p.r),cf:Object.assign({dflt:p.dflt||'roof'},p.cf,CF.find(c=>c.poly===p.id)),poly:p.poly,nm:[0,0]});
   return L;})();
 const TUNS=TLIST.map(t=>t.r),inTunS=s=>TUNS.some(t=>s>=t[0]-1&&s<=t[1]+1);
 const chunkH=new Float32Array(N+1),chunks=[],dirtP=new Path2D,wid=h=>BOB?1.5:INV?SUPW:h>ST_Y+.6?1.6+h*.2:1.85,DECKW=BOB?2.3:INV?1.05:STL?1.5:3.1;

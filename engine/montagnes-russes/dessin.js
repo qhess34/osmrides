@@ -1,19 +1,20 @@
 'use strict';
 // Tunnels du circuit : OSM.tunnels=[[s0,s1(,'roof')],…] (tronçons tagués tunnel=yes, ou covered=yes et layer<0 ; 'roof' = galerie au-dessus du sol, layer>0), puis tunnels ESTIMÉS
 // de SITE.tunnels:[{s:[s0,s1],…}] (s du moteur). Couverture : eau si le tunnel passe sous un plan d'eau OSM (détection automatique), toit de béton ('roof'), sinon remblai enherbé.
-// SITE.tunnels[k]={under:'water'|'ground'|'roof',w:demi-largeur} (k = rang du tunnel OSM) force le choix.
+// SITE.tunnels[k]={under:'water'|'ground'|'roof',w:demi-largeur} (k = rang du tunnel OSM) force le choix. Polygone man_made=tunnel : prime sur la voie (TLIST), couverture = polygone.
 // Deux portails (tête en béton, ouverture sombre, rampe à murs) aux extrémités. Profondeur ESTIMÉE (profil de la spec). « Toits retirés » : la couverture devient translucide.
 const TUN=(function(){
   const pip=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])c=!c;return c;};
   const fr=i=>{const f=TR[((i%N)+N)%N],g=TR[(((i+1)%N)+N)%N],l=Math.hypot(f.R.x,f.R.z)||1,tl=Math.hypot(g.p.x-f.p.x,g.p.z-f.p.z)||1;return {x:f.p.x,z:f.p.z,nx:f.R.x/l,nz:f.R.z/l,tx:(g.p.x-f.p.x)/tl,tz:(g.p.z-f.p.z)/tl};};
   // SITE.tunnels : réglages des tunnels OSM dans l'ordre, puis tunnels ESTIMÉS absents d'OSM ({s:[s0,s1], under, w}), puis polygones man_made=tunnel ({poly}) : TLIST
-  return TLIST.map(({r,cf})=>{ // rockExt : tunnel prolongé jusqu'aux bords du rocher
+  return TLIST.map(({r,cf,poly,nm})=>{ // rockExt : tunnel prolongé jusqu'aux bords du rocher
     const i0=Math.round(r[0]/DS),i1=Math.round(r[1]/DS),w=cf.w||2.1,m=fr(Math.round((i0+i1)/2));
     const e0=fr(i0),e1=fr(i1),under=cf.under||(ROCKP.some(P=>pipXZ(P,m.x,m.z))?'rock':0)||r[2]||([m,e0,e1].some(c=>WATERPTS.some(q=>pip(q,c.x,c.z)))?'water':cf.dflt||'ground'); // polygone man_made=tunnel : galerie 'roof' par défaut, hors eau et rocher // r[2]='roof' : galerie couverte au-dessus du sol (OSM layer>0) // sous l'eau si le milieu ou une extrémité est dans un plan d'eau OSM
     const band=(a,b,hw)=>{const P=new Path2D,L1=[],R1=[];for(let i=a;i<=b;i++){const f=fr(i);L1.push([f.x+f.nx*hw,f.z+f.nz*hw]);R1.push([f.x-f.nx*hw,f.z-f.nz*hw]);}
       L1.forEach((q,i)=>i?P.lineTo(q[0],q[1]):P.moveTo(q[0],q[1]));R1.reverse().forEach(q=>P.lineTo(q[0],q[1]));P.closePath();return P;};
     const walls=new Path2D,heads=new Path2D,mouth=[],RAMP=Math.round(6/DS);
     for(const sg of [-1,1]){ // sg=-1 : portail d'entrée (début), +1 : portail de sortie
+      if(nm&&nm[sg<0?0:1])continue; // bout accolé à un polygone man_made=tunnel : le portail est celui du polygone
       const ie=sg<0?i0:i1,f=fr(ie),ox=f.tx*sg,oz=f.tz*sg; // ox,oz : vers l'extérieur du tunnel
       for(const e of [-1,1]){walls.moveTo(f.x+f.nx*w*e,f.z+f.nz*w*e);for(let k=0;k<=RAMP;k++){const g=fr(ie+sg*k);walls.lineTo(g.x+g.nx*(w+k*DS*.05)*e,g.z+g.nz*(w+k*DS*.05)*e);}}
       const hw=w+.45,c=[f.x-ox*.4,f.z-oz*.4]; // tête : dalle de béton de 0,8 m, moitié dedans
@@ -21,7 +22,8 @@ const TUN=(function(){
       mouth.push({x:f.x,z:f.z,ox,oz,nx:f.nx,nz:f.nz});}
     const hs=[];for(let i=i0-2;i<=i1+2;i++)hs.push(chunkH[((i%N)+N)%N]);
     const ridge=new Path2D;for(let i=i0;i<=i1;i++){const f=fr(i);i>i0?ridge.lineTo(f.x,f.z):ridge.moveTo(f.x,f.z);}
-    return {a:r[0],b:r[1],under,w,cover:band(i0,i1,w+.3),core:band(i0,i1,w-.2),walls,heads,mouth,ridge,h:Math.max(...hs)+.01};
+    const P=poly&&mkPath(poly,true); // polygone man_made=tunnel : emprise et couverture du tunnel
+    return {a:r[0],b:r[1],under,w,poly:!!P,cover:P||band(i0,i1,w+.3),core:P||band(i0,i1,w-.2),walls,heads,mouth,ridge,h:Math.max(...hs)+.01};
   });
 })();
 const inTun=s=>{for(const t of TUN)if(s>=t.a-CAR/2&&s<=t.b+CAR/2)return true;return false;};
@@ -32,7 +34,7 @@ function drawTunnel(t){
   else if(t.under==='roof'){ctx.globalAlpha=.25+.75*ra;ctx.fillStyle='#77746c';ctx.fill(t.cover);ctx.fillStyle=TEX.rows;ctx.globalAlpha*=.3;ctx.fill(t.cover);ctx.globalAlpha=.25+.75*ra; // galerie couverte : toit de béton sombre, faîtage
     ctx.strokeStyle='rgba(20,20,18,.5)';lw(.12,.6);ctx.stroke(t.cover);ctx.strokeStyle='rgba(255,255,255,.18)';lw(.15,.5);ctx.stroke(t.ridge);}
   else if(t.under==='rock'){} // sous un rocher OSM : couverture = le rocher lui-même (drawRock), seuls les portails sont dessinés ici
-  else{ctx.globalAlpha=.3+.7*ra;ctx.fillStyle=TEX.dirt;ctx.fill(t.cover);ctx.fillStyle=TEX.lawn;ctx.fill(t.core);ctx.fillStyle='rgba(20,40,16,.18)';ctx.fill(t.core);}
+  else{ctx.globalAlpha=.3+.7*ra;ctx.fillStyle=TEX.dirt;ctx.fill(t.cover);ctx.fillStyle=TEX.lawn;ctx.fill(t.core);ctx.fillStyle='rgba(20,40,16,.18)';ctx.fill(t.core);if(t.poly){ctx.strokeStyle=TEX.dirt;lw(.6,1);ctx.stroke(t.cover);}} // polygone : remblai enherbé bordé de terre
   ctx.globalAlpha=1;
   if(t.under!=='rock'){ctx.strokeStyle='rgba(30,30,28,.35)';lw(.5,1);ctx.translate(.18,.14);ctx.stroke(t.walls);ctx.translate(-.18,-.14); // murs de la rampe (pas sous un rocher : voie en hauteur) et têtes de portail
   ctx.strokeStyle=TEX.stone;lw(.34,.8);ctx.stroke(t.walls);ctx.fillStyle=TEX.stone;ctx.fill(t.heads);ctx.strokeStyle='#8a867a';lw(.1,.6);ctx.stroke(t.heads);}

@@ -57,6 +57,20 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
     await shot(page, 'zeus-apres', -14, 2.5, 8);
     await page.close();
   }
+  // ---------- B : polygones man_made=tunnel de Zeus (w1353118256 et un second), données du jeu telles quelles
+  {
+    const page = await open(browser, 'zeus', errors);
+    const r = await page.evaluate(() => ({ osm: OSM.tunnels, L: TLIST.map(t => ({ r: t.r.slice(0, 2).map(v => +v.toFixed(1)), poly: !!t.poly, nm: t.nm })), tun: TUN.map(t => ({ poly: t.poly, mouths: t.mouth.length, under: t.under })) }));
+    const P = r.L.filter(t => t.poly), V = r.L.filter(t => !t.poly);
+    ok('B polygones : un tunnel par polygone, couverture = polygone', P.length >= 1 && r.tun.filter(t => t.poly).length === P.length, r);
+    ok('B voie : aucun tunnel de voie dans l\'emprise d\'un polygone', V.every(v => P.every(p => v.r[1] <= p.r[0] + .01 || v.r[0] >= p.r[1] - .01)), r);
+    ok('B portails : aucun portail côté polygone', r.L.every((t, i) => r.tun[i].mouths === 2 - (t.nm[0] ? 1 : 0) - (t.nm[1] ? 1 : 0)), r);
+    await page.close();
+    const p2 = await open(browser, 'oziris', errors);
+    const o = await p2.evaluate(() => ({ n: TLIST.length, o: (OSM.tunnels || []).length, poly: TLIST.some(t => t.poly) }));
+    ok('B sans polygone (OzIris) : tunnels de voie inchangés', o.n === o.o && !o.poly, o);
+    await p2.close();
+  }
   await browser.close();
   console.log(out.join('\n'));
   console.log(errors.length ? 'pageerror : ' + errors.join(' | ') : 'pageerror : aucune');
