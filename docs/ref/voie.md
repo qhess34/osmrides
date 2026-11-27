@@ -38,7 +38,7 @@ Voies décoratives (issue #33, propriétaire 20/11) : tout tronçon `roller_coas
 
 ## Rendu de la voie
 
-Rendu : chaîne du lift (taquets clairs qui défilent quand la chaîne est entraînée, immobiles à l'arrêt : AUTO / MANU, `docs/manoeuvres.md`, issue #60) et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
+Rendu : chaîne du lift (issues #60, #71 ; même langage que les roues de friction des zones de frein : tailles en pixels, couleurs sourdes, état lu de loin dans la couleur de la gouttière : vert sourd = entraînée, gris = arrêtée, brique = bloquée par panne ou arrêt d'urgence ; maillons alternés et taquets clairs qui défilent à la vitesse lissée `CHAINE.v`, immobiles à l'arrêt ; AUTO / MANU, `docs/manoeuvres.md`) et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
 
 - un wagon est dessiné après le plus haut tronçon qu'il couvre (`osmrides_parks/docs/NOUVELLE-ATTRACTION.md` §3).
 

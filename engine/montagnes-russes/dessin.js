@@ -491,7 +491,10 @@ extension({nom:'montagnes-russes',
       ctx.strokeStyle='#2b2b30';lw(.17,.9);ctx.stroke(o.rail);
     }
     if(!INV)drawBU(o);
-    if(o.ch){const px=1/s,pit=Math.max(3,26*px),dl=Math.max(.45,4*px);ctx.lineCap='butt';ctx.strokeStyle='#17181b';ctx.lineWidth=Math.max(.34,3*px);ctx.setLineDash([Math.max(.5,3.5*px),Math.max(.3,2*px)]);ctx.stroke(o.ch); // chaîne : maillons sombres
-      ctx.strokeStyle=CHAINE.v>.01?'#cbc5b0':'#9c9889';ctx.lineWidth=Math.max(.5,4.4*px);ctx.setLineDash([dl,pit-dl]);ctx.lineDashOffset=-(CHAINE.pv%pit);ctx.stroke(o.ch);ctx.setLineDash([]);ctx.lineDashOffset=0;} // taquets (chiens) clairs, plus larges que la chaîne : ils défilent avec elle, immobiles si elle est arrêtée
+    if(o.ch){ // chaîne du lift, même langage que les roues de friction (drawBU) : dimensions en pixels, couleurs sourdes, état lisible de loin (vert sourd = entraînée, gris = arrêtée, brique = bloquée par panne ou arrêt d'urgence)
+      const px=1/s,pit=Math.max(3,27*px),lp=pit/3,dl=Math.max(.45,4*px),run=CHAINE.v>.01,bl=G.liftBroken||G.estop,far=s<3.2;
+      ctx.lineCap='butt';ctx.strokeStyle=bl?'#6a3a33':run?'#4d6d58':'#3d4046';ctx.lineWidth=Math.max(.45,(far?4:6)*px);ctx.stroke(o.ch); // gouttière de la chaîne : le trait d'état
+      if(!far){ctx.strokeStyle=bl?'#8a8780':run?'#a5a393':'#6f7074';ctx.lineWidth=Math.max(.3,3*px);ctx.setLineDash([lp*.5,lp*.1,lp*.3,lp*.1]);ctx.lineDashOffset=-(CHAINE.pv%pit);ctx.stroke(o.ch);} // maillons : intérieurs longs, extérieurs courts, en alternance
+      ctx.strokeStyle=bl?'#a2574b':run?'#d6d0b8':'#9c9889';ctx.lineWidth=Math.max(.5,4.4*px);ctx.setLineDash([dl,pit-dl]);ctx.lineDashOffset=-(CHAINE.pv%pit);ctx.stroke(o.ch);ctx.setLineDash([]);ctx.lineDashOffset=0;} // taquets (chiens) plus larges que la chaîne : ils défilent avec elle, immobiles si elle est arrêtée ou bloquée
     if(k)ctx.restore();return true;},
   surQuai:k=>onPlat(k)}); // marcheur dessiné avec les personnes du quai
