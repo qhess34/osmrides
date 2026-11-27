@@ -1,6 +1,5 @@
 'use strict';
 /* ══════════ DÉCOR (OSM), PERSONNES, FILE, SALLE DE CONTRÔLE, IMAGE ══════════ */
-const GARE_AGR=fournit('gareAgrandie',null); // bâtiment de gare agrandi à ses quais (couche du type), sinon null
 // Décor réel : bâtiments, allées, plans d'eau, bois
 const mkPath=(pts,close)=>{const p=new Path2D;pts.forEach((q,i)=>i?p.lineTo(q[0],q[1]):p.moveTo(q[0],q[1]));if(close)p.closePath();return p;};
 // Allée dessinée (3,2 m) coupée là où elle se confond avec un escalier (STAIRS, engine/queue.js) : l'escalier est dessiné seul, à sa largeur, sans être recouvert par le chemin.
@@ -57,7 +56,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
     else if(k==='highway=service'||k==='highway=unclassified'||k==='highway=track')LY.road.push(p);
     else if(k==='barrier=hedge'||k==='natural=tree_row')LY.hedge.push(p);
     else if(k==='man_made=tunnel'){if(!tunnelP){tunnelP=1;tunnelC=cen(f.p);}} // polygone man_made=tunnel : seulement l'étiquette (le premier) ; couverture le long de la voie (TPOLY, drawTunnel, issue #42)
-    else if(k.startsWith('building'))addBld(GARE_AGR&&SITE.stationAt&&(c=>Math.hypot(c[0]-SITE.stationAt[0],c[1]-SITE.stationAt[1])<SITE.stationAt[2])(cen(f.p))?GARE_AGR:f.p,{ // gare agrandie à ses quais (gareAgrandie, couche du type)
+    else if(k.startsWith('building'))addBld(f.p,{
       col:ROOFS[i%ROOFS.length],h:BLD_H(k,f),canopy:k==='building=roof',un:vrai('sousVoie',f.p)});
   });
   for(const p of SITE.paths||[]){LY.foot.push(...cutStairs(p).map(q=>mkPath(q)));stroll(p);}          // allées ajoutées par la configuration

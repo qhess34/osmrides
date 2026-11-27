@@ -68,14 +68,14 @@ const inSweep=(x,z,r,pit)=>{if(TRAV){const dx=x-SW0.x,dz=z-SW0.z,u=dx*SW0.tx+dz*
    la gare est à 4 m (train suspendu), donc les dernières zones de freinage et le rail du pont (4 m) n'en avaient aucun. Exclus : l'emprise de la gare (voie tenue par
    le bâtiment), le tronçon porté par l'appareil de voie (sm.dev) et l'espace qu'il balaie (inSweep). Coaster inversé : poteau du côté libre (l'autre si le premier
    tombe dans l'espace balayé, une voie de garage ou sur une voie plus basse), aucun si les deux côtés sont pris. Bois et bob : inchangés. */
-const STPL=STATION_GROW||SITE.stationPoly||[],poleFree=(x,z,y,s,low)=>{if(STPL.length>2&&pipXZ(STPL,x,z)||inSweep(x,z,.3))return false;if(!low)return true;
+const poleFree=(x,z,y,s,low)=>{if(NORAIL(x,z)||inSweep(x,z,.3))return false;if(!low)return true;
   for(let j=0;j<N;j+=2){const q=TR[j].p;if(q.y>y-1||Math.abs(((j*DS-s)%L+L*1.5)%L-L/2)<14)continue;if(Math.abs(q.x-x)<1.8&&Math.abs(q.z-z)<1.8&&Math.hypot(q.x-x,q.z-z)<1.8)return false;}return true;};
 /* Emprise de la gare et des quais (issue #23, propriétaire, Zeus : « les garde-corps du coaster sont visibles en station ») : aucun garde-corps ni longeron
-   de charpente de la voie (bois : lignes à ±1,5 m et ±wid, traverses de structure) dans le bâtiment de gare (STPL), sur les quais (de l'arrière du dernier wagon + plat.back
+   de charpente de la voie (bois : lignes à ±1,5 m et ±wid, traverses de structure) dans le bâtiment de gare (SITE.stationPoly), sur les quais (de l'arrière du dernier wagon + plat.back
    à l'avant du premier + plat.front, de −plat.exit à plat.load ; côté sans quai de débarquement : jusqu'au gabarit de la charpente) ni dans la zone d'attente éditée (BAREA).
    Générique, tous les kinds (acier et inversé : supports déjà exclus de la gare par poleFree ; bob : gouttière rétrécie au gabarit en gare, TRF). */
 const NORAIL=(()=>{const P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2,lo=-(P.exit||2.2)-.3,hi=P.load+.3; // repère de la travée la plus proche (gare courbe)
-  return (x,z)=>{if(STPL.length>2&&pipXZ(STPL,x,z))return true;if(BAREA&&pipXZ(BAREA,x,z))return true;
+  return (x,z)=>{const STPL=SITE.stationPoly||[];if(STPL.length>2&&pipXZ(STPL,x,z))return true;if(BAREA&&pipXZ(BAREA,x,z))return true;
     let k=0,d=1e9;BAYS.forEach((b,j)=>{const e=Math.hypot(x-b.x,z-b.z);if(e<d){d=e;k=j;}});const b=BAYS[k],dx=x-b.x,dz=z-b.z,u=dx*b.tx+dz*b.tz,v=dx*b.rx+dz*b.rz;
     return u>(k===NCARS-1?-bk:-CAR)&&u<(k===0?P.front:CAR)&&v>lo&&v<hi;};})();
 function strip(sm){
@@ -186,7 +186,6 @@ extension({nom:'montagnes-russes',
   sousVoie:p=>ROOFB.some(r=>r.p===p), // bâtiment survolé par la voie (ROOFB)
   pointsAbri(){const PQ=Object.assign({load:7.9,exit:0},SITE.plat),out=[];for(const B of BAYS)for(const l of [PQ.load/2,PQ.load-.3,-PQ.exit/2])if(l)out.push([B.x+B.rx*l,B.z+B.rz*l]);return out;}, // quais : un toit au-dessus est un abri
   presDeLaVoie(x,z,r){for(let i=0;i<N;i+=6){const p=TR[i].p;if((p.x-x)**2+(p.z-z)**2<r*r)return true;}for(const ln of LANES)for(let i=0;i<ln.path.length;i+=4){const p=ln.path[i];if((p.x-x)**2+(p.z-z)**2<(r+1.5)**2)return true;}return Math.hypot(x-SW0.x-SW0.tx*4.5,z-SW0.z-SW0.tz*4.5)<10+r;}, // pas d'arbre
-  gareAgrandie:()=>STATION_GROW,
   degagement(S){gateClear(S);},
   horsGardeCorps:(x,z)=>BAYS.some(b=>{const dx=x-b.x,dz=z-b.z,u=dx*b.tx+dz*b.tz,lat=dx*b.rx+dz*b.rz;return Math.abs(u)<CAR/2&&lat>PGATE-.05&&lat<PGATE+GDEPTH+.05;}), // travées d'attente
   hauteurRocher(P){let ty=-1,tu=-1,to=1e9;for(let i=0;i<N;i+=2){const q=TR[i].p;if(pipXZ(P,q.x,q.z)){ty=Math.max(ty,q.y);if(inTunS(i*DS))tu=Math.max(tu,q.y);else to=Math.min(to,q.y);}}return {ty,tu,to};},

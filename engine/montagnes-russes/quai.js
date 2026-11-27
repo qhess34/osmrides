@@ -22,19 +22,8 @@ const GPR=SITE.plat&&SITE.plat.gatesPer==='row'?S_ROWS:1,NGATES=NCARS*GPR,GUNITS
 for(let k=0;k<NCARS;k++)for(let w=0;w<GPR;w++)GUNITS.push({k,w,c:CAR/2-(w+.5)*CAR/GPR,h:CAR/GPR/2});
 const seatUnit=i=>{const k=Math.floor(i/CSEATS),r=i%CSEATS;return GPR>1?{u:k*GPR+Math.floor(r/S_COLS),j:r%S_COLS}:{u:k,j:r};};
 const unitAt=(u,lat)=>{const g=GUNITS[u],b=BAYS[g.k];return [b.x+b.tx*g.c+b.rx*lat,b.z+b.tz*g.c+b.rz*lat];};
-// Toit de gare trop petit pour ses quais (bâtiment OSM qui ne couvre que la voie) : si, au milieu du train, un quai (plat.load / plat.exit) sort de plus de 0,8 m de
-// SITE.stationPoly, le bâtiment de gare est agrandi à l'enveloppe convexe du polygone et des quais (+0,3 m) : sol, toit, effacement et contrôle offpath suivent. ESTIMÉ.
-const STATION_GROW=(()=>{const P=SITE.stationPoly;if(!P||P.length<3)return null;const Q=Object.assign({load:7.9,exit:0,back:.1,front:1.6},SITE.plat),a=BAYS[NCARS-1],b=BAYS[0],m=BAYS[NCARS>>1],h=CAR/2,C=[],M=[];
-  // quais sur toute leur longueur (arrière du dernier wagon + plat.back, avant du premier + plat.front) : le toit couvre TOUT le quai (propriétaire, Tonnerre 2 Zeus, lot 6)
-  for(const l of [Q.load+.3,-(Q.exit?Q.exit+.3:1.6)]){C.push([a.x-a.tx*(h+Q.back)+a.rx*l,a.z-a.tz*(h+Q.back)+a.rz*l],[b.x+b.tx*Math.max(h,Q.front)+b.rx*l,b.z+b.tz*Math.max(h,Q.front)+b.rz*l]);M.push([m.x+m.rx*l,m.z+m.rz*l]);}
-  const pin=(x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
-  const dE=(x,z)=>{let m=1e9;for(let i=0,j=P.length-1;i<P.length;j=i++){const A=P[j],B=P[i],dx=B[0]-A[0],dz=B[1]-A[1],l=dx*dx+dz*dz||1e-9,t=clamp(((x-A[0])*dx+(z-A[1])*dz)/l,0,1);m=Math.min(m,Math.hypot(A[0]+dx*t-x,A[1]+dz*t-z));}return m;};
-  if(!M.concat(C).some(c=>!pin(c[0],c[1])&&dE(c[0],c[1])>.8))return null; // débord latéral (milieu) ou en bout de quai
-  const pts=P.concat(C).sort((p,q)=>p[0]-q[0]||p[1]-q[1]),cr=(o,p,q)=>(p[0]-o[0])*(q[1]-o[1])-(p[1]-o[1])*(q[0]-o[0]),lo=[],hi=[];
-  for(const p of pts){while(lo.length>1&&cr(lo[lo.length-2],lo[lo.length-1],p)<=0)lo.pop();lo.push(p);}
-  for(const p of pts.slice().reverse()){while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],p)<=0)hi.pop();hi.push(p);}
-  const H=lo.slice(0,-1).concat(hi.slice(0,-1)).map(p=>[+p[0].toFixed(2),+p[1].toFixed(2)]);return H.concat([H[0]]);})();
-if(STATION_GROW)SITE.stationPoly=STATION_GROW;
+// Toit de gare : strictement le bâtiment OSM (SITE.stationPoly, décision du propriétaire 27/11, osmrides#68) ; il n'est plus agrandi aux quais. Un quai qui dépasse du bâtiment
+// reste sans toit ; sol des quais, contrôle offpath et zone praticable suivent l'emprise des quais (PEDGE, plat.load / plat.exit / back / front), pas le bâtiment.
 // Travées d'attente (propriétaire, OzIris, 2026-11-18, issue #19, générique : toutes les attractions ont le même défaut) : visiteurs COLLÉS à leur portillon,
 // deux de front quand le portillon fait au moins 1,1 m (deux par portillon), rangées suivantes derrière. Premier rang à SLOT0 = 0,4 m de la ligne des portillons,
 // rangs espacés de SLOT_P = 0,6 m (une personne debout, pas plus serré) ; profondeur de la travée GDEPTH = dernier rang + 0,4 m (séparateurs, engine/render.js
@@ -163,10 +152,10 @@ function stepOps(dt){
 }
 const zoneOf=s=>s<S_ST?'station':s<S_LIFT0?'prelift':s<S_REL?'lift':s<S_BRK?'course':'brake';
 
-// Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise de la gare (agrandie à ses quais, STATION_GROW),
+// Escalier « en applique » (propriétaire, Goudurix, 2026-11-16, lot 4) : un escalier OSM dont l'axe tombe dans l'emprise du bâtiment de gare (OSM),
 // qui la longe (parallèle à la voie de gare) et dont le sommet est à moins de 4 m d'une porte OSM (entrance=*) est dessiné À L'EXTÉRIEUR, collé au mur : décalé perpendiculairement à la voie, côté extérieur, jusqu'à ce que son bord
 // intérieur (largeur APPW) touche le mur. Les points de la file, de la sortie et des allées posés sur lui sont décalés d'autant (visiteurs sur l'escalier). o.app={nx,nz,top}
-// sert au palier rectangulaire dessiné à son sommet (engine/render.js). Décalage = ESTIMÉ (il dépend de la largeur estimée des quais).
+// sert au palier rectangulaire dessiné à son sommet (engine/render.js). 
 // SITE.stairsOut:false : aucun escalier en applique (OzIris, issue #13 : escaliers de la file dessinés par le propriétaire dans la gare, jusqu'à la porte d'entrée).
 function stairsOutside(){const SPo=SITE.stationPoly;if(SITE.stairsOut===false||!SPo||SPo.length<3||!BAYS.length)return;const pin=(x,z)=>{let c=false;for(let i=0,j=SPo.length-1;i<SPo.length;j=i++)if((SPo[i][1]>z)!==(SPo[j][1]>z)&&x<(SPo[j][0]-SPo[i][0])*(z-SPo[i][1])/(SPo[j][1]-SPo[i][1])+SPo[i][0])c=!c;return c;};
   const tx=BAYS[0].tx,tz=BAYS[0].tz,cx=BAYS.reduce((n,b)=>n+b.x,0)/BAYS.length,cz=BAYS.reduce((n,b)=>n+b.z,0)/BAYS.length,moves=[];
