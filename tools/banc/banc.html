@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Banc d'essai OSMrides</title>
+<!-- Page de jeu minimale du banc d'essai (docs/ref/banc.md) : même squelette DOM que jeu.html d'un jeu, sans style de jeu, sans réseau, sans donnée de lieu.
+     Adresse : banc.html?site=<fichier site.js>[&moteur=<dossier engine/ relatif à cette page>][&mode=sandbox]
+     site.js (écrit par tools/banc/constructeur.js) déclare `const OSM` et `const SITE` ; le moteur local (../../engine/) est chargé ensuite. -->
+<style>
+*{box-sizing:border-box}html,body{margin:0}.hidden{display:none!important}
+#view{position:relative;width:800px;height:600px;overflow:hidden}#view canvas{position:absolute;inset:0}#side{width:370px}#log{height:80px;overflow:auto}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1><a href="index.html" title="Choisir une autre attraction">←</a> <span id="ttl"></span></h1>
+  <div class="hud">
+    <div class="stat">Heure <b id="hTime">10:00</b></div>
+    <div class="stat">Météo <b id="hWx">☀️</b></div>
+    <div class="stat" id="hMode" style="display:none">Bac à sable</div>
+    <div class="stat" id="hMoneyBox">Budget <b id="hMoney">0 €</b></div>
+    <div class="stat">Satisfaction <b id="hSat">75 %</b></div>
+    <div class="stat">File <b id="hQueue">0</b> · attente <b id="hWait">0 min</b></div>
+    <div class="stat">Quai <b id="hPlat">0/28</b></div>
+    <div class="stat">Passagers <b id="hRiders">0</b></div>
+  </div>
+  <div class="speed">
+    <button data-act="speed" data-arg="0" id="sp0">⏸</button>
+    <button data-act="speed" data-arg="1" id="sp1">▶</button>
+    <button data-act="speed" data-arg="2" id="sp2">×2</button>
+    <button data-act="speed" data-arg="4" id="sp4">×4</button>
+    <button data-act="speed" data-arg="8" id="sp8">×8</button>
+    <button data-act="mute" id="bMute" title="Son coupé (par défaut) : cliquer pour l'activer ; allumé = son activé">Son</button>
+    <button data-act="help" aria-label="Aide">?</button>
+  </div>
+  <div id="tabs" role="tablist">
+    <button data-act="tab" data-arg="carte" class="on">Carte</button>
+    <button data-act="tab" data-arg="pupitre">Pupitre</button>
+    <button data-act="tab" data-arg="journal">Journal</button>
+  </div>
+</header>
+<main>
+  <div id="left">
+    <div id="view"><div id="dark"></div>
+      <div id="fsBar"><span id="fsHud"></span><span class="sp"></span>
+        <span class="grp"><button data-act="speed" data-arg="0">Pause</button><button data-act="speed" data-arg="1">×1</button><button data-act="speed" data-arg="2">×2</button><button data-act="speed" data-arg="4">×4</button></span>
+        <span class="grp"><button data-act="fsdesk" id="bDesk" title="Afficher ou masquer le pupitre par-dessus la carte">Pupitre</button><button data-act="fs" title="Quitter le plein écran">Quitter</button></span>
+        <span id="fsMsg"></span></div>
+      <div id="cams"></div>
+      <div id="hint">Glisser : déplacer · Molette : zoom</div>
+    </div>
+    <div id="log"></div>
+  </div>
+  <aside id="side">
+    <section id="desk">
+      <i class="screw" style="left:6px;top:6px"></i><i class="screw" style="right:6px;top:6px"></i><i class="screw" style="left:6px;bottom:6px"></i><i class="screw" style="right:6px;bottom:6px"></i>
+      <h2>Pupitre de commande</h2>
+      <div class="lcd" id="opNote"></div>
+      <div class="deskrow">
+        <div class="ctl"><button class="pb sq green" id="bOpen" data-act="open" title="Ouvrir ou fermer l'entrée de la file ; les visiteurs déjà dans la file continuent d'embarquer">OUV.<br>FERM.</button><div class="plate">Entrée<br>ouverte</div></div>
+        <div class="ctl"><button class="pb sq amber" id="bEvac" data-act="evac" title="Évacuer la file d'attente : tout le monde ressort par l'entrée (voyant Évacuation en cours jusqu'à la fin)">ÉVAC.</button><div class="plate">Évacuer<br>la file</div></div>
+        <div class="ctl"><button class="sel" id="bAuto" data-act="auto" title="Départs automatiques ou manuels"><i></i></button><div class="plate">Auto · Manuel</div></div>
+      </div>
+      <div class="deskrow">
+        <div class="ctl"><button class="pb sq blue" id="bGate" data-act="gates" title="Ouvrir ou fermer les portillons du quai (seulement à la main, en auto comme en manuel)">OUV.<br>FERM.</button><div class="plate">Portillons</div></div>
+        <div class="ctl"><button class="pb sq blue" id="bRes" data-act="res" title="Sécurités des passagers : ouvrir (à quai) / verrouiller (portillons fermés : lance la fermeture et la vérification par les deux opérateurs)">OUV.<br>VERR.</button><div class="plate"><span class="zl" id="lRes"></span>Sécurités</div></div>
+        <div class="ctl"><button class="pb green big" id="bGo" data-act="depart" title="Donner le départ">DÉPART</button><div class="plate">Départ</div></div>
+        <div class="ctl"><button class="pb estop" id="bStop" data-act="estop" title="Arrêt d'urgence (appuyer de nouveau pour réarmer)"></button><div class="plate">Arrêt<br>d'urgence</div></div>
+      </div>
+      <div class="lamps">
+        <div class="lamp" id="lGare"><i></i>Gare</div>
+        <div class="lamp" id="lLift"><i></i>Lift</div>
+        <div class="lamp" id="lCourse"><i></i>Parcours</div>
+        <div class="lamp" id="lBrake"><i></i>Freins</div>
+        <div class="lamp off" id="lEvac" title="Évacuation de la file : allumé tant que des évacués ressortent, rouge si une barrière fermée les bloque"><i></i><span id="lEvacT">Évacuation en cours</span></div>
+      </div>
+      <div class="deskrow">
+        <div class="ctl"><div class="pair"><div class="lamp off" id="lOp0"><i></i>Op. 1</div><div class="lamp off" id="lOp1"><i></i>Op. 2</div></div><div class="plate">Lapbars validés</div></div>
+        <div class="ctl"><button class="sel" id="bByp" data-act="bypass" title="By-pass de la validation des lapbars par les opérateurs"><i></i></button><div class="plate">Validation<br>Normale · By-pass</div></div>
+      </div>
+      <div id="deskZones"></div>
+    </section>
+
+    <section>
+      <h2>Bilan</h2>
+      <div class="row"><button id="bBil" data-act="bilan">Bilan de l'exploitation</button></div>
+      <div class="note">Jeu continu : statistiques cumulées depuis le début de la partie (passagers, recettes, salaires prélevés à l'heure, satisfaction).</div>
+    </section>
+    <section>
+      <h2>Fréquentation du parc</h2>
+      <div class="row"><input type="range" id="crowd" min="0" max="300" step="10" value="100" aria-label="Fréquentation du parc"><b id="crowdV">100 % — normale</b></div>
+      <div class="note">Règle l'afflux de visiteurs vers l'attraction. Au-delà de 200 %, la file se remplit jusqu'à saturation et les visiteurs en trop sont refoulés.</div>
+    </section>
+    <section>
+      <h2>Patience des visiteurs</h2>
+      <div class="row"><input type="range" id="patL" min="0" max="5" step="1" value="1" aria-label="Patience des visiteurs"><b id="patV">normale</b></div>
+      <div class="note">Temps d'attente avant qu'un visiteur quitte la file, mécontent. « Infinie » : personne ne quitte la file, même sous l'orage.</div>
+    </section>
+    <section>
+      <h2>Trains</h2>
+      <div id="trains"></div>
+    </section>
+    <section>
+      <h2>Maintenance</h2>
+      <div id="tech"></div>
+      <div class="bar"><i id="techBar" style="background:var(--blue)"></i><span id="techTxt"></span></div>
+      <div class="card">
+        <div class="name">Chaîne du lift</div>
+        <div class="bar"><i id="wChain"></i><span id="wChainT"></span></div>
+        <div class="row">
+          <button id="bLiftFix" data-act="job" data-arg="liftFix">Dépanner (250 €)</button>
+          <button id="bChainRev" data-act="job" data-arg="chainRev">Réviser (450 €)</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="name" id="trackName">Voie</div>
+        <div class="bar"><i id="wTrack"></i><span id="wTrackT"></span></div>
+        <div class="row"><button id="bTrackRev" data-act="job" data-arg="trackRev">Entretien de la voie (900 €)</button></div>
+      </div>
+      <div class="card">
+        <div class="name">Freins de fin de parcours</div>
+        <div class="bar"><i id="wBrake"></i><span id="wBrakeT"></span></div>
+        <div class="row">
+          <button id="bBrakeFix" data-act="job" data-arg="brakeFix">Débloquer (200 €)</button>
+          <button id="bBrakeRev" data-act="job" data-arg="brakeRev">Réviser (350 €)</button>
+        </div>
+      </div>
+      <div class="note">Une seule équipe technique : une intervention à la fois. Les révisions de la chaîne, de la voie et des freins exigent des trains à l'arrêt et bloquent les départs.</div>
+    </section>
+    <small class="legal">Jeu de fan non officiel, Tracé au sol et alentours : © contributeurs OpenStreetMap. Hauteurs estimées.</small>
+  </aside>
+</main>
+</div>
+
+<div class="modal hidden" id="mHelp"><div>
+  <h2 id="helpTtl"></h2>
+  <p>Vous êtes chef d'attraction. Faites tourner les trains, gardez les visiteurs heureux et l'attraction en bon état.</p>
+  <ul>
+                    <li id="helpGarage"></li>
+                          </ul>
+  <p>Chaque passager rapporte 5 €. Les salaires coûtent environ 39 € par heure de jeu, prélevés en continu. Budget sous −2 000 € : fin de partie.</p>
+  <button class="go" data-act="closeHelp">C'est parti !</button>
+  <button id="bNew" style="float:right;font-size:12px;padding:3px 8px">Nouvelle partie</button>
+</div></div>
+<div class="modal hidden" id="mNew"><div>
+  <h2>Nouvelle partie</h2>
+  <p>La sauvegarde de cette attraction, dans le mode choisi, sera effacée. <b>Carrière</b> : budget, météo, pannes et usure. <b>Bac à sable</b> : ni budget, ni météo, ni pannes. Les sauvegardes des deux modes sont séparées.</p>
+  <button id="bNewCareer">Carrière</button> <button id="bNewSandbox">Bac à sable</button> <button id="bNewCancel">Annuler</button>
+</div></div>
+<div class="modal hidden" id="mBil"><div>
+  <h2 id="bTitle"></h2>
+  <table id="bTable"></table>
+  <p id="bMsg"></p>
+  <button class="go" data-act="closeBil" id="bBtn">Reprendre</button>
+</div></div>
+
+<script>
+(function(){
+  const q=n=>{const m=new RegExp('[?&]'+n+'=([^&]+)').exec(location.search);return m?decodeURIComponent(m[1]):'';};
+  const site=q('site'),moteur=q('moteur')||'../../engine/';
+  const load=(src,next)=>{const s=document.createElement('script');s.src=src;s.onload=next;s.onerror=()=>{document.body.innerHTML='<p>Introuvable : '+src+'</p>';};document.body.appendChild(s);};
+  window.cleSauvegarde=(t,l,el,m)=>'t2z.save.banc.'+el+'.'+m; // clé de sauvegarde (le catalogue des jeux, lieux/index.js, la définit ; ici aucun lieu : pas de lieu.js)
+  load(site,()=>load(moteur+'moteur.js'));
+})();
+</script>
+</body>
+</html>
