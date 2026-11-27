@@ -32,6 +32,23 @@ Catégories (cases à cocher, toutes cochées par défaut) : circuit et tronçon
 - Aperçu avant écriture : écarts par catégorie (`+` ajouté, `-` retiré, `~` modifié : géométrie, version, tags), nombre d'objets, avertissements.
 - Écriture : seulement `lieux/<type>/<lieu>/<el>.data.js`, sur le bouton « Écrire », après l'aperçu ; puis l'éditeur recharge le jeu (le moteur charge-t-il ?) et affiche les nombres d'objets.
 
+## Régénérer une attraction complètement (sans fichier OSM à fournir)
+
+`tools/make_site.py` demande en premier argument un extrait `.osm` : **ce fichier n'est pas dans le dépôt** ; il se télécharge. Trois façons de tout régénérer, de la plus simple à la plus manuelle. Dans les trois cas, la **fiche** de l'attraction (`tools/specs/<attraction>.json` du dépôt de jeu : ways du circuit, relation de site, repères) est la seule donnée à tenir à jour à la main ; la sortie est `lieux/<type>/<lieu>/<attraction>.data.js`, régénéré en entier et jamais édité à la main.
+
+1. **Dans l'éditeur (recommandé, aucun fichier)** : ouvrir l'attraction, « Réimporter depuis OSM », « Télécharger depuis OSM » (le navigateur télécharge la zone de l'attraction), cocher **toutes** les catégories, lire l'aperçu des écarts, « Écrire ». Puis relire `git diff` et committer.
+2. **En ligne de commande avec l'extrait téléchargé** (même calcul que l'éditeur) :
+   ```sh
+   # 1) extrait du lieu : bbox = « extrait du parc » de docs/PILOTAGE.md du dépôt de jeu (ouest,sud,est,nord)
+   curl -s -o extrait.osm "https://api.openstreetmap.org/api/0.6/map?bbox=<ouest>,<sud>,<est>,<nord>"
+   # 2) régénération complète (toutes les catégories ; --actuel= pour comparer avec le fichier en place)
+   node tools/import-osm.js extrait.osm tools/specs/<attraction>.json lieux/<type>/<lieu>/<attraction>.data.js --actuel=lieux/<type>/<lieu>/<attraction>.data.js
+   ```
+   L'API `/map` refuse une zone trop grande (limite de nœuds) : découper la bbox et passer plusieurs extraits séparés par des virgules (`a.osm,b.osm`). Le script est dans `osmrides/tools/`, la fiche et la sortie dans le dépôt de jeu. Les sessions cloud joignent `api.openstreetmap.org` ; **Overpass n'est pas utilisé**.
+3. **Avec `make_site.py` (référence, Python)** : même extrait `.osm` qu'au point 2, puis `python3 tools/make_site.py extrait.osm tools/specs/<attraction>.json lieux/<type>/<lieu>/<attraction>.data.js [apercu.png]` (sortie identique à l'outil JS, hors `f.t` et `OSM.levels`).
+
+Après régénération : lancer `check.js`, `save.js` et `mobile.js` de l'attraction avec le moteur voulu. **Un moteur local se donne par un chemin relatif qui commence par `../`** (`MOTEUR=../osmrides/engine/`) : un chemin absolu retombe en silence sur le moteur publié. Données qui cassent un test : branche à part, pas `main` (règle de `docs/PILOTAGE.md` d'`osmrides_parks`).
+
 ## Fiche d'import déduite d'OSM (à venir, #54)
 
 Ce qui se déduit d'une relation `type=site` (décisions du 23/11, #54) : `track_ways` (membres `roller_coaster=track`), `start_way` (tronçon `station`), `polys.station` (bâtiment qui contient la gare), `paths` / `queue_paths` (chemins `oneway=yes` membres, file finissant sur `entrance=main`, sortie partant de `entrance=exit`), `origin` et `bbox` (emprise + marge). Ce que l'utilisateur confirme dans l'éditeur : profil (tant que `ele` manque), repères forcés, zones `keep`, figures, physique, clés `skip`. La fiche gardera ces réponses ; elle reste dans le dépôt de jeu (`tools/specs/<el>.json`).
