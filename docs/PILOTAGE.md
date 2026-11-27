@@ -1,7 +1,7 @@
 # Pilotage du projet OSMrides — document de reprise
 
 > **Depuis le 27/11 : le Chef moteur pilote aussi `osmrides_parks`** (fusion des sessions, décision du propriétaire, #70) : à la reprise, lire aussi `docs/PILOTAGE.md` d'`osmrides_parks` (ajouter ce dépôt d'emblée à la session). **Depuis le 23/11 : cette session est le Chef moteur** (dépôt `osmrides` : moteur, éditeur, outils communs ; modèle Sonnet pour le chef). Organisation des quatre dépôts, chefs et communication par issues `inter-equipe` : `docs/ORGANISATION.md`.
-> Consigne de démarrage : « Tu es le Chef moteur d'OSMrides pour le dépôt osmrides. Lis `docs/PILOTAGE.md` (dont « État courant »), `docs/ORGANISATION.md`, `AGENTS.md` et les issues ouvertes, dont celles étiquetées `inter-equipe`. Reprends le travail, présente-toi en 3 lignes au propriétaire, puis attends ses demandes en français. »
+> Consigne de démarrage : donnée par le propriétaire à chaque session (lire ce fichier, `docs/ORGANISATION.md`, `AGENTS.md`, `docs/ROADMAP.md`, issues ouvertes ; ajouter `osmrides_parks`).
 
 Ce fichier est la **mémoire du pilotage**. Toute session de pilotage le lit en premier et le met à jour avant de se terminer.
 Il remplace l'historique des conversations : une nouvelle session doit pouvoir reprendre le travail avec lui seul, `AGENTS.md` et les issues GitHub.
@@ -24,15 +24,12 @@ Il remplace l'historique des conversations : une nouvelle session doit pouvoir r
 
 ## Branches et publication
 
-- Branche de travail : `claude/t2z-token-optimization-eukolz`. Publication : pousser la même révision sur `main` (`git push origin HEAD:main`) → GitHub Pages republie https://qhess34.github.io/osmrides/ (workflow `.github/workflows/pages.yml`).
-- Les sessions séparées travaillent sur leur propre branche (`claude/t2z-<sujet>`) ; le pilotage fusionne, relance les tests, publie.
-- Avant de publier : `NODE_PATH=$(npm root -g) node tools/check.js zeus|hourra|oziris|goudurix` (PASS, offpath=0, strollQ=0, gatesMove=ok, 0 erreur). Un échec de clic sous la charge (tests en parallèle) se relance seul.
+- Commits directs sur `main` (messages en anglais, impératif) ; **poussée seulement après un « pousse » du propriétaire dans le chat** ; GitHub Pages republie à chaque poussée (`.github/workflows/pages.yml`). Sessions séparées : branche `claude/t2z-<sujet>`, fusion par le pilote.
+- Tests avant publication : `docs/versions.md` ; au quotidien, micro-test du banc seulement (`AGENTS.md`).
 
-## Économie de tokens (règles du propriétaire)
+## Économie de tokens
 
-- Captures : aucune pour la logique ; une petite capture par point visuel ; un seul montage par lot ; vignettes et tutos seulement en fin de grande étape (règle dans `AGENTS.md`).
-- Ne jamais lire `lieux/parc/asterix/*.data.js` ni `lieux/parc/asterix/plan.data.js` en entier.
-- Le pilote regarde le montage une seule fois et ne relit pas les rapports en détail inutilement.
+Règles : `AGENTS.md` (« Vérifier avant de dire que c'est fait ») et paragraphe « Économie » d'« État courant ». Ne jamais lire `*.data.js` des parcs en entier. Consignes aux agents : fichiers et sections repérés par `grep -n`, rapport ≤ 8 lignes.
 
 ## Renouvellement de la session de pilotage
 
@@ -56,7 +53,7 @@ _Mis à jour le 2026-11-27 (soir) par le Chef moteur, session n° 3, avant passa
 **Versions** (étiquettes posées par le propriétaire seulement) : posées jusqu'à **`0.12.0`** (1447c04). `main` d'osmrides contient en plus le banc d'essai (1e27e8b, rien d'étiqueté). `osmrides_parks` `main` = ff220d0 : moteur **0.12.0 adopté**, Hourra et OzIris réimportés (OSM du 27/11). Pas d'issue `inter-equipe` de passage vers les parcs depuis la fusion.
 
 **Reste ouvert** (issues d'`osmrides`)
-- **#72** : défaire le groupe de rails de Zeus (le moteur ne déplace pas le tronçon en S seul ; question au propriétaire : le tronçon en S est-il solidaire du rail coulissant ? sinon seulement afficher « verrouillé » dans la modale). Opus si chantier moteur.
+- **#72** : défaire le groupe de rails de Zeus. **Réponse du propriétaire (27/11)** : le tronçon en S est un rail mobile (Moving) comme les autres ; dans Zeus il est groupé avec le rail voisin, mais le groupe se décide dans l'éditeur, pas dans la mécanique. Donc le moteur doit gérer le tronçon en S seul (`R.lockable` est faux pour l'aiguillage coulissant, `railsEd()` d'`appareil.js`, `railsPerRail` / `RA` de `garage.js`, modèle du rail du circuit escamotable du pont). Chantier moteur : Opus, micro-test du banc à ajouter (`tools/banc/`, constructeur déjà à `device:'switch'`).
 - **#73** : `check.js zeus` échoue au hasard sur les évacuations (`bars evac/evac`, `overlapQ` 1 à 90), déjà présent en 0.11.0 ; rendre le test déterministe (graine fixe), corriger moteur ou données.
 - **#68** : reste le réimport des parcs avec les tags (`f.t`, `OSM.levels`) : **Zeus** (réimport fait en copie scratch, commit ca657ec perdu avec la session : le refaire avec `tools/import-osm.js`, après #73), **Goudurix** (branche `goudurix-osm-2711` des parcs : à fusionner quand le propriétaire aura corrigé sa zone d'attente dans l'éditeur et poussé `goudurix.game.js` ; il fait « plus tard » ; sans cela `check goudurix` échoue sur `jumpQ`/`passQ`) ; retraits de `SITE` (`stationRoof` de Zeus).
 - **#57** (points 1, 3 en partie, 4 en partie, 5, 6) : fenêtres au clic sur freins et gare, sauvegarde du quai vers OSM, page du lieu, hauteurs choisies sur le circuit, caméras en WYSIWYG ; **#54** : fiche d'import déduite de la relation `type=site`, création depuis OSM de bout en bout, corrections locales, contribution vers OSM ; **#63** (matière des tunnels) ; **#65** (aiguillage rotatif déduit d'OSM) ; **#66** ; **#56** (plusieurs éléments par page, note de conception).
