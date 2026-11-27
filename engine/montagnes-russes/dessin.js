@@ -262,24 +262,8 @@ function drawBU(o){
       ctx.fillStyle=u.id===ZF&&flt?'#7a2e28':mx('#2c2e33','#5a2f2a',c);quad(-.2,.2,cx+g+th,cx+g+th+ca);quad(-.2,.2,cx-g-th-ca,cx-g-th);} // carters des mâchoires
   }
 }
-function drawTraverser(){ // pont droit : dalle des voies du garage et heurtoirs. Fosse, chemins de roulement et chariot ne sont plus calculés (propriétaire 27/11, issue #68) :
-  // les structures sous le rail mobile sont des objets OSM man_made=structure (decor.js, drawStruct) ; sans objet OSM, rien sous le rail mobile.
-  const dm=Math.min(...LANES.map(l=>l.d)),vB=PIT_VB;
-  ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
-  const gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;
-  ctx.fillStyle='#a9aaa6';ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.35;ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.globalAlpha=1; // dalle du garage
-  ctx.strokeStyle='#2c2e33';lw(.3,.8);ctx.beginPath();for(const l of LANES){const e=LREV?laneU(l.end)-.15:l.end+.15;ctx.moveTo(e,-l.d-.7);ctx.lineTo(e,-l.d+.7);}ctx.stroke(); // heurtoirs
-  ctx.restore();
-}
-function drawTable(){ // pont transbordeur, dessiné dans son repère : u le long de la voie, v dans le sens du coulissement
-  if(ROT){if(!YD.slab)return; // appareil rotatif : dessiné seul (tronçon tournant, faces, supports) ; dalle au sol seulement si SITE.yard.slab (propriétaire, Goudurix : pas de plateforme)
-    const L_=LBK?YD.b-YD.a:YD.len||8.6; // carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation ; élargi du côté du garage pour contenir la face en S
-    let v0=-1.05;if(LBK&&LANES.length){const nl=Math.round(LANES[0].link/.5);for(const q of LANES[0].path.slice(0,nl+1))v0=Math.min(v0,((q.x-SW0.x)*SW0.vx+(q.z-SW0.z)*SW0.vz)-1.05);}
-    ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.fillStyle='rgba(58,62,70,.9)';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#ff9f43':'#8c8f94';lw(.12,.7);
-    ctx.beginPath();ctx.roundRect(-.5,v0,L_+1,1.05-v0,.35);ctx.fill();ctx.stroke();
-    ctx.fillStyle='#2a2c31';ctx.fillRect(-.5,v0,.5,1.05-v0);ctx.fillRect(L_,v0,.5,1.05-v0);ctx.restore();return;}
-  // tronçon coulissant : dalle, chemins de roulement et chariot ne sont plus calculés (issue #68) : objets OSM man_made=structure (drawStruct) ; sinon rien
-}
+// Pont transbordeur et appareil rotatif : plus aucun dessin calculé sous le rail (propriétaire 27/11, issue #68) : ni fosse, chemins de roulement, chariot, dalle des voies de garage,
+// heurtoirs, ni carter du tambour ; tout cela n'existe que si OSM le décrit en man_made=structure (decor.js, drawStruct). SITE.yard.slab et SITE.yard.buffer ne dessinent rien (buffer : marge d'arrêt, garage.js).
 function drawStationFloor(s){
   const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2; // plat.back : au-delà de l'ARRIÈRE du dernier wagon (pas de son milieu), comme tools/offpath.js
   const quad=(l0,l1)=>{ctx.beginPath();ctx.moveTo(a.x-a.tx*bk+a.rx*l0,a.z-a.tz*bk+a.rz*l0);ctx.lineTo(b.x+b.tx*P.front+b.rx*l0,b.z+b.tz*P.front+b.rz*l0);
@@ -440,7 +424,7 @@ extension({nom:'montagnes-russes',
       for(const o of chunks)if(vis(o.x0,o.x1,o.z0,o.z1)&&!devHide(o)){const k=swPush(o);ctx.lineWidth=DECKW;ctx.stroke(o.sh);if(s>2.4){lw(BOB?.35:INV?.45:STL?.3:.2,.6);ctx.stroke(o.shb);}if(k)ctx.restore();}
       for(const t of trains)for(let k=0;k<NCARS;k++)if(!inTun(((t.s-(k+.5)*CAR)%L+L)%L))drawCar(t,k,true);
       if(CATW.walks.length||CATW.towers.length){if(e==='ombresSurToit')catwalkShadows();else{ctx.save();ctx.fillStyle=ctx.strokeStyle=`rgba(12,28,14,${.26*dry})`;catwalkShadows();ctx.restore();}}} // passerelles de service (aucune sur Zeus : rien ne change)
-    else if(e==='gare'){(TRAV?drawTraverser:drawTable)();drawStationFloor(s);} // garage, sol de la gare et des quais
+    else if(e==='gare'){drawStationFloor(s);} // garage, sol de la gare et des quais
     else if(e==='portillons')drawGates();
     else if(e==='quai')drawStationPeople();}, // personnes du quai : au-dessus de la voie et des trains
   objets(items,dt,vis){ // voie + trains, triés par hauteur avec les rochers et passerelles du noyau

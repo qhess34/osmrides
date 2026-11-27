@@ -4,7 +4,7 @@
 //  A. toit à deux pans de la gare de Zeus lu dans OSM (w148160405 : gabled, along, roof:height 2, roof:colour #ccb281) : dimensions et faîtage ; sans tags : rendu d'avant ;
 //  B. polygone man_made=tunnel prioritaire : sa couverture suit le polygone, le tunnel de la voie qu'il recoupe n'est gardé que hors du polygone ;
 //  C. ordre vertical par niveaux : voie layer<0 dessinée à la profondeur d'affichage commune, tranchées man_made=excavation dessinées sous la voie ;
-//  D. structures sous les rails mobiles (man_made=structure) lues dans OSM ; sans objet : rien sous le rail mobile.
+//  D. structures sous les rails mobiles (man_made=structure) lues dans OSM ; sans objet : rien sous le rail mobile (ni dalle des voies de garage, ni heurtoirs, ni carter du rotatif : plus calculés).
 const { chromium } = require('playwright');
 const fs = require('fs'), os = require('os'), path = require('path');
 const LIB = path.resolve(__dirname, '..'), SRC = path.resolve(process.env.JEU || path.join(LIB, '..', 'osmrides_parks'));
@@ -80,6 +80,7 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
       return { a: sAt(12.2, 16.3), b: sAt(24.9, -12.0), h: chunks.map(o => o.h), exc: LY.exc.map(e => [e.lv, e.m]), nExc: OSM.feats.filter(f => f.k === 'man_made=excavation').length, sw: [SW0.x, SW0.z], str: LY.str.length }; });
     ok('C sans niveaux : tranchées du jeu sans niveau ni matériau (les relevés OSM n\'ont pas encore les tags), aucune ajoutée', r0.exc.length === r0.nExc && r0.exc.every(e => e[0] == null && e[1] == null), r0);
     ok('D sans objet OSM : aucune structure sous le rail mobile', r0.str === 0, r0.str);
+    ok('D pont droit : dalle des voies de garage et heurtoirs non calculés', await page.evaluate(() => typeof drawTraverser === 'undefined' && typeof drawTable === 'undefined'));
     await shot(page, 'oziris-avant', 2, 3, 7);
     await page.close();
     const r0nExc = Math.max(r0.nExc, 2), a = Math.min(r0.a, r0.b), b = Math.max(r0.a, r0.b);
@@ -98,6 +99,21 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
     const d = await page.evaluate(() => { let n = 0, up = 0; const f = drawStruct; drawStruct = o => { n++; if (o.lv > 0) up++; return f(o); }; render(1 / 30); drawStruct = f;
       return { str: LY.str.map(o => [o.lv, o.m]), n, up }; });
     ok('D structures man_made=structure lues (acier, niveaux -1 et 1) et dessinées (sous et au-dessus du rail)', d.str.length === 2 && d.n === 2 && d.up === 1 && d.str.every(o => o[1] === 'steel'), d);
+    await page.close();
+  }
+  // ---------- D bis : appareil rotatif (Goudurix) : ni carter ni dalle ni heurtoirs calculés ; carter seulement s'il est dans OSM (man_made=structure)
+  {
+    let page = await open(browser, 'goudurix', errors);
+    const r0 = await page.evaluate(() => { let n = 0; const f = drawStruct; drawStruct = o => { n++; return f(o); }; render(1 / 30); drawStruct = f;
+      return { rot: !!ROT, str: LY.str.length, n, calc: [typeof drawTraverser, typeof drawTable], sw: [SW0.x, SW0.z] }; });
+    ok('D rotatif sans objet OSM : aucune structure, aucun dessin calculé (dalle, heurtoirs, carter)', r0.rot && r0.str === 0 && r0.n === 0 && r0.calc.every(t => t === 'undefined'), r0);
+    await shot(page, 'goudurix-sans', r0.sw[0], r0.sw[1], 7);
+    await page.close();
+    patch('goudurix', `OSM.feats.push({k:'man_made=structure',n:null,c:1,p:${JSON.stringify([[r0.sw[0] - 2, r0.sw[1] - 2], [r0.sw[0] + 2, r0.sw[1] - 2], [r0.sw[0] + 2, r0.sw[1] + 2], [r0.sw[0] - 2, r0.sw[1] + 2], [r0.sw[0] - 2, r0.sw[1] - 2]])},id:'w95',v:1,t:{'man_made':'structure','material':'steel','level':'-1'}});`);
+    page = await open(browser, 'goudurix', errors);
+    const d = await page.evaluate(() => { SITE.yard.slab = 1; let n = 0; const f = drawStruct; drawStruct = o => { n++; return f(o); }; render(1 / 30); drawStruct = f; return { str: LY.str.length, n }; });
+    ok('D rotatif : carter lu depuis man_made=structure et dessiné ; yard.slab ignoré sans erreur', d.str === 1 && d.n === 1, d);
+    await shot(page, 'goudurix-avec', r0.sw[0], r0.sw[1], 7);
     await page.close();
   }
   await browser.close();
