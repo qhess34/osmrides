@@ -15,7 +15,7 @@ const cen=pts=>{let x=0,z=0;for(const p of pts){x+=p[0];z+=p[1];}return [x/pts.l
 // Voies des attractions voisines (OSM.others) : un tronçon qui suit une voie de garage du site (au moins la moitié de ses points à moins de 1,5 m, ESTIMÉ) EST cette voie
 // (Zeus : voie de maintenance OSM 938337765 / 938337766) : il n'est pas redessiné en gris par-dessus le garage et ses trains (issue #43, propriétaire 20/11).
 const onYard=P=>vrai('surVoieDeGarage',P.p||P); // couche du type
-const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).filter(p=>!onYard(p)).map(p=>mkPath(p));
+const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[],exc:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).filter(p=>!onYard(p)).map(p=>mkPath(p));
 let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2D; // COV/COVP : chemins couverts OSM (passages sous la gare…), redessinés quand le toit s'efface
 (function scenery(){
   const ROOFS=['#a9553f','#b0694a','#9d6350','#8a8f96','#b9ab93','#7f8a8f','#a35f47'],seen=new Set();
@@ -50,6 +50,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
     else if(k==='landuse=construction'||k==='natural=bare_rock'){if(c)LY.dirt.push(p);}
     else if(k==='amenity=parking'){if(c)LY.asph.push(p);}
     else if(k==='man_made=pier')LY.pier.push(p);
+    else if(k==='man_made=excavation'){if(c)LY.exc.push({p,lv:lvOf(f),m:tagOf(f,'material')});} // tranchée (issue #68) : drawExc
     else if(k==='highway=footway'||k==='highway=pedestrian'||k==='highway=steps'){
       if(k==='highway=pedestrian'&&c)LY.footA.push(p);else if(!f.in&&k!=='highway=steps'&&!f.br)LY.foot.push(...(c?[p]:cutStairs(f.p).map(q=>mkPath(q)))); // escaliers (drawSteps) et passerelles (drawBridge) dessinés à part // f.in : chemin fondu dans une zone piétonne (non dessiné, les promeneurs le suivent encore)
       if(k==='highway=footway'&&!c&&!(SITE.noStroll||[]).some(q=>Math.hypot(f.p[0][0]-q[0],f.p[0][1]-q[1])<1.5))stroll(f.p);}
@@ -468,6 +469,12 @@ function drawPans(g,a){for(const p of g.pans){const k=(p.n[0]*ROOF_L[0]+p.n[1]*R
   ctx.strokeStyle='rgba(255,250,235,.3)';lw(.14,.6);ctx.beginPath();ctx.moveTo(g.ridge[0][0],g.ridge[0][1]);ctx.lineTo(g.ridge[1][0],g.ridge[1][1]);
   if(g.shape==='hipped')for(const s of [-1,1])for(const t of [-1,1]){const r=g.ridge[s<0?0:1],x=g.c[0]+g.d[0]*s*g.hl-g.d[1]*t*g.hw,z=g.c[1]+g.d[1]*s*g.hl+g.d[0]*t*g.hw;ctx.moveTo(r[0],r[1]);ctx.lineTo(x,z);}
   ctx.stroke();}
+// Tranchée OSM (man_made=excavation fermé, issue #68) : une ouverture dans les surfaces au sol (eau, pelouses, sable) qu'elle perce ; voie, chemins, passerelles
+// et couvertures, de niveau supérieur, restent dessus. Fond en béton (material=concrete|cement) sinon en terre, ombre portée des murs vers l'intérieur, chaperon clair.
+function drawExc(){for(const e of LY.exc){const be=/^(concrete|cement|reinforced_concrete)$/.test(e.m||'');
+  ctx.fillStyle=be?TEX.stone:TEX.dirt;ctx.fill(e.p);ctx.save();ctx.clip(e.p);ctx.fillStyle='rgba(30,30,28,.28)';ctx.fill(e.p);
+  ctx.strokeStyle='rgba(16,16,14,.32)';lw(2.4,3);ctx.stroke(e.p);ctx.translate(.5,.4);ctx.strokeStyle='rgba(16,16,14,.22)';lw(2.4,3);ctx.stroke(e.p);ctx.restore();
+  ctx.strokeStyle=be?'#c9c5ba':'#9c8d70';lw(.35,1);ctx.stroke(e.p);}}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
   ctx.globalAlpha=bldA(b);ctx.fillStyle=(b.st?LK.roof||b.rc||SITE.stationRoofCol:b.rc)||b.col; // toit : OSM roof:colour (b.rc) ; gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
   ctx.fill(b.p);
@@ -492,6 +499,7 @@ function drawWorld(dt){look(); // GAME.look relu à chaque image (éditeur : app
   ctx.strokeStyle='#b8ad8c';lw(1.6,1);ctx.fillStyle=TEX.water;for(const p of LY.water){ctx.stroke(p);ctx.fill(p);}
   ctx.strokeStyle=TEX.water;ctx.lineWidth=5;for(const p of LY.canal)ctx.stroke(p);
   ctx.fillStyle='#9a7b55';for(const p of LY.pier)ctx.fill(p);
+  drawExc(); // tranchées OSM : ouvertes dans le sol (eau, pelouses), sous la voie et les chemins
   appel('dessin','sol',D); // sol propre au type (terre battue sous une charpente en bois…)
   ctx.strokeStyle='#6f7176';ctx.lineWidth=5.2;for(const p of LY.road)ctx.stroke(p);ctx.strokeStyle=TEX.asph;ctx.lineWidth=4.4;for(const p of LY.road)ctx.stroke(p);
   // bordures des allées et de la file : seulement hors des zones piétonnes (propriétaire, lot 4 : pas de trait noir à la jonction allée / zone piétonne)

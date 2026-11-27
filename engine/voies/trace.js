@@ -53,6 +53,7 @@ function profilLisse(P,Lc){ // P triés par s, courbe périodique de longueur Lc
     spline();PROF.on=true;
     const mp=s=>{if(!isFinite(s))return s;s=Math.max(0,Math.min(old[n-1]+1e-6,s));let a=0,b=n-1;if(s>=old[n-1])return lerp(sAt[n-1],len,(s-old[n-1])/((PROF.L0-old[n-1])||1));while(b-a>1){const m=(a+b)>>1;if(old[m]<=s)a=m;else b=m;}return lerp(sAt[a],sAt[b],(s-old[a])/((old[b]-old[a])||1));};
     for(const t of (OSM.tunnels||[])){t[0]=+mp(t[0]).toFixed(2);t[1]=+mp(t[1]).toFixed(2);}
+    for(const t of (Array.isArray(OSM.levels)?OSM.levels:[])){t[0]=+mp(t[0]).toFixed(2);t[1]=+mp(t[1]).toFixed(2);} // niveaux OSM de la voie (issue #68)
     for(const t of (SITE.tunnels||[]))if(t&&Array.isArray(t.s)){t.s=[mp(t.s[0]),mp(t.s[1])];}
     for(const v of (OSM.inversions||[])){v.s0=mp(v.s0);v.s1=mp(v.s1);}
     for(const v of (OSM.elements||[])){v.s0=mp(v.s0);v.s1=mp(v.s1);}

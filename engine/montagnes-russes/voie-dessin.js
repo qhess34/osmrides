@@ -20,6 +20,11 @@ const TPOLY_DH=3,TPOLY=OSM.feats.filter(f=>f.k==='man_made=tunnel'&&f.c&&f.p.len
   for(let i=0;i<N;i++){const q=TR[i].p;if(pipXZ(f.p,q.x,q.z)){if(!r)runs.push(r={i0:i,i1:i,y:q.y});r.i1=i;r.y=Math.min(r.y,q.y);}else r=null;}
   if(runs.length>1&&runs[0].i0===0&&runs[runs.length-1].i1===N-1){const a=runs.shift(),b=runs[runs.length-1];b.i1=a.i1+N;b.y=Math.min(a.y,b.y);} // passage à cheval sur s = 0
   const lo=Math.min(...runs.map(r=>r.y));return runs.filter(r=>r.y<=lo+TPOLY_DH&&(r.i1-r.i0)*DS>=2).map(r=>({s:[r.i0*DS,r.i1*DS],id:f.id,p:f.p}));});
+// Ordre vertical par niveaux OSM (propriétaire 27/11, issue #68 : seul compte qui est au-dessus de qui). OSM.levels=[[s0,s1,lv],…] : tronçons du circuit portant
+// layer / level OSM non nul (s du moteur). Voie de niveau < 0 : dessinée à la profondeur d'affichage commune PROF_AFF (triée sous tout ce qui est au sol : passerelles,
+// couvertures, rochers), quelle que soit la hauteur de son profil ; sans niveau : hauteur du profil (comportement d'avant).
+const PROF_AFF=-3, // ESTIMÉ : convention de dessin, pas une donnée (même valeur pour tous les tunnels et tranchées)
+  LVS=Array.isArray(OSM.levels)?OSM.levels:[],lvAt=s=>{for(const l of LVS)if(s>=l[0]&&s<=l[1])return l[2];return null;},hAff=(a,b,h)=>{const v=lvAt((a+b)/2);return v!=null&&v<0?PROF_AFF:h;};
 // liste commune des tunnels : {r:[s0, s1, 'roof'?], cf (réglage SITE.tunnels), poly (emprise OSM), nm:[sans portail au début, à la fin]}. Tunnels de voie (OSM.tunnels, SITE.tunnels {s})
 // gardés seulement HORS des polygones : la partie recouverte est retirée (morceaux restants de moins de 2 m oubliés), sans portail du côté du polygone.
 const TLIST=(function(){const CF=SITE.tunnels||[],cfO=CF.filter(c=>!c.s&&!c.poly),L=[];
@@ -126,7 +131,7 @@ const BZ=[],LCH=[]; // zones de freinage dessinées : {id, r0, r1, drive} ; LCH[
   const cl=[...cuts].sort((a,b)=>a-b);
   for(let c=0;c<cl.length-1;c++){const sm=[];
     for(let i=cl[c];i<=cl[c+1];i++){const f=TR[i%N];sm.push({x:f.p.x,y:f.p.y,z:f.p.z,nx:f.R.x,nz:f.R.z,ux:f.U.x,uz:f.U.z,uy:f.U.y,i});} // R projeté (non normalisé) : vue du dessus, la voie qui pivote (dévers, vrilles, loopings) se resserre, largeur ∝ |cos θ|
-    sm.trk=1;sm.dev=cl[c]>=iA&&cl[c+1]<=iB&&iA<iB;const o=strip(sm);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
+    sm.trk=1;sm.dev=cl[c]>=iA&&cl[c+1]<=iB&&iA<iB;const o=strip(sm);o.h=hAff(cl[c]*DS,cl[c+1]*DS,o.h);o.sw=cl[c]>=iA&&cl[c+1]<=iB?1:0;chunks.push(o);
     if(!o.sw&&cl[c+1]!==iA){const a=TR[cl[c+1]%N].p,f=TR[(cl[c+1]+1)%N].p;o.deck.lineTo((a.x+f.x)/2,(a.z+f.z)/2);}
     for(let i=cl[c];i<cl[c+1];i++)chunkH[i]=o.h;}
   // tronçon en S (mobile) et voie de garage
