@@ -7,7 +7,7 @@ Fiche de référence (extraite d'`AGENTS.md`, 21/11). Une règle n'est écrite q
 ## Fichiers de l'éditeur
 
 - `lieux/parc/asterix/<el>.game.js` | `const GAME={…}` (corps JSON strict) — données du jeu écrites **par l'éditeur** seulement (barrières, salle de contrôle) ; facultatif ; priorité `GAME` > `SITE` > calcul (`docs/ARCHITECTURE.md` D1-D3)
-- `editor/`, `compose.yaml` | éditeur local WYSIWYG (lot 1, `editor/README.md`) : `editor/server.js` (Node 22 sans dépendance, n'écrit que `lieux/parc/asterix/<el>.game.js`), `editor/index.html` + `editor.js` (couche d'édition sur `jeu.html` en cadre), `editor/schema.js` (format, validation, diff) ; `docker compose up -d` → http://127.0.0.1:8787/ ; non publié
+- `editor/`, `compose.yaml` | éditeur local WYSIWYG (lot 1, `editor/README.md`) : `editor/server.js` (Node 22 sans dépendance, n'écrit que `lieux/parc/asterix/<el>.game.js`, `lieu.js` et, au réimport OSM, `<el>.data.js`), `editor/index.html` + `editor.js` (couche d'édition sur `jeu.html` en cadre), `editor/schema.js` (format, validation, diff) ; `docker compose up -d` → http://127.0.0.1:8787/ ; non publié
 
 ## Données de l'éditeur (`GAME`)
 
@@ -42,6 +42,10 @@ Données de l'éditeur (`GAME`, `engine/core.js` `GM` = `GAME` ou `{}`) : **`GAM
 - teintes ESTIMÉES. **Aimant des barrières** (éditeur) : pivot collé au bord d'allée de file le plus proche
 - bout du vantail collé au bord (opposé ou autre) que croise la direction choisie, **angle gardé** (jamais de perpendiculaire imposée), seule la longueur s'ajuste
 - 11 px, Alt = libre (`edgeSnap`, bordure arrondie aux coudes). Ne jamais écrire `game.js` à la main hors du format (`editor/schema.js`).
+
+## Réimport depuis OSM (osmrides#54, #57 point 7)
+
+- Fichiers : `editor/import-osm.js` (calcul, fusion par catégorie, aperçu), routes de `editor/server.js` `GET /api/import/<site>/plan`, `POST /api/import/<site>/preview` (objets OSM téléchargés par le navigateur, ou jeton du dernier calcul + catégories), `POST /api/import/<site>/write` : seul autre fichier écrit, `lieux/<type>/<lieu>/<el>.data.js`, sur demande. Serveur OSM lu : `api` de `editor/osm.local.json`. Règles et format : `import-osm.md`.
 
 ## Synchronisation vers OSM (issue #46, D12)
 

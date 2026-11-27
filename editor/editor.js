@@ -417,6 +417,58 @@
   $('oLogin').onclick = () => { window.open('/osm/login', 'osmlogin', 'width=720,height=820'); };
   window.addEventListener('message', e => { if (/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(e.origin) && e.data === 'osm-login' && $('modalOsm').classList.contains('on')) showOsm(); });
 
+  // ── réimport depuis OSM (docs/ref/import-osm.md) : le NAVIGATEUR télécharge (le serveur local peut être sans DNS), le serveur calcule l'aperçu par catégorie ; rien n'est écrit sans « Écrire » ──
+  let imp = null;
+  const impCats = () => [...$('iCats').querySelectorAll('input:checked')].map(c => c.value), post = (u, b) => api(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+  async function showImp() {
+    if (!site) return; $('iSite').textContent = site; $('modalImp').classList.add('on'); $('iWrite').disabled = true; $('iList').innerHTML = ''; $('iCats').innerHTML = ''; imp = null;
+    const r = await api('/api/import/' + site + '/plan');
+    if (r.error) { $('iMsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>'; $('iGet').disabled = true; return; }
+    imp = Object.assign({ token: null }, r);
+    $('iCats').innerHTML = '<b>Catégories à reprendre d\'OSM</b> (les autres restent telles quelles dans le fichier)' + r.cats.map(([c, l]) => `<label><input type="checkbox" value="${c}" checked> ${esc(l)}</label>`).join('');
+    for (const c of $('iCats').querySelectorAll('input')) c.onchange = () => { if (imp && imp.token) preview(); };
+    $('iMsg').innerHTML = `Serveur OSM : <code>${esc(r.api)}</code> ; zone de la fiche d'import : ${r.plan.urls.length} tuile(s). Le navigateur télécharge, l'éditeur montre les écarts avec <code>${esc(r.file)}</code> ; rien n'est écrit avant « Écrire ».`;
+    $('iGet').disabled = false;
+  }
+  async function download() {
+    if (!imp) return; $('iGet').disabled = true; $('iWrite').disabled = true;
+    const get = async u => { const x = await fetch(imp.api + u, { cache: 'no-store' }); if (!x.ok) throw new Error(u + ' : ' + x.status); return x.json(); };
+    try {
+      const parts = []; let k = 0;
+      for (const u of imp.plan.urls) { $('iMsg').textContent = 'Téléchargement de la zone ' + (++k) + '/' + imp.plan.urls.length + '…'; parts.push(await get(u)); }
+      const ex = ImportOSM.needed(ImportOSM.mergeElements(parts), imp.spec); k = 0;
+      for (const u of ex) { $('iMsg').textContent = 'Objets complets ' + (++k) + '/' + ex.length + '…'; try { parts.push(await get(u)); } catch (e) { } } // objet supprimé (404, 410) : signalé ensuite par l'import
+      $('iMsg').textContent = 'Calcul de l\'aperçu…';
+      await preview(ImportOSM.mergeElements(parts));
+    } catch (e) { $('iMsg').innerHTML = '<span class="err">Téléchargement impossible : ' + esc(e.message) + '</span>'; }
+    $('iGet').disabled = false;
+  }
+  const impCounts = (a, b) => Object.keys(b).filter(k => b[k] || (a && a[k])).map(k => k + ' ' + (a && a[k] != null ? (a[k] === b[k] ? b[k] : a[k] + ' → ' + b[k]) : b[k])).join(', ');
+  async function preview(els) {
+    $('iWrite').disabled = true;
+    const r = await post('/api/import/' + site + '/preview', els ? { elements: els, cats: impCats() } : { token: imp.token, cats: impCats() });
+    window.ED.importView = r;
+    if (r.error) { $('iMsg').innerHTML = '<span class="err">' + esc(r.error) + '</span>' + (r.warnings ? '<br><span class="warn">' + r.warnings.map(esc).join('<br>') + '</span>' : ''); return; }
+    imp.token = r.token;
+    $('iMsg').innerHTML = (r.same ? 'Aucun écart avec <code>' + esc(r.file) + '</code> pour les catégories cochées.' : 'Écarts avec <code>' + esc(r.file) + '</code> pour les catégories cochées (+ ajouté, - retiré, ~ modifié). Rien n\'est écrit avant « Écrire ».')
+      + (r.warnings.length ? '<br><span class="warn">' + r.warnings.map(esc).join('<br>') + '</span>' : '') + '<br>Objets : ' + esc(impCounts(r.before, r.counts));
+    $('iList').innerHTML = Object.values(r.summary).filter(s => s.changes.length).map(s => `<details><summary>${esc(s.label)} : ${s.changes.length} écart(s)</summary><div>${s.changes.map(c => `<div class="${c[0] === '+' ? 'a' : c[0] === '-' ? 'r' : 'c'}">${esc(c)}</div>`).join('')}</div></details>`).join('');
+    $('iWrite').disabled = r.same;
+  }
+  async function writeImp() {
+    $('iWrite').disabled = true;
+    const r = await post('/api/import/' + site + '/write', { token: imp.token, cats: impCats() });
+    window.ED.importWritten = r;
+    if (!r.written) { $('iMsg').innerHTML = '<span class="err">' + esc(r.error || 'rien à écrire') + '</span>'; return; }
+    $('iMsg').innerHTML = 'Écrit : <code>' + esc(r.written) + '</code>. Rien n\'est envoyé à Git : relire, puis committer soi-même. Vérification : rechargement du jeu…'; $('iList').innerHTML = '';
+    window.ED.importCheck = null; reloadPreview(); const t0 = Date.now(); // le moteur relit le fichier écrit
+    const chk = () => { if (!window.ED.ready) { if (Date.now() - t0 < 30000) return setTimeout(chk, 200); window.ED.importCheck = { ok: false }; $('iMsg').innerHTML += ' <span class="err">le jeu ne s\'est pas chargé avec ces données.</span>'; return; }
+      const c = { ok: true, cps: E('OSM.cps.length'), feats: E('OSM.feats.length') }; window.ED.importCheck = c;
+      $('iMsg').innerHTML += ` <span class="ok">le jeu se charge (${c.cps} points de voie, ${c.feats} objets du décor).</span>` + (r.warnings.length ? '<br><span class="warn">' + r.warnings.map(esc).join('<br>') + '</span>' : ''); };
+    setTimeout(chk, 300);
+  }
+  $('bImp').onclick = showImp; $('iClose').onclick = () => $('modalImp').classList.remove('on'); $('iGet').onclick = download; $('iWrite').onclick = writeImp;
+
   // ── diff et sauvegarde ──
   const summary = g => `${Object.keys((g && g.barriers) || {}).length} barrière(s) · salle : ${g && Array.isArray(g.controlRooms) ? (g.controlRooms.length ? g.controlRooms.map(r => `${r.id} (${r.x}, ${r.z}), ${r.angle}°, ${r.w} x ${r.d} m`).join('') : 'aucune') : 'OSM ou SITE.booth (repli)'} · zone d'attente : ${g && g.boardAreas && g.boardAreas.length ? g.boardAreas.map(a => a.id + ', ' + a.pts.length + ' sommets').join('') : 'calcul auto'} · travées : ${g && g.board ? g.board.depth + ' m' : 'calcul auto'} · entrée de la file : ${g && g.queueEntry ? g.queueEntry.len + ' m à ' + g.queueEntry.ang + '°' : 'calcul auto'} · attraction (SITE) : ${g && g.site ? Object.keys(g.site).join(', ') : 'valeurs d\'origine'}`;
   async function showDiff() {

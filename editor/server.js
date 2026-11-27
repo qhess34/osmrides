@@ -4,10 +4,12 @@
      docs/versions.md : l'éditeur et le moteur d'une même version vont ensemble), le reste depuis le dépôt de jeu T2Z_ROOT (jeu.html, lieux/) ;
    - envoi vers OSM (issue #46) : GET /osm/login, /osm/callback (OAuth2 PKCE), GET /api/osm/status, POST /api/osm/send/<site> ;
    - API : GET /api/couches (parties d'éditeur des couches du moteur), GET /api/sites, GET /api/game/<site>, POST /api/diff/<site>, PUT /api/game/<site>, <site> = <type>/<lieu>/<el> (docs/hierarchie.md) ;
-   - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant) et lieux/<type>/<lieu>/lieu.js (GET/PUT /api/lieu/<type>/<lieu>, horaires du lieu), après validation (editor/schema.js) ; aucune opération Git.
+   - n'écrit QUE lieux/<type>/<lieu>/<el>.game.js (liste blanche : un lieux/<type>/<lieu>/<el>.js existant) et lieux/<type>/<lieu>/lieu.js (GET/PUT /api/lieu/<type>/<lieu>, horaires du lieu), après validation (editor/schema.js) ; aucune opération Git ;
+   - réimport OSM (docs/ref/import-osm.md) : GET /api/import/<site>/plan, POST /api/import/<site>/preview (objets OSM téléchargés PAR LE NAVIGATEUR, catégories), POST /api/import/<site>/write :
+     écrit lieux/<type>/<lieu>/<el>.data.js, seulement sur ce dernier appel (bouton « Écrire » après l'aperçu).
    Variables : PORT (8787), HOST (127.0.0.1 ; 0.0.0.0 dans le conteneur, le port publié reste lié à 127.0.0.1 sur l'hôte), T2Z_ROOT (dépôt de jeu, défaut : ce dépôt). */
 const http = require('http'), fs = require('fs'), path = require('path');
-const S = require('./schema.js');
+const S = require('./schema.js'), IMP = require('./import-osm.js');
 const LIB = path.resolve(__dirname, '..');                    // cette copie d'osmrides : editor/, engine/
 const ROOT = path.resolve(process.env.T2Z_ROOT || LIB);       // dépôt de jeu : jeu.html, lieux/
 const LIEUX = path.join(ROOT, 'lieux');
@@ -37,10 +39,10 @@ function readGame(id) {
   const text = fs.readFileSync(p, 'utf8');
   try { return { exists: true, game: S.parse(text), text }; } catch (e) { return { exists: true, game: null, text, error: 'fichier illisible : ' + e.message }; }
 }
-function body(req) {
+function body(req, max) {
   return new Promise((ok, ko) => {
     let n = 0; const ch = [];
-    req.on('data', c => { n += c.length; if (n > 1e6) { ko(new Error('corps trop gros')); req.destroy(); } else ch.push(c); });
+    req.on('data', c => { n += c.length; if (n > (max || 1e6)) { ko(new Error('corps trop gros')); req.destroy(); } else ch.push(c); });
     req.on('end', () => { try { ok(JSON.parse(Buffer.concat(ch).toString('utf8'))); } catch (e) { ko(new Error('JSON invalide')); } });
     req.on('error', ko);
   });
@@ -64,6 +66,34 @@ function propose(id, game, ctx) {
 const lieuPath = id => path.join(LIEUX, id, 'lieu.js'), checkLieu = id => typeof id === 'string' && /^[a-z0-9-]{1,40}\/[a-z0-9-]{1,40}$/.test(id) && dirs(path.join(LIEUX, id.split('/')[0])).includes(id.split('/')[1]);
 function readLieu(id) { const p = lieuPath(id); if (!fs.existsSync(p)) return { exists: false, lieu: null, text: '' }; const text = fs.readFileSync(p, 'utf8'); try { return { exists: true, lieu: S.parseLieu(text), text }; } catch (e) { return { exists: true, lieu: null, text, error: 'fichier illisible : ' + e.message }; } }
 function proposeLieu(id, lieu) { const v = S.validateLieu(lieu), cur = readLieu(id); if (v.errors.length) return { ok: false, errors: v.errors, warnings: v.warnings }; const text = S.textLieu(lieu); return { ok: true, warnings: v.warnings, exists: cur.exists, before: cur.text, after: text, same: cur.text === text, diff: S.diff(cur.text, text) }; }
+// Réimport OSM (docs/ref/import-osm.md) : fiche tools/specs/<el>.json du dépôt de jeu ; le navigateur télécharge (le serveur n'a pas forcément de DNS), le serveur calcule et écrit.
+const specPath = id => path.join(ROOT, 'tools', 'specs', id.split('/')[2] + '.json'), dataPath = id => path.join(LIEUX, id + '.data.js');
+const importApi = () => { let c = {}; try { c = JSON.parse(fs.readFileSync(process.env.OSM_CONFIG || path.join(__dirname, 'osm.local.json'), 'utf8')); } catch (e) { } return String(c.api || 'https://api.openstreetmap.org').replace(/\/+$/, ''); };
+const IMPORTS = new Map(); // site -> { token, B } : dernier import calculé (les cases à cocher refont seulement la fusion)
+function importView(id, imp, cats) {
+  const cur = fs.existsSync(dataPath(id)) ? fs.readFileSync(dataPath(id), 'utf8') : null, res = IMP.merge(cur, imp.B, cats), after = IMP.text(res);
+  let before = null; try { before = cur ? IMP.counts(IMP.parseData(cur)) : null; } catch (e) { }
+  return { cur, after, view: { token: imp.token, file: 'lieux/' + id + '.data.js', exists: !!cur, same: cur === after, circuit: imp.B.ok.circuit, warnings: imp.B.warnings, summary: IMP.summary(cur, res), counts: IMP.counts(res), before } };
+}
+async function importRoute(id, act, req, res) {
+  if (!fs.existsSync(specPath(id))) return send(res, 404, { error: 'fiche d\'import absente : tools/specs/' + id.split('/')[2] + '.json (dépôt de jeu)' });
+  const specText = fs.readFileSync(specPath(id), 'utf8'), spec = JSON.parse(specText);
+  if (act === 'plan' && req.method === 'GET') return send(res, 200, { api: importApi(), plan: IMP.plan(spec), spec: { track_ways: spec.track_ways, paths: spec.paths, polys: spec.polys, drop_ways: spec.drop_ways }, cats: IMP.CATS, file: 'lieux/' + id + '.data.js' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'méthode refusée' });
+  const b = await body(req, 80e6), cats = Array.isArray(b.cats) ? b.cats.filter(c => IMP.CATS.some(k => k[0] === c)) : null;
+  let imp = IMPORTS.get(id);
+  if (act === 'preview' && Array.isArray(b.elements)) { const B = IMP.build(IMP.mergeElements([b.elements]), specText); imp = { token: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), B }; IMPORTS.set(id, imp); }
+  if (!imp || (b.token && b.token !== imp.token) || (act === 'write' && b.token !== imp.token)) return send(res, 409, { error: 'import à refaire (télécharger de nouveau depuis OSM)' });
+  let v; try { v = importView(id, imp, cats); } catch (e) { return send(res, 422, { error: e.message, warnings: imp.B.warnings }); }
+  if (act === 'preview') return send(res, 200, v.view);
+  if (act === 'write') {
+    if (v.view.same) return send(res, 200, Object.assign(v.view, { written: null }));
+    const tmp = dataPath(id) + '.tmp-' + process.pid; fs.writeFileSync(tmp, v.after, { mode: 0o644 }); fs.renameSync(tmp, dataPath(id)); // seul fichier écrit par l'import
+    console.log(new Date().toISOString(), 'écrit', path.relative(ROOT, dataPath(id)));
+    return send(res, 200, Object.assign(v.view, { written: v.view.file, same: true }));
+  }
+  return send(res, 404, { error: 'inconnu' });
+}
 const server = http.createServer(async (req, res) => {
   try {
     // Hôte local seulement (contre le rebinding DNS) ; écritures : même origine et JSON (contre les requêtes d'un autre site).
@@ -82,6 +112,8 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET' && p === '/api/couches') return send(res, 200, couches());
       const mo = /^\/api\/osm\/send\/([^/]+\/[^/]+\/[^/]+)$/.exec(p);
       if (mo && req.method === 'POST') { if (!checkSite(mo[1])) return send(res, 404, { error: 'attraction inconnue' }); const r = await OSM.send(mo[1].split('/')[2], await body(req)); /* tools/specs/<el>.json */ return send(res, r.code, r.body); }
+      const mi = /^\/api\/import\/([^/]+\/[^/]+\/[^/]+)\/(plan|preview|write)$/.exec(p);
+      if (mi) { if (!checkSite(mi[1])) return send(res, 404, { error: 'attraction inconnue' }); return importRoute(mi[1], mi[2], req, res); }
       const ml = /^\/api\/lieu\/([^/]+\/[^/]+)$/.exec(p);
       if (ml) {
         if (!checkLieu(ml[1])) return send(res, 404, { error: 'lieu inconnu' });

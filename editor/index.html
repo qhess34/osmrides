@@ -36,9 +36,10 @@ input{width:76px;background:#141d33}
 .warn{color:var(--warn)}.err{color:#ff8a8d}
 .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 #modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
-#modal.on,#modalOsm.on{display:flex}
-#modalOsm{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
-#modalOsm .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(820px,94vw);max-height:88vh;overflow:auto;display:flex;flex-direction:column;padding:12px}
+#modal.on,#modalOsm.on,#modalImp.on{display:flex}
+#modalOsm,#modalImp{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9}
+#modalOsm .box,#modalImp .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(820px,94vw);max-height:88vh;overflow:auto;display:flex;flex-direction:column;padding:12px}
+#iCats label{display:block;font-size:12px;padding:2px 0}#iList details{font-size:12px;border-bottom:1px solid var(--line);padding:2px 0}#iList details>div{max-height:180px;overflow:auto;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace}#iList .a{color:#9ff0bf}#iList .r{color:#ffb3b5}#iList .c{color:var(--dim)}
 #oList label{display:block;font-size:12px;padding:2px 0;border-bottom:1px solid var(--line)}#oList code{color:var(--dim)}
 #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(820px,94vw);max-height:88vh;display:flex;flex-direction:column;padding:12px}
 #diff{flex:1;overflow:auto;background:#0b1120;border-radius:6px;padding:6px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre}
@@ -71,6 +72,7 @@ input{width:76px;background:#141d33}
   <span class="sp"></span>
   <span id="dirty">aucune modification</span>
   <button id="bReload" title="Abandonner les modifications et relire lieux/relire lieux/parc/asterix/&lt;el&gt;.game.jslt;typerelire lieux/parc/asterix/&lt;el&gt;.game.jsgt;/relire lieux/parc/asterix/&lt;el&gt;.game.jslt;lieurelire lieux/parc/asterix/&lt;el&gt;.game.jsgt;/relire lieux/parc/asterix/&lt;el&gt;.game.jslt;elrelire lieux/parc/asterix/&lt;el&gt;.game.jsgt;.game.js">Recharger</button>
+  <button id="bImp" title="Relire les données OSM de l'attraction (choix des catégories, aperçu des écarts, puis écriture sur demande)">Réimporter depuis OSM</button>
   <button id="bOsm" title="Renvoyer vers OpenStreetMap les réglages qui s'écartent d'OSM (jamais automatique)">Envoyer vers OSM</button>
   <button id="bDiff" class="go" title="Voir les différences avant d'enregistrer">Différences et enregistrement</button>
 </header>
@@ -102,11 +104,19 @@ input{width:76px;background:#141d33}
   <label class="note" style="display:block;margin-top:6px">Commentaire du changeset<br><input id="oCom" type="text" style="width:100%" maxlength="255"></label>
   <div class="row" style="justify-content:flex-end"><button id="oLogin" hidden>Se connecter à OSM</button><button id="oClose">Fermer</button><button id="oSend" class="go" disabled>Envoyer</button></div>
 </div></div>
+<div id="modalImp"><div class="box">
+  <h2 style="margin:0 0 6px;color:var(--gold);font-size:14px">Réimporter depuis OpenStreetMap — <span id="iSite"></span></h2>
+  <div id="iMsg" class="note"></div>
+  <div id="iCats"></div>
+  <div id="iList"></div>
+  <div class="row" style="justify-content:flex-end"><button id="iClose">Fermer</button><button id="iGet">Télécharger depuis OSM</button><button id="iWrite" class="go" disabled>Écrire</button></div>
+</div></div>
 <div id="mSel" role="dialog" aria-modal="true" aria-labelledby="mSelT" hidden><div class="box">
   <div class="hd"><h2 id="mSelT">Sélection</h2><button id="mSelX">Fermer</button></div>
   <div id="selBox"></div>
 </div></div>
 <script src="schema.js"></script>
+<script src="import-osm.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

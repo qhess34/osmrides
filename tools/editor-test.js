@@ -643,6 +643,51 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       ok(!errors.length, 'rails : aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
       console.log(id + ' (rails) :\n  ' + out.join('\n  '));
     }
+    // ── réimport depuis OSM (osmrides#54, #57 point 7 ; docs/ref/import-osm.md) : FAUX serveur OSM local (CORS), aucun réseau ; le navigateur télécharge, aperçu par catégorie,
+    //    « Bâtiments » seuls cochés : la gare rehaussée dans le faux OSM est réécrite, le circuit et le reste du décor restent au caractère près ; le jeu se recharge ; fichier rendu à la fin
+    for (const id of ['zeus'].filter(e => SITES.includes(e) && fs.existsSync(path.join(ROOT, 'tools', 'specs', e + '.json')))) {
+      const out = [], errors = [], ok = (c, m) => { out.push((c ? '' : 'FAIL ') + m); if (!c) fail++; };
+      const I = require('../editor/import-osm.js'), dp = path.join(ROOT, 'lieux', 'parc', 'asterix', id + '.data.js'), had = fs.readFileSync(dp, 'utf8'), O = I.parseData(had), spec = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'specs', id + '.json'), 'utf8'));
+      const [lat0, lon0] = spec.origin, kx = 111320 * Math.cos(lat0 * Math.PI / 180), ll = q => ({ lat: +(lat0 - (+q[1]) / 111320).toFixed(7), lon: +(lon0 + (+q[0]) / kx).toFixed(7) });
+      // faux extrait : la gare (polygone actuel, version + 1, hauteur 9 m) et le circuit de la fiche réduit à un anneau (sans rapport avec le vrai tracé)
+      const E = []; let nid = 1e12; const nd = (q, tags) => { E.push(Object.assign({ type: 'node', id: ++nid, version: 1 }, ll(q), tags ? { tags } : {})); return nid; };
+      const sid = spec.polys.station, sv = +O.src.polys.station[0][1], gp_ = O.polys.station.map(q => nd(q)); gp_[gp_.length - 1] = gp_[0];
+      E.push({ type: 'way', id: sid, version: sv + 1, nodes: gp_, tags: { building: 'yes', height: '9' } });
+      const tw = spec.track_ways, ring = tw.map((w, k) => nd([Math.cos(2 * Math.PI * k / tw.length) * 40, Math.sin(2 * Math.PI * k / tw.length) * 40]));
+      tw.forEach((w, k) => E.push({ type: 'way', id: w, version: 1, nodes: [ring[k], ring[(k + 1) % tw.length]], tags: Object.assign({ roller_coaster: 'track' }, w === spec.start_way ? { 'roller_coaster:track': 'station' } : {}) }));
+      const LOGF = [], FPI = 18793, fk = require('http').createServer((q, r) => { const u = new URL(q.url, 'http://x'); LOGF.push(u.pathname); const h = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+        if (u.pathname === '/api/0.6/map.json') { r.writeHead(200, h); return r.end(JSON.stringify({ version: '0.6', elements: E })); } r.writeHead(404, h); r.end('{}'); });
+      await new Promise(r => fk.listen(FPI, '127.0.0.1', r));
+      const cf = path.join(require('os').tmpdir(), 'import-osm-test-' + process.pid + '.json'); fs.writeFileSync(cf, JSON.stringify({ api: 'http://127.0.0.1:' + FPI }));
+      const si = spawn(process.execPath, [path.join(LIB, 'editor/server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), T2Z_ROOT: ROOT, OSM_CONFIG: cf }), stdio: ['ignore', 'pipe', 'inherit'] });
+      try {
+        for (let i = 0; i < 100; i++) { try { if ((await fetch(BASE + '/api/sites')).ok) break; } catch (e) { } await sleep(50); }
+        const pi = await browser.newPage({ viewport: { width: 1200, height: 760 } });
+        pi.on('pageerror', e => errors.push('import: ' + String(e.message || e)));
+        await pi.goto(BASE + '/editor/?site=parc/asterix/' + id); await pi.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 40000 });
+        await pi.click('#bImp'); await pi.waitForSelector('#iCats input', { timeout: 10000 });
+        ok(await ed(pi, `document.querySelectorAll('#iCats input:checked').length`) === 7 && /127\.0\.0\.1:18793/.test(await ed(pi, `document.getElementById('iMsg').textContent`)), 'import : fenêtre ouverte, 7 catégories cochées, serveur OSM de la configuration');
+        await pi.click('#iGet'); await pi.waitForFunction(() => window.ED.importView, null, { timeout: 60000 });
+        const v1 = await ed(pi, 'ED.importView');
+        ok(LOGF.some(u => u === '/api/0.6/map.json') && LOGF.some(u => /\/way\/\d+\/full\.json$/.test(u)) && fs.readFileSync(dp, 'utf8') === had, 'import : zone téléchargée par le navigateur, tronçons absents demandés en entier, fichier non écrit');
+        ok(!v1.same && v1.summary.circuit.changes.length > 0 && v1.summary.batiments.changes.length > 0, 'import : aperçu tout coché (circuit ' + v1.summary.circuit.changes.length + ', bâtiments ' + v1.summary.batiments.changes.length + ' écart(s))');
+        for (const c of ['circuit', 'chemins', 'eau', 'structures', 'decor', 'tags']) await pi.uncheck(`#iCats input[value="${c}"]`);
+        await pi.waitForFunction(() => window.ED.importView && window.ED.importView.summary && !window.ED.importView.summary.circuit.changes.length && !document.getElementById('iWrite').disabled, null, { timeout: 30000 });
+        const v2 = await ed(pi, 'ED.importView');
+        ok(v2.summary.batiments.changes.some(c => new RegExp('w' + sid + ' .*version ' + sv + ' → ' + (sv + 1)).test(c)) && !v2.summary.chemins.changes.length && !v2.summary.decor.changes.length, 'import : « Bâtiments » seul : la gare (w' + sid + ') listée, aucun autre écart');
+        ok(/<details>/.test(await ed(pi, `document.getElementById('iList').innerHTML`)), 'import : écarts lisibles par catégorie');
+        await pi.click('#iWrite'); await pi.waitForFunction(() => window.ED.importCheck, null, { timeout: 60000 });
+        const N = I.parseData(fs.readFileSync(dp, 'utf8')), D = I.dumps, chk = await ed(pi, 'ED.importCheck');
+        const nb = a => (a || []).filter(f => !/^building/.test(f.k)), gare = N.feats.find(f => f.id === 'w' + sid);
+        ok(D(N.cps) === D(O.cps) && D(N.paths) === D(O.paths) && D(N.attrs) === D(O.attrs) && D(nb(N.feats)) === D(nb(O.feats)) && D(N.src.track) === D(O.src.track), 'import : circuit, chemins, attributs et décor hors bâtiments gardés au caractère près');
+        ok(gare && D(gare.v) === String(sv + 1) && D(gare.bh) === '9.0', 'import : gare réécrite depuis OSM (version ' + (sv + 1) + ', hauteur 9 m)');
+        ok(chk && chk.ok && chk.cps === O.cps.length, 'import : le jeu se recharge avec le fichier écrit (' + (chk && chk.cps) + ' points de voie, ' + (chk && chk.feats) + ' objets)');
+        await pi.close();
+      } finally { si.kill('SIGTERM'); fk.close(); fs.writeFileSync(dp, had); try { fs.unlinkSync(cf); } catch (e) { } await sleep(200); }
+      ok(fs.readFileSync(dp, 'utf8') === had, 'import : ' + id + '.data.js rendu à l\'identique');
+      ok(!errors.length, 'import : aucune erreur de page' + (errors.length ? ' : ' + errors.slice(0, 3).join(' | ') : ''));
+      console.log(id + ' (import OSM) :\n  ' + out.join('\n  '));
+    }
   } finally {
     await browser.close(); await stopServer();
     if (lieuBak != null) fs.writeFileSync(LIEU_F, lieuBak); else try { fs.unlinkSync(LIEU_F); } catch (e) { } // lieu.js d'origine rendu (ou celui du test retiré)
