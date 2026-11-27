@@ -15,9 +15,14 @@ const RES_KIND=SITE.car.restraint||({wood:'lapbar',bob:'lapbar',inverted:'otsr',
 // (au plus jusqu'à la fin de gare TAG.st1) : un train long dans une gare courte reste sous le toit, portillons compris.
 // Arrêt en gare : st1 - SITE.stopBack ; repère OSM « stp » (tools/make_site.py : fin du dernier tronçon tagué station quand la gare est prolongée par des
 // tronçons d'un autre type, « moving » d'OzIris, issue #13) : la tête s'arrête là (SITE.stopBack ignoré) ; puis avancé si l'arrière dépasse du bâtiment.
-function stationStop(){const s0=TAG.stp!=null?TAG.stp:TAG.st1-(SITE.stopBack||0),P=SITE.stationPoly;if(!P||P.length<3)return s0;
-  const pin=(x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
-  const f=mkF();let a=null;for(let q=-8;q<=TAG.st1;q+=.1){frameAt(q,f);if(pin(f.p.x,f.p.z)){a=q;break;}}if(a===null)return s0;
+// Quai lu dans OSM (osmrides#57 point 3, #68 ; docs/ref/quai.md) : zone fermée railway=platform d'OSM.feats qui contient le milieu de la gare (st0-st1) ; null sans elle.
+const pinP=(P,x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++)if((P[i][1]>z)!==(P[j][1]>z)&&x<(P[j][0]-P[i][0])*(z-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c;return c;};
+const QUAI_OSM=(()=>{const f=frameAt((TAG.st0+TAG.st1)/2,mkF()),Q=(OSM.feats||[]).find(o=>o.k==='railway=platform'&&o.c&&o.p&&o.p.length>3&&pinP(o.p,f.p.x,f.p.z));return Q?Q.p:null;})();
+// Avec un quai OSM : même règle, l'arrière du train restant sur le quai (marge 0,3 m), mais avancé au plus jusqu'au bout du quai (marge 0,3 m), au-delà de st1 s'il le faut
+// (gare taguée station plus courte que le train) ; sans quai OSM : bâtiment SITE.stationPoly, au plus jusqu'à st1 (inchangé).
+function stationStop(){const s0=TAG.stp!=null?TAG.stp:TAG.st1-(SITE.stopBack||0),Q=QUAI_OSM,P=Q||SITE.stationPoly;if(!P||P.length<3)return s0;
+  const f=mkF();let a=null;for(let q=-8;q<=TAG.st1;q+=.1){frameAt(q,f);if(pinP(P,f.p.x,f.p.z)){a=q;break;}}if(a===null)return s0;
+  if(Q){let e=a;for(let q=a;q<=a+TLEN+60;q+=.1){frameAt(q,f);if(!pinP(Q,f.p.x,f.p.z))break;e=q;}return Math.min(e-.3,Math.max(s0,a+.3+TLEN));}
   return a+TLEN-s0>.1?Math.min(TAG.st1,a+.3+TLEN):s0;} // dépassement de plus de 10 cm : on avance (marge 0,3 m)
 /* Valeurs déduites (osmrides#53, décision du propriétaire : SITE ne les donne plus, l'éditeur ne sert qu'à corriger un cas particulier ; priorité GAME.site > SITE > déduction) :
    - dropAfter : distance entre le haut du lift (S_LIFT1) et le point où la voie redescend, déduite du profil des hauteurs : sommet atteint dans les 60 m qui suivent le lift,

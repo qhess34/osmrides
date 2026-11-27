@@ -7,6 +7,14 @@ const LS_D=(()=>{const V=SITE.board&&SITE.board.via;if(!V||!V.length)return null
 const LS=SITE.loadSide||LS_D||1;
 const DEDUIT={dropAfter:D_DROP,loadSide:LS_D}; // éditeur : déduit (null = non déductible)
 const BAYS=[];for(let k=0;k<NCARS;k++){const f=frameAt(S_ST-(k+.5)*CAR,mkF());BAYS.push({x:f.p.x,z:f.p.z,rx:f.R.x*LS,rz:f.R.z*LS,tx:f.T.x,tz:f.T.z});} // (rx,rz) pointe vers le quai d'embarquement
+/* Quai lu dans OSM (zone railway=platform, QUAI_OSM de train.js ; docs/ref/quai.md) : il remplace les étendues de SITE.plat (repli sans zone OSM) :
+   load / exit = distance de l'axe de la voie au bord de la zone, côté embarquement / débarquement (la plus petite le long du train, aux deux bouts et au milieu de chaque wagon) ;
+   back / front = de l'arrière / de l'avant du train arrêté (S_ST) au bout de la zone, le long de la voie. Les autres clés (gatesPer, slot, edge…) restent celles de SITE.plat. */
+if(QUAI_OSM){const Q=QUAI_OSM,ray=(x,z,dx,dz)=>{let t=1e9;for(let i=0,j=Q.length-1;i<Q.length;j=i++){const ax=Q[j][0],az=Q[j][1],ex=Q[i][0]-ax,ez=Q[i][1]-az,d=dx*ez-dz*ex;if(Math.abs(d)<1e-9)continue;
+    const u=((ax-x)*ez-(az-z)*ex)/d,v=((ax-x)*dz-(az-z)*dx)/d;if(u>1e-6&&v>=0&&v<=1)t=Math.min(t,u);}return t;};
+  let ld=1e9,ex=1e9;for(const b of BAYS)for(const c of [-CAR/2,0,CAR/2]){const x=b.x+b.tx*c,z=b.z+b.tz*c;ld=Math.min(ld,ray(x,z,b.rx,b.rz));ex=Math.min(ex,ray(x,z,-b.rx,-b.rz));}
+  const f=mkF(),inQ=q=>{frameAt(q,f);return pinP(Q,f.p.x,f.p.z);};let a=S_ST-TLEN,e=S_ST;while(a>S_ST-TLEN-40&&inQ(a-.05))a-=.05;while(e<S_ST+40&&inQ(e+.05))e+=.05;
+  const r=v=>+Math.max(0,v).toFixed(2);if(ld<1e9&&ex<1e9)SITE.plat=Object.assign({},SITE.plat,{load:r(ld),exit:r(ex),back:r(S_ST-TLEN-a),front:r(e-S_ST)});}
 // Bord de quai collé au gabarit des wagons (propriétaire, 2026-11-16, lot 6, générique : aucun vide où un passager pourrait tomber) : PEDGE = demi-largeur du wagon
 // (SITE.car.w) + roues qui débordent (bois .2 m, acier .12 m) ou rebord de la gouttière de gare d'un bob (BOB_RIM), + 8 cm de jeu ; SITE.plat.edge pour forcer.
 // Les portillons sont rapprochés du bord : PGATE = PEDGE + SITE.plat.gateGap (défaut .8 m, ESTIMÉ : couloir des opérateurs, qui y marchent à POPL) ; places d'attente derrière.
@@ -84,7 +92,14 @@ function reBoard(){ // (re)lit GAME.boardAreas et GAME.board : polygone, places,
   BSLOTS=new Array(SEATS);
   for(let u=0;u<NGATES;u++){const ids=[];for(let i=0;i<SEATS;i++)if(seatUnit(i).u===u)ids.push(i);ids.sort((p,q)=>seatUnit(p).j-seatUnit(q).j);
     const c=GCOLS(u),got=[];for(let row=0;row<60&&got.length<ids.length;row++)for(let col=0;col<c&&got.length<ids.length;col++){const p=slotAt(u,row,col);if(inA(p[0],p[2],BA_IN))got.push(p);}
-    ids.forEach((i,j)=>{if(got[j])BSLOTS[i]=got[j];else{const s=seatUnit(i),q=slotAt(u,Math.floor(s.j/c),s.j%c),r=intoA(q[0],q[2]);BSLOTS[i]=[r[0],0,r[1]];}});}
+    ids.forEach((i,j)=>{if(got[j])BSLOTS[i]=got[j];else{const s=seatUnit(i),q=slotAt(u,Math.floor(s.j/c),s.j%c),r=intoA(q[0],q[2]),p=[r[0],0,r[1]];BSLOTS[i]=Object.assign(p,{fb:q});}});}
+  // places repliées (polygone trop court) : jamais l'une sur l'autre ni sur une place de portillon ; sinon point libre de la zone (grille de 0,2 m) le plus proche de la place calculée
+  {const fr=(g,p)=>BSLOTS.every(o=>o===p||Math.hypot(o[0]-g[0],o[2]-g[2])>=SLOT_P-.05);let G2=null;
+   for(const p of BSLOTS){if(!p.fb||fr(p,p))continue;if(!G2){G2=[];let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const q of BAREA){x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);z0=Math.min(z0,q[1]);z1=Math.max(z1,q[1]);}
+       for(let x=x0;x<=x1;x+=.2)for(let z=z0;z<=z1;z+=.2)if(inA(x,z,BA_IN)&&EMB.ligneOk(x,z))G2.push([x,0,z]);}
+     let best=null,bd=1e9;for(const g of G2){const d=Math.hypot(g[0]-p.fb[0],g[2]-p.fb[2]);if(d<bd&&fr(g,p)){bd=d;best=g;}}
+     if(best){p[0]=best[0];p[2]=best[2];}}
+   for(const p of BSLOTS)delete p.fb;}
   // Réserve (propriétaire, issue #24 : « aucun visiteur dans le polygone excepté ceux des portillons ») : la zone d'attente se remplit. Places supplémentaires BRES, rangs
   // successifs derrière les places des portillons (BSLOTS), pas SLOT_P le long de la voie et en profondeur, dans tout le polygone (à BA_IN du bord, prolongé au-delà des
   // wagons de tête et de queue tant que le polygone le permet), triées de la plus proche des portillons à la plus lointaine ; BR_MAX = 400 places au plus (garde-fou).

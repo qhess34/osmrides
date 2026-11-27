@@ -37,11 +37,12 @@ Format d'import (à produire par `tools/make_site.py` des jeux) : chaque objet d
 
 - clés lues : `height`, `min_height`, `building:levels`, `roof:shape`, `roof:orientation`, `roof:height`, `roof:angle`, `roof:colour` (bâtiments) ; `layer`, `level`, `material` (tous objets, dont `man_made=tunnel`, `man_made=excavation`, `man_made=structure`, plans d'eau, chemins). Lecture : `tagOf`, `numOf`, `lvOf`, `colOf` (`engine/noyau/carte.js`).
 - objets à exporter avec `t` : bâtiments (`building=*`), `man_made=tunnel|excavation|structure`, et tout objet portant `layer` / `level`.
+- zones `railway=platform` (quai de la gare, `quai.md`) : dans `OSM.feats` (`k`, `c`, `p`), `t` facultatif.
 - les anciennes clés restent lues : `f.bh` (hauteur), `f.lv` (niveau < 0 d'un chemin).
 
 ## Toits lus dans OSM
 
-Toit d'un bâtiment OSM (`roofGeom`, `drawPans`) : `roof:shape=flat` (ou forme inconnue) : toit plat d'avant ; `gabled` : deux pans ; `hipped` : quatre pans. Faîtage sur le rectangle d'emprise minimal du polygone, dans le sens de sa plus grande longueur (`roof:orientation=along`, défaut OSM) ou en travers (`across`) ; pente = `roof:height` sur la demi-largeur, sinon `roof:angle`, sinon 30° ESTIMÉ (ombrage seul). Pans éclairés selon leur orientation (lumière du nord-ouest), faîtage clair. Couleur `roof:colour` (hex, ou nom courant ramené à une teinte sourde) ; hauteur `height`, sinon `building:levels` × 3 m, sinon `f.bh`, sinon ESTIMÉE (« Bâtiment survolé ») ; `min_height` lu (`b.mh`), sans effet en vue aérienne.
+Toit d'un bâtiment OSM (`roofGeom`, `drawPans`) : `roof:shape=flat` (ou forme inconnue) : toit plat d'avant ; `gabled` : deux pans ; `hipped` : quatre pans. Faîtage sur le rectangle d'emprise minimal du polygone, dans le sens de sa plus grande longueur (`roof:orientation=along`, défaut OSM) ou en travers (`across`) ; pente = `roof:height` sur la demi-largeur, sinon `roof:angle`, sinon 30° ESTIMÉ (ombrage seul). Pans éclairés selon leur orientation (lumière du nord-ouest), faîtage clair. Couleur `roof:colour` (hex, ou nom courant ramené à une teinte sourde ; valeur multiple `white;red` : la première) ; hauteur `height`, sinon `building:levels` × 3 m, sinon `f.bh`, sinon ESTIMÉE (« Bâtiment survolé ») ; `min_height` lu (`b.mh`), sans effet en vue aérienne.
 
 - gare : couleur `GAME.look.roof` > `roof:colour` OSM (`OSM.attrs` ou `f.t`) > `SITE.stationRoofCol` ; forme OSM > `SITE.draw.stationRoof` (ancien dessin d'un jeu, gardé seulement si OSM ne donne aucune `roof:shape`). Le toit est le polygone OSM tel quel (`quai.md`).
 - jamais de toit hors d'un bâtiment ou abri OSM (`AGENTS.md`).

@@ -86,10 +86,10 @@ const numOf=(f,k)=>{const v=parseFloat(tagOf(f,k));return isFinite(v)?v:null;}; 
 const lvOf=f=>{for(const k of ['layer','level']){const v=tagOf(f,k);if(v!=null){const n=Math.min(...v.split(';').map(parseFloat).filter(isFinite));if(isFinite(n))return n;}}return f&&typeof f.lv==='number'?f.lv:null;};
 // hauteur d'un bâtiment (m) : OSM (height, building:levels × 3 m ; f.t, sinon f.bh de tools/make_site.py), sinon par type ESTIMÉE
 const BLD_H=(k,f)=>numOf(f,'height')||(numOf(f,'building:levels')||0)*3||f&&f.bh||(k==='building=roof'?4:k==='building=hotel'?12:7);
-// couleur OSM (roof:colour, colour) : #rgb / #rrggbb tels quels, sinon nom courant ramené à une teinte sourde ; inconnue : null
+// couleur OSM (roof:colour, colour) : #rgb / #rrggbb tels quels, sinon nom courant ramené à une teinte sourde ; valeur multiple (« white;red ») : la première ; inconnue : null
 const OSM_COL={grey:'#8a8f96',gray:'#8a8f96',darkgrey:'#5f6368',darkgray:'#5f6368',lightgrey:'#b4b6b4',lightgray:'#b4b6b4',silver:'#a9adb0',white:'#d8d6d0',black:'#3c3c3a',
   red:'#9a4a3c',brown:'#7a5a44',maroon:'#6e3d33',orange:'#b0694a',beige:'#c8b996',tan:'#b9a27a',yellow:'#c2a85a',green:'#5f7458',blue:'#56687a'};
-const colOf=v=>{if(!v)return null;v=String(v).trim().toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))return v;if(/^#[0-9a-f]{3}$/.test(v))return '#'+[1,2,3].map(i=>v[i]+v[i]).join('');return OSM_COL[v.replace(/[\s_-]/g,'')]||null;};
+const colOf=v=>{if(!v)return null;v=String(v).split(';')[0].trim().toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))return v;if(/^#[0-9a-f]{3}$/.test(v))return '#'+[1,2,3].map(i=>v[i]+v[i]).join('');return OSM_COL[v.replace(/[\s_-]/g,'')]||null;};
 // Toit d'un bâtiment lu dans OSM (issue #68) : roof:shape (flat, gabled, hipped ; autre forme : plat), roof:orientation (along : faîtage dans le sens de la plus grande
 // longueur, défaut OSM ; across : en travers), roof:height (sinon roof:angle ; sinon pente de 30° ESTIMÉE, ombrage seul). Géométrie en plan sur le rectangle d'emprise
 // minimal du polygone : centre c, sens du faîtage d, demi-longueur hl, demi-largeur hw, faîtage ridge, pans {P, n (normale horizontale), sl (pente, rad)}. Sans roof:shape : null.
