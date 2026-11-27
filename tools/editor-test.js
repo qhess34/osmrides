@@ -37,42 +37,77 @@ async function drag(page, from, to) {
   await page.mouse.up(); await sleep(60);
 }
 const ed = (page, s) => page.evaluate(s);
-// Rails mobiles sur la carte (osmrides#64) : choix du rail au clic, glisser aimanté, ajout / nom / enregistrement / suppression de position, tag « non connecté »,
-// verrouillage (pont à deux rails), Origine ; positions reprises du moteur à la première modification (même comportement)
+// Rails mobiles sur la carte (osmrides#64, #69) : un seul mécanisme (groupes de rails verrouillés, positions communes) ; clic = fenêtre modale ; glisser aimanté ;
+// position ajoutée, cliquée sur la carte, renommée (nom proposé), redéplacée (glisser), supprimée ; deux rails choisis sur la carte puis verrouillés ; Origine
 async function RAILS_UI(id, pn, rdn, ok, R) {
   const st = () => ed(pn, `JSON.stringify(ED.E('({OFF,PO:POS_ORDER,RA,RET,X:POSX.length})'))`), s0 = await st();
-  const m = R.rails.find(r => r.id === R.master), mid = m.pts[Math.floor(m.pts.length / 2)], F = R.frame, d0 = m.d;
-  const W = (u, v) => [F.x + F.tx * u + F.vx * v, F.z + F.tz * u + F.vz * v];
-  await pn.click(`#railsBox [data-rsel="${R.master}"]`); await sleep(300); // bouton du rail : carte centrée dessus
-  const c0 = R.rails[0], cm = c0.pts[Math.floor(c0.pts.length / 2)], ac = await ed(pn, `ED.toScr(${W(cm[0], cm[1] - c0.d).join(',')})`);
-  await pn.mouse.click(ac[0], ac[1]); await sleep(200);
-  ok((await ed(pn, `ED.sel()&&ED.E&&document.querySelector('#railsBox [data-rsel].go').dataset.rsel`)) === c0.id && /Positions/.test(await ed(pn, `document.getElementById('railsBox').textContent`)), `rails ${id} : clic sur la carte = ${c0.name} choisi, positions listées`);
-  await pn.click(`#railsBox [data-rsel="${R.master}"]`); await sleep(300);
-  const a = await ed(pn, `ED.toScr(${W(mid[0], mid[1] - d0).join(',')})`);
+  const F = R.frame, W = (u, v) => [F.x + F.tx * u + F.vx * v, F.z + F.tz * u + F.vz * v];
+  const scr = (r, d, f = .5) => { const k = Math.min(r.pts.length - 2, Math.floor((r.pts.length - 1) * f)), a = r.pts[k], b = r.pts[k + 1], t = (r.pts.length - 1) * f - k, m = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; return ed(pn, `ED.toScr(${W(m[0], m[1] - d).join(',')})`); };
+  const esc = async () => { await pn.keyboard.press('Escape'); await sleep(80); };
+  const m = R.rails.find(r => r.id === R.master), d0 = m.d;
+  await pn.click(`#railsBox [data-rsel="${R.master}"]`); await sleep(300); // bouton du rail : carte centrée dessus, fenêtre ouverte
+  ok(await ed(pn, `ED.modal()`) && await pn.isVisible('#mSel #bRAdd'), `rails ${id} : rail choisi dans le panneau, fenêtre modale (actions)`); await esc();
+  const c0 = R.rails[0], ac = await scr(c0, c0.d);
+  await pn.mouse.click(ac[0], ac[1]); await sleep(250);
+  const G0 = await ed(pn, `ED.rails.groups()`), g0 = G0.find(g => g.rails.includes(c0.id));
+  ok((await ed(pn, `ED.sel()&&ED.sel().id`)) === c0.id && await ed(pn, `ED.modal()`) && /Positions/.test(await pn.textContent('#mSel')) && !(await pn.$('#mSel input[type=number]')), `rails ${id} : clic sur la carte = ${c0.name} choisi, fenêtre modale avec ses positions, aucune valeur à saisir`);
+  ok(g0.pos.every(q => g0.rails.every(r => typeof q.d[r] === 'number')), `rails ${id} : positions liées à chaque rail du bloc (${g0.rails.join(' + ')})`);
+  await esc();
   // glisser vers l'axe de la position suivante (voie ou circuit), lâché à 0,4 m près : aimanté exactement
-  const tgt = m.axes.find(x => Math.abs(x.d - d0) > 1) || m.axes[0], b = await ed(pn, `ED.toScr(${W(mid[0], mid[1] - tgt.d - .4).join(',')})`);
+  const a = await scr(m, d0), tgt = m.axes.find(x => Math.abs(x.d - d0) > 1) || m.axes[0], b = await scr(m, tgt.d + .4);
   await drag(pn, a, b); await sleep(200);
   const gh = await ed(pn, `ED.rails.ghost()`), cn = await ed(pn, `ED.rails.conn()`);
-  ok(gh && cn === tgt.label, `rails ${id} : rail glissé et aimanté en face de « ${tgt.label} » (${cn})`);
+  ok(gh && cn === tgt.label && !(await ed(pn, `ED.modal()`)), `rails ${id} : rail glissé et aimanté en face de « ${tgt.label} » (${cn}), sans fenêtre`);
   ok(!(await ed(pn, `!!ED.draft().site`)), 'rails : glisser seul n\'écrit rien');
-  // position sans voie en face : ajoutée, nommée, tag « non connecté »
+  // position sans voie en face : ajoutée (fenêtre « Ajouter une position ici »), tag « non connecté »
   { const dX = Math.max(...m.axes.map(x => x.d)) + 4; await ed(pn, `ED.rails.setGhost(${m.car ? -dX - m.vo : dX})`); }
   ok((await ed(pn, `ED.rails.conn()`)) === null, 'rails : placement hors des voies = non connecté');
-  await ed(pn, `ED.rails.add()`); await rdn();
-  const s1 = JSON.parse(await st()), D = await ed(pn, `ED.draft().site.yard.rails`);
-  ok(s1.X === 1 && D[R.master].pos.length === R.car.length + 1 && (await ed(pn, `ED.sel()&&ED.sel().id`)) === R.master, `rails ${id} : position ajoutée (${D[R.master].pos.length}), sans voie en face pour le moteur (X1), rail toujours choisi`);
-  const n = D[R.master].pos.length - 1;
-  await ed(pn, `ED.rails.name(${n},'Hors service')`); await rdn();
-  ok((await ed(pn, `ED.E('railsEd().car.find(q=>q.id==="X1").name')`)) === 'Hors service' && /non connecté/.test(await ed(pn, `document.getElementById('railsBox').textContent`)), 'rails : position nommée « Hors service », marquée non connectée');
-  await ed(pn, `ED.rails.del(${n})`); await rdn();
-  ok(await st() === s0, 'rails : position retirée = comportement d\'origine (positions reprises du moteur à l\'identique)');
-  if (R.lockable) { // pont à deux rails : verrouiller / déverrouiller
-    const ra0 = await ed(pn, `ED.E('RA')`);
-    await ed(pn, `ED.rails.lock(${!R.locked})`); await rdn();
-    ok((await ed(pn, `ED.E('RA')`)) === !ra0, `rails ${id} : ${R.locked ? 'déverrouillés (rail du circuit escamotable)' : 'verrouillés (un seul chariot)'}`);
-    await ed(pn, `ED.rails.lock(${R.locked})`); await rdn();
-    ok((await ed(pn, `ED.E('RA')`)) === ra0, `rails ${id} : verrouillage rendu`);
-  }
+  await ed(pn, `ED.openSel()`); await pn.click('#mSel #bRAdd'); await rdn();
+  const s1 = JSON.parse(await st()), D1 = await ed(pn, `ED.draft().site.yard.rails`), G1 = D1.groups.find(g => g.rails.includes(R.master)), n = G1.pos.length - 1;
+  ok(s1.X === 1 && G1.pos.length === G0.find(g => g.rails.includes(R.master)).pos.length + 1 && G1.rails.every(r => typeof G1.pos[n].d[r] === 'number') && (await ed(pn, `ED.sel()&&ED.sel().pos`)) === n && await ed(pn, `ED.modal()`),
+    `rails ${id} : position ajoutée pour tout le bloc (${G1.pos[n].name} : ${JSON.stringify(G1.pos[n].d)}), sans voie en face pour le moteur (X1), fenêtre de la position`);
+  // nom proposé (aucune saisie)
+  await pn.click('#mSel [data-rnm="Hors service"]'); await rdn();
+  ok((await ed(pn, `ED.E('railsEd().car.find(q=>q.id==="X1").name')`)) === 'Hors service', 'rails : position renommée par un nom proposé (« Hors service »)');
+  await esc();
+  // clic sur la position dessinée : fenêtre de la position ; glisser la position = la redéplacer (aimant), enregistrée au lâcher
+  { const P = await ed(pn, `ED.E('railsEd()')`), q = P.car.find(x => x.id === 'X1'), r = P.rails.find(x => x.id === R.master), dq = m.car ? -(q.c + r.vo) : q.c;
+    await ed(pn, `ED.rails.sel('${R.master}')`); // clic sur un endroit de la position (tirets) qui n'est pas couvert par un rail
+    for (const f of [.5, .25, .75, .1, .9, 0, 1]) { const pq = await scr(r, dq, f); await pn.mouse.click(pq[0], pq[1]); await sleep(250); if ((await ed(pn, `ED.sel()&&ED.sel().pos`)) === n) break; await esc(); await ed(pn, `ED.rails.sel('${R.master}')`); }
+    ok((await ed(pn, `ED.sel()&&ED.sel().pos`)) === n && /Hors service/.test(await pn.textContent('#mSelT')), 'rails : clic sur la position sur la carte = fenêtre de la position');
+    await esc(); const ax = m.axes[m.axes.length - 1], pt = await scr(r, ax.d + .3); await drag(pn, await scr(r, dq), pt); await rdn();
+    const G2 = (await ed(pn, `ED.draft().site.yard.rails`)).groups.find(g => g.rails.includes(R.master));
+    ok(Math.abs(G2.pos[n].d[R.master] - ax.d) < .01 && G2.pos[n].name === 'Hors service', `rails ${id} : position redéplacée en glissant, aimantée en face de « ${ax.label} »`); }
+  await ed(pn, `ED.rails.sel('${R.master}')`); await ed(pn, `ED.openSel()`); await pn.click(`#mSel [data-rpos="${n}"]`); await sleep(150);
+  await pn.click('#mSel #bRDel'); await rdn();
+  ok(await st() === s0, 'rails : position supprimée (fenêtre) = comportement d\'origine (positions reprises du moteur à l\'identique)');
+  if (R.lockable) { // pont à deux rails : deux rails choisis sur la carte puis verrouillés ensemble (un bloc), puis déverrouillés
+    const ra0 = await ed(pn, `ED.E('RA')`), R2 = await ed(pn, `ED.E('railsEd()')`), A = R2.rails[0], B = R2.rails[1];
+    if (ra0) {
+      const Gi = await ed(pn, `ED.rails.groups()`);
+      ok(Gi.length === 2 && Gi.every(g => g.rails.length === 1 && g.pos.length >= 2), `rails ${id} : rails indépendants = deux groupes d'un rail, chacun ses positions (${Gi.map(g => g.rails[0] + ' : ' + g.pos.map(q => q.name).join('/')).join(' ; ')})`);
+      await esc(); let p = await scr(A, A.d); await pn.mouse.click(p[0], p[1]); await sleep(200); await pn.click('#mSel #bRPick'); await sleep(150);
+      ok(await ed(pn, `ED.rails.pick()&&!ED.modal()`), 'rails : « Ajouter un rail au groupe (sur la carte) »');
+      p = await scr(B, B.d); await pn.mouse.click(p[0], p[1]); await sleep(250);
+      ok(JSON.stringify(await ed(pn, `ED.sel().ids`)) === JSON.stringify([A.id, B.id]) && await pn.isVisible('#mSel #bRLockOn'), 'rails : deux rails choisis sur la carte (sélection multiple), « Verrouiller ces rails ensemble »');
+      await pn.click('#mSel #bRLockOn'); await rdn();
+      const D = await ed(pn, `ED.draft().site.yard.rails`);
+      ok(!(await ed(pn, `ED.E('RA')`)) && D.groups.length === 1 && D.groups[0].rails.length === 2 && D.groups[0].pos.every(q => typeof q.d.circuit === 'number' && typeof q.d.garage === 'number'), `rails ${id} : verrouillés (un seul chariot), positions liées aux deux rails (${D.groups[0].pos.map(q => q.name).join(', ')})`);
+      await ed(pn, `ED.rails.sel('${A.id}')`); await ed(pn, `ED.openSel()`); await pn.click('#mSel #bRLockOff'); await rdn();
+      ok(!!(await ed(pn, `ED.E('RA')`)) && (await ed(pn, `ED.draft().site.yard.rails`)).groups.length === 2 && JSON.stringify(JSON.parse(await st()).OFF) === JSON.stringify(JSON.parse(s0).OFF), `rails ${id} : groupe défait (rails indépendants, rail du circuit escamotable, mêmes positions du chariot)`);
+    } else {
+      await ed(pn, `ED.rails.lock(false)`); await rdn(); ok(!!(await ed(pn, `ED.E('RA')`)), `rails ${id} : déverrouillés`);
+      await ed(pn, `ED.rails.lock(true)`); await rdn(); ok(!(await ed(pn, `ED.E('RA')`)), `rails ${id} : verrouillés de nouveau`);
+    }
+  } else ok(R.rails.length === 1 || g0.rails.length === R.rails.length, `rails ${id} : ${R.rails.length > 1 ? 'rails toujours verrouillés ensemble (appareil)' : 'rail unique'}`);
+  { // groupe de 3 rails (aucun appareil du moteur n'en a : logique de l'éditeur et format) : former le groupe, positions communes, défaire
+    const R3 = { tol: .3, rails: [{ id: 'circuit', vo: 0, axes: [{ d: 0, label: 'circuit' }] }, { id: 'garage', vo: -3, axes: [{ d: 0, label: 'circuit' }, { d: 6, label: 'voie 1' }] }, { id: 'aux', vo: -6, axes: [{ d: 9, label: 'voie 2' }] }] };
+    const D3 = [{ rails: ['circuit'], pos: [{ name: 'A', d: { circuit: 0 } }] }, { rails: ['garage'], pos: [{ name: 'G', d: { garage: 0 } }, { name: 'V1', d: { garage: 6 } }] }, { rails: ['aux'], pos: [{ name: 'V2', d: { aux: 9 } }] }];
+    const M = await ed(pn, `ED.rails._merge(${JSON.stringify(R3)},${JSON.stringify(D3)},['circuit','garage','aux'])`);
+    const g3 = M && M.length === 1 && M[0], v3 = g3 && S.validate({ site: { yard: { rails: { groups: M } } } });
+    ok(g3 && g3.rails.join() === 'circuit,garage,aux' && g3.pos.every(q => Math.abs(q.d.garage - q.d.circuit - 3) < .01 && Math.abs(q.d.aux - q.d.circuit - 6) < .01) && g3.pos.length === 3 && v3 && !(v3.errors || []).length, `rails : groupe de 3 formé, positions communes aux 3 rails (${g3 && g3.pos.map(q => q.name).join(', ')}), format valide`);
+    const Sp = await ed(pn, `ED.rails._split(${JSON.stringify(R3)},${JSON.stringify(M)},'aux')`);
+    ok(Sp && Sp.length === 3 && Sp.every(g => g.rails.length === 1 && g.pos.length >= 1), `rails : groupe de 3 défait en 3 rails indépendants (${Sp && Sp.map(g => g.rails[0] + ' ' + g.pos.length).join(', ')})`); }
   await ed(pn, `ED.rails.revert()`); await rdn();
   ok(await st() === s0 && !(await ed(pn, `!!(ED.draft().site&&ED.draft().site.yard)`)), 'rails : Origine = GAME.site.yard retiré, comportement d\'origine');
 }
@@ -124,7 +159,7 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       // remise en travers de l'allée (champs du panneau) : le test du jeu ci-dessous en dépend
       await ed(page, `(()=>{const s=ED.E('barPlace(${M1[0]},${M1[1]})'),o=ED.E('GM').barriers.b1;Object.assign(o,{x:s.x,z:s.z,ang:s.ang,len:s.len});ED.E('reGates()');})()`);
       // aimant des barrières (propriétaire, 20/11) : pivot écarté de 6 px du bord puis relâché → collé au bord ; bout du vantail amené à 6 px du bord opposé → collé en face
-      { await page.click('#gList .it[data-key="b1"]'); await sleep(120); await ed(page, `(()=>{const o=ED.E('GM').barriers.b1,c=ED.E('cam');c.x=o.x;c.z=o.z;c.s=22;})()`); await sleep(120);
+      { await page.click('#gList .it[data-key="b1"]'); await sleep(120); ok(await ed(page, `ED.modal()`) && await page.isVisible('#mSel #bDelGate'), 'barrière choisie dans la liste : fenêtre modale ouverte (actions)'); await page.keyboard.press('Escape'); await sleep(60); await ed(page, `(()=>{const o=ED.E('GM').barriers.b1,c=ED.E('cam');c.x=o.x;c.z=o.z;c.s=22;})()`); await sleep(120);
         const g0 = await ed(page, `ED.draft().barriers.b1`), n = [-Math.cos(g0.ang * Math.PI / 180), -Math.sin(g0.ang * Math.PI / 180)]; // vers l'extérieur de l'allée
         const ps = await ed(page, `ED.toScr(${g0.x},${g0.z})`); await drag(page, ps, [ps[0] + n[0] * 6, ps[1] + n[1] * 6]);
         const g1 = await ed(page, `ED.draft().barriers.b1`), e1 = await ed(page, `ED.E('edgeSnap(${g1.x},${g1.z},.02)')`);
@@ -143,12 +178,15 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
         const g3 = await ed(page, `ED.draft().barriers.b1`), e3 = await ed(page, `ED.E('edgeSnap(${g3.x},${g3.z},1)')`); ok(e3 && e3.d > .1, `Alt maintenue : pivot posé librement (${e3 && e3.d} m du bord)`); }
       await ed(page, `(()=>{const s=ED.E('barPlace(${M1[0]},${M1[1]})'),o=ED.E('GM').barriers.b1;Object.assign(o,{x:s.x,z:s.z,ang:s.ang,len:s.len});ED.E('reGates()');})()`);
       // état initial : ouverte au début de la partie (case du panneau)
-      await page.click('#gList .it[data-key="b1"]'); await sleep(120); await page.check('#gOpen'); await sleep(80);
+      await page.click('#gList .it[data-key="b1"]'); await sleep(120); await page.check('#gOpen'); await sleep(80); await page.keyboard.press('Escape'); await sleep(60);
       ok((await ed(page, `ED.draft().barriers.b1.open`)) === true, 'b1 ouverte au début de la partie (open: true)');
       // deuxième barrière (raccourci de la première fourche, sinon fin de la file), puis supprimée et rajoutée
       const M2 = await ed(page, `(()=>{const L=ED.E('LOOPS'),S=L.length?L[0].short:ED.E('SEG_OUT'),P=S.P;return [(P[0][0]+P[1][0])/2,(P[0][1]+P[1][1])/2];})()`);
       await addOn(M2); ok(!!(await ed(page, `ED.draft().barriers.b2`)), 'deuxième barrière ajoutée (b2)');
-      await page.click('#bDelGate'); await sleep(80); ok(!(await ed(page, `!!ED.draft().barriers.b2`)), 'b2 supprimée');
+      ok(!(await ed(page, `ED.modal()`)), 'barrière posée : pas de fenêtre (prête à glisser)');
+      { const g = await ed(page, `ED.draft().barriers.b2`), q = await ed(page, `ED.toScr(${g.x},${g.z})`); await page.mouse.click(q[0], q[1]); await sleep(150); } // clic simple sur la barrière : fenêtre modale
+      ok(await ed(page, `ED.modal()&&ED.sel().key==='b2'`) && !(await page.$('#mSel input[type=number]')), 'clic sur la barrière : fenêtre modale, sans valeur à saisir');
+      await page.click('#bDelGate'); await sleep(80); ok(!(await ed(page, `!!ED.draft().barriers.b2`)) && !(await ed(page, `ED.modal()`)), 'b2 supprimée (fenêtre fermée)');
       await addOn(M2); const b2 = await ed(page, `ED.draft().barriers.b2`); ok(!!b2, 'b2 rajoutée (même clé)');
       // ── salle de contrôle ──
       await page.click('#bSelRoom'); await sleep(150);
@@ -207,9 +245,9 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       await drag(page, mid, [mid[0] + mv[0] * .4, mid[1] + mv[1] * .4]);
       let A2 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(A2.pts.length === A0.length + 1 && await ed(page, `ED.sel().v===${back.i + 1}`), `sommet ajouté au milieu d'un bord (${A2.pts.length} sommets)`);
-      await page.click('#bDelVtx'); await sleep(80); A2 = await ed(page, `ED.draft().boardAreas[0]`);
+      await ed(page, `ED.openSel()`); await page.click('#bDelVtx'); await sleep(80); A2 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(A2.pts.length === A0.length, 'sommet supprimé (bouton Supprimer le sommet)');
-      await page.click('#bAreaAuto'); await sleep(80);
+      await page.click('#bAreaAuto'); await sleep(80); await page.keyboard.press('Escape'); await sleep(60);
       ok(!(await ed(page, `'boardAreas' in ED.draft()`)) && !(await ed(page, `ED.areaEd()`)) && JSON.stringify(await ed(page, `ED.area()`)) === JSON.stringify(A0), 'retour au calcul auto (clé retirée de GAME)');
       q0 = await dragV(); A1 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(await ed(page, `ED.E('BSLOTS.length===SEATS&&BSLOTS.every(s=>inA(s[0],s[2],.19))')`), 'éditeur : places d\'attente recalculées dans le polygone');
@@ -240,7 +278,7 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
         const eb = await ed(page, `ED.toScr(${eg[0]},${eg[1]})`); await drag(page, eb, [es2[0] + 2, es2[1] + 2]); }
       A3 = await ed(page, `ED.draft().boardAreas[0]`);
       ok(A3.pts[vi][0] === V.end[0] && A3.pts[vi][1] === V.end[1], 'polygone raccordé à la fin de file (écrit)');
-      if (SHOT) { await page.click(`#gList .it[data-key="b1"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); }
+      if (SHOT) { await page.click(`#gList .it[data-key="b1"]`); await page.setViewportSize({ width: 800, height: 500 }); await sleep(600); await page.screenshot({ path: SHOT, type: 'jpeg', quality: 70 }); await page.setViewportSize({ width: 1200, height: 760 }); await sleep(300); await page.keyboard.press('Escape'); await sleep(60); }
       // ── entrée de la file (GAME.queueEntry, issue #39) : calcul affiché, poignée glissée (rechargement du cadre), champs, bornes, retour au calcul, réglée de nouveau (écrite) ──
       { const rdy = async () => { await sleep(400); await page.waitForFunction(() => window.ED && window.ED.ready && window.ED.isReady(), null, { timeout: 60000 }); await sleep(300); };
         const Q0 = await ed(page, `ED.qe()`);
@@ -481,12 +519,14 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
         ok(await ed(pn, `ED.E('LS')`) === -ls0 && await ed(pn, `ED.draft().site.loadSide`) === -ls0, 'lot 1 : côté du quai corrigé (priorité GAME)');
         await pn.click('#siteBox [data-rev="loadSide"]'); await rdn();
         ok(await ed(pn, `ED.E('LS')`) === ls0, 'lot 1 : côté du quai revenu à la valeur d\'origine');
-        // gyrophare : champs de la salle
+        // gyrophare : poignée glissée sur la carte (plus de champ chiffré)
         await pn.click('#bSelRoom').catch(() => { }); await sleep(200);
-        if (await pn.$('#selBox input[data-k="bx"]')) {
-          const b0 = await ed(pn, `ED.E('roomPos().beacon')`); await pn.fill('#selBox input[data-k="bx"]', String(b0[0] - .2)); await pn.dispatchEvent('#selBox input[data-k="bx"]', 'change'); await sleep(200);
-          ok(Math.abs((await ed(pn, `ED.E('roomPos().beacon')`))[0] - (b0[0] - .2)) < .02 && Array.isArray(await ed(pn, `ED.draft().controlRooms[0].beacon`)), 'lot 1 : gyrophare déplacé (GAME.controlRooms[0].beacon)');
-        }
+        { const rp = await ed(pn, `ED.E('roomPos()')`), r = await ed(pn, `ED.rooms()[0]`);
+          if (rp && rp.beacon && r) { const t = r.angle * Math.PI / 180, wpt = l => [r.x + l[0] * Math.cos(t) - l[1] * Math.sin(t), r.z + l[0] * Math.sin(t) + l[1] * Math.cos(t)];
+            await ed(pn, `(()=>{const c=ED.E('cam');c.x=${r.x};c.z=${r.z};c.s=40;})()`); await sleep(150);
+            const a = await ed(pn, `ED.toScr(${wpt(rp.beacon).join(',')})`), b = await ed(pn, `ED.toScr(${wpt([rp.beacon[0] - .2, rp.beacon[1]]).join(',')})`);
+            await drag(pn, a, b); await sleep(200);
+            ok(Math.abs((await ed(pn, `ED.E('roomPos().beacon')`))[0] - (rp.beacon[0] - .2)) < .05 && Array.isArray(await ed(pn, `ED.draft().controlRooms[0].beacon`)) && !(await pn.$('#mSel input[type=number]')), 'lot 1 : gyrophare glissé sur la carte (GAME.controlRooms[0].beacon)'); } }
         // refus hors bornes (serveur)
         const r422 = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{goal:5,zones:{B1:{launch:99,stop:'oui'}},plat:{load:99},stopBack:99}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=5)`);
         ok(r422 === true, 'lot 1 : valeurs hors bornes refusées par le serveur');
@@ -593,6 +633,9 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
         ok(bad === true, 'rails : rail inconnu, verrouillage invalide, valeurs hors bornes refusés par le serveur');
         const good = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{yard:{post:1,laneD:{'1':2},retract:{d:3},rails:{circuit:{pos:[{name:'P',d:0},{name:'Hors voie',d:-6.123}]},garage:{lock:'circuit'}}}}}})}).then(r=>r.json()).then(j=>j.ok!==false)`);
         ok(good === true, 'rails : format valide accepté, anciens champs du pont tolérés');
+        const grp = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{yard:{rails:{groups:[{rails:['circuit','garage'],pos:[{name:'P',d:{circuit:0,garage:3.2}},{name:'Hors voie',d:{circuit:-6,garage:-2.8}}]}]}}}}})}).then(r=>r.json()).then(j=>j.ok!==false)`);
+        const grpBad = await ed(pn, `fetch('/api/diff/parc/asterix/${id}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:{site:{yard:{rails:{groups:[{rails:['circuit','garage'],pos:[{name:'P',d:{circuit:0,garage:3.2}},{name:'Q',d:{circuit:-6,garage:0}}]},{rails:['garage'],pos:[{name:'G',d:{garage:0}}]}]}}}}})}).then(r=>r.json()).then(j=>j.ok===false&&j.errors.length>=2)`);
+        ok(grp === true && grpBad === true, 'rails : format à groupes accepté (deux rails, positions communes) ; bloc déformé et rail dans deux groupes refusés');
         const n = S.normalize({ site: { yard: { post: 1, laneGap: 2, rails: { garage: { lock: 'circuit' }, circuit: { pos: [{ name: 'P', d: 0 }, { name: 'X', d: -6.123 }] } } } } }).site.yard;
         ok(!('post' in n) && !('laneGap' in n) && n.rails.circuit.pos[1].d === -6.12 && Object.keys(n.rails).join() === 'circuit,garage', 'rails : arrondi au centimètre, champs de 0.6.0 non réécrits');
         await pn.close();

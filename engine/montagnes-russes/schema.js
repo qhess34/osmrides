@@ -21,9 +21,34 @@
   const DEPTH = [0.5, 6]; // profondeur des travées d'attente (m, issue #27), bornes ESTIMÉES (le moteur garde au moins un rang)
   // GAME.site : liste blanche stricte, clé par clé (toute clé hors liste est refusée). Une clé absente = valeur d'origine de SITE.
   const txt = v => typeof v === 'string' && v.trim() && v.length <= SL.txt && !/[\u0000-\u001f<>"\\]/.test(v);
-  // GAME.site.yard.rails (osmrides#64) : {circuit|garage: {pos: [{name, d}, …]} | {lock: 'garage'|'circuit'}} ; d = distance (m) du rail à l'axe du circuit, vers le garage
+  // GAME.site.yard.rails (osmrides#64, ancien format par rail, lu) : {circuit|garage: {pos: [{name, d}, …]} | {lock: 'garage'|'circuit'}} ; d = distance (m) du rail à l'axe du circuit, vers le garage
+  // Format à groupes (osmrides#69, écrit par l'éditeur) : {groups: [{rails: ['circuit', 'garage'], pos: [{name, d: {circuit, garage}}, …]}, …]} ; un groupe = 1 rail
+  // indépendant ou N rails verrouillés ensemble (déplacés d'un bloc : l'écart entre deux rails est le même à chaque position) ; un rail dans un seul groupe ; nom de rail
+  // libre (RAIL_ID) : les appareils du moteur n'ont aujourd'hui que 'circuit' et 'garage', un autre nom est gardé mais sans effet. L'ancien format par rail reste lu.
+  const RAIL_ID = /^[a-z][a-z0-9-]{0,23}$/, GROUPS_MAX = 8; // ESTIMÉ
+  function validateGroups(G, p, E) {
+    if (!Array.isArray(G) || !G.length || G.length > GROUPS_MAX) { E.push(p + ' : de 1 à ' + GROUPS_MAX + ' groupes de rails'); return; }
+    const used = new Set();
+    G.forEach((g, k) => { const q = p + '[' + k + ']';
+      if (!g || typeof g !== 'object' || Array.isArray(g)) { E.push(q + ' : objet {rails, pos} attendu'); return; }
+      for (const f of Object.keys(g)) if (f !== 'rails' && f !== 'pos') E.push(q + '.' + f + ' : clé refusée (rails, pos)');
+      const ids = g.rails;
+      if (!Array.isArray(ids) || !ids.length || ids.length > GROUPS_MAX || ids.some(id => typeof id !== 'string' || !RAIL_ID.test(id)) || new Set(ids).size !== ids.length) { E.push(q + '.rails : liste de rails distincts (' + RAIL_IDS.join(', ') + '…)'); return; }
+      if (ids.some(id => used.has(id))) { E.push(q + '.rails : un rail ne peut appartenir qu\'à un groupe'); return; } ids.forEach(id => used.add(id));
+      const P = g.pos;
+      if (!Array.isArray(P) || P.length < SL.rails.n[0] || P.length > SL.rails.n[1]) { E.push(q + '.pos : de ' + SL.rails.n[0] + ' à ' + SL.rails.n[1] + ' positions'); return; }
+      const seen = new Set(); let gap = null;
+      P.forEach((o, i) => { const w = q + '.pos[' + i + ']';
+        if (!o || typeof o !== 'object' || Array.isArray(o)) { E.push(w + ' : objet {name, d} attendu'); return; }
+        for (const f of Object.keys(o)) if (f !== 'name' && f !== 'd') E.push(w + '.' + f + ' : clé refusée (name, d)');
+        if (!txt(o.name)) E.push(w + '.name : texte de 1 à ' + SL.txt + ' caractères (sans < > " \\)'); else if (seen.has(o.name)) E.push(w + '.name : nom déjà pris'); else seen.add(o.name);
+        const d = o.d; if (!d || typeof d !== 'object' || Array.isArray(d) || Object.keys(d).length !== ids.length || ids.some(id => !S.num(d[id], SL.rails.d[0], SL.rails.d[1]))) { E.push(w + '.d : distance de ' + SL.rails.d[0] + ' à ' + SL.rails.d[1] + ' m pour chaque rail du groupe (' + ids.join(', ') + ')'); return; }
+        const e = ids.map(id => d[id] - d[ids[0]]); if (gap === null) gap = e; else if (e.some((x, j) => Math.abs(x - gap[j]) > .05)) E.push(w + '.d : les rails d\'un groupe bougent d\'un bloc (même écart à chaque position)'); });
+    });
+  }
   function validateRails(R, p, E) {
-    if (!R || typeof R !== 'object' || Array.isArray(R)) { E.push(p + ' : objet {circuit, garage} attendu'); return; }
+    if (!R || typeof R !== 'object' || Array.isArray(R)) { E.push(p + ' : objet {groups} ou {circuit, garage} attendu'); return; }
+    if ('groups' in R) { for (const f of Object.keys(R)) if (f !== 'groups') E.push(p + '.' + f + ' : clé refusée avec groups'); validateGroups(R.groups, p + '.groups', E); return; }
     for (const id of Object.keys(R)) {
       const q = p + '.' + id, r = R[id];
       if (!RAIL_IDS.includes(id)) { E.push(q + ' : rail inconnu (' + RAIL_IDS.join(' | ') + ')'); continue; }
@@ -130,6 +155,7 @@
           else if (key === 'trough') { const q = {}; for (const f of SITE_KEYS.trough) if (f in v) q[f] = Array.isArray(v[f]) ? v[f].map(Math.round) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o.trough = q; }
           else if (key === 'zones') { const q = {}; for (const id of Object.keys(v).sort((a, b) => +a.slice(1) - +b.slice(1))) { const z = {}; for (const f of ZKEYS) if (f in v[id]) z[f] = f === 'trim' ? { v: S.r2(v[id].trim.v) } : typeof v[id][f] === 'number' ? S.r2(v[id][f]) : v[id][f]; q[id] = z; } o.zones = q; }
           else if (key === 'yard') { const q = {}; for (const f of SITE_KEYS.yard) if (f in v) q[f] = f === 'move' ? Object.fromEntries(['v', 'vc', 't'].filter(m => m in v.move).map(m => [m, S.r2(v.move[m])]))
+              : f === 'rails' && v.rails.groups ? { groups: v.rails.groups.map(g => ({ rails: g.rails.slice(), pos: g.pos.map(o => ({ name: o.name, d: Object.fromEntries(g.rails.map(id => [id, S.r2(o.d[id])])) })) })) }
               : f === 'rails' ? Object.fromEntries(RAIL_IDS.filter(id => id in v.rails).map(id => [id, 'lock' in v.rails[id] ? { lock: v.rails[id].lock } : { pos: v.rails[id].pos.map(o => ({ name: o.name, d: S.r2(o.d) })) }])) : v[f];
             if (Object.keys(q).length) o.yard = q; } // post, laneGap, retract, laneD (0.6.0) : plus écrits
           else { const q = {}; for (const f of SITE_KEYS[key]) if (f in v) q[f] = typeof v[f] === 'number' ? (key === 'phys' ? Math.round(v[f] * 1e5) / 1e5 : S.r2(v[f])) : /^#/.test(v[f]) ? v[f].toLowerCase() : v[f]; o[key] = q; }

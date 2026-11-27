@@ -52,6 +52,13 @@ input{width:76px;background:#141d33}
 #siteBox h3{margin:10px 0 2px;font-size:12px}
 .trow{display:flex;gap:4px;align-items:center;margin:3px 0}.trow input[type=color]{width:30px;padding:0;height:24px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+#mSel{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:9;padding:12px}
+#mSel[hidden]{display:none}
+#mSel .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(460px,100%);max-height:86vh;overflow:auto;padding:12px 14px;font-size:14px}
+#mSel .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}#mSel h2{flex:1;margin:0;font-size:15px;color:var(--gold)}
+#mSel button{min-height:40px;padding:6px 12px}#mSel .row{gap:8px}#mSel .note{font-size:13px}
+#selBox>div:first-child>b:first-child{display:none}
+#mSel button[aria-pressed=true]{border-color:var(--gold);background:#4a4a2a}
 .cols div{background:#0b1120;border-radius:6px;padding:6px;font-size:12px}
 </style>
 </head>
@@ -71,7 +78,6 @@ input{width:76px;background:#141d33}
   <div id="stage"><iframe id="fr" title="Jeu"></iframe><canvas id="ov"></canvas></div>
   <div id="side">
     <section id="secMig" hidden><h2>Migration</h2><p class="note">Pas de salle de contrôle dans <code>game.js</code> : le jeu utilise <code>SITE.booth</code> (écrit à la main). Reprendre cette salle dans l'éditeur ? (<code>SITE</code> reste inchangé.)</p><div class="row"><button id="bMig" class="go">Reprendre la salle</button></div></section>
-    <section><h2>Sélection</h2><div id="selBox" class="note">Cliquer une barrière ou la salle de contrôle sur la carte. Glisser : déplacer ; poignées : orienter, allonger, redimensionner. La carte se déplace et se zoome comme dans le jeu.</div></section>
     <section id="secLook"><h2>Apparence de la file et du quai</h2><div id="lookBox"></div></section>
     <section><h2>Salle de contrôle</h2><div id="roomBox"></div></section>
     <section><h2>Entrée de la file</h2><div id="qeBox"></div></section>
@@ -95,6 +101,10 @@ input{width:76px;background:#141d33}
   <div id="oList"></div>
   <label class="note" style="display:block;margin-top:6px">Commentaire du changeset<br><input id="oCom" type="text" style="width:100%" maxlength="255"></label>
   <div class="row" style="justify-content:flex-end"><button id="oLogin" hidden>Se connecter à OSM</button><button id="oClose">Fermer</button><button id="oSend" class="go" disabled>Envoyer</button></div>
+</div></div>
+<div id="mSel" role="dialog" aria-modal="true" aria-labelledby="mSelT" hidden><div class="box">
+  <div class="hd"><h2 id="mSelT">Sélection</h2><button id="mSelX">Fermer</button></div>
+  <div id="selBox"></div>
 </div></div>
 <script src="schema.js"></script>
 <script src="editor.js"></script>

@@ -112,6 +112,8 @@
   function hit(p) {
     const s = E('cam').s, tol = Math.max(.35, 9 / s);
     if (sel && sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); if (g && Math.hypot(p[0] - g.g.a[0], p[1] - g.g.a[1]) < tol) return { t: 'gate', key: g.key, m: 'a' }; }
+    if (sel && sel.t === 'room') { const r = rooms()[0], rp = r && (() => { try { return E('roomPos()'); } catch (e) { return null; } })();
+      if (rp) for (const f of ['beacon', 'label']) if (rp[f]) { const q = roomPt(r, rp[f]); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol * .8) return { t: 'room', m: f }; } }
     if (sel && sel.t === 'room') { const r = rooms()[0]; if (r) { if (Math.hypot(p[0] - rotH(r)[0], p[1] - rotH(r)[1]) < tol) return { t: 'room', m: 'rot' }; for (let i = 0; i < 4; i++) { const q = roomPt(r, [CORNERS[i][0] * r.w / 2, CORNERS[i][1] * r.d / 2]); if (Math.hypot(p[0] - q[0], p[1] - q[1]) < tol) return { t: 'room', m: 'c' + i }; } } }
     if (sel && sel.t === 'area') { const P = areaPts(); for (let i = 0; i < P.length; i++) if (Math.hypot(p[0] - P[i][0], p[1] - P[i][1]) < tol) return { t: 'area', m: 'v' + i };
       const M = mids(P); for (let i = 0; i < M.length; i++) if (Math.hypot(p[0] - M[i][0], p[1] - M[i][1]) < tol * .8) return { t: 'area', m: 'm' + i }; }
@@ -134,10 +136,10 @@
       const h = hit(p); if (!h) return;
       e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
       if (h.t === 'area' && h.m[0] === 'm') { const A = areaOvr(), i = +h.m.slice(1), q = mids(A.pts)[i], sn = snap(q, e.altKey); A.pts.splice(i + 1, 0, sn ? sn.p : [R2(q[0]), R2(q[1])]); h.m = 'v' + (i + 1); snapped = sn; E('reBoard()'); } // milieu d'un bord : nouveau sommet (aimanté)
-      sel = h.t === 'gate' ? { t: 'gate', key: h.key } : secOf(h.t) ? { t: h.t } : h.t === 'qe' ? { t: 'qe' } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
+      const prev = sel; sel = h.t === 'gate' ? { t: 'gate', key: h.key } : secOf(h.t) ? Object.assign({}, h, { m: undefined }) : h.t === 'qe' ? { t: 'qe' } : h.t === 'area' ? { t: 'area', v: h.m[0] === 'v' ? +h.m.slice(1) : (sel && sel.t === 'area' ? sel.v : undefined) } : { t: 'room' };
       if (h.t === 'room' && !migrated()) migrate(); // première modification de la salle : reprise de SITE.booth
       const r = h.t === 'room' ? GM().controlRooms[0] : null;
-      drag = Object.assign({ p0: p, id: e.pointerId, moved: false, r0: r && Object.assign({}, r) }, h);
+      drag = Object.assign({ p0: p, id: e.pointerId, moved: false, prev, r0: r && Object.assign({}, r) }, h);
       if (h.t === 'gate') { const o = (GM().barriers || {})[h.key]; drag.o0 = o ? JSON.parse(JSON.stringify(o)) : null; }
       if (h.t === 'area') drag.a0 = JSON.parse(W.JSON.stringify(areaPts()));
       panel();
@@ -162,6 +164,7 @@
       } else {
         const r = GM().controlRooms[0], r0 = drag.r0; if (!r) return;
         if (drag.m === 'move') { r.x = R2(r0.x + dx); r.z = R2(r0.z + dz); }
+        else if (drag.m === 'beacon' || drag.m === 'label') { const l = toLocal(r, p); r[drag.m] = [R2(clamp(l[0], -60, 60)), R2(clamp(l[1], -60, 60))]; } // gyrophare, étiquette : repère de la salle
         else if (drag.m === 'rot') { r.angle = R1(((deg(Math.atan2(p[1] - r0.z, p[0] - r0.x)) - 90) % 360 + 540) % 360 - 180); }
         else { const [sx, sz] = CORNERS[+drag.m[1]], Q = roomPt(r0, [-sx * r0.w / 2, -sz * r0.d / 2]), t = rad(r0.angle), vx = p[0] - Q[0], vz = p[1] - Q[1];
           const lx = vx * Math.cos(t) + vz * Math.sin(t), lz = -vx * Math.sin(t) + vz * Math.cos(t), w = clamp(sx * lx, .5, 40), d = clamp(sz * lz, .5, 40);
@@ -172,7 +175,11 @@
     let tap = null; // clic simple sur une allée de file (sans barrière ni zone sous le curseur) : choisit le chemin OSM dont on règle le sol (issue #45)
     W.addEventListener('pointerdown', e => { tap = e.target === cv && e.button <= 0 && !adding && !picking && !hit(pos(e)) ? { x: e.clientX, y: e.clientY } : null; }, true);
     W.addEventListener('pointerup', e => { if (!tap || drag) { tap = null; return; } const t = tap; tap = null; if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 4) return; const id = pickWay(pos(e)); if (id) { wsel = id; panel(); $('secLook').scrollIntoView({ block: 'nearest' }); } }, true);
-    const up = e => { if (!drag) return; e.stopImmediatePropagation(); e.preventDefault(); const d = drag; drag = null; snapped = null; if (d.t === 'qe' && d.moved) { reSel = { t: 'qe' }; reloadPreview(); return; } panel(); };
+    const up = e => { if (!drag) return; e.stopImmediatePropagation(); e.preventDefault(); const d = drag; drag = null; snapped = null; if (d.t === 'qe' && d.moved) { reSel = { t: 'qe' }; reloadPreview(); return; }
+      const sc = secOf(d.t);
+      if (d.moved) { if (sc && sc.end) sc.end(d, X); panel(); return; }
+      if (sc && sc.tap && sc.tap(d, X, e, d.prev) === false) { panel(); return; } // clic simple (sans glisser) : fenêtre modale
+      panel(); openSel(); };
     W.addEventListener('pointerup', up, true); W.addEventListener('pointercancel', up, true);
   }
 
@@ -296,17 +303,14 @@
 
   // ── panneau ──
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const inp = (k, v, st) => `<input data-k="${k}" type="number" step="${st || .05}" value="${v}">`;
   function selHTML() {
     if (!sel) return '<span class="note">Cliquer une barrière, la salle de contrôle ou la zone d\'attente sur la carte. Glisser : déplacer ; poignée A d\'une barrière : orienter et allonger ; poignées de la salle : redimensionner, rond : tourner. La carte se déplace et se zoome comme dans le jeu.</span>';
     if (sel.t === 'gate') {
       const g = gates().find(x => x.key === sel.key); if (!g) return '<span class="err">Barrière introuvable.</span>';
       const G = g.g;
       return `<div><b>Barrière ${esc(g.key)}</b> ${g.from ? '<span class="tag t-est">reprise de ' + esc(g.from) + '</span>' : ''}</div><div class="note">Posée à la main ; dans le jeu, elle s'ouvre et se ferme seule au clic. Trait plein : fermée (A), tirets : ouverte. Fermée, elle bloque les visiteurs qui essaient d'y passer (évacuation comprise). Le pivot se colle au bord de l'allée le plus proche, le bout (poignée A) au bord opposé là où il arrive, l'angle choisi étant gardé ; maintenir <b>Alt</b> pour les poser librement.</div>
-        <div class="grid" style="margin-top:6px"><span>Pivot x, z (m)</span><span>${inp('x', R2(G.h[0]))} ${inp('z', R2(G.h[1]))}</span>
-        <span>Fermée : angle °, long. m</span><span>${inp('ang', R1(G.ang), 1)} ${inp('len', R2(G.len))}</span></div>
         <div class="row"><label><input type="checkbox" id="gOpen" ${G.open0 ? 'checked' : ''}> Ouverte au début de la partie</label></div>
-        <div class="row"><label>Ouverture <select id="gSw"><option value="1"${G.sw !== -1 ? ' selected' : ''}>sens direct</option><option value="-1"${G.sw === -1 ? ' selected' : ''}>sens inverse</option></select></label></div>
+        <div class="row"><button id="gSw" title="Le vantail s'ouvre de l'autre côté">Inverser le sens d'ouverture</button><span class="note">${G.sw === -1 ? 'sens inverse' : 'sens direct'}</span></div>
         <div class="row"><button id="bDelGate" class="bad">Supprimer la barrière</button></div>`;
     }
     if (secOf(sel.t)) return secOf(sel.t).selHTML(X);
@@ -314,27 +318,31 @@
     if (sel.t === 'area') {
       const Ps = areaPts(), v = sel.v != null && sel.v < Ps.length ? sel.v : null;
       return `<div><b>Zone d'attente du quai</b> ${areaEd() ? '<span class="tag t-ovr">éditée</span>' : '<span class="tag t-est">calcul auto</span>'}</div><div class="note">${Ps.length} sommets. Glisser un sommet (carré) pour le déplacer, un rond (milieu d'un bord) pour ajouter un sommet, l'intérieur pour tout déplacer. Un sommet se colle (aimant) au point de fin de file (losange vert plein, cercle) ou aux bords de l'allée au bout de la file (losanges creux) ; maintenir <b>Alt</b> pour le poser librement.</div>
-        ${v != null ? `<div class="grid" style="margin-top:6px"><span>Sommet ${v + 1} x, z (m)</span><span>${inp('vx', R2(Ps[v][0]))} ${inp('vz', R2(Ps[v][1]))}</span></div>` : ''}
         <div class="row">${v != null ? `<button id="bDelVtx" class="bad" ${Ps.length > 3 ? '' : 'disabled'}>Supprimer le sommet</button>` : ''}<button id="bAreaAuto" ${areaEd() ? '' : 'disabled'}>Revenir au calcul auto</button></div>`;
     }
     const r = rooms()[0]; if (!r) return '<span class="note">Aucune salle.</span>'; const rp = (() => { try { return E('roomPos()'); } catch (e) { return null; } })();
     return `<div><b>Salle de contrôle</b> ${migrated() ? '' : (E('OSM_ROOM') ? '<span class="tag">OSM (bâtiment Salle de contrôle)</span>' : '<span class="tag t-est">SITE.booth (repli)</span>')}</div>
-      <div class="grid" style="margin-top:6px"><span>Centre x, z (m)</span><span>${inp('x', r.x)} ${inp('z', r.z)}</span><span>Angle (°)</span><span>${inp('angle', r.angle, 1)}</span>
-      <span>Largeur, profondeur (m)</span><span>${inp('w', r.w)} ${inp('d', r.d)}</span>${rp && rp.beacon ? `<span>Gyrophare x, z (m)</span><span>${inp('bx', rp.beacon[0])} ${inp('bz', rp.beacon[1])}</span>` : ''}${rp && rp.label ? `<span>Étiquette x, z (m)</span><span>${inp('lx', rp.label[0])} ${inp('lz', rp.label[1])}</span>` : ''}</div>
-      <p class="note">La vitre (côté du rond) est tournée vers la voie. Gyrophare et étiquette : positions dans le repère de la salle (centre, x le long de la largeur, z vers la vitre), carré orange et croix sur la carte ; le gyrophare reste au plus à 0,5 m de la salle (ESTIMÉ, limite du moteur). ${rp && (rp.game.beacon || rp.game.label) ? '<button id="bRoomPos">Origine (gyrophare et étiquette)</button>' : 'Valeurs du jeu (calcul ou SITE).'}</p>`;
+      <p class="note">Glisser la salle pour la déplacer, un coin pour la redimensionner, le rond pour la tourner (la vitre, côté du rond, est tournée vers la voie). Gyrophare (carré orange) et étiquette (croix) : glisser pour les déplacer ; le gyrophare reste au plus à 0,5 m de la salle (ESTIMÉ, limite du moteur).</p>
+      <div class="row">${rp && (rp.game.beacon || rp.game.label) ? '<button id="bRoomPos">Origine (gyrophare et étiquette)</button>' : ''}<button id="bDelRoom2" class="bad">Supprimer la salle</button></div>`;
   }
-  function panelLite() { $('selBox').innerHTML = selHTML(); bindSel(); for (const d of SECS) if (d.panelLite) d.panelLite(X); status(); }
+  function panelLite() { $('selBox').innerHTML = selHTML(); modalSync(); bindSel(); if (sel && secOf(sel.t) && secOf(sel.t).selBind) secOf(sel.t).selBind(X); for (const d of SECS) if (d.panelLite) d.panelLite(X); status(); }
+  /* Fenêtre modale commune (osmrides#69) : tout clic sur un objet de la carte (barrière, salle de contrôle, zone d'attente, rails mobiles, sections des couches) ouvre
+     la même fenêtre centrée, qui ne contient que des actions (WYSIWYG : aucune valeur à saisir ; on règle en glissant sur la carte). Échap, « Fermer » ou un clic
+     hors de la fenêtre la ferment ; la sélection reste (poignées sur la carte). Contenu : selHTML() (#selBox), boutons liés par bindSel() et selBind(X) des sections. */
+  let mOpen = false, mRet = null;
+  function modalSync() { const m = $('mSel'); if (!sel) mOpen = false; m.hidden = !mOpen; if (mOpen) { const b = $('selBox').querySelector('b'); $('mSelT').textContent = b ? b.textContent : 'Sélection'; } }
+  function openSel() { if (!sel) return; if (!mOpen) mRet = document.activeElement; mOpen = true; panelLite(); const f = $('selBox').querySelector('button:not(:disabled),input,select') || $('mSelX'); try { f.focus(); } catch (e) { } }
+  function closeSel() { if (!mOpen) return; mOpen = false; $('mSel').hidden = true; try { if (mRet && mRet.focus && mRet !== document.body) mRet.focus(); } catch (e) { } mRet = null; }
+  $('mSelX').onclick = closeSel;
+  $('mSel').addEventListener('pointerdown', e => { if (e.target === $('mSel')) closeSel(); });
+  document.addEventListener('keydown', e => { if (!mOpen) return; if (e.key === 'Escape') { e.preventDefault(); closeSel(); return; }
+    if (e.key === 'Tab') { const F = [...$('mSel').querySelectorAll('button:not(:disabled),input,select')]; if (!F.length) return; const a = F[0], z = F[F.length - 1];
+      if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); } else if (!$('mSel').contains(document.activeElement)) { e.preventDefault(); a.focus(); } } });
   const fr1 = v => (+v).toFixed(1).replace('.', ','), qeTxt = Q => `Prolongement de ${fr1(Q.len)} m depuis le début du chemin de file OSM, orienté à ${fr1(Q.ang)}° (0 = est, 90 = sud)${Q.game && Q.clamped ? ` ; ${fr1(Q.want)} m demandés, ramenés au bord de la surface praticable (zone piétonne, chemin)` : ''}. Calcul : ${fr1(Q.calc.len)} m à ${fr1(Q.calc.ang)}°.`;
   function bindSel() {
-    for (const el of $('selBox').querySelectorAll('input[data-k]')) el.addEventListener('change', () => {
-      const v = +el.value, k = el.dataset.k; if (!isFinite(v)) return;
-    if (sel.t === 'area') { const A = areaOvr(); A.pts[sel.v] = k === 'vx' ? [v, A.pts[sel.v][1]] : [A.pts[sel.v][0], v]; areaApplied(); }
-      else if (sel.t === 'gate') { const g = gates().find(x => x.key === sel.key); const o = ovrOf(g.g); o[k] = k === 'len' ? R2(clamp(v, .2, 20)) : v; applied(); }
-      else if (k === 'bx' || k === 'bz' || k === 'lx' || k === 'lz') { migrate(); const r = GM().controlRooms[0], f = k[0] === 'b' ? 'beacon' : 'label', cur = E('roomPos()')[f] || [0, 0], q = cur.slice(); q[k[1] === 'x' ? 0 : 1] = R2(clamp(v, -60, 60)); r[f] = q; if (!Array.isArray(r[f === 'beacon' ? 'label' : 'beacon'])) { /* l'autre garde sa valeur du jeu */ } panel(); }
-      else { migrate(); const r = GM().controlRooms[0]; r[k] = k === 'w' || k === 'd' ? clamp(v, .5, 40) : v; panel(); }
-    });
     const go = $('gOpen'); if (go) go.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (go.checked) o.open = true; else delete o.open; applied(); };
-    const gs = $('gSw'); if (gs) gs.onchange = () => { const o = ovrOf(gates().find(x => x.key === sel.key).g); if (gs.value === '-1') o.sw = -1; else delete o.sw; applied(); };
+    const gs = $('gSw'); if (gs) gs.onclick = () => { const g = gates().find(x => x.key === sel.key), o = ovrOf(g.g); if (g.g.sw === -1) delete o.sw; else o.sw = -1; applied(); };
+    const dr = $('bDelRoom2'); if (dr) dr.onclick = deleteRoom;
     const brp = $('bRoomPos'); if (brp) brp.onclick = () => { const r = GM().controlRooms[0]; delete r.beacon; delete r.label; panel(); };
     const bd = $('bDelGate'); if (bd) bd.onclick = () => deleteGate(sel.key);
     const bv = $('bDelVtx'); if (bv) bv.onclick = () => delVertex(sel.v);
@@ -364,7 +372,7 @@
     if ($('bSelRoom')) $('bSelRoom').onclick = () => { sel = { t: 'room' }; const r = rooms()[0]; focus(r.x, r.z); panel(); };
     const L = gates();
     $('gList').innerHTML = L.length ? L.map(g => `<div class="it${sel && sel.t === 'gate' && sel.key === g.key ? ' sel' : ''}" data-key="${esc(g.key)}"><span class="tag ${g.g.open0 ? 't-entry">ouverte' : 't-fork">fermée'}</span><span class="k" title="${esc(g.from || g.key)}">Barrière ${esc(g.key)}</span>${g.from ? '<span class="tag t-est">reprise</span>' : ''}</div>`).join('') : '<p class="note">Aucune barrière.</p>';
-    for (const el of $('gList').querySelectorAll('.it')) el.onclick = () => { sel = { t: 'gate', key: el.dataset.key }; const g = gates().find(x => x.key === sel.key); focus(g.g.h[0], g.g.h[1]); panel(); };
+    for (const el of $('gList').querySelectorAll('.it')) el.onclick = () => { sel = { t: 'gate', key: el.dataset.key }; const g = gates().find(x => x.key === sel.key); focus(g.g.h[0], g.g.h[1]); panel(); openSel(); };
     $('bAddGate').textContent = adding ? 'Cliquer l\'allée sur la carte… (annuler)' : 'Ajouter une barrière';
     $('bAddGate').onclick = () => { adding = !adding; panel(); };
     $('orph').innerHTML = '';
@@ -441,9 +449,9 @@
   function setSite(p, v) { siteChange(s => { const base = pth(E('SITE_BASE'), p); if (v === '' || (base !== undefined && same(base, v))) return delSite(s, p); let o = s; for (const k of p.slice(0, -1)) { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; o = o[k]; } o[p[p.length - 1]] = v; }); }
   let picking = null; // pose sur la carte : le prochain clic sur la carte appelle picking([x, z]) (postes de maintenance…)
   // Outils passés aux sections des couches : cadre du jeu, brouillon, panneau, rechargement, sélection
-  const X = { E: s => E(s), GM: () => GM(), S, $, esc, clamp, R2, api, site: () => site, draft, panel, panelLite, reloadPreview, focus, pth, same, siteChange, setSite, delSite, prune: M => { if (M.site) { prune(M.site); if (!Object.keys(M.site).length) delete M.site; } }, pick: cb => { picking = cb; try { E('cv').style.cursor = 'crosshair'; } catch (e) { } }, getSel: () => sel, setSel: v => { sel = v; }, setUndo: v => { siteUndo = v; } };
+  const X = { E: s => E(s), GM: () => GM(), S, $, esc, clamp, R2, api, site: () => site, draft, panel, panelLite, reloadPreview, focus, pth, same, siteChange, setSite, delSite, prune: M => { if (M.site) { prune(M.site); if (!Object.keys(M.site).length) delete M.site; } }, pick: cb => { picking = cb; try { E('cv').style.cursor = 'crosshair'; } catch (e) { } }, getSel: () => sel, setSel: v => { sel = v; }, openSel: () => openSel(), closeSel: () => closeSel(), modalOn: () => mOpen, setUndo: v => { siteUndo = v; } };
   // Accès pour les tests (tools/editor-test.js) : rien de plus que ce que fait l'interface.
-  window.ED = { ready: false, secs: () => SECS.map(d => d.id), isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, qe: () => qe(), snapped: () => snapped, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel() };
+  window.ED = { ready: false, secs: () => SECS.map(d => d.id), isReady: () => ready, E: s => E(s), toScr: (x, z) => { const f = fr.getBoundingClientRect(), p = toScr(x, z); return [f.left + p[0], f.top + p[1]]; }, gates: () => gates(), rooms: () => rooms(), area: () => areaPts(), areaEd: () => areaEd(), viaEnd: () => viaEnd(), snapPx: SNAP_PX, qe: () => qe(), snapped: () => snapped, draft: () => draft(), site: () => site, sel: () => sel, adding: () => adding, refresh: () => panel(), modal: () => mOpen, openSel: () => openSel(), closeSel: () => closeSel() };
   // couches du moteur servies par editor/server.js (GET /api/couches) : schéma (sections de GAME) puis panneau, avant l'ouverture d'une attraction
   (async () => { let C = []; try { C = await api('/api/couches'); } catch (e) { }
     for (const c of C) for (const f of c.fichiers) await new Promise(ok => { const sc = document.createElement('script'); sc.src = '/engine/' + c.nom + '/' + f; sc.onload = sc.onerror = ok; document.head.appendChild(sc); });

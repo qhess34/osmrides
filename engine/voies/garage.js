@@ -92,7 +92,14 @@ const PG=TRAV&&!SG?LANES.length+1:-1,PC=SG?0:PG; // position G du pont droit : r
    Une position est en face du circuit ou d'une voie à RTOL près (sinon : « non connectée », le train ne peut ni entrer ni sortir) ; l'aiguillage relie la voie k à la
    position où son tronçon en S est en place (course yard.slide ou lanes[].off). Absent : positions d'origine (P, G, voies 1…n, yard.retract) inchangées. */
 const RTOL=.3; // ESTIMÉ (m) ; l'éditeur aimante exactement
-const RLS=YD.rails&&typeof YD.rails==='object'&&(TRAV||(YD.device==='switch'&&!LBK&&!ROT))?YD.rails:null;
+/* Format à groupes (osmrides#69, écrit par l'éditeur depuis 0.12) : {groups:[{rails:['circuit','garage'], pos:[{name, d:{circuit, garage}}, …]}, …]} ; un groupe = rails
+   verrouillés ensemble (déplacés d'un bloc), chaque position donne la distance de chacun de ses rails. Ramené ici au format par rail ci-dessus (le rail du circuit porte
+   les positions, l'autre lui est verrouillé) : une seule mécanique pour le pont transbordeur, le rail unique et l'aiguillage coulissant. */
+const railsPerRail=R=>{if(!R||!Array.isArray(R.groups))return R;const o={};
+  for(const g of R.groups){if(!g||!Array.isArray(g.rails)||!g.rails.length||!Array.isArray(g.pos))continue;const h=g.rails.includes('circuit')?'circuit':g.rails[0];
+    o[h]={pos:g.pos.map(q=>({name:q&&q.name,d:q&&q.d&&+q.d[h]}))};for(const id of g.rails)if(id!==h)o[id]={lock:h};}
+  return o;};
+const RLS=YD.rails&&typeof YD.rails==='object'&&(TRAV||(YD.device==='switch'&&!LBK&&!ROT))?railsPerRail(YD.rails):null;
 const rPos=id=>RLS&&RLS[id]&&Array.isArray(RLS[id].pos)&&RLS[id].pos.length?RLS[id].pos.filter(q=>q&&isFinite(q.d)):null;
 const RLOCK=!!RLS&&(!!(RLS.circuit&&RLS.circuit.lock==='garage')||!!(RLS.garage&&RLS.garage.lock==='circuit'));
 const RA=TRAV&&!SG&&(RLS&&rPos('circuit')&&!RLOCK?true:RLS&&RLOCK?false:!!YB.retract); // rail du circuit indépendant du chariot (escamotable)
