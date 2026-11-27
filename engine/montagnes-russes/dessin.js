@@ -261,34 +261,23 @@ function drawBU(o){
       ctx.fillStyle=u.id===ZF&&flt?'#7a2e28':mx('#2c2e33','#5a2f2a',c);quad(-.2,.2,cx+g+th,cx+g+th+ca);quad(-.2,.2,cx-g-th-ca,cx-g-th);} // carters des mâchoires
   }
 }
-function drawTraverser(){ // pont droit : fosse, chemins de roulement transversaux, voies du garage sur dalle, chariot (tablier acier, deux rails) décalé de devC()
-  const Lr=R1-R0,dM=Math.max(...LANES.map(l=>l.d)),dm=Math.min(...LANES.map(l=>l.d)),vA=PIT_VA,vB=PIT_VB,c=devC();
+function drawTraverser(){ // pont droit : dalle des voies du garage et heurtoirs. Fosse, chemins de roulement et chariot ne sont plus calculés (propriétaire 27/11, issue #68) :
+  // les structures sous le rail mobile sont des objets OSM man_made=structure (decor.js, drawStruct) ; sans objet OSM, rien sous le rail mobile.
+  const dm=Math.min(...LANES.map(l=>l.d)),vB=PIT_VB;
   ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
   const gu0=LREV?laneU(LANES[0].end)-1:U_LANE-.4,gw=LANES[0].end-U_LANE+1.4;
   ctx.fillStyle='#a9aaa6';ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.35;ctx.fillRect(gu0,vB,gw,-dm+1.6-vB);ctx.globalAlpha=1; // dalle du garage
-  ctx.fillStyle='#5d6062';ctx.fillRect(-.7,vB,Lr+1.4,vA-vB);ctx.fillStyle='rgba(30,32,36,.35)';ctx.fillRect(-.7,vB,Lr+1.4,.35);ctx.fillRect(-.7,vA-.35,Lr+1.4,.35); // fosse
-  ctx.strokeStyle='#3a3c40';lw(.16,.7);ctx.beginPath();for(const u of [.6,Lr/2,Lr-.6]){ctx.moveTo(u,vB+.2);ctx.lineTo(u,vA-.2);}ctx.stroke(); // chemins de roulement
   ctx.strokeStyle='#2c2e33';lw(.3,.8);ctx.beginPath();for(const l of LANES){const e=LREV?laneU(l.end)-.15:l.end+.15;ctx.moveTo(e,-l.d-.7);ctx.lineTo(e,-l.d+.7);}ctx.stroke(); // heurtoirs
-  const deck=(v0,w,mv)=>{ctx.fillStyle='rgba(20,22,26,.35)';ctx.fillRect(-.3+.35,v0+.35,Lr+.6,w); // ombre portée, tablier, traverses
-    ctx.fillStyle='#5c6168';ctx.strokeStyle=mv&&Math.sin(clock*10)>0?'#d08a3a':'#b89a4a';lw(.12,.6);ctx.beginPath();ctx.rect(-.3,v0,Lr+.6,w);ctx.fill();ctx.stroke();
-    ctx.strokeStyle='rgba(30,32,36,.55)';lw(.08,.4);ctx.beginPath();for(let u=1;u<Lr;u+=1.5){ctx.moveTo(u,v0+.05);ctx.lineTo(u,v0+w-.05);}ctx.stroke();};
-  if(RA){deck(c-GAP-1.25,2.5,devMoving());deck(raC()-1.25,2.5,raMoving());} // rail A escamotable sur son propre tablier, chariot du rail B
-  else deck(c-GAP-1.25,GAP+2.5,devMoving());
   ctx.restore();
 }
 function drawTable(){ // pont transbordeur, dessiné dans son repère : u le long de la voie, v dans le sens du coulissement
-  const len=YD.len||8.6,v0=-CMAX-4.4,v1=CMAX+2.2;
   if(ROT){if(!YD.slab)return; // appareil rotatif : dessiné seul (tronçon tournant, faces, supports) ; dalle au sol seulement si SITE.yard.slab (propriétaire, Goudurix : pas de plateforme)
-    const L_=LBK?YD.b-YD.a:len; // carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation ; élargi du côté du garage pour contenir la face en S
+    const L_=LBK?YD.b-YD.a:YD.len||8.6; // carter du tambour autour du tronçon (le rail tourne sur son axe), contour orange pendant la rotation ; élargi du côté du garage pour contenir la face en S
     let v0=-1.05;if(LBK&&LANES.length){const nl=Math.round(LANES[0].link/.5);for(const q of LANES[0].path.slice(0,nl+1))v0=Math.min(v0,((q.x-SW0.x)*SW0.vx+(q.z-SW0.z)*SW0.vz)-1.05);}
     ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);ctx.fillStyle='rgba(58,62,70,.9)';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#ff9f43':'#8c8f94';lw(.12,.7);
     ctx.beginPath();ctx.roundRect(-.5,v0,L_+1,1.05-v0,.35);ctx.fill();ctx.stroke();
     ctx.fillStyle='#2a2c31';ctx.fillRect(-.5,v0,.5,1.05-v0);ctx.fillRect(L_,v0,.5,1.05-v0);ctx.restore();return;}
-  ctx.save();ctx.transform(SW0.tx,SW0.tz,SW0.vx,SW0.vz,SW0.x,SW0.z);
-  ctx.fillStyle='#8f9296';ctx.fillRect(-1,v0,len+1.7,v1-v0);ctx.fillStyle=TEX.asph;ctx.globalAlpha=.55;ctx.fillRect(-1,v0,len+1.7,v1-v0);ctx.globalAlpha=1;
-  ctx.strokeStyle='#2c2e33';lw(.22,.8);ctx.beginPath();for(const u of [.4,len/2+.05,len-.3]){ctx.moveTo(u,v0+.3);ctx.lineTo(u,v1-.3);}ctx.stroke();
-  ctx.translate(0,devC());ctx.fillStyle='rgba(60,64,72,.93)';ctx.strokeStyle=devMoving()&&Math.sin(clock*10)>0?'#ff9f43':'#e8b93c';lw(.14,.7);
-  ctx.beginPath();ctx.rect(-.5,-CMAX-4,len+.6,CMAX+5.4);ctx.fill();ctx.stroke();ctx.restore();
+  // tronçon coulissant : dalle, chemins de roulement et chariot ne sont plus calculés (issue #68) : objets OSM man_made=structure (drawStruct) ; sinon rien
 }
 function drawStationFloor(s){
   const a=BAYS[NCARS-1],b=BAYS[0],P=Object.assign({load:7.9,exit:0,back:1.5,front:1.6},SITE.plat),bk=P.back+CAR/2; // plat.back : au-delà de l'ARRIÈRE du dernier wagon (pas de son milieu), comme tools/offpath.js

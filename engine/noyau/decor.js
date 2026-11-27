@@ -15,7 +15,7 @@ const cen=pts=>{let x=0,z=0;for(const p of pts){x+=p[0];z+=p[1];}return [x/pts.l
 // Voies des attractions voisines (OSM.others) : un tronçon qui suit une voie de garage du site (au moins la moitié de ses points à moins de 1,5 m, ESTIMÉ) EST cette voie
 // (Zeus : voie de maintenance OSM 938337765 / 938337766) : il n'est pas redessiné en gris par-dessus le garage et ses trains (issue #43, propriétaire 20/11).
 const onYard=P=>vrai('surVoieDeGarage',P.p||P); // couche du type
-const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[],exc:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).filter(p=>!onYard(p)).map(p=>mkPath(p));
+const LY={water:[],canal:[],lawn:[],forest:[],dirt:[],asph:[],foot:[],footA:[],road:[],hedge:[],bld:[],pier:[],exc:[],str:[]},trees=[],FOOT=[],PLACES=[],otherP=(OSM.others||[]).filter(p=>!onYard(p)).map(p=>mkPath(p));
 let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2D; // COV/COVP : chemins couverts OSM (passages sous la gare…), redessinés quand le toit s'efface
 (function scenery(){
   const ROOFS=['#a9553f','#b0694a','#9d6350','#8a8f96','#b9ab93','#7f8a8f','#a35f47'],seen=new Set();
@@ -50,6 +50,7 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
     else if(k==='landuse=construction'||k==='natural=bare_rock'){if(c)LY.dirt.push(p);}
     else if(k==='amenity=parking'){if(c)LY.asph.push(p);}
     else if(k==='man_made=pier')LY.pier.push(p);
+    else if(k==='man_made=structure'){if(c)LY.str.push({p,lv:lvOf(f),m:tagOf(f,'material')});} // structure sous / sur un rail mobile (issue #68) : drawStruct
     else if(k==='man_made=excavation'){if(c)LY.exc.push({p,lv:lvOf(f),m:tagOf(f,'material')});} // tranchée (issue #68) : drawExc
     else if(k==='highway=footway'||k==='highway=pedestrian'||k==='highway=steps'){
       if(k==='highway=pedestrian'&&c)LY.footA.push(p);else if(!f.in&&k!=='highway=steps'&&!f.br)LY.foot.push(...(c?[p]:cutStairs(f.p).map(q=>mkPath(q)))); // escaliers (drawSteps) et passerelles (drawBridge) dessinés à part // f.in : chemin fondu dans une zone piétonne (non dessiné, les promeneurs le suivent encore)
@@ -475,6 +476,13 @@ function drawExc(){for(const e of LY.exc){const be=/^(concrete|cement|reinforced
   ctx.fillStyle=be?TEX.stone:TEX.dirt;ctx.fill(e.p);ctx.save();ctx.clip(e.p);ctx.fillStyle='rgba(30,30,28,.28)';ctx.fill(e.p);
   ctx.strokeStyle='rgba(16,16,14,.32)';lw(2.4,3);ctx.stroke(e.p);ctx.translate(.5,.4);ctx.strokeStyle='rgba(16,16,14,.22)';lw(2.4,3);ctx.stroke(e.p);ctx.restore();
   ctx.strokeStyle=be?'#c9c5ba':'#9c8d70';lw(.35,1);ctx.stroke(e.p);}}
+// Structure OSM (man_made=structure fermé, issue #68 ; propriétaire 27/11 : chariot, fosse du pont transbordeur, tronçon coulissant ne se calculent plus) : dessinée telle
+// qu'OSM la donne, fixe ; matière material (steel|metal|iron : acier sourd ; concrete : béton ; sinon gris neutre) ; ordre par level relatif au rail (niveau 0) : <= 0 ou absent
+// sous le rail (avec le sol), > 0 au-dessus de la voie et des trains (STRUCT_H : rang de tri au-dessus de toute voie, convention de dessin).
+const STRUCT_H=200;
+function drawStruct(o){const st=/^(steel|metal|iron)$/.test(o.m||''),be=/^(concrete|cement|reinforced_concrete)$/.test(o.m||'');
+  ctx.fillStyle=st?'#666b71':be?'#9d9a92':'#7d7b75';ctx.fill(o.p);ctx.save();ctx.clip(o.p);ctx.fillStyle=TEX.rows;ctx.globalAlpha=.22;ctx.fill(o.p);ctx.globalAlpha=1;
+  ctx.strokeStyle='rgba(255,255,255,.12)';lw(.5,1);ctx.translate(-.2,-.15);ctx.stroke(o.p);ctx.restore();ctx.strokeStyle=st?'#3c4045':'#5e5b55';lw(.12,.6);ctx.stroke(o.p);}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
   ctx.globalAlpha=bldA(b);ctx.fillStyle=(b.st?LK.roof||b.rc||SITE.stationRoofCol:b.rc)||b.col; // toit : OSM roof:colour (b.rc) ; gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
   ctx.fill(b.p);
@@ -500,6 +508,7 @@ function drawWorld(dt){look(); // GAME.look relu à chaque image (éditeur : app
   ctx.strokeStyle=TEX.water;ctx.lineWidth=5;for(const p of LY.canal)ctx.stroke(p);
   ctx.fillStyle='#9a7b55';for(const p of LY.pier)ctx.fill(p);
   drawExc(); // tranchées OSM : ouvertes dans le sol (eau, pelouses), sous la voie et les chemins
+  for(const o of LY.str)if(!(o.lv>0))drawStruct(o); // structures OSM de niveau <= 0 (ou sans niveau) : sous le rail
   appel('dessin','sol',D); // sol propre au type (terre battue sous une charpente en bois…)
   ctx.strokeStyle='#6f7176';ctx.lineWidth=5.2;for(const p of LY.road)ctx.stroke(p);ctx.strokeStyle=TEX.asph;ctx.lineWidth=4.4;for(const p of LY.road)ctx.stroke(p);
   // bordures des allées et de la file : seulement hors des zones piétonnes (propriétaire, lot 4 : pas de trait noir à la jonction allée / zone piétonne)
@@ -549,10 +558,12 @@ function drawWorld(dt){look(); // GAME.look relu à chaque image (éditeur : app
   // voie + trains, triés par hauteur
   const items=[];
   appel('objets',items,dt,vis); // voie, trains, tunnels, passerelles… (couche du type : {h, …}, dessinés par dessinObjet)
+  for(const o of LY.str)if(o.lv>0)items.push({h:STRUCT_H+o.lv,stc:o}); // structures OSM de niveau > 0 : au-dessus du rail et des trains
   for(const r of ROCKS)items.push({h:r.h,rock:r});for(const b of BRIDGES)items.push({h:b.h,br:b});
   items.sort((a,b)=>a.h-b.h);
   for(const o of items){
     if(o.rock){drawRock(o.rock);continue;}
+    if(o.stc){drawStruct(o.stc);continue;}
     if(o.br){drawBridge(o.br);continue;}
     for(const e of EXTENSIONS)if(e.dessinObjet&&e.dessinObjet(o,s))break;
   }

@@ -49,3 +49,7 @@ Toit d'un bâtiment OSM (`roofGeom`, `drawPans`) : `roof:shape=flat` (ou forme i
 ## Tranchées et niveaux (`man_made=excavation`, issue #68)
 
 Polygone fermé `man_made=excavation` (`LY.exc`, `drawExc`) : tranchée ouverte dans les surfaces au sol qu'elle perce (eau, pelouses, sable), dessinée après elles et sous la voie, les chemins, les passerelles et les couvertures (niveaux supérieurs) ; fond en béton (`material=concrete|cement`) sinon en terre, murs ombrés, chaperon clair. Niveau lu (`lvOf`) ; ordre de la voie : `voie.md` (« Ordre vertical »).
+
+## Structures (`man_made=structure`, issue #68)
+
+Polygone fermé `man_made=structure` (`LY.str`, `drawStruct`) : dessiné tel qu'OSM le donne, fixe ; `material` steel|metal|iron : acier sourd, concrete : béton, sinon gris neutre ; `level` relatif au rail (niveau 0) : <= 0 ou absent : sous le rail, avec le sol ; > 0 : au-dessus de la voie et des trains (`STRUCT_H`, rang de tri, convention de dessin). Usage : structures sous les rails mobiles (`docs/manoeuvres.md`).
