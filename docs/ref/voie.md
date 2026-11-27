@@ -41,6 +41,7 @@ Voies décoratives (issue #33, propriétaire 20/11) : tout tronçon `roller_coas
 Rendu : chaîne du lift (issues #60, #71 ; même langage que les roues de friction des zones de frein : tailles en pixels, couleurs sourdes, état lu de loin dans la couleur de la gouttière : vert sourd = entraînée, gris = arrêtée, brique = bloquée par panne ou arrêt d'urgence ; maillons alternés et taquets clairs qui défilent à la vitesse lissée `CHAINE.v`, immobiles à l'arrêt ; AUTO / MANU, `docs/manoeuvres.md`) et équipements de freinage (mâchoires serrées / écartées, roues de propulsion des zones à moteurs, freins de bloc compris) appartiennent à leur tronçon de voie (coaster inversé : dessinés sous la poutre, au niveau du chariot suspendu, issue #32)
 
 - un wagon est dessiné après le plus haut tronçon qu'il couvre (`osmrides_parks/docs/NOUVELLE-ATTRACTION.md` §3).
+- ordre de dessin d'une passerelle de service (`CATW`) et du train : tri par hauteur réelle. Passerelle latérale : hauteur de la voie − 1 cm, le wagon (après son plus haut tronçon) est dessiné au-dessus. Coaster inversé : le plancher galvanisé est à voie − 3 m (`HANG`) et trié à cette hauteur, donc dessiné AVANT le train suspendu (voie − 1,5 m) et la poutre, qui le recouvrent ; une voie de niveau OSM < 0 garde la profondeur `PROF_AFF` (sous les passerelles). Test : `tools/toits-niveaux-test.js` (E).
 
 ## Gare droite
 

@@ -112,7 +112,8 @@ const CATW=(function(){
           if(w.lift&&dy/dh>.08){const r0=el(f),r1=el(g);for(let m=Math.ceil(r0/.2)*.2;m<r1;m+=.2){const k=(m-r0)/(dy||1),x=f.x+(g.x-f.x)*k,z=f.z+(g.z-f.z)*k,c=[x+f.nx*w.sd*d,z+f.nz*w.sd*d];
             if(!FL&&Math.floor(m/6)>Math.floor((m-.2)/6)&&m>1)ld.push(c);tr.push([c[0]-f.nx*WW/2,c[1]-f.nz*WW/2,c[0]+f.nx*WW/2,c[1]+f.nz*WW/2,m]);}}}}
       if(P.length<2)continue;let ys=0;for(let i=a;i<=b;i++)ys+=fr(i).y;
-      w.segs.push({h:chunkH[((Math.floor((a+b)/2)%N)+N)%N]-.01,y:Math.max(0,ys/(b-a+1)-(FL?HANG:0)),w:WW,fl:FL,c:mkPath(P),o:mkPath(Q),n:mkPath(R),Q,Rn:R,tr,ld,nx:fr(a).nx*w.sd,nz:fr(a).nz*w.sd});}
+      const yw=Math.max(0,ys/(b-a+1)-(FL?HANG:0)); // plancher sous la voie : trié à sa hauteur réelle (sous la poutre et le train suspendu, dessinés après), sinon à la hauteur de la voie
+      w.segs.push({h:FL?yw-.01:chunkH[((Math.floor((a+b)/2)%N)+N)%N]-.01,y:yw,w:WW,fl:FL,c:mkPath(P),o:mkPath(Q),n:mkPath(R),Q,Rn:R,tr,ld,nx:fr(a).nx*w.sd,nz:fr(a).nz*w.sd});}
     const s=w.segs[w.segs.length-1];if(w.lift&&s){const f=fr(w.i1),c=at(f,w.sd,md(f.s));s.top=[c[0],c[1],f.tx,f.tz,f.nx*w.sd,f.nz*w.sd];}} // palier au sommet
   for(const t of towers){const c=(u,v)=>[t.x+t.ux*u+t.nx*v,t.z+t.uz*u+t.nz*v],v0=t.d0-W/2-.1,v1=t.d0+t.TW;
     t.poly=[c(-.2,v0),c(t.TL,v0),c(t.TL,v1),c(-.2,v1)];t.fl=[];const L0=t.nf>1?.9:0; // palier haut (jonction avec la passerelle), volées, palier bas

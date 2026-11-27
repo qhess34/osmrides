@@ -5,6 +5,7 @@
 //  B. polygone man_made=tunnel prioritaire : sa couverture suit le polygone, le tunnel de la voie qu'il recoupe n'est gardé que hors du polygone ;
 //  C. ordre vertical par niveaux : voie layer<0 dessinée à la profondeur d'affichage commune, tranchées man_made=excavation dessinées sous la voie ;
 //  D. structures sous les rails mobiles (man_made=structure) lues dans OSM ; sans objet : rien sous le rail mobile (ni dalle des voies de garage, ni heurtoirs, ni carter du rotatif : plus calculés).
+//  E. coaster inversé (OzIris) : le plancher galvanisé sous la voie est dessiné AVANT le train suspendu au-dessus de lui (ordre déduit des hauteurs, jamais d'un cas particulier) ;
 const { chromium } = require('playwright');
 const fs = require('fs'), os = require('os'), path = require('path');
 const LIB = path.resolve(__dirname, '..'), SRC = path.resolve(process.env.JEU || path.join(LIB, '..', 'osmrides_parks'));
@@ -70,6 +71,17 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
     const o = await p2.evaluate(() => ({ n: TLIST.length, o: (OSM.tunnels || []).length, poly: TLIST.some(t => t.poly) }));
     ok('B sans polygone (OzIris) : tunnels de voie inchangés', o.n === o.o && !o.poly, o);
     await p2.close();
+  }
+  // ---------- E : plancher galvanisé d'un coaster inversé (CATW, voie - 3 m) sous le train suspendu : le train se voit au-dessus du plancher
+  {
+    const page = await open(browser, 'oziris', errors);
+    const r = await page.evaluate(() => { const W = CATW.walks.find(w => !w.lift && w.segs.some(g => g.fl)); if (!W) return { none: true };
+      const i = Math.round((W.i0 + W.i1) / 2), t = trains[0]; t.st = 'run'; t.s = i * DS + CAR * 2.5; t.v = 0;
+      const log = [], f1 = drawCatwalk, f2 = drawCar; drawCatwalk = g => { if (W.segs.includes(g)) log.push('w'); return f1(g); }; drawCar = (a, b, c) => { const sc = (((t.s - (b + .5) * CAR) % L) + L) % L; if (a === t && !c && sc > (W.i0 + 2) * DS && sc < (W.i1 - 2) * DS) log.push('c'); return f2(a, b, c); }; // seuls les wagons au-dessus du plancher
+      render(1 / 30); drawCatwalk = f1; drawCar = f2; const lastW = log.lastIndexOf('w'), firstC = log.indexOf('c');
+      return { n: W.segs.length, lastW, firstC, nc: log.filter(x => x === 'c').length }; });
+    ok('E plancher de passerelle dessiné avant le train suspendu (le train est au-dessus)', !r.none && r.n > 0 && r.nc > 0 && r.lastW >= 0 && r.lastW < r.firstC, r);
+    await page.close();
   }
   // ---------- C : OzIris, relevé OSM du 27/11 (tranchées w1585403561/2 level=-2 béton ; voie w1585403563, w421460641, w1585403564 layer=-1), coordonnées converties
   {
