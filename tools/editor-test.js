@@ -127,7 +127,8 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       page.on('console', m => { if (m.type() === 'error' && !/\.game\.js$|404/.test(((m.location() || {}).url || '') + m.text())) errors.push('console: ' + m.text()); });
       await page.goto(BASE + '/editor/?site=' + id);
       await page.waitForFunction(() => window.ED && window.ED.ready, null, { timeout: 30000 });
-      ok(await page.isVisible('#secMig'), 'migration proposée');
+      // migration proposée seulement si le jeu fournit une salle (OSM.ctl ou SITE.booth) : sinon rien à reprendre
+      ok((await page.isVisible('#secMig')) === !!(await ed(page, `ED.E('!!B0||!!defRoom()')`)), 'migration proposée (si le jeu fournit une salle)');
       // ── barrières (issue #37) : posées à la main, indépendantes, GAME.barriers 'b<n>' = {x, z, ang, len, open?, sw?} ──
       ok((await ed(page, `ED.gates().length`)) === 0 && /Aucune barrière/.test(await page.textContent('#gList')), 'sans game.js : aucune barrière (plus de calcul)');
       // anciennes clés (surcharge, suppression, ajout) : converties par le moteur, réécrites au format b<n> à la première modification
@@ -153,7 +154,8 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       ok(Math.abs(o.x - b1.x - 30 / s0) < .15 && Math.abs(o.z - b1.z - 18 / s0) < .15, `barrière b1 déplacée (${o.x}, ${o.z})`);
       const A = await ed(page, `(()=>{const g=ED.gates().find(g=>g.key==='b1').g;return {a:g.a,h:g.h};})()`);
       p = await ed(page, `ED.toScr(${A.a[0]},${A.a[1]})`); const hS = await ed(page, `ED.toScr(${A.h[0]},${A.h[1]})`);
-      await page.keyboard.down('Alt'); await drag(page, p, [hS[0] + (p[0] - hS[0]) * 1.3 + 8, hS[1] + (p[1] - hS[1]) * 1.3 - 8]); await page.keyboard.up('Alt');
+      // x1,8 : l'allée de Zeus est large de 1 m dans les relevés récents (2,2 m avant) ; le décalage fixe de 8 px annulait l'allongement de 1,3
+      await page.keyboard.down('Alt'); await drag(page, p, [hS[0] + (p[0] - hS[0]) * 1.8 + 8, hS[1] + (p[1] - hS[1]) * 1.8 - 8]); await page.keyboard.up('Alt');
       const o2 = await ed(page, `ED.draft().barriers.b1`);
       ok(Math.abs(o2.len - o.len) > .1 && o2.ang !== o.ang, `barrière b1 tournée et allongée (${o.ang}° ${o.len} m -> ${o2.ang}° ${o2.len} m)`);
       // remise en travers de l'allée (champs du panneau) : le test du jeu ci-dessous en dépend
@@ -189,12 +191,15 @@ async function RAILS_UI(id, pn, rdn, ok, R) {
       await page.click('#bDelGate'); await sleep(80); ok(!(await ed(page, `!!ED.draft().barriers.b2`)) && !(await ed(page, `ED.modal()`)), 'b2 supprimée (fenêtre fermée)');
       await addOn(M2); const b2 = await ed(page, `ED.draft().barriers.b2`); ok(!!b2, 'b2 rajoutée (même clé)');
       // ── salle de contrôle ──
+      // le jeu peut ne pas fournir de salle (SITE.booth retirée des parcs) : on la crée alors sur la carte, comme le fait le propriétaire
+      const roomFromGame = !!(await page.$('#bSelRoom')) && !(await page.$('#bNewRoom'));
+      if (!roomFromGame) { await ed(page, `ED.E('cam.x+=12;0')`); await page.click('#bNewRoom'); await sleep(100); await page.keyboard.press('Escape'); await sleep(80); } // créée à 12 m des barrières posées au centre de la carte (sinon le glisser saisit la barrière)
       await page.click('#bSelRoom'); await sleep(150);
       const r0 = await ed(page, `ED.rooms()[0]`), s1 = await ed(page, `ED.E('cam.s')`);
       p = await ed(page, `ED.toScr(${r0.x},${r0.z})`);
       await drag(page, p, [p[0] - 25, p[1] + 20]);
       let d = await ed(page, `ED.draft()`);
-      ok(Array.isArray(d.controlRooms) && d.controlRooms.length === 1 && Math.abs(d.controlRooms[0].x - r0.x + 25 / s1) < .15, `salle reprise de SITE.booth et déplacée (${d.controlRooms && d.controlRooms[0].x}, ${d.controlRooms && d.controlRooms[0].z})`);
+      ok(Array.isArray(d.controlRooms) && d.controlRooms.length === 1 && Math.abs(d.controlRooms[0].x - r0.x + 25 / s1) < .15, `salle ${roomFromGame ? 'reprise d\'OSM ou de SITE.booth' : 'créée sur la carte'} et déplacée (${d.controlRooms && d.controlRooms[0].x}, ${d.controlRooms && d.controlRooms[0].z})`);
       ok(await page.isHidden('#secMig'), 'migration faite');
       await page.click('#bDelRoom'); await sleep(80);
       d = await ed(page, `ED.draft()`); ok(d.controlRooms.length === 0, 'salle supprimée');

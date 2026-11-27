@@ -73,16 +73,17 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
   }
   // ---------- C : OzIris, relevé OSM du 27/11 (tranchées w1585403561/2 level=-2 béton ; voie w1585403563, w421460641, w1585403564 layer=-1), coordonnées converties
   {
+    // les relevés récents du jeu portent déjà ces deux tranchées (sans niveau ni matériau) ; un jeu plus ancien les ajoute ici
     const EXC = [[[12.7, 7.0], [8.8, 14.9], [14.8, 17.9], [18.7, 10.0], [12.7, 7.0]], [[17.9, -4.5], [21.7, -13.4], [28.0, -10.6], [24.3, -1.7], [17.9, -4.5]]];
     let page = await open(browser, 'oziris', errors);
     const r0 = await page.evaluate(() => { const sAt = (x, z) => { let b = 0, d = 1e9; for (let i = 0; i < N; i++) { const q = TR[i].p, e = Math.hypot(q.x - x, q.z - z); if (e < d) { d = e; b = i; } } return b * DS; };
-      return { a: sAt(12.2, 16.3), b: sAt(24.9, -12.0), h: chunks.map(o => o.h), exc: LY.exc.length, sw: [SW0.x, SW0.z], str: LY.str.length }; });
-    ok('C sans niveaux : aucune tranchée, hauteurs du profil', r0.exc === 0, r0.exc);
+      return { a: sAt(12.2, 16.3), b: sAt(24.9, -12.0), h: chunks.map(o => o.h), exc: LY.exc.map(e => [e.lv, e.m]), nExc: OSM.feats.filter(f => f.k === 'man_made=excavation').length, sw: [SW0.x, SW0.z], str: LY.str.length }; });
+    ok('C sans niveaux : tranchées du jeu sans niveau ni matériau (les relevés OSM n\'ont pas encore les tags), aucune ajoutée', r0.exc.length === r0.nExc && r0.exc.every(e => e[0] == null && e[1] == null), r0);
     ok('D sans objet OSM : aucune structure sous le rail mobile', r0.str === 0, r0.str);
     await shot(page, 'oziris-avant', 2, 3, 7);
     await page.close();
-    const a = Math.min(r0.a, r0.b), b = Math.max(r0.a, r0.b);
-    patch('oziris', `OSM.levels=[[${a},${b},-1]];` + EXC.map((p, i) => `OSM.feats.push({k:'man_made=excavation',n:null,c:1,p:${JSON.stringify(p)},id:'w158540356${i + 1}',v:1,t:{'man_made':'excavation','level':'-2','material':'concrete'}});`).join('')
+    const r0nExc = Math.max(r0.nExc, 2), a = Math.min(r0.a, r0.b), b = Math.max(r0.a, r0.b);
+    patch('oziris', `OSM.levels=[[${a},${b},-1]];` + EXC.map((pl, i) => { const id = 'w158540356' + (i + 1); return `{let w=OSM.feats.find(f=>f.id==='${id}');if(!w)OSM.feats.push(w={k:'man_made=excavation',n:null,c:1,p:${JSON.stringify(pl)},id:'${id}',v:1});w.t={'man_made':'excavation','level':'-2','material':'concrete'};}`; }).join('')
       + `{const w=OSM.feats.find(f=>f.id==='w420028794');if(w)w.t={'natural':'water','level':'0'};}`
       + [[-1, 0], [1, 6]].map(([lv, d], i) => { const x = r0.sw[0] + d, z = r0.sw[1] + d; return `OSM.feats.push({k:'man_made=structure',n:null,c:1,p:${JSON.stringify([[x - 3, z - 3], [x + 3, z - 3], [x + 3, z + 3], [x - 3, z + 3], [x - 3, z - 3]])},id:'w9${i}',v:1,t:{'man_made':'structure','material':'steel','level':'${lv}'}});`; }).join(''));
     page = await open(browser, 'oziris', errors);
@@ -91,7 +92,7 @@ const shot = async (page, name, x, z, s) => { if (!SHOTS) return; await page.eva
       const out = []; for (let i = 0; i < N; i++) if (i * DS < a - 10 || i * DS > b + 10) out.push(chunkH[i]);
       const t = TUN.find(t => t.a < b && t.b > a); return { PROF_AFF, sub: [...new Set(sub)], outLow: out.filter(h => h === PROF_AFF).length, exc: LY.exc.map(e => [e.lv, e.m]), tun: t && { under: t.under, h: t.h } }; }, [a, b]);
     ok('C voie layer=-1 : profondeur d\'affichage commune (PROF_AFF, ESTIMÉE)', r.sub.length === 1 && r.sub[0] === r.PROF_AFF && r.outLow === 0, r);
-    ok('C tranchées man_made=excavation lues (niveau -2, béton)', r.exc.length === 2 && r.exc.every(e => e[0] === -2 && e[1] === 'concrete'), r.exc);
+    ok('C tranchées man_made=excavation lues (niveau -2, béton)', r.exc.length === r0nExc && r.exc.filter(e => e[0] === -2 && e[1] === 'concrete').length === 2 && r.exc.filter(e => e[0] == null).length === r0nExc - 2, r.exc);
     ok('C tunnel sous l\'eau : couverture au-dessus de la voie, sous le sol (eau, niveau 0)', r.tun && r.tun.under === 'water' && r.tun.h > r.PROF_AFF && r.tun.h < 0, r.tun);
     await shot(page, 'oziris-apres', 2, 3, 7);
     const d = await page.evaluate(() => { let n = 0, up = 0; const f = drawStruct; drawStruct = o => { n++; if (o.lv > 0) up++; return f(o); }; render(1 / 30); drawStruct = f;

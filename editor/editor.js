@@ -350,11 +350,11 @@
   }
   function panel() {
     if (!ready) return;
-    $('secMig').hidden = migrated() || !E('!!B0');
+    $('secMig').hidden = migrated() || !(E('!!B0') || E('!!defRoom()'));
     $('lookBox').innerHTML = lookHTML(); bindLook();
     panelLite();
     const R = migrated() ? GM().controlRooms : null;
-    $('roomBox').innerHTML = !R ? (E('!!B0') ? '<p class="note">Salle actuelle : <code>SITE.booth</code> (repli). La première modification la reprend dans <code>game.js</code>.</p><div class="row"><button id="bSelRoom">Sélectionner</button><button id="bDelRoom" class="bad">Supprimer</button></div>' : '<p class="note">Aucune salle.</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>')
+    $('roomBox').innerHTML = !R ? (E('!!defRoom()') ? '<p class="note">Salle actuelle : OSM (<code>OSM.ctl</code>) ou <code>SITE.booth</code> (repli). La première modification la reprend dans <code>game.js</code>.</p><div class="row"><button id="bSelRoom">Sélectionner</button><button id="bDelRoom" class="bad">Supprimer</button></div>' : '<p class="note">Aucune salle.</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>')
       : R.length ? `<p class="note">Salle « ${esc(R[0].id)} » : ${R[0].w} x ${R[0].d} m. Une seule salle par attraction (pupitre).</p><div class="row"><button id="bSelRoom">Sélectionner</button><button id="bDelRoom" class="bad">Supprimer</button></div>`
         : '<p class="note">Aucune salle (ni pupitre dessiné, ni gyrophare).</p><div class="row"><button id="bNewRoom" class="go">Créer la salle de contrôle</button></div>';
     if ($('bNewRoom')) $('bNewRoom').onclick = createRoom;
