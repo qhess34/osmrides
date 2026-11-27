@@ -56,8 +56,8 @@ let tunnelP=null,tunnelC=[5,98];const WATERPTS=[],COV=[],COVLV=[],COVP=new Path2
     else if(k==='highway=service'||k==='highway=unclassified'||k==='highway=track')LY.road.push(p);
     else if(k==='barrier=hedge'||k==='natural=tree_row')LY.hedge.push(p);
     else if(k==='man_made=tunnel'){if(!tunnelP){tunnelP=1;tunnelC=cen(f.p);}} // polygone man_made=tunnel : seulement l'étiquette (le premier) ; couverture le long de la voie (TPOLY, drawTunnel, issue #42)
-    else if(k.startsWith('building'))addBld(f.p,{
-      col:ROOFS[i%ROOFS.length],h:BLD_H(k,f),canopy:k==='building=roof',un:vrai('sousVoie',f.p)});
+    else if(k.startsWith('building'))addBld(f.p,{ // rf, rc : forme et couleur du toit lues dans OSM (f.t, issue #68) ; mh : min_height (sans effet en vue aérienne)
+      col:ROOFS[i%ROOFS.length],h:BLD_H(k,f),canopy:k==='building=roof',un:vrai('sousVoie',f.p),rf:roofGeom(f.p,f),rc:colOf(tagOf(f,'roof:colour')),mh:numOf(f,'min_height')});
   });
   for(const p of SITE.paths||[]){LY.foot.push(...cutStairs(p).map(q=>mkPath(q)));stroll(p);}          // allées ajoutées par la configuration
   for(const b of SITE.buildings||[])addBld(b.p,Object.assign({col:'#8a8f96',un:vrai('sousVoie',b.p)},b)); // bâtiments ajoutés par la configuration
@@ -461,12 +461,20 @@ function leaf(g,t){if(g.off)return; // vantail métallique : pivot h en bordure,
   ctx.fillStyle=m.lfp;for(const [q,r0] of [[g.h,.2],[g.a,.13],[g.b,.13]]){const r=r0*m.lpk;ctx.fillRect(q[0]-r,q[1]-r,2*r,2*r);}
 }
 function drawQSide(P,PP){if(!PP.length)return;railDraw(P,PP,1,1);}
+// Pans d'un toit OSM (roofGeom) : chaque pan éclairé selon sa normale et sa pente (lumière du nord-ouest, comme les arêtes des toits plats), faîtage et arêtiers clairs
+const ROOF_L=[-.8,-.6];
+function drawPans(g,a){for(const p of g.pans){const k=(p.n[0]*ROOF_L[0]+p.n[1]*ROOF_L[1])*Math.sin(p.sl)*2.2;
+    ctx.fillStyle=k>0?`rgba(255,255,255,${Math.min(.24,k*.3)})`:`rgba(0,0,0,${Math.min(.3,-k*.36)})`;ctx.globalAlpha=a;ctx.beginPath();p.P.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fill();}
+  ctx.strokeStyle='rgba(255,250,235,.3)';lw(.14,.6);ctx.beginPath();ctx.moveTo(g.ridge[0][0],g.ridge[0][1]);ctx.lineTo(g.ridge[1][0],g.ridge[1][1]);
+  if(g.shape==='hipped')for(const s of [-1,1])for(const t of [-1,1]){const r=g.ridge[s<0?0:1],x=g.c[0]+g.d[0]*s*g.hl-g.d[1]*t*g.hw,z=g.c[1]+g.d[1]*s*g.hl+g.d[0]*t*g.hw;ctx.moveTo(r[0],r[1]);ctx.lineTo(x,z);}
+  ctx.stroke();}
 function drawBld(b,s){ // toit d'un bâtiment (OSM ou SITE.buildings)
-  ctx.globalAlpha=bldA(b);ctx.fillStyle=b.st&&(LK.roof||SITE.stationRoofCol)?(LK.roof||SITE.stationRoofCol):b.col; // toit de la gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
+  ctx.globalAlpha=bldA(b);ctx.fillStyle=(b.st?LK.roof||b.rc||SITE.stationRoofCol:b.rc)||b.col; // toit : OSM roof:colour (b.rc) ; gare : GAME.look.roof > OSM roof:colour > SITE.stationRoofCol (issue #46)
   ctx.fill(b.p);
   ctx.save();ctx.clip(b.p);
   if(s>4){ctx.fillStyle=TEX.rows;ctx.globalAlpha*=.35;ctx.fill(b.p);ctx.globalAlpha=bldA(b);}
-  if(b.st&&SITE.draw&&SITE.draw.stationRoof)SITE.draw.stationRoof(ctx,b,API);
+  if(b.rf&&b.rf.pans.length)drawPans(b.rf,bldA(b)); // toit à pans lu dans OSM (roof:shape) : prime sur le dessin SITE.draw.stationRoof
+  else if(b.st&&!b.rf&&SITE.draw&&SITE.draw.stationRoof)SITE.draw.stationRoof(ctx,b,API); // ancien dessin de jeu, seulement si OSM ne donne aucune forme
   else{ctx.lineWidth=3.4;ctx.strokeStyle='rgba(255,255,255,.2)';ctx.stroke(b.lit);ctx.strokeStyle='rgba(0,0,0,.24)';ctx.stroke(b.dark);}
   ctx.restore();ctx.strokeStyle='rgba(40,25,20,.6)';lw(.25,.8);ctx.stroke(b.p);
 }

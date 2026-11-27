@@ -79,5 +79,31 @@ const SHX=.55,SHZ=.42;
 // Rochers OSM (natural=rock|stone fermé) : massif dessiné en relief au-dessus de la voie et des chemins qui le traversent en tunnel (voir ROCKS plus bas)
 const ROCKP=OSM.feats.filter(f=>f.c&&f.p.length>3&&/^natural=(rock|stone)$/.test(f.k)).map(f=>f.p);
 const pipXZ=(poly,x,z)=>{let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++)if((poly[i][1]>z)!==(poly[j][1]>z)&&x<(poly[j][0]-poly[i][0])*(z-poly[i][1])/(poly[j][1]-poly[i][1])+poly[i][0])c=!c;return c;};
-// hauteur d'un bâtiment (m) : OSM (height, building:levels × 3 m, f.bh de tools/make_site.py), sinon par type ESTIMÉE
-const BLD_H=(k,f)=>f&&f.bh||(k==='building=roof'?4:k==='building=hotel'?12:7);
+// Tags OSM transportés par un objet importé (f.t = {clé: valeur brute}, format : docs/ref/decor.md « Tags OSM transportés ») ; absent : null
+const tagOf=(f,k)=>f&&f.t&&f.t[k]!=null&&f.t[k]!==''?String(f.t[k]):null;
+const numOf=(f,k)=>{const v=parseFloat(tagOf(f,k));return isFinite(v)?v:null;}; // « 8 », « 8 m », « 8.5 » -> nombre
+// niveau OSM relatif d'un objet (ordre vertical, issue #68) : layer, sinon level (« -1;0 » : le plus bas), sinon f.lv (ancien format), sinon null (inconnu)
+const lvOf=f=>{for(const k of ['layer','level']){const v=tagOf(f,k);if(v!=null){const n=Math.min(...v.split(';').map(parseFloat).filter(isFinite));if(isFinite(n))return n;}}return f&&typeof f.lv==='number'?f.lv:null;};
+// hauteur d'un bâtiment (m) : OSM (height, building:levels × 3 m ; f.t, sinon f.bh de tools/make_site.py), sinon par type ESTIMÉE
+const BLD_H=(k,f)=>numOf(f,'height')||(numOf(f,'building:levels')||0)*3||f&&f.bh||(k==='building=roof'?4:k==='building=hotel'?12:7);
+// couleur OSM (roof:colour, colour) : #rgb / #rrggbb tels quels, sinon nom courant ramené à une teinte sourde ; inconnue : null
+const OSM_COL={grey:'#8a8f96',gray:'#8a8f96',darkgrey:'#5f6368',darkgray:'#5f6368',lightgrey:'#b4b6b4',lightgray:'#b4b6b4',silver:'#a9adb0',white:'#d8d6d0',black:'#3c3c3a',
+  red:'#9a4a3c',brown:'#7a5a44',maroon:'#6e3d33',orange:'#b0694a',beige:'#c8b996',tan:'#b9a27a',yellow:'#c2a85a',green:'#5f7458',blue:'#56687a'};
+const colOf=v=>{if(!v)return null;v=String(v).trim().toLowerCase();if(/^#[0-9a-f]{6}$/.test(v))return v;if(/^#[0-9a-f]{3}$/.test(v))return '#'+[1,2,3].map(i=>v[i]+v[i]).join('');return OSM_COL[v.replace(/[\s_-]/g,'')]||null;};
+// Toit d'un bâtiment lu dans OSM (issue #68) : roof:shape (flat, gabled, hipped ; autre forme : plat), roof:orientation (along : faîtage dans le sens de la plus grande
+// longueur, défaut OSM ; across : en travers), roof:height (sinon roof:angle ; sinon pente de 30° ESTIMÉE, ombrage seul). Géométrie en plan sur le rectangle d'emprise
+// minimal du polygone : centre c, sens du faîtage d, demi-longueur hl, demi-largeur hw, faîtage ridge, pans {P, n (normale horizontale), sl (pente, rad)}. Sans roof:shape : null.
+function roofGeom(pts,f){const sh=tagOf(f,'roof:shape');if(!sh)return null;const P=pts.length>1&&pts[0][0]===pts[pts.length-1][0]&&pts[0][1]===pts[pts.length-1][1]?pts.slice(0,-1):pts;
+  let best=null;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],l=Math.hypot(b[0]-a[0],b[1]-a[1]);if(l<.01)continue;const u=[(b[0]-a[0])/l,(b[1]-a[1])/l],v=[-u[1],u[0]];
+    let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;for(const q of P){const pu=q[0]*u[0]+q[1]*u[1],pv=q[0]*v[0]+q[1]*v[1];u0=Math.min(u0,pu);u1=Math.max(u1,pu);v0=Math.min(v0,pv);v1=Math.max(v1,pv);}
+    const ar=(u1-u0)*(v1-v0);if(!best||ar<best.ar-1e-6)best={ar,u,v,cu:(u0+u1)/2,cv:(v0+v1)/2,lu:(u1-u0)/2,lv:(v1-v0)/2};}
+  if(!best)return null;const B=best,c=[B.u[0]*B.cu+B.v[0]*B.cv,B.u[1]*B.cu+B.v[1]*B.cv],longU=B.lu>=B.lv,along=tagOf(f,'roof:orientation')!=='across';
+  const d=longU===along?B.u:B.v,e=[-d[1],d[0]],hl=longU===along?B.lu:B.lv,hw=longU===along?B.lv:B.lu;
+  const g={shape:sh==='gabled'||sh==='hipped'?sh:'flat',c,d,hl,hw,rh:0,ridge:null,pans:[]};if(g.shape==='flat')return g;
+  const ang=numOf(f,'roof:angle');g.rh=numOf(f,'roof:height')||(ang?hw*Math.tan(ang*Math.PI/180):hw*Math.tan(Math.PI/6));const sl=Math.atan2(g.rh,hw);
+  const at=(a,b)=>[c[0]+d[0]*a+e[0]*b,c[1]+d[1]*a+e[1]*b],rl=g.shape==='hipped'?Math.max(0,hl-hw):hl,M=1.5; // M : marge (le dessin est découpé par le polygone)
+  g.ridge=[at(-rl,0),at(rl,0)];
+  if(g.shape==='gabled'){for(const s of [-1,1])g.pans.push({P:[at(-hl-M,0),at(hl+M,0),at(hl+M,s*(hw+M)),at(-hl-M,s*(hw+M))],n:[e[0]*s,e[1]*s],sl});}
+  else{for(const s of [-1,1]){g.pans.push({P:[at(-rl,0),at(rl,0),at(hl+M,s*(hw+M)),at(-hl-M,s*(hw+M))],n:[e[0]*s,e[1]*s],sl});
+    g.pans.push({P:[at(s*rl,0),at(s*(hl+M),hw+M),at(s*(hl+M),-hw-M)],n:[d[0]*s,d[1]*s],sl:Math.atan2(g.rh,Math.max(.1,hl-rl))});}}
+  return g;}
