@@ -13,14 +13,18 @@ _Décision du propriétaire, 23/11/2026. Proposition de mise en œuvre par la se
 
 **Partage du moteur et de l'éditeur (propriétaire, 23/11)** : `osmrides` est une librairie publiée par version (étiquettes git `0.0.1`, `0.0.2`…). Chaque jeu **indique** sa version et charge le moteur **en ligne** à cette version ; l'éditeur de la même version se lance sur le dépôt de jeu. Le code propre aux parcs ou au ski est écrit dans `osmrides_parks` / `osmrides_skiresort`. Monter de version = une tâche du chef de dépôt, tests à l'appui. Mode d'emploi : `docs/versions.md`.
 
+## Fusion des chefs moteur et parcs (propriétaire, 27/11, pour réduire la consommation de tokens ; osmrides#70)
+
+Le **Chef moteur pilote `osmrides` et `osmrides_parks`** : il adopte lui-même chaque version du moteur dans les parcs (en modifiant directement `tools/check.js`, sans copie adaptée ni issue de passage). Il n'y a plus de session Chef parcs. Les deux dépôts restent séparés ; le propriétaire pose les étiquettes. Garde-fous : aucun nom d'attraction ni de parc dans le noyau ; ce qui est propre aux montagnes russes reste dans `engine/montagnes-russes/` (appelé à aller dans `osmrides_parks`, #51) ; chaque note de version distingue le générique du propre aux parcs. Le **Chef stations reste séparé** (second utilisateur du moteur). Règles d'`osmrides_parks` : `docs/PILOTAGE.md` de ce dépôt.
+
 ## Agents
 
 Quatre **chefs** (orchestrateurs), un par dépôt, chacun dans sa propre session longue lancée par le propriétaire. Ils codent peu : ils lisent les issues, découpent, délèguent, vérifient, publient, rendent compte en français.
 
 | Chef | Dépôt | Modèle du chef | Rôle |
 |---|---|---|---|
-| **Chef moteur** | `osmrides` | Sonnet | capacités génériques, éditeur, versions du moteur ; seul à modifier `engine/` |
-| **Chef parcs** | `osmrides_parks` | Sonnet | attractions, données OSM des parcs, montée de version du moteur côté parcs |
+| **Chef moteur** | `osmrides` **et `osmrides_parks`** (depuis le 27/11) | Sonnet | capacités génériques, éditeur, versions du moteur ; seul à modifier `engine/` ; adopte les versions dans les parcs |
+| ~~Chef parcs~~ | `osmrides_parks` | — | fusionné avec le Chef moteur (27/11) |
 | **Chef stations** | `osmrides_skiresort` | Sonnet | stations, remontées (Vars Les Claux, Escondus V15 en premier) |
 | **Webmestre** | `osmrides_website` | Haiku | met le site à jour à chaque nouvelle fonctionnalité publiée |
 
