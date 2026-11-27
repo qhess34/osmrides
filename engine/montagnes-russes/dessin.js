@@ -229,6 +229,7 @@ function drawResCar(hl,r,a){ // lapbar commune au wagon : UNE barre en travers D
 const BZS={},PV=new WeakMap(),tSp=t=>t.st==='garage'?(t.mv?MV.v:0):t.st==='station'?0:t.v;
 const zTrains=z=>trains.filter(t=>z.car?tZone(t)==='RB':(t.st==='run'&&t.s>z.r0-.3&&t.s-TLEN<z.r1+.3)||(z.id==='St'&&t.st==='station')||(t.st==='garage'&&tZone(t)===z.id));
 const _bf=mkF();
+const freeA=t=>-9.81*(hAt(t.s)-hAt(t.s-TLEN))/TLEN-(PH.roll+t.wear*.0003)-PH.drag*t.v*t.v; // décélération libre (pente, roulement, traînée) : seul le ralentissement au-delà compte comme freinage dessiné
 function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu ou ralenti dans la zone ; zone vide : serrée si la section suivante est occupée (la gare, toujours)
   for(const z of BZ){const b=BZS[z.id]||(BZS[z.id]={c:1,a:0}),ts=zTrains(z);
     let cl=zK(z.id)||(z.id===ZF&&G.brakeFault)||ts.some(t=>tSp(t)<.05||(t.st==='run'&&PV.has(t)&&t.v<PV.get(t)-.01));
@@ -236,7 +237,7 @@ function brakeState(dt){ // freins serrés : au pupitre, défaut, train retenu o
     if(dt>0&&b.cl!==undefined&&b.cl!==!!cl&&z.id!=='St'&&z.lane==null){const q=z.r0!=null?frameAt((z.r0+z.r1)/2,_bf).p:null;cl?sfx.brakeOn(q&&q.x,q&&q.z):sfx.brakeOff(q&&q.x,q&&q.z);} // son : serrage (claquement) / desserrage (air)
     b.cl=!!cl;
     if(dt>0){b.c=lerp(b.c,cl?1:0,Math.min(1,dt*6));if(z.drive){const sp=Math.max(0,...ts.map(tSp)),dr=ts.some(t=>t.bgo||t.fdrive||t.entering||t.toPre);b.dr=sp>.05||dr;if(b.dr)b.a+=Math.min(6,Math.max(sp/.2,dr?3:0))*dt;}}} // roues : rotation visible (6 rad/s au plus, 3 au moins si poussé), animation seulement
-  if(dt>0){CHAINE.pv+=CHAINE.v*Math.max(1,34/Math.max(.5,cam.s*LIFT_V))*dt;for(const t of trains)PV.set(t,t.v);} // phase visuelle de la chaîne : au moins ~34 px/s à l'écran (téléphone), la physique ne change pas
+  if(dt>0){CHAINE.pv+=CHAINE.v*Math.max(1,34/Math.max(.5,cam.s*LIFT_V))*dt;for(const t of trains)PV.set(t,t.st==='run'?t.v+freeA(t)*dt:t.v);} // phase visuelle de la chaîne : au moins ~34 px/s à l'écran (téléphone), la physique ne change pas
 }
 function drawBU(o){
   const s=cam.s;if(!o.bu.length||s<.5)return;

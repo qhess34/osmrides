@@ -58,7 +58,7 @@ const ok = (name, c, info) => { if (!c) fails++; out.push((c ? 'ok   ' : 'FAIL '
     });
     for (const r of z) {
       ok(`${r.id} : FREIN en MANU serre les mâchoires dessinées`, r.zk && r.closed > .8, r);
-      ok(`${r.id} : relâché, les mâchoires s'ouvrent`, !r.zk2 && r.open < .9, r);
+      ok(`${r.id} : relâché, les mâchoires s'ouvrent`, !r.zk2 && r.open < .5, r);
       if (r.drive) { ok(`${r.id} : roues tournent quand le train est entraîné`, r.aMove > 3, r); ok(`${r.id} : roues arrêtées freins serrés`, r.aStop < .05, r); }
     }
     ok(id + ' : au moins une zone de freinage testée', z.length > 0);
