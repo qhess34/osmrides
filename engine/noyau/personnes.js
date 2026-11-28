@@ -350,7 +350,9 @@ function leavePath(v){return [[v.x,0,v.z]].concat(v.pts.slice(0,v.i).reverse().m
 function backPath(v,evac){ // sortie à contre-sens par la file. Abandon : uniquement par les chemins ouverts. Évacuation : au plus court, barrières franchies.
   if(v.mode!=='q')return leavePath(v);
   const pts=[[v.x,0,v.z]];let e=v.e,ds=e.len-v.r;
-  while(e){for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);e=prevSeg(e,evac);ds=1e9;}
+  const sd=evac?v.side||0:0; // évacuation : chacun garde son côté de l'allée (places segSpots, deux de front), pas de convergence sur l'axe (issue #73)
+  while(e){if(sd){const S=segSpots(e),n=S.length-1;for(let k=Math.min(n,Math.floor((ds-.01)/QSTEP));k>=0;k-=4){const q=S[k];pts.push([q[0]+q[2]*sd,0,q[1]+q[3]*sd]);}if(n%4)pts.push([S[0][0]+S[0][2]*sd,0,S[0][1]+S[0][3]*sd]);}
+    else for(let i=e.P.length-1;i>=0;i--)if(e.C[i]<ds-.01)pts.push([e.P[i][0]+rnd(-.3,.3),0,e.P[i][1]+rnd(-.3,.3)]);e=prevSeg(e,evac);ds=1e9;}
   const r=pts.concat(P3((QS.lead||[]).slice().reverse().concat(approach().slice().reverse()),.7));r.qn=pts.length;return r;
 }
 // trajet à rebours depuis le bout de la file jusqu'à l'entrée (évacuation des places d'attente, couche du type)
@@ -437,7 +439,8 @@ function updateVisitors(dt){
   }
   for(const v of Q.slice())if(v.mode==='app'&&!v.mv&&v.i<v.pts.length&&qStill(v,v.x,v.z)&&!barStepBack(v,[]))turnAway(v); // arrivant arrêté que la file vient de rejoindre (début de file le long de l'accès) : recule (issue #44)
   EGRID.clear();if(BARS.length)for(const k of G.walkers)if(k.kind==='evac'&&barAhead(k)){k.bdd=barDist(k);const c=qk(k.x,k.z);let L=EGRID.get(c);if(!L)EGRID.set(c,L=[]);L.push(k);}
-  for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null;if(o&&k.hold>0){k.hold-=dt;continue;}const end=moveAlong(k,dt);
+  for(let i=G.walkers.length-1;i>=0;i--){const k=G.walkers[i],o=k.kind==='evac'&&BARS.length?[k.x,k.y,k.z,k.i]:null;if(o&&k.hold>0){k.hold-=dt;continue;}if(o&&k.ba&&k.bv===BARV&&!k.bwb&&eNear(k.x,k.z,q=>q!==k&&!q.bk&&q.ba===k.ba&&q.bdd<k.bdd&&Math.hypot(q.x-k.x,q.z-k.z)<QD)){k.bk=0;continue;} // collé à celui qui le précède, en marche (deux de front qui se rejoignent, issue #73) : le laisse filer jusqu'à l'écart QD
+    const end=moveAlong(k,dt);
     if(o&&k.ba&&k.bv===BARV&&!k.bwb){k.ox=o[0];k.oz=o[2];if(evacAhead(k)){[k.x,k.y,k.z,k.i]=o;k.bk=k.ba||1;continue;}} // derrière un évacué qui le précède vers la barrière : attend
     if(o&&barWait(k,o)){k.bk=k.bwb||1;continue;}if(o)k.bk=0; // évacué arrêté en file devant une barrière fermée (issue #40) : repart, dans l'ordre, quand on l'ouvre
     if(end){if(k.done)k.done();G.walkers.splice(i,1);}}
